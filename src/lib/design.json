@@ -1,0 +1,423 @@
+{
+  "meta": {
+    "systemName": "MacCell Pro Design System",
+    "version": "4.1.0-enterprise",
+    "description": "Sistema de diseño atómico completo basado en OKLCH, sombras detalladas y configuración modular para POS/Taller.",
+    "lastUpdated": "2025-12-10",
+    "_LOCKED": "⛔ DO NOT MODIFY THIS FILE. IT IS THE SINGLE SOURCE OF TRUTH FOR THE DESIGN SYSTEM. ⛔"
+  },
+  "global": {
+    "brand": {
+      "name": "MacCell",
+      "radius": "1.3rem",
+      "radiusSmall": "0.8rem",
+      "borderWidth": "1px",
+      "spacingUnit": "0.25rem"
+    },
+    "viewport": {
+      "mobile": "640px",
+      "tablet": "768px",
+      "desktop": "1024px",
+      "wide": "1280px",
+      "ultra": "1536px"
+    },
+    "zIndexes": {
+      "toast": 100,
+      "modal": 50,
+      "popover": 40,
+      "header": 30,
+      "sidebar": 20,
+      "base": 0,
+      "negative": -1
+    }
+  },
+  "theme": {
+    "colors": {
+      "light": {
+        "background": "oklch(1.0000 0 0)",
+        "foreground": "oklch(0.1884 0.0128 248.5103)",
+        "card": {
+          "DEFAULT": "oklch(0.9784 0.0011 197.1387)",
+          "foreground": "oklch(0.1884 0.0128 248.5103)"
+        },
+        "popover": {
+          "DEFAULT": "oklch(1.0000 0 0)",
+          "foreground": "oklch(0.1884 0.0128 248.5103)"
+        },
+        "primary": {
+          "DEFAULT": "oklch(0.6723 0.1606 244.9955)",
+          "foreground": "oklch(1.0000 0 0)",
+          "hover": "oklch(0.60 0.16 245)"
+        },
+        "secondary": {
+          "DEFAULT": "oklch(0.1884 0.0128 248.5103)",
+          "foreground": "oklch(1.0000 0 0)",
+          "hover": "oklch(0.25 0.02 248)"
+        },
+        "muted": {
+          "DEFAULT": "oklch(0.9222 0.0013 286.3737)",
+          "foreground": "oklch(0.1884 0.0128 248.5103)"
+        },
+        "accent": {
+          "DEFAULT": "oklch(0.9392 0.0166 250.8453)",
+          "foreground": "oklch(0.6723 0.1606 244.9955)"
+        },
+        "destructive": {
+          "DEFAULT": "oklch(0.6188 0.2376 25.7658)",
+          "foreground": "oklch(1.0000 0 0)",
+          "hover": "oklch(0.55 0.24 25)"
+        },
+        "border": "oklch(0.9317 0.0118 231.6594)",
+        "input": "oklch(0.9809 0.0025 228.7836)",
+        "ring": "oklch(0.6818 0.1584 243.3540)",
+        "chart": {
+          "1": "oklch(0.6723 0.1606 244.9955)",
+          "2": "oklch(0.6907 0.1554 160.3454)",
+          "3": "oklch(0.8214 0.1600 82.5337)",
+          "4": "oklch(0.7064 0.1822 151.7125)",
+          "5": "oklch(0.5919 0.2186 10.5826)"
+        },
+        "sidebar": {
+          "DEFAULT": "oklch(0.9784 0.0011 197.1387)",
+          "foreground": "oklch(0.1884 0.0128 248.5103)",
+          "primary": "oklch(0.6723 0.1606 244.9955)",
+          "primaryForeground": "oklch(1.0000 0 0)",
+          "accent": "oklch(0.9392 0.0166 250.8453)",
+          "accentForeground": "oklch(0.6723 0.1606 244.9955)",
+          "border": "oklch(0.9271 0.0101 238.5177)",
+          "ring": "oklch(0.6818 0.1584 243.3540)"
+        }
+      },
+      "dark": {
+        "background": "oklch(0 0 0)",
+        "foreground": "oklch(0.9328 0.0025 228.7857)",
+        "card": {
+          "DEFAULT": "oklch(0.2097 0.0080 274.5332)",
+          "foreground": "oklch(0.8853 0 0)"
+        },
+        "popover": {
+          "DEFAULT": "oklch(0 0 0)",
+          "foreground": "oklch(0.9328 0.0025 228.7857)"
+        },
+        "primary": {
+          "DEFAULT": "oklch(0.6692 0.1607 245.0110)",
+          "foreground": "oklch(1.0000 0 0)",
+          "hover": "oklch(0.60 0.16 245)"
+        },
+        "secondary": {
+          "DEFAULT": "oklch(0.9622 0.0035 219.5331)",
+          "foreground": "oklch(0.1884 0.0128 248.5103)",
+          "hover": "oklch(0.90 0.05 220)"
+        },
+        "muted": {
+          "DEFAULT": "oklch(0.2090 0 0)",
+          "foreground": "oklch(0.5637 0.0078 247.9662)"
+        },
+        "accent": {
+          "DEFAULT": "oklch(0.1928 0.0331 242.5459)",
+          "foreground": "oklch(0.6692 0.1607 245.0110)"
+        },
+        "destructive": {
+          "DEFAULT": "oklch(0.6188 0.2376 25.7658)",
+          "foreground": "oklch(1.0000 0 0)",
+          "hover": "oklch(0.55 0.24 25)"
+        },
+        "border": "oklch(0.2674 0.0047 248.0045)",
+        "input": "oklch(0.3020 0.0288 244.8244)",
+        "ring": "oklch(0.6818 0.1584 243.3540)",
+        "chart": {
+          "1": "oklch(0.6723 0.1606 244.9955)",
+          "2": "oklch(0.6907 0.1554 160.3454)",
+          "3": "oklch(0.8214 0.1600 82.5337)",
+          "4": "oklch(0.7064 0.1822 151.7125)",
+          "5": "oklch(0.5919 0.2186 10.5826)"
+        },
+        "sidebar": {
+          "DEFAULT": "oklch(0.2097 0.0080 274.5332)",
+          "foreground": "oklch(0.8853 0 0)",
+          "primary": "oklch(0.6818 0.1584 243.3540)",
+          "primaryForeground": "oklch(1.0000 0 0)",
+          "accent": "oklch(0.1928 0.0331 242.5459)",
+          "accentForeground": "oklch(0.6692 0.1607 245.0110)",
+          "border": "oklch(0.3795 0.0220 240.5943)",
+          "ring": "oklch(0.6818 0.1584 243.3540)"
+        }
+      }
+    },
+    "status": {
+      "success": {
+        "bg": "oklch(0.9 0.1 150)",
+        "text": "oklch(0.4 0.15 150)",
+        "darkBg": "oklch(0.3 0.1 150)",
+        "darkText": "oklch(0.9 0.05 150)"
+      },
+      "warning": {
+        "bg": "oklch(0.95 0.1 85)",
+        "text": "oklch(0.45 0.15 85)",
+        "darkBg": "oklch(0.3 0.1 85)",
+        "darkText": "oklch(0.9 0.05 85)"
+      },
+      "error": {
+        "bg": "oklch(0.9 0.1 25)",
+        "text": "oklch(0.45 0.15 25)",
+        "darkBg": "oklch(0.3 0.1 25)",
+        "darkText": "oklch(0.9 0.05 25)"
+      },
+      "info": {
+        "bg": "oklch(0.9 0.1 240)",
+        "text": "oklch(0.45 0.15 240)",
+        "darkBg": "oklch(0.3 0.1 240)",
+        "darkText": "oklch(0.9 0.05 240)"
+      }
+    }
+  },
+  "layout": {
+    "dimensions": {
+      "sidebarWidth": "280px",
+      "sidebarCollapsedWidth": "80px",
+      "headerHeight": "64px",
+      "radius": "1.3rem",
+      "containerPadding": "2rem",
+      "maxContentWidth": "1600px"
+    },
+    "shadows": {
+      "2xs": "0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00)",
+      "xs": "0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00)",
+      "sm": "0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00)",
+      "DEFAULT": "0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00)",
+      "md": "0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0.00)",
+      "lg": "0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0.00)",
+      "xl": "0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0.00)",
+      "2xl": "0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00)",
+      "inner": "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+      "glow": "0 0 15px rgba(108, 99, 255, 0.5)"
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "sans": [
+        "Open Sans",
+        "sans-serif"
+      ],
+      "serif": [
+        "Georgia",
+        "serif"
+      ],
+      "mono": [
+        "Menlo",
+        "monospace"
+      ]
+    },
+    "fontSize": {
+      "xs": [
+        "0.75rem",
+        {
+          "lineHeight": "1rem"
+        }
+      ],
+      "sm": [
+        "0.875rem",
+        {
+          "lineHeight": "1.25rem"
+        }
+      ],
+      "base": [
+        "1rem",
+        {
+          "lineHeight": "1.5rem"
+        }
+      ],
+      "lg": [
+        "1.125rem",
+        {
+          "lineHeight": "1.75rem"
+        }
+      ],
+      "xl": [
+        "1.25rem",
+        {
+          "lineHeight": "1.75rem"
+        }
+      ],
+      "2xl": [
+        "1.5rem",
+        {
+          "lineHeight": "2rem"
+        }
+      ],
+      "3xl": [
+        "1.875rem",
+        {
+          "lineHeight": "2.25rem"
+        }
+      ],
+      "4xl": [
+        "2.25rem",
+        {
+          "lineHeight": "2.5rem"
+        }
+      ],
+      "5xl": [
+        "3rem",
+        {
+          "lineHeight": "1"
+        }
+      ]
+    },
+    "fontWeight": {
+      "thin": "100",
+      "light": "300",
+      "normal": "400",
+      "medium": "500",
+      "semibold": "600",
+      "bold": "700",
+      "black": "900"
+    },
+    "tracking": {
+      "tighter": "-0.05em",
+      "tight": "-0.025em",
+      "normal": "0em",
+      "wide": "0.025em",
+      "wider": "0.05em",
+      "widest": "0.1em"
+    }
+  },
+  "components": {
+    "buttons": {
+      "base": "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      "variants": {
+        "default": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md",
+        "destructive": "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
+        "outline": "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        "ghost": "hover:bg-accent hover:text-accent-foreground",
+        "link": "text-primary underline-offset-4 hover:underline",
+        "gradient": "bg-gradient-to-r from-[oklch(0.6723_0.1606_244.9955)] to-[oklch(0.60_0.16_245)] text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-transform"
+      },
+      "sizes": {
+        "default": "h-10 px-4 py-2",
+        "sm": "h-9 rounded-md px-3",
+        "lg": "h-11 rounded-md px-8",
+        "icon": "h-10 w-10"
+      }
+    },
+    "inputs": {
+      "base": "flex h-10 w-full rounded-[1.3rem] border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
+    },
+    "cards": {
+      "base": "rounded-[1.3rem] border border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-300",
+      "header": "flex flex-col space-y-1.5 p-6",
+      "content": "p-6 pt-0",
+      "footer": "flex items-center p-6 pt-0"
+    },
+    "tables": {
+      "wrapper": "relative w-full overflow-auto rounded-[1.3rem] border border-border shadow-sm",
+      "table": "w-full caption-bottom text-sm",
+      "header": "[&_tr]:border-b",
+      "head": "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "row": "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "cell": "p-4 align-middle [&:has([role=checkbox])]:pr-0"
+    },
+    "badges": {
+      "base": "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      "variants": {
+        "default": "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        "secondary": "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        "destructive": "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        "outline": "text-foreground"
+      }
+    }
+  },
+  "modules": {
+    "pos": {
+      "grid": {
+        "gap": "1rem",
+        "columns": "repeat(auto-fill, minmax(200px, 1fr))"
+      },
+      "cart": {
+        "width": "400px",
+        "background": "var(--card)",
+        "itemHeight": "80px"
+      },
+      "actions": {
+        "payButtonHeight": "60px",
+        "payButtonFontSize": "1.25rem"
+      }
+    },
+    "workshop": {
+      "board": {
+        "gap": "1.5rem",
+        "columnWidth": "300px",
+        "cardPadding": "1rem"
+      },
+      "priorityColors": {
+        "low": "oklch(0.8 0.1 150)",
+        "medium": "oklch(0.85 0.15 85)",
+        "high": "oklch(0.7 0.2 30)",
+        "critical": "oklch(0.6 0.25 25)"
+      }
+    },
+    "dashboard": {
+      "widgetHeight": "150px",
+      "chartHeight": "300px",
+      "gap": "1.5rem"
+    }
+  },
+  "animations": {
+    "durations": {
+      "fast": "150ms",
+      "normal": "300ms",
+      "slow": "500ms",
+      "verySlow": "1000ms"
+    },
+    "easings": {
+      "default": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "linear": "linear",
+      "in": "cubic-bezier(0.4, 0, 1, 1)",
+      "out": "cubic-bezier(0, 0, 0.2, 1)",
+      "inOut": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "spring": "spring(1, 100, 10, 0)"
+    },
+    "variants": {
+      "fadeIn": {
+        "initial": {
+          "opacity": 0
+        },
+        "animate": {
+          "opacity": 1
+        },
+        "exit": {
+          "opacity": 0
+        }
+      },
+      "slideUp": {
+        "initial": {
+          "opacity": 0,
+          "y": 20
+        },
+        "animate": {
+          "opacity": 1,
+          "y": 0
+        },
+        "exit": {
+          "opacity": 0,
+          "y": 20
+        }
+      },
+      "scaleIn": {
+        "initial": {
+          "opacity": 0,
+          "scale": 0.95
+        },
+        "animate": {
+          "opacity": 1,
+          "scale": 1
+        },
+        "exit": {
+          "opacity": 0,
+          "scale": 0.95
+        }
+      }
+    }
+  }
+}

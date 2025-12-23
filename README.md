@@ -34,3 +34,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Testing on Mobile Device (HTTP)
+
+To test the camera/barcode scanner on a mobile device while connected via HTTP (e.g., `http://192.168.x.x:3000`), you must configure the browser to treat the origin as secure:
+
+1.  Open Chrome on your mobile device.
+2.  Navigate to `chrome://flags/#unsafely-treat-insecure-origin-as-secure`.
+3.  Enable the flag "Insecure origins treated as secure".
+4.  In the text box, enter your computer's IP address and port (e.g., `http://192.168.1.15:3000`).
+5.  Click "Relaunch" at the bottom.
+
+This allows the browser to grant camera permissions even without HTTPS.
