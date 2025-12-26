@@ -1,115 +1,79 @@
-# 🚀 Guía Ultra-Detallada: Despliegue de Maccell CRM en Easypanel
+# �️ GUÍA DEFINITIVA: Despliegue de Maccell CRM en Easypanel (Paso a Paso)
 
-Esta guía está diseñada para que cualquier persona, siguiendo los pasos numerados, pueda desplegar el sistema en **DonWeb Cloud** usando **Easypanel** sin cometer errores técnicos.
-
----
-
-## 📋 Requisitos Previos (Antes de empezar)
-1.  **Easypanel**: Tenerlo instalado y accesible (normalmente en `http://IP-DE-TU-SERVER:3000`).
-2.  **GitHub/GitLab**: El código de `maccell-crm` debe estar subido a un repositorio privado o público.
-3.  **Dominio**: Tener un subdominio (ej: `crm.tudominio.com`) apuntando a la IP de tu servidor DonWeb mediante un registro A.
+Si es la primera vez que usas Easypanel, esta guía te llevará de la mano. Sigue los números en orden y no te saltes ninguno.
 
 ---
 
-## 🪜 Paso a Paso Completo
+## 🏗️ PASO 1: Crear el Espacio de Trabajo
+1.  Entra a tu Easypanel (ej: `http://TU_IP:3000`).
+2.  En el menú de la izquierda, haz clic en **"Projects"**.
+3.  Haz clic en el botón superior derecho **"+ Create Project"**.
+4.  Nombre: `maccell-crm`. Haz clic en **"Create"**.
 
-### 1. Crear el Proyecto Contenedor
-1.  Entra a tu panel de Easypanel.
-2.  En el menú lateral izquierdo, haz clic en **"Projects"**.
-3.  Haz clic en el botón azul **"+ Create Project"** (arriba a la derecha).
-4.  En "Name", escribe exactamente: `maccell-crm`.
-5.  Haz clic en **"Create"**.
+---
 
-### 2. Desplegar la Base de Datos (PostgreSQL)
-1.  Dentro del proyecto `maccell-crm`, haz clic en **"+ Add Service"**.
-2.  Selecciona la opción **"Database"**.
-3.  Busca y selecciona **"Postgres"**.
-4.  **Configuración del Servicio**:
-    *   **Name**: Déjalo como `postgres`.
-    *   **Image**: Selecciona `postgres:15-alpine` (es la más estable y ligera).
-5.  Haz clic en **"Create"**.
-6.  Ahora estarás en la pantalla del servicio Postgres. Haz clic en el botón verde **"Deploy"** y espera a que diga "Running".
-7.  **IMPORTANTE (No te saltes esto)**: 
-    *   Ve a la pestaña **"Environment"**.
-    *   Busca la variable que dice `DATABASE_URL`. Easypanel la genera sola (ej: `postgres://user:pass@PROJECT_NAME-postgres:5432/db`).
-    *   **Cópiala en un bloc de notas**. La usaremos en el paso 4.
+## 🗄️ PASO 2: Configurar la Base de Datos (Postgres)
+1.  Dentro del proyecto, haz clic en el botón central **"Add Service"**.
+2.  Selecciona **"Database"** y luego busca **"Postgres"**.
+3.  **Nombre**: Ponle `postgres` (muy importante para la URL luego).
+4.  En la pantalla que aparece, haz clic en el botón verde **"Deploy"** arriba a la derecha.
+5.  **Obtener la URL**: Cuando diga "Running", ve a la pestaña **"Environment"** de este servicio Postgres. Copia la variable `DATABASE_URL` (puedes hacer clic en el mini icono de copiar).
 
-### 3. Crear el Servicio de la Aplicación
-1.  Vuelve a la pantalla principal del proyecto `maccell-crm`.
-2.  Haz clic en **"+ Add Service"**.
-3.  Selecciona la opción **"App"**.
-4.  En "Name", escribe: `crm-app`.
-5.  Haz clic en **"Create"**.
+---
 
-### 4. Conectar tu Repositorio de Código
-1.  Dentro del servicio `crm-app`, ve a la pestaña **"Source"**.
-2.  Selecciona **"GitHub"** (u otro).
-3.  Haz clic en **"Connect GitHub"** y autoriza a Easypanel.
-4.  **Repo**: Busca y selecciona `maccell-crm`.
-5.  **Branch**: Escribe `main` (o la rama donde esté tu código final).
-6.  Haz clic en **"Save"**.
+## 🚀 PASO 3: Configurar la Aplicación (El Corazón del Sistema)
+1.  Vuelve a la pantalla principal del proyecto (haciendo clic en el nombre `maccell-crm` arriba).
+2.  Haz clic en **"Add Service"** -> **"App"**.
+3.  **Nombre**: Ponle `app-crm`. Haz clic en **"Create"**.
 
-### 5. Configurar Variables de Entorno (El "motor" de la app)
-1.  En el servicio `crm-app`, ve a la pestaña **"Environment"**.
-2.  Añade las siguientes variables una por una (clic en "+ Add Environment Variable"):
-    *   **DATABASE_URL**: Pega la URL que copiaste en el Paso 2 (ej: `postgres://user:pass@maccell-crm-postgres:5432/db`).
-    *   **NODE_ENV**: Escribe `production`.
-    *   **NEXT_PUBLIC_APP_URL**: Escribe `https://tu-subdominio.com`.
+Ahora verás una pantalla con varias pestañas arriba (General, Source, Build, etc.). **Vamos a configurarlas una por una:**
+
+### A - Pestaña "SOURCE" (De dónde viene el código)
+1.  Selecciona **"GitHub"**.
+2.  Pega tu link: `https://github.com/perrobomba114/maccell-crm.git`
+3.  En "Branch", asegúrate que diga `main`.
+4.  Haz clic en el botón **"Save"** que está abajo.
+
+### B - Pestaña "ENVIRONMENT" (Las llaves del sistema)
+1.  Haz clic en **"+ Add Environment Variable"**.
+2.  **Key**: `DATABASE_URL` | **Value**: (Pega aquí la URL que copiaste en el Paso 2).
+    *   *Nota: Si tu contraseña tiene $, asegúrate de usar la versión codificada que te pasé antes.*
+3.  Añade otra variable: **Key**: `NODE_ENV` | **Value**: `production`.
+4.  Haz clic en **"Save"**.
+
+### C - Pestaña "BUILD" (Cómo se arma el programa) - CRUCIAL
+1.  En "Build Method", elige **"Nixpacks"**.
+2.  Busca el campo **"Install Command"** y escribe exactamente esto:
+    `npm install --legacy-peer-deps`
+3.  Busca el campo **"Build Command"** y escribe:
+    `npm run build`
+4.  Busca el campo **"Start Command"** y escribe:
+    `npx prisma generate && npx prisma migrate deploy && npm run start`
+    *(Esto hace que se creen las tablas de la base de datos automáticamente al encender).*
+5.  Haz clic en **"Save"**.
+
+### D - Pestaña "RESOURCES" (La potencia del servidor)
+1.  Busca el campo **"Memory Limit (MB)"**.
+2.  Borra el numero que tenga y escribe: **`2048`**.
+    *   *Si dejas menos de esto, el servidor de DonWeb "matará" la instalación porque se queda sin fuerza.*
 3.  Haz clic en **"Save"**.
 
-### 6. Configuración de Construcción (Nixpacks)
-1.  En la misma pantalla, ve a la pestaña **"Build"**.
-2.  En **"Build Method"**, asegúrate de que esté seleccionado **"Nixpacks"**.
-3.  Easypanel detectará automáticamente que es Next.js. Si te pide comandos manuales, usa estos:
-    *   **Install Command**: `npm install`
-    *   **Build Command**: `npm run build`
-    *   **Start Command**: `npm run start`
-4.  Haz clic en **"Save"**.
-
-### 7. Configurar el Dominio y SSL
-1.  Ve a la pestaña **"Domains"**.
-2.  Haz clic en **"+ Add Domain"**.
-3.  En "Host", escribe tu subdominio completo (ej: `crm.tusitio.com`).
-4.  **Port**: Escribe `3000` (es el puerto por defecto de Next.js).
-5.  **HTTPS**: Asegúrate de que la casilla de HTTPS esté marcada. Easypanel activará **Let's Encrypt** automáticamente.
-6.  Haz clic en **"Save"**.
-
-### 8. Configurar Almacenamiento Persistente (Fotos y Perfiles)
-*Sin este paso, si el servidor se reinicia, perderás las fotos que subas.*
-1.  Ve a la pestaña **"Storage"**.
-2.  Haz clic en **"+ Add Mount"**.
-3.  **Primer Volumen (Sucursales)**:
-    *   **Mount Type**: `Volume`
-    *   **Name**: `v-branches`
-    *   **Mount Path**: `/app/public/branches`
-4.  Haz clic en **"+ Add Mount"** de nuevo.
-5.  **Segundo Volumen (Perfiles)**:
-    *   **Mount Type**: `Volume`
-    *   **Name**: `v-profiles`
-    *   **Mount Path**: `/app/public/profiles`
-6.  Haz clic en **"Save"**.
-
-### 9. Automatizar las Migraciones de Base de Datos
-1.  Ve a la pestaña **"Deploy"**.
-2.  Busca el campo **"Post-deployment Command"**.
-3.  Escribe: `npx prisma migrate deploy`
-    *   *Esto asegura que cada vez que actualices el sistema, las tablas se creen solas.*
-4.  Haz clic en **"Save"**.
-
-### 10. Despliegue Final
-1.  Haz clic en el botón grande y verde que dice **"Deploy"** (arriba a la derecha).
-2.  Haz clic en la pestaña **"Logs"** para ver el progreso.
-    *   Verás como descarga las dependencias y hace el "build".
-3.  Cuando veas el mensaje `Ready on http://localhost:3000`, significa que terminó con éxito.
+### E - Pestaña "DOMAINS" (Tu dirección web)
+1.  Haz clic en **"+ Add Domain"**.
+2.  En **"Host"**, pon tu subdominio (ej: `crm.tusitio.com`).
+3.  Asegúrate que la casilla **"HTTPS"** esté marcada.
+4.  En **"Port"**, pon **`3000`**.
+5.  Haz clic en **"Save"**.
 
 ---
 
-## 🏁 Verificación de Funcionamiento
-1.  Abre tu navegador en `https://tu-subdominio.com`.
-2.  Deberías ver la pantalla de login.
-3.  Prueba subir una imagen de perfil en tu cuenta para verificar que el **Paso 8 (Storage)** funciona correctamente.
+## 🏁 PASO 4: El Despliegue Final
+1.  Una vez configurado todo lo anterior, haz clic en el botón grande verde **"Deploy"** (arriba a la derecha).
+2.  **Cómo saber si va bien**: Haz clic en la pestaña **"Deployments"**. Verás un registro nuevo. Haz clic en él para ver las letras blancas en el cuadro negro.
+3.  **Si ves errores**: Copia esas letras y pásamelas. Si todo sale bien, al final dirá "Running" y podrás entrar a tu web.
 
-## 🛠️ Solución de Errores Comunes
-*   **Error "Prisma Client not initialized"**: Asegúrate de que el comando `npx prisma generate` se ejecute durante el build. Nixpacks suele hacerlo solo, pero si falla, puedes añadirlo al "Build Command" como: `npx prisma generate && npm run build`.
-*   **Out of Memory (RAM)**: Si el build falla en DonWeb, ve a la pestaña **"Resources"** de la app y aumenta el **Memory Limit** temporalmente a `2GB`.
-*   **SSL Pendiente**: Si tu dominio no carga, espera 5 minutos; Let's Encrypt tarda un poco en validar el certificado la primera vez.
+---
+
+## 🛠️ ¿Cómo sé si el proyecto está "bien cargado"?
+*   Si en los logs de **Deployments** ves que Easypanel descarga archivos de GitHub con éxito, está bien cargado.
+*   Si el error es "No such image", es que falló el paso de **BUILD** (revisa el Paso 3-C y 3-D de esta guía).
