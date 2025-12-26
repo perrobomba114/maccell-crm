@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { getSpareParts } from "@/actions/spare-parts";
 import { SparePartsReportClient } from "@/components/admin/reports/spare-parts-report-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function SparePartsReportPage() {
     // Fetch all spare parts (no pagination limit for report essentially, or high limit)
     // getSpareParts usually returns all non-deleted.
