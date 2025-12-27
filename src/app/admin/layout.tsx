@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { getUserData } from "@/actions/get-user";
 
 import { adminGroups } from "@/components/layout/nav-config";
+import { getTechniciansWorkload } from "@/actions/dashboard-actions";
 
 export default function AdminLayout({
     children,
@@ -38,24 +39,37 @@ export default function AdminLayout({
         let intervalId: NodeJS.Timeout;
 
         const fetchData = async () => {
-            const user = await getUserData();
-            if (user) {
-                setUserName(user.name);
-                setUserEmail(user.email);
-                setUserId(user.id);
+            try {
+                const user = await getUserData();
+                if (user) {
+                    setUserName(user.name);
+                    setUserEmail(user.email);
+                    setUserId(user.id);
 
-                // Fetch technicians workload
-                const { getTechniciansWorkload } = await import("@/actions/dashboard-actions");
 
-                // Initial fetch
-                const workload = await getTechniciansWorkload(user.branch?.id);
-                setTechniciansWorkload(workload);
+                    // Fetch technicians workload
+                    // const { getTechniciansWorkload } = await import("@/actions/dashboard-actions");
 
-                // Poll every 10 seconds
-                intervalId = setInterval(async () => {
-                    const updatedWorkload = await getTechniciansWorkload(user.branch?.id);
-                    setTechniciansWorkload(updatedWorkload);
-                }, 10000);
+                    // Initial fetch
+                    try {
+                        const workload = await getTechniciansWorkload(user.branch?.id);
+                        setTechniciansWorkload(workload);
+                    } catch (e) {
+                        console.error("Initial workload fetch error", e);
+                    }
+
+                    // Poll every 10 seconds
+                    intervalId = setInterval(async () => {
+                        try {
+                            const updatedWorkload = await getTechniciansWorkload(user.branch?.id);
+                            setTechniciansWorkload(updatedWorkload);
+                        } catch (e) {
+                            console.error("Polling error", e);
+                        }
+                    }, 10000);
+                }
+            } catch (error) {
+                console.error("Error initializing admin layout:", error);
             }
         };
 

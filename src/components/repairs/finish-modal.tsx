@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle, Image, Camera, X } from "lucide-react";
+import { Loader2, CheckCircle, Image, Camera, X, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { finishRepairAction } from "@/actions/repairs/technician-actions";
 import { ImagePreviewModal } from "./image-preview-modal";
@@ -27,6 +27,15 @@ const finishStatuses = [
     { id: 9, name: "Esperando Repuestos" },
 ];
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
+const statusColors: Record<number, string> = {
+    4: "from-orange-500 to-orange-600",
+    5: "from-emerald-500 to-emerald-600",
+    6: "from-red-500 to-red-600",
+    7: "from-blue-500 to-blue-600",
+    8: "from-amber-400 to-amber-500",
+    9: "from-violet-500 to-violet-600",
+};
 
 export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: FinishRepairModalProps) {
     const [isLoading, setIsLoading] = useState(false);
@@ -76,11 +85,11 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                 toast.success(createReturnRequest ? "Reparación finalizada y solicitud de devolución creada." : "Reparación actualizada correctamente.");
                 onClose();
             } else {
-                toast.error(result.error || "Error al actualizar.");
+                toast.error(result.error || "Error al actualizar la reparación.");
             }
-        } catch (error) {
-            console.error(error);
-            toast.error("Error inesperado.");
+        } catch (error: any) {
+            console.error("Submit Error:", error);
+            toast.error(error.message || "Error inesperado de conexión.");
         } finally {
             setIsLoading(false);
         }
@@ -114,71 +123,145 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     return (
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto p-6">
-                    <DialogHeader>
-                        <DialogTitle>Terminar / Actualizar Reparación</DialogTitle>
-                        <DialogDescription>
-                            Registra el resultado final o el nuevo estado de la reparación.
-                        </DialogDescription>
+                <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl">
+                    <DialogHeader className="p-6 pb-4 border-b bg-muted/10 sticky top-0 z-10 flex flex-row items-center justify-between">
+                        <div className="space-y-1">
+                            <DialogTitle className="text-xl font-bold tracking-tight">Finalizar Reparación</DialogTitle>
+                            <DialogDescription className="text-muted-foreground">
+                                Selecciona el resultado y añade los detalles finales del servicio.
+                            </DialogDescription>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                onClose();
+                            }}
+                            className="h-8 w-8 rounded-full hover:bg-muted/20"
+                        >
+                            <X className="h-5 w-5" />
+                        </Button>
                     </DialogHeader>
 
-                    <div className="space-y-4 py-4">
-                        {/* EXISTING IMAGES SECTION */}
-                        {repair.deviceImages && repair.deviceImages.filter((img: string) => img && img.includes('/')).length > 0 && (
-                            <div className="bg-muted/30 p-3 rounded-md border border-dashed">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Image className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-xs font-semibold text-muted-foreground">EVIDENCIA FOTOGRÁFICA (Existente)</span>
-                                </div>
-                                <div className="flex gap-2 overflow-x-auto py-1">
-                                    {repair.deviceImages
-                                        .filter((url: string) => url && url.includes('/'))
-                                        .map((url: string, idx: number) => (
-                                            <div
-                                                key={idx}
-                                                className="relative h-24 w-24 flex-shrink-0 cursor-pointer rounded-md overflow-hidden border bg-white hover:opacity-90 transition-opacity"
-                                                onClick={() => setPreviewImage(url)}
-                                            >
-                                                <img
-                                                    src={url}
-                                                    alt={`Foto ${idx + 1}`}
-                                                    className="w-full h-full object-cover"
-                                                    onError={(e) => {
-                                                        const target = e.target as HTMLImageElement;
-                                                        const parent = target.parentElement;
-                                                        if (parent) parent.style.display = 'none';
-                                                    }}
-                                                />
+                    <div className="flex-1 overflow-y-auto p-6 space-y-8">
+
+                        {/* 1. Status Selection */}
+                        <div className="space-y-3">
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Resultado del Servicio</Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {finishStatuses.map((s) => {
+                                    const isSelected = statusId === s.id.toString();
+
+                                    const gradientColors = statusColors[s.id] || "from-primary to-primary";
+
+                                    // Map for border/text colors when unselected (Modern Hover)
+                                    const solidColors: Record<number, string> = {
+                                        4: "hover:border-orange-500 hover:text-orange-600",
+                                        5: "hover:border-emerald-500 hover:text-emerald-600",
+                                        6: "hover:border-red-500 hover:text-red-600",
+                                        7: "hover:border-blue-500 hover:text-blue-600",
+                                        8: "hover:border-amber-500 hover:text-amber-600",
+                                        9: "hover:border-violet-500 hover:text-violet-600"
+                                    };
+
+                                    const hoverClass = solidColors[s.id] || "hover:border-primary hover:text-primary";
+
+                                    const baseClasses = "relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-300 text-center gap-2 h-28 overflow-hidden group cursor-pointer";
+
+                                    // If selected: Gradient Background, White Text.
+                                    // If unselected: Clean White/Dark Card. No Gray.
+
+                                    const finalClasses = isSelected
+                                        ? `bg-gradient-to-br ${gradientColors} border-transparent text-white shadow-lg scale-[1.02] ring-0`
+                                        : `bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md ${hoverClass} text-muted-foreground transition-all`;
+
+                                    return (
+                                        <button
+                                            key={s.id}
+                                            type="button"
+                                            onClick={() => setStatusId(s.id.toString())}
+                                            className={`${baseClasses} ${finalClasses}`}
+                                        >
+                                            {/* Icons */}
+                                            <div className={`transition-transform duration-300 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>
+                                                {s.id === 5 && <CheckCircle className={`w-8 h-8 ${isSelected ? 'text-white' : 'text-emerald-500 group-hover:text-emerald-600'}`} />}
+                                                {s.id === 6 && <X className={`w-8 h-8 ${isSelected ? 'text-white' : 'text-red-500 group-hover:text-red-600'}`} />}
+                                                {s.id === 4 && <Loader2 className={`w-8 h-8 ${isSelected ? 'text-white' : 'text-orange-500 group-hover:text-orange-600'}`} />}
+                                                {![4, 5, 6].includes(s.id) && <div className={`w-8 h-8 rounded-full border-2 border-dashed ${isSelected ? 'border-white/80' : 'border-muted-foreground/40 group-hover:border-current'}`} />}
                                             </div>
-                                        ))}
+
+                                            <span className={`text-xs font-bold leading-tight w-full px-1 ${isSelected ? 'text-white' : 'group-hover:text-current'}`}>
+                                                {s.name}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 2. Diagnosis */}
+                        <div className="space-y-3">
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Informe Técnico</Label>
+                            <div className="relative group">
+                                <Textarea
+                                    placeholder="Detalla el trabajo realizado, repuestos cambiados o motivo de fallo..."
+                                    className="min-h-[120px] resize-none border-muted-foreground/20 bg-muted/5 p-4 text-sm leading-relaxed transition-all focus:ring-0 focus:border-primary/50 group-hover:bg-muted/10"
+                                    value={diagnosis}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setDiagnosis(val.charAt(0).toUpperCase() + val.slice(1).toLowerCase());
+                                    }}
+                                />
+                                <div className="absolute bottom-3 right-3 text-[10px] text-muted-foreground opacity-50">
+                                    {diagnosis.length} caracteres
                                 </div>
                             </div>
-                        )}
+                        </div>
 
-                        {/* NEW TECH IMAGES SECTION */}
-                        <div className="space-y-2">
-                            <Label>Agregar Evidencia (Técnico)</Label>
-                            <div className="flex flex-wrap gap-2">
+                        {/* 3. Evidence */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Evidencia visual</Label>
+                                <span className="text-[10px] text-muted-foreground">Máx. 3 fotos</span>
+                            </div>
+
+                            <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+                                {/* Existing Images */}
+                                {repair.deviceImages?.filter((url: string) => url && url.includes('/')).map((url: string, idx: number) => (
+                                    <div
+                                        key={`old-${idx}`}
+                                        className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-zoom-in group"
+                                        onClick={() => setPreviewImage(url)}
+                                    >
+                                        <img src={url} alt="Evidencia previa" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                                    </div>
+                                ))}
+
+                                {/* New Images */}
                                 {newImages.map((file, idx) => (
-                                    <div key={idx} className="relative h-20 w-20 rounded-md overflow-hidden border">
+                                    <div key={`new-${idx}`} className="relative aspect-square rounded-lg overflow-hidden border border-primary/50 shadow-sm group">
                                         <img
                                             src={URL.createObjectURL(file)}
-                                            alt="Preview"
+                                            alt="Nueva evidencia"
                                             className="w-full h-full object-cover"
                                         />
                                         <button
-                                            onClick={() => removeNewImage(idx)}
-                                            className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl-md hover:bg-red-600"
+                                            onClick={(e) => { e.stopPropagation(); removeNewImage(idx); }}
+                                            className="absolute top-1 right-1 p-1 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
                                             type="button"
                                         >
                                             <X className="h-3 w-3" />
                                         </button>
                                     </div>
                                 ))}
+
+                                {/* Add Button */}
                                 {newImages.length < 3 && (
-                                    <label className="h-20 w-20 flex flex-col items-center justify-center border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
-                                        <Camera className="h-6 w-6 text-muted-foreground" />
-                                        <span className="text-[10px] text-muted-foreground mt-1">Agregar</span>
+                                    <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group">
+                                        <Camera className="h-5 w-5 text-muted-foreground/70 group-hover:text-primary transition-colors mb-1" />
+                                        <span className="text-[9px] font-medium text-muted-foreground/70 group-hover:text-primary uppercase">Agregar</span>
                                         <input
                                             type="file"
                                             accept="image/*"
@@ -189,117 +272,58 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                     </label>
                                 )}
                             </div>
-                            <p className="text-xs text-muted-foreground">Máximo 3 fotos adicionales.</p>
                         </div>
 
-                        {/* Image Preview Modal */}
-                        <ImagePreviewModal
-                            isOpen={!!previewImage}
-                            onClose={() => setPreviewImage(null)}
-                            imageUrl={previewImage}
-                        />
-
-                        {/* New Status Selection UI */}
-                        <div className="space-y-3">
-                            <Label>Nuevo Estado</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {finishStatuses.map((s) => {
-                                    const isSelected = statusId === s.id.toString();
-                                    let selectedStyle = "";
-                                    let icon = null;
-
-                                    // Customize colors/icons based on ID
-                                    switch (s.id) {
-                                        case 4: // Pausado
-                                            selectedStyle = "bg-orange-100 border-orange-500 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200";
-                                            icon = <Loader2 className={`w-4 h-4 ${isSelected ? "text-current" : "text-muted-foreground"}`} />;
-                                            break;
-                                        case 5: // Finalizado OK
-                                            selectedStyle = "bg-green-100 border-green-500 text-green-800 dark:bg-green-900/30 dark:text-green-200";
-                                            icon = <CheckCircle className={`w-4 h-4 ${isSelected ? "text-current" : "text-muted-foreground"}`} />;
-                                            break;
-                                        case 6: // No Reparado
-                                            selectedStyle = "bg-red-100 border-red-500 text-red-800 dark:bg-red-900/30 dark:text-red-200";
-                                            icon = <X className={`w-4 h-4 ${isSelected ? "text-current" : "text-muted-foreground"}`} />;
-                                            break;
-                                        case 7: // Diagnosticado
-                                            selectedStyle = "bg-blue-100 border-blue-500 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200";
-                                            icon = <div className={`w-4 h-4 rounded-full border-2 ${isSelected ? "border-current" : "border-muted-foreground"}`} />;
-                                            break;
-                                        case 8: // Esperando Confirmación
-                                            selectedStyle = "bg-yellow-100 border-yellow-500 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200";
-                                            icon = <div className={`w-4 h-4 rounded-full border-2 border-dashed ${isSelected ? "border-current" : "border-muted-foreground"}`} />;
-                                            break;
-                                        case 9: // Esperando Repuestos
-                                            selectedStyle = "bg-purple-100 border-purple-500 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200";
-                                            icon = <div className={`w-4 h-4 rounded-sm border-2 ${isSelected ? "border-current" : "border-muted-foreground"}`} />;
-                                            break;
-                                    }
-
-                                    return (
-                                        <button
-                                            key={s.id}
-                                            type="button"
-                                            onClick={() => setStatusId(s.id.toString())}
-                                            className={`
-                                            relative flex flex-col items-start p-3 rounded-xl border-2 transition-all duration-200 text-left h-full
-                                            ${isSelected
-                                                    ? `shadow-sm ring-1 ring-offset-1 ring-offset-background ${selectedStyle}`
-                                                    : "bg-muted/10 border-transparent hover:bg-muted/30 text-muted-foreground"
-                                                }
-                                        `}
-                                        >
-                                            <div className="flex items-center justify-between w-full mb-2">
-                                                {icon}
-                                                {isSelected && <div className="w-2 h-2 rounded-full bg-current shrink-0" />}
-                                            </div>
-                                            <span className="text-xs font-bold leading-tight w-full break-words">
-                                                {s.name}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Diagnóstico / Observaciones Técnicas</Label>
-                            <Textarea
-                                placeholder="Describe qué trabajo se realizó o por qué no se pudo reparar..."
-                                className="min-h-[100px]"
-                                value={diagnosis}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    setDiagnosis(val.charAt(0).toUpperCase() + val.slice(1).toLowerCase());
-                                }}
-                            />
-                        </div>
                     </div>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={onClose} disabled={isLoading}>Cancelar</Button>
-                        <Button onClick={handleFinish} disabled={isLoading} className="bg-green-600 hover:bg-green-700">
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <DialogFooter className="p-6 pt-2 border-t bg-muted/5">
+                        <Button variant="ghost" onClick={onClose} disabled={isLoading} className="text-muted-foreground hover:text-foreground">
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleFinish}
+                            disabled={isLoading}
+                            className={`
+                                min-w-[140px] shadow-lg transition-all
+                                ${statusId === '5' ? 'bg-green-600 hover:bg-green-700 hover:ring-2 hover:ring-green-600/50' : ''}
+                                ${statusId === '6' ? 'bg-red-600 hover:bg-red-700 hover:ring-2 hover:ring-red-600/50' : ''}
+                                ${!['5', '6'].includes(statusId) ? 'bg-primary hover:bg-primary/90' : ''}
+                            `}
+                        >
+                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                             Confirmar
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
+            <ImagePreviewModal
+                isOpen={!!previewImage}
+                onClose={() => setPreviewImage(null)}
+                imageUrl={previewImage}
+            />
+
             <AlertDialog open={showReturnAlert} onOpenChange={setShowReturnAlert}>
-                <AlertDialogContent>
+                <AlertDialogContent className="border-l-4 border-l-blue-500">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Devolución de Repuestos</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esta reparación tiene repuestos asignados. ¿Deseas devolverlos al administrador?
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <div className="p-2 bg-blue-100 rounded-full text-blue-600">
+                                <AlertCircle className="w-5 h-5" />
+                            </div>
+                            ¿Devolver Repuestos?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground">
+                            Esta reparación tiene repuestos asignados. Al seleccionar este estado, puedes generar automáticamente una solicitud para devolver <strong>TODOS</strong> los repuestos al inventario.
                             <br /><br />
-                            Si aceptas, se creará una <b>solicitud de devolución</b> que el administrador deberá aprobar.
+                            Si confirmas, se creará una solicitud de devolución pendiente de aprobación.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => submitRepair(false)}>No Devolver</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => submitRepair(true)} className="bg-blue-600 hover:bg-blue-700">
-                            Si, Devolver
+                    <AlertDialogFooter className="mt-4">
+                        <AlertDialogCancel onClick={() => submitRepair(false)} className="border-0 hover:bg-muted font-medium">
+                            No, conservarlos
+                        </AlertDialogCancel>
+                        <AlertDialogAction onClick={() => submitRepair(true)} className="bg-blue-600 text-white hover:bg-blue-700 px-6 font-bold shadow-blue-200 shadow-md">
+                            Sí, Devolver al Stock
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

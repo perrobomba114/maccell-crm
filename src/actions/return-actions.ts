@@ -17,7 +17,12 @@ export async function getReturnRequests(role: "ADMIN" | "TECHNICIAN", userId?: s
                 repair: {
                     include: {
                         customer: true,
-                        status: true
+                        status: true,
+                        parts: {
+                            include: {
+                                sparePart: true
+                            }
+                        }
                     }
                 },
                 technician: true,
@@ -66,20 +71,51 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
 
             // 2. If ACCEPTED, restore stock and remove parts from Repair
             if (status === "ACCEPTED") {
-                const parts = returnRequest.repair.parts;
-                for (const part of parts) {
-                    // Restore Stock
-                    await tx.sparePart.update({
-                        where: { id: part.sparePartId },
-                        data: {
-                            stockLocal: { increment: part.quantity }
-                        }
-                    });
+                // Prepare parts list: Use snapshot if available, otherwise fallback to current parts
+                // The Type must be handled carefully.
+                const snapshot = (returnRequest as any).partsSnapshot as any[];
 
-                    // Remove from Repair
-                    await tx.repairPart.delete({
-                        where: { id: part.id }
-                    });
+                if (snapshot && Array.isArray(snapshot) && snapshot.length > 0) {
+                    // Restore from SNAPSHOT
+                    for (const part of snapshot) {
+                        // Restore Stock
+                        await tx.sparePart.update({
+                            where: { id: part.sparePartId }, // we saved this in snapshot
+                            data: {
+                                stockLocal: { increment: part.quantity }
+                            }
+                        });
+
+                        // Remove from Repair (we attempt to delete the RepairPart relation)
+                        // Note: If multiple similar parts exist, this deletes by ID if we captured it.
+                        // Ideally we captured 'id' of the RepairPart in snapshot.
+                        if (part.id) {
+                            try {
+                                await tx.repairPart.delete({
+                                    where: { id: part.id }
+                                });
+                            } catch (e) {
+                                // Ignore if already deleted
+                            }
+                        }
+                    }
+                } else {
+                    // FALLBACK: Use live relation (Old behavior)
+                    const parts = returnRequest.repair.parts;
+                    for (const part of parts) {
+                        // Restore Stock
+                        await tx.sparePart.update({
+                            where: { id: part.sparePartId },
+                            data: {
+                                stockLocal: { increment: part.quantity }
+                            }
+                        });
+
+                        // Remove from Repair
+                        await tx.repairPart.delete({
+                            where: { id: part.id }
+                        });
+                    }
                 }
             }
         });
@@ -105,13 +141,36 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
 
 export async function createReturnRequestAction(repairId: string, technicianId: string, note: string) {
     try {
+        // Fetch current parts for snapshot
+        const repair = await db.repair.findUnique({
+            where: { id: repairId },
+            include: {
+                parts: {
+                    include: {
+                        sparePart: true
+                    }
+                }
+            }
+        });
+
+        if (!repair) return { success: false, error: "Reparación no encontrada" };
+
+        const partsSnapshot = repair.parts.map(p => ({
+            id: p.id,
+            sparePartId: p.sparePartId, // Keep reference just in case
+            quantity: p.quantity,
+            name: p.sparePart.name,
+            sku: p.sparePart.sku
+        }));
+
         await db.returnRequest.create({
             data: {
                 repairId,
                 technicianId,
                 technicianNote: note,
-                status: "PENDING"
-            }
+                status: "PENDING",
+                partsSnapshot: partsSnapshot // Save snapshot
+            } as any
         });
 
         // Notify Admins
@@ -120,7 +179,7 @@ export async function createReturnRequestAction(repairId: string, technicianId: 
             select: { id: true }
         });
 
-        const repair = await db.repair.findUnique({ where: { id: repairId }, select: { ticketNumber: true } });
+        // repair variable is already fetched above with parts.
         const techName = (await db.user.findUnique({ where: { id: technicianId }, select: { name: true } }))?.name || "Técnico";
 
         await Promise.all(admins.map(admin =>

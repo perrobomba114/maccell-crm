@@ -79,7 +79,11 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         if (!userId) return;
         try {
             const data = await getNotificationsAction(userId);
-            setNotifications(data);
+            if (Array.isArray(data)) {
+                setNotifications(data);
+            } else {
+                setNotifications([]);
+            }
         } catch (error) {
             console.error("Failed to fetch notifications", error);
         }
@@ -209,8 +213,8 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                                                                 {notification.actionData.promisedTime}
                                                             </p>
                                                         </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: es })}
+                                                        <p className="text-xs text-muted-foreground" suppressHydrationWarning>
+                                                            {notification.createdAt ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: es }) : ''}
                                                         </p>
                                                     </div>
                                                 ) : (
@@ -222,8 +226,8 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                                                         <p className="text-sm text-muted-foreground mt-1">
                                                             {notification.message}
                                                         </p>
-                                                        <p className="text-xs text-muted-foreground mt-1">
-                                                            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: es })}
+                                                        <p className="text-xs text-muted-foreground mt-1" suppressHydrationWarning>
+                                                            {notification.createdAt ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: es }) : ''}
                                                         </p>
                                                     </>
                                                 )}

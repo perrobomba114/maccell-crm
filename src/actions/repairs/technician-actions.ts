@@ -135,14 +135,22 @@ export async function startRepairAction(repairId: string, technicianId: string, 
             return { success: false, error: "No tienes asignada esta reparación" };
         }
 
+        const now = new Date();
         const dataToUpdate: any = {
             status: { connect: { id: 3 } }, // En Proceso
-            startedAt: new Date()
+            startedAt: now
         };
 
+        const estimatedMinutes = newEstimatedTime || repair.estimatedTime || 60; // Fallback 60
         if (newEstimatedTime) {
             dataToUpdate.estimatedTime = newEstimatedTime;
         }
+
+        // Recalculate Promised Date
+        // Logic: Promise = Now + Remaining Estimated Time (Business Hours)
+        // If repair was paused, estimatedTime holds remaining minutes.
+        const newPromisedAt = businessHoursService.addBusinessMinutes(now, estimatedMinutes);
+        dataToUpdate.promisedAt = newPromisedAt;
 
         await db.repair.update({
             where: { id: repairId },
@@ -152,10 +160,13 @@ export async function startRepairAction(repairId: string, technicianId: string, 
         // Notify Vendor/Creator
         const technician = await db.user.findUnique({ where: { id: technicianId } });
         if (technician) {
+            const dateStr = newPromisedAt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+            const timeStr = newPromisedAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
             await createNotificationAction({
                 userId: repair.userId,
-                title: "Reparación Iniciada",
-                message: `El técnico ${technician.name} ha comenzado la reparación #${repair.ticketNumber}.`,
+                title: "Reparación Iniciada / Fecha Actualizada",
+                message: `El téc. ${technician.name} inició la reparación #${repair.ticketNumber}. Nueva fecha prometida: ${dateStr} a las ${timeStr}.`,
                 type: "INFO",
                 link: `/vendor/repairs/active`
             });
@@ -213,28 +224,29 @@ import { saveRepairImages } from "@/lib/actions/upload";
 
 // ... existing actions
 
-export async function finishRepairAction(formData: FormData) { // Changed signature
-    // Extract data
-    const repairId = formData.get("repairId") as string;
-    const technicianId = formData.get("technicianId") as string;
-    const statusIdRaw = formData.get("statusId");
-    const diagnosis = formData.get("diagnosis") as string;
-    const createReturnRequest = formData.get("createReturnRequest") === "true";
-
-
-    console.log("finishRepairAction:", { repairId, technicianId, statusIdRaw });
-
-    if (!repairId || !technicianId || !statusIdRaw) {
-        console.error("Missing fields in finishRepairAction");
-        return { success: false, error: "Faltan datos requeridos" };
-    }
-
-    const statusId = parseInt(statusIdRaw as string);
-    if (isNaN(statusId)) {
-        return { success: false, error: "ID de estado inválido" };
-    }
-
+export async function finishRepairAction(formData: FormData) {
+    console.log("SERVER ACTION: finishRepairAction hit");
     try {
+        // Extract data
+        const repairId = formData.get("repairId") as string;
+        const technicianId = formData.get("technicianId") as string;
+        const statusIdRaw = formData.get("statusId");
+        const diagnosis = formData.get("diagnosis") as string;
+        const createReturnRequest = formData.get("createReturnRequest") === "true";
+
+
+        console.log("finishRepairAction:", { repairId, technicianId, statusIdRaw });
+
+        if (!repairId || !technicianId || !statusIdRaw) {
+            console.error("Missing fields in finishRepairAction");
+            return { success: false, error: "Faltan datos requeridos" };
+        }
+
+        const statusId = parseInt(statusIdRaw as string);
+        if (isNaN(statusId)) {
+            return { success: false, error: "ID de estado inválido" };
+        }
+
         const repair = await db.repair.findUnique({
             where: { id: repairId },
             select: {
@@ -244,7 +256,12 @@ export async function finishRepairAction(formData: FormData) { // Changed signat
                 userId: true,
                 deviceImages: true,
                 startedAt: true,
-                estimatedTime: true // Need for pause calculation
+                estimatedTime: true,
+                parts: {
+                    include: {
+                        sparePart: true
+                    }
+                }
             }
         });
 
@@ -254,7 +271,7 @@ export async function finishRepairAction(formData: FormData) { // Changed signat
             return { success: false, error: "No tienes asignada esta reparación" };
         }
 
-        if (![4, 5, 6, 7, 8, 9, 10].includes(statusId)) { // Added 10 just in case
+        if (![4, 5, 6, 7, 8, 9, 10].includes(statusId)) {
             return { success: false, error: "Estado final inválido" };
         }
 
@@ -317,13 +334,34 @@ export async function finishRepairAction(formData: FormData) { // Changed signat
 
         // Handle Return Request
         if (createReturnRequest) {
+            let partsSnapshot: any[] = [];
+
+            if (repair.parts && Array.isArray(repair.parts)) {
+                try {
+                    partsSnapshot = repair.parts.map(p => {
+                        if (!p.sparePart) return null;
+                        return {
+                            id: p.id,
+                            sparePartId: p.sparePartId,
+                            quantity: p.quantity,
+                            name: p.sparePart.name,
+                            sku: p.sparePart.sku
+                        };
+                    }).filter(p => p !== null);
+                } catch (snapError) {
+                    console.error("Error creating parts snapshot:", snapError);
+                    // Continue without snapshot or partial
+                }
+            }
+
             await db.returnRequest.create({
                 data: {
                     repairId,
                     technicianId,
                     technicianNote: diagnosis,
-                    status: "PENDING"
-                }
+                    status: "PENDING",
+                    partsSnapshot: partsSnapshot
+                } as any
             });
 
             // Notify Admins
@@ -339,7 +377,7 @@ export async function finishRepairAction(formData: FormData) { // Changed signat
                     userId: admin.id,
                     title: "Nueva Solicitud de Devolución",
                     message: `${techName} ha solicitado devolver repuestos de la reparación #${repair.ticketNumber}.`,
-                    type: "alert", // Using 'alert' or 'info' depending on my types. Checking file showed "INFO", "REPAIR_ENTRY". Let's use "INFO" or check if "ALERT" exists. I'll stick to "INFO" or "WARNING" if available, but "INFO" is safe.
+                    type: "INFO",
                     link: "/admin/returns"
                 })
             ));

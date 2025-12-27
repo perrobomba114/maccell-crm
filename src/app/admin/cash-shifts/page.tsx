@@ -1,27 +1,31 @@
-import { getCashShifts } from "@/actions/cash-shift-actions";
-import { CashShiftTable } from "@/components/admin/cash-shift-table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminCashDashboard } from "@/components/admin/cash-dashboard";
+import { db } from "@/lib/db";
 
-export const dynamic = "force-dynamic"; // Ensure real-time data
+export const dynamic = "force-dynamic";
 
 export default async function CashShiftsPage() {
-    // Fetch all shifts sorted by date desc
-    const shifts = await getCashShifts();
+    let branches: any[] = [];
+    try {
+        branches = await db.branch.findMany({
+            orderBy: { name: 'asc' }
+        });
+    } catch (e) {
+        console.error("Error fetching branches:", e);
+        // Fallback or rethrow handled by error.tsx
+    }
 
     return (
-        <div className="p-6 md:p-8 space-y-8 w-full max-w-7xl mx-auto">
+        <div className="p-6 md:p-8 space-y-8 w-full max-w-[1600px] mx-auto">
             <div className="flex flex-col gap-2">
                 <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                    Cierres de Caja
+                    Cierre de Caja
                 </h1>
                 <p className="text-muted-foreground text-lg">
-                    Supervisa y audita los movimientos de caja de todas las sucursales.
+                    Panel de control mensual de movimientos y cierres de caja.
                 </p>
             </div>
 
-            <div className="grid gap-6">
-                <CashShiftTable shifts={shifts} />
-            </div>
+            <AdminCashDashboard initialBranches={branches} />
         </div>
     );
 }

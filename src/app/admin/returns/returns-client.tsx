@@ -52,7 +52,16 @@ interface ReturnRequest {
         status: {
             name: string;
         };
+        parts: Array<{
+            id: string;
+            quantity: number;
+            sparePart: {
+                name: string;
+                code: string;
+            };
+        }>;
     };
+    partsSnapshot?: any;
 }
 
 export default function AdminReturnsClient({ returns: initialReturns, adminId }: { returns: ReturnRequest[], adminId: string }) {
@@ -104,6 +113,7 @@ export default function AdminReturnsClient({ returns: initialReturns, adminId }:
                         <TableRow className="hover:bg-transparent border-b border-border/60">
                             <TableHead className="text-center font-semibold text-muted-foreground">TICKET</TableHead>
                             <TableHead className="text-center font-semibold text-muted-foreground">TÉCNICO</TableHead>
+                            <TableHead className="text-center font-semibold text-muted-foreground">REPUESTOS</TableHead>
                             <TableHead className="text-center font-semibold text-muted-foreground">CLIENTE</TableHead>
                             <TableHead className="text-center font-semibold text-muted-foreground">OBSERVACIÓN</TableHead>
                             <TableHead className="text-center font-semibold text-muted-foreground">ESTADO</TableHead>
@@ -114,7 +124,7 @@ export default function AdminReturnsClient({ returns: initialReturns, adminId }:
                     <TableBody>
                         {initialReturns.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                                <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                     <div className="flex flex-col items-center justify-center gap-2">
                                         <CheckCircle className="h-8 w-8 opacity-20" />
                                         <p>No hay solicitudes pendientes.</p>
@@ -136,6 +146,35 @@ export default function AdminReturnsClient({ returns: initialReturns, adminId }:
                                                 {req.technician.name.charAt(0)}
                                             </div>
                                             <span className="font-medium text-sm">{req.technician.name}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <div className="flex flex-col gap-1 items-center">
+                                            {(() => {
+                                                let displayParts: { quantity: number; name: string }[] = [];
+
+                                                if (req.partsSnapshot && Array.isArray(req.partsSnapshot) && req.partsSnapshot.length > 0) {
+                                                    displayParts = req.partsSnapshot.map((p: any) => ({
+                                                        quantity: p.quantity,
+                                                        name: p.name
+                                                    }));
+                                                } else if (req.repair.parts && req.repair.parts.length > 0) {
+                                                    displayParts = req.repair.parts.map(p => ({
+                                                        quantity: p.quantity,
+                                                        name: p.sparePart.name
+                                                    }));
+                                                }
+
+                                                if (displayParts.length > 0) {
+                                                    return displayParts.map((part, idx) => (
+                                                        <Badge key={idx} variant="outline" className="text-xs font-normal">
+                                                            {part.quantity}x {part.name}
+                                                        </Badge>
+                                                    ));
+                                                } else {
+                                                    return <span className="text-xs text-muted-foreground italic">Sin repuestos</span>;
+                                                }
+                                            })()}
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">

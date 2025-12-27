@@ -528,6 +528,7 @@ model ReturnRequest {
   status          ReturnStatus @default(PENDING)
   technicianNote  String?      @db.Text
   adminNote       String?      @db.Text
+  partsSnapshot   Json?        // Snapshot of parts at the time of request
   
   resolutionDate  DateTime?
   resolvedBy      String?      // Admin User ID
