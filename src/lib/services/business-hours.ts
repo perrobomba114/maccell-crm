@@ -1,9 +1,14 @@
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
+
+const ARG_TZ = "America/Argentina/Buenos_Aires";
+
 export class BusinessHoursService {
     // Schedule: Mon(1)-Sat(6): 09:00-13:00, 17:00-21:00
     // Sun(0): Closed
 
     addBusinessMinutes(startDate: Date, minutesToAdd: number): Date {
-        let currentDate = new Date(startDate);
+        // Force the input date to be treated as if it were in Argentina Time
+        let currentDate = toZonedTime(startDate, ARG_TZ);
         let minutesRemaining = minutesToAdd;
 
         // Safety break to prevent infinite loops in case of bugs
@@ -73,7 +78,8 @@ export class BusinessHoursService {
             }
         }
 
-        return currentDate;
+        // Convert the final zoned time back to a standard Date object
+        return fromZonedTime(currentDate, ARG_TZ);
     }
 
     private isSunday(date: Date): boolean {
@@ -86,17 +92,22 @@ export class BusinessHoursService {
         nextDay.setHours(9, 0, 0, 0);
         return nextDay;
     }
+
+    getCurrentTime(): Date {
+        return toZonedTime(new Date(), ARG_TZ);
+    }
     calculateBusinessMinutes(from: Date, to: Date): number {
         if (from >= to) return 0;
 
         let minutes = 0;
-        let current = new Date(from);
+        let current = toZonedTime(from, ARG_TZ);
+        const targetTo = toZonedTime(to, ARG_TZ);
 
         // Safety break
         let iterations = 0;
         const MAX_ITERATIONS = 100000;
 
-        while (current < to && iterations < MAX_ITERATIONS) {
+        while (current < targetTo && iterations < MAX_ITERATIONS) {
             iterations++;
 
             // If Sunday, skip to Monday 9:00
@@ -106,7 +117,7 @@ export class BusinessHoursService {
             }
 
             // If it's past target, break
-            if (current >= to) break;
+            if (current >= targetTo) break;
 
             const currentHour = current.getHours();
             const currentMinute = current.getMinutes();
@@ -139,14 +150,14 @@ export class BusinessHoursService {
             else blockEnd = block2End;
 
             // Check if 'to' is earlier than block end on the same day
-            const toHour = to.getHours();
-            const toMinute = to.getMinutes();
+            const toHour = targetTo.getHours();
+            const toMinute = targetTo.getMinutes();
             const toTime = toHour * 60 + toMinute;
 
             // Check if 'to' is on the same day
-            const isSameDay = current.getDate() === to.getDate() &&
-                current.getMonth() === to.getMonth() &&
-                current.getFullYear() === to.getFullYear();
+            const isSameDay = current.getDate() === targetTo.getDate() &&
+                current.getMonth() === targetTo.getMonth() &&
+                current.getFullYear() === targetTo.getFullYear();
 
             let effectiveEnd = blockEnd;
             if (isSameDay && toTime < blockEnd) {
