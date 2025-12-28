@@ -59,9 +59,17 @@ function RepairImage({ url, index, onClick }: { url: string; index: number; onCl
 }
 
 export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDialogProps) {
-    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerIndex, setViewerIndex] = useState(0);
 
     if (!repair) return null;
+
+    const images = (repair.deviceImages || []).filter((url: string) => url && url.includes('/'));
+
+    const handleImageClick = (index: number) => {
+        setViewerIndex(index);
+        setViewerOpen(true);
+    };
 
     const colorClass = statusColorMap[repair.status.color] || "bg-gray-100 text-gray-800";
 
@@ -246,7 +254,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDi
                                                                 key={idx}
                                                                 url={url}
                                                                 index={idx}
-                                                                onClick={() => setPreviewImage(url)}
+                                                                onClick={() => handleImageClick(idx)}
                                                             />
                                                         ))}
                                                 </div>
@@ -261,9 +269,11 @@ export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDi
             </Dialog>
 
             <ImagePreviewModal
-                isOpen={!!previewImage}
-                onClose={() => setPreviewImage(null)}
-                imageUrl={previewImage}
+                isOpen={viewerOpen}
+                onClose={() => setViewerOpen(false)}
+                images={images}
+                currentIndex={viewerIndex}
+                onIndexChange={setViewerIndex}
             />
         </>
     );

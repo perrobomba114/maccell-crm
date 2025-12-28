@@ -531,6 +531,7 @@ export async function updateRepairAction(formData: FormData) {
         const promisedAt = new Date(formData.get("promisedAt") as string);
         const estimatedPrice = parseFloat(formData.get("estimatedPrice") as string) || 0;
         const statusId = parseInt(formData.get("statusId") as string) || undefined;
+        const diagnosis = formData.get("diagnosis") as string || null;
         const isWarranty = formData.get("isWarranty") === "true";
         let assignedUserId: string | null = formData.get("assignedUserId") as string;
         if (!assignedUserId || assignedUserId === "unassigned") assignedUserId = null;
@@ -540,6 +541,9 @@ export async function updateRepairAction(formData: FormData) {
         // The form sends 'spareParts' as JSON.
         const partsJson = formData.get("spareParts") as string;
         const parts = partsJson ? JSON.parse(partsJson) : [];
+
+        const existingImagesJson = formData.get("existingImages") as string;
+        const existingImagesSnap = existingImagesJson ? JSON.parse(existingImagesJson) : [];
 
         // Update Customer (or find existing if name changed? Usually we update the linked customer or search?)
         // In this logic, we'll update the LINKED customer's details or just the repair's snapshot if that was the design.
@@ -575,14 +579,21 @@ export async function updateRepairAction(formData: FormData) {
                 estimatedPrice,
                 isWarranty,
                 assignedUserId,
+                diagnosis,
                 ...(statusId ? { statusId } : {}),
-                // Update observations if notes passed? Or add new observation?
-                // If notes differs, maybe add observation?
-                // For simplified Edit: just update main fields.
             }
         });
 
-        // Handle Parts (Delete all and recreate? Or diff?)
+        // 3. Handle Images
+        const newImagesPaths = await saveRepairImages(formData, existingRepair.ticketNumber, existingImagesSnap.length);
+        const finalImages = [...existingImagesSnap, ...newImagesPaths];
+
+        await db.repair.update({
+            where: { id: repairId },
+            data: { deviceImages: finalImages }
+        });
+
+        // 4. Handle Parts (Delete all and recreate? Or diff?)
         // Delete all repairParts and recreate is easiest for now.
         if (parts.length >= 0) { // If parts array is sent (empty or not)
             await db.repairPart.deleteMany({ where: { repairId } });

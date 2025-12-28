@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, X, ImagePlus, Camera } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     Select,
@@ -20,6 +21,7 @@ import { DeviceDetails } from "./device-details";
 import { PromisedDateSelector } from "./promised-date-selector";
 import { SparePartSelector, SparePartItem } from "./spare-part-selector";
 import { updateRepairAction } from "@/lib/actions/repairs";
+import { ImagePreviewModal } from "./image-preview-modal";
 
 interface EditRepairFormProps {
     repair: any;
@@ -42,12 +44,19 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
     const [problem, setProblem] = useState(repair.problemDescription);
     const [notes, setNotes] = useState("");
     const [promisedAt, setPromisedAt] = useState<Date>(new Date(repair.promisedAt));
+    const [existingImages, setExistingImages] = useState<string[]>(repair.deviceImages || []);
+    const [newImages, setNewImages] = useState<File[]>([]);
+    const [previews, setPreviews] = useState<string[]>([]);
     const [estimatedPrice, setEstimatedPrice] = useState(repair.estimatedPrice.toString());
     const [statusId, setStatusId] = useState<string>(repair.statusId.toString());
+    const [diagnosis, setDiagnosis] = useState(repair.diagnosis || "");
 
     // New Fields
     const [isWarranty, setIsWarranty] = useState<boolean>(repair.isWarranty || false);
     const [assignedUserId, setAssignedUserId] = useState<string>(repair.assignedUserId || "");
+
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerIndex, setViewerIndex] = useState(0);
 
     const [errors, setErrors] = useState<any>({});
 
@@ -71,6 +80,35 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
         const formatted = formatNumber(value);
         setEstimatedPrice(formatted);
     };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const files = Array.from(e.target.files);
+            setNewImages(prev => [...prev, ...files]);
+
+            const newPreviews = files.map(file => URL.createObjectURL(file));
+            setPreviews(prev => [...prev, ...newPreviews]);
+        }
+    };
+
+    const removeExistingImage = (url: string) => {
+        setExistingImages(prev => prev.filter(img => img !== url));
+    };
+
+    const removeNewImage = (index: number) => {
+        setNewImages(prev => prev.filter((_, i) => i !== index));
+        setPreviews(prev => {
+            URL.revokeObjectURL(prev[index]);
+            return prev.filter((_, i) => i !== index);
+        });
+    };
+
+    const handleImageClick = (index: number) => {
+        setViewerIndex(index);
+        setViewerOpen(true);
+    };
+
+    const allImagesForViewer = [...existingImages, ...previews];
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -111,8 +149,12 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
             formData.set("notes", notes);
             formData.set("promisedAt", promisedAt.toISOString());
             formData.set("statusId", statusId);
+            formData.set("diagnosis", diagnosis);
             formData.set("isWarranty", String(isWarranty)); // Send boolean as string
             if (assignedUserId && assignedUserId !== "unassigned") formData.set("assignedUserId", assignedUserId);
+
+            formData.set("existingImages", JSON.stringify(existingImages));
+            newImages.forEach(file => formData.append("images", file));
 
             formData.set("spareParts", JSON.stringify(selectedParts.map(p => ({ id: p.id, quantity: 1 }))));
 
@@ -160,7 +202,7 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
                             <Checkbox
                                 id="isWarranty"
                                 checked={isWarranty}
-                                onCheckedChange={(checked) => setIsWarranty(checked === true)}
+                                onCheckedChange={(checked: boolean) => setIsWarranty(checked === true)}
                             />
                             <label
                                 htmlFor="isWarranty"
@@ -240,6 +282,16 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
                                 onChange={setPromisedAt}
                             />
                         </div>
+
+                        <div>
+                            <label className="text-sm font-medium block mb-1">Diagnóstico del Técnico</label>
+                            <Textarea
+                                value={diagnosis}
+                                onChange={(e) => setDiagnosis(e.target.value)}
+                                placeholder="Escriba el diagnóstico del técnico aquí..."
+                                className="min-h-[100px] border-primary/20 focus:border-primary"
+                            />
+                        </div>
                     </div>
 
                     <div className="space-y-4">
@@ -250,8 +302,67 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
                         />
                         <p className="text-xs text-muted-foreground">Nota: Al guardar, se reemplazarán los repuestos asignados.</p>
                     </div>
+
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-bold uppercase">Imágenes del Equipo</h2>
+                        <div className="grid grid-cols-3 gap-2">
+                            {/* Existing Images */}
+                            {existingImages.map((src, idx) => (
+                                <div key={`existing-${idx}`} className="relative aspect-square border rounded-lg overflow-hidden group cursor-pointer">
+                                    <img
+                                        src={src}
+                                        alt="Existing"
+                                        className="object-cover w-full h-full transition-transform hover:scale-105"
+                                        onClick={() => handleImageClick(idx)}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); removeExistingImage(src); }}
+                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ))}
+
+                            {/* New Image Previews */}
+                            {previews.map((src, idx) => (
+                                <div key={`new-${idx}`} className="relative aspect-square border border-blue-400 rounded-lg overflow-hidden group cursor-pointer">
+                                    <img
+                                        src={src}
+                                        alt="New"
+                                        className="object-cover w-full h-full transition-transform hover:scale-105"
+                                        onClick={() => handleImageClick(existingImages.length + idx)}
+                                    />
+                                    <div className="absolute top-1 left-1 bg-blue-500 text-[8px] text-white px-1 rounded z-10">NUEVA</div>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); removeNewImage(idx); }}
+                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ))}
+
+                            {/* Add Button */}
+                            <label className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
+                                <ImagePlus className="w-6 h-6 text-muted-foreground" />
+                                <span className="text-[10px] text-muted-foreground mt-1">Añadir</span>
+                                <input type="file" multiple accept="image/*" onChange={handleFileChange} className="hidden" />
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <ImagePreviewModal
+                isOpen={viewerOpen}
+                onClose={() => setViewerOpen(false)}
+                images={allImagesForViewer}
+                currentIndex={viewerIndex}
+                onIndexChange={setViewerIndex}
+            />
 
             <div className="pt-4 border-t flex justify-end">
                 <Button

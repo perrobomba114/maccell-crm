@@ -251,8 +251,9 @@ export const printRepairTicket = (repair: any) => {
         </div>
 
         <div class="qr-container">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${repair.ticketNumber}" style="width: 100px; height: 100px; margin: 0 auto; display: block;" alt="QR Ticket" />
-            <div style="font-size: 10px; margin-top: 2px;">Ticket #${repair.ticketNumber}</div>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.origin + '/estado/' + repair.ticketNumber)}" style="width: 100px; height: 100px; margin: 0 auto; display: block;" alt="QR Ticket" />
+            <div style="font-size: 10px; margin-top: 5px;">Escaneá para saber el estado de tu equipo</div>
+            <div style="font-size: 10px; font-weight: bold;">Ticket #${repair.ticketNumber}</div>
         </div>
 
         <div style="margin-top: 200px; border-top: 2px solid black; text-align: center; padding-top: 5px; font-size: 14px; font-weight: bold;">
