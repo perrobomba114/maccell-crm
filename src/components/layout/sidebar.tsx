@@ -55,12 +55,14 @@ export function Sidebar({
     const [isMobile, setIsMobile] = useState(false);
     // Use external open state if provided, otherwise internal (for backward compatibility if needed)
     const [internalIsMobileOpen, setInternalIsMobileOpen] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
 
     const isMobileOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsMobileOpen;
     const setIsMobileOpen = onClose ? (val: boolean) => !val && onClose() : setInternalIsMobileOpen;
 
     // Check media query safely
     useEffect(() => {
+        setIsMounted(true);
         const checkMobile = () => {
             const mobile = window.innerWidth < 768;
             setIsMobile(mobile);
@@ -79,8 +81,10 @@ export function Sidebar({
 
     // Sync external collapse state for layout padding
     useEffect(() => {
-        onCollapseChange?.(isCollapsed);
-    }, [isCollapsed, onCollapseChange]);
+        if (isMounted) {
+            onCollapseChange?.(isCollapsed);
+        }
+    }, [isCollapsed, onCollapseChange, isMounted]);
 
     const toggleCollapse = () => {
         if (isMobile) {
@@ -104,6 +108,8 @@ export function Sidebar({
         }
     }, [pathname, isMobile]);
 
+    if (!isMounted) return null;
+
     const renderLink = (link: SidebarLink) => {
         const Icon = iconMap[link.icon as keyof typeof iconMap] || LayoutDashboard;
         const isActive = pathname === link.href;
@@ -116,11 +122,13 @@ export function Sidebar({
                 key={link.href}
                 href={link.href}
                 className={cn(
-                    "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 overflow-hidden",
+                    "group relative flex items-center transition-all duration-200 overflow-hidden",
                     isActive
                         ? "text-primary bg-primary/10 shadow-sm"
                         : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:shadow-sm",
-                    !showLabel ? "justify-center px-0 w-10 h-10 mx-auto" : "w-full"
+                    !showLabel
+                        ? "justify-center w-10 h-10 mx-auto rounded-full"
+                        : "w-full gap-3 px-3 py-2.5 rounded-xl"
                 )}
             >
                 <Icon className={cn(
@@ -129,7 +137,9 @@ export function Sidebar({
                 )} />
 
                 {showLabel && (
-                    <span className="truncate whitespace-nowrap">{link.label}</span>
+                    <span className="truncate whitespace-nowrap opacity-100 transition-opacity duration-300">
+                        {link.label}
+                    </span>
                 )}
 
                 {isActive && showLabel && (
@@ -190,18 +200,20 @@ export function Sidebar({
                     isMobile && isMobileOpen ? "shadow-2xl ring-1 ring-white/10" : ""
                 )}
             >
-                <div className="flex h-full flex-col w-[17rem]"> {/* Fix inner content width to avoid squishing */}
+                <div className="flex h-full flex-col min-w-[4.5rem]">
                     {/* Logo Area */}
-                    <div className="relative flex h-16 items-center border-b border-sidebar-border/30 px-6">
-                        <Link href="/" className="flex items-center gap-3 group overflow-hidden">
-                            <Sparkles className="h-6 w-6 text-primary flex-shrink-0 transition-transform duration-300 group-hover:scale-110" />
+                    <div className="relative flex h-16 items-center border-b border-sidebar-border/30 px-4">
+                        <Link href="/" className="flex items-center gap-3 group overflow-hidden w-full">
+                            <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 mx-auto">
+                                <Sparkles className="h-6 w-6 text-primary transition-transform duration-300 group-hover:scale-110" />
+                            </div>
                             <AnimatePresence mode="wait">
                                 {((!isCollapsed && !isMobile) || (isMobile && isMobileOpen)) && (
                                     <motion.span
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -10 }}
-                                        className="font-bold text-lg text-sidebar-foreground tracking-tight whitespace-nowrap"
+                                        className="font-bold text-lg text-sidebar-foreground tracking-tight whitespace-nowrap ml-1"
                                     >
                                         MacCell
                                     </motion.span>
@@ -227,13 +239,13 @@ export function Sidebar({
                                             <div className="h-px bg-border/40 mx-2 my-2 first:hidden" />
                                         )}
 
-                                        <div className="space-y-1">
+                                        <div className="space-y-1 text-center">
                                             {group.items.map(link => renderLink(link))}
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="space-y-1">
+                                <div className="space-y-1 text-center">
                                     {links.map(link => renderLink(link))}
                                 </div>
                             )}
