@@ -39,8 +39,13 @@ export async function takeRepairAction(repairId: string, technicianId: string) {
     }
 }
 
-export async function assignTimeAction(repairId: string, technicianId: string, estimatedTime: number, extendMinutes?: number) {
-    console.log("assignTimeAction CALLED", { repairId, technicianId, estimatedTime, extendMinutes }); // DEBUG
+export async function assignTimeAction(repairId: string, technicianId: string, estimatedTime: number, updatePromisedDate: boolean = false) {
+    console.log("assignTimeAction CALLED", { repairId, technicianId, estimatedTime, updatePromisedDate });
+
+    if (!estimatedTime || estimatedTime <= 0) {
+        return { success: false, error: "El tiempo estimado es inválido." };
+    }
+
     try {
         const repair = await db.repair.findUnique({
             where: { id: repairId },
@@ -56,68 +61,68 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
             return { success: false, error: "Esta reparación está asignada a otro técnico." };
         }
 
-        // Validate Business Hours
         const now = new Date();
-        let targetDate = repair.promisedAt;
         let newPromisedAt: Date | null = null;
+        let availableMinutes = 0;
 
-        console.log("Time Check Start:", { now, originalPromisedAt: repair.promisedAt, isOverdue: now > repair.promisedAt }); // DEBUG
+        // If explicitly updating date (Recalculating from NOW based on Estimate)
+        if (updatePromisedDate) {
+            newPromisedAt = businessHoursService.addBusinessMinutes(now, estimatedTime);
+            console.log("Recalculating Date:", { now, estimatedTime, newPromisedAt });
+        } else {
+            // Standard validation against EXISTING date
+            availableMinutes = businessHoursService.calculateBusinessMinutes(now, repair.promisedAt);
 
-        // If extending, calculate new target date
-        if (extendMinutes && extendMinutes > 0) {
-            // Logic similar to take-repair-dialog: start from NOW if overdue
-            const baseDate = now > repair.promisedAt ? now : repair.promisedAt;
-            targetDate = businessHoursService.addBusinessMinutes(baseDate, extendMinutes);
-            newPromisedAt = targetDate;
-            console.log("Extension Applied:", { extendMinutes, baseDate, newTargetDate: targetDate }); // DEBUG
-        } else if (now > repair.promisedAt) {
-            // Fail-safe: Auto-extend by 60 mins if overdue and no extension requested (e.g. old client)
-            console.log("Auto-extending overdue repair (Fail-safe triggered)");
-            const baseDate = now;
-            targetDate = businessHoursService.addBusinessMinutes(baseDate, 60);
-            newPromisedAt = targetDate;
-        }
-
-        const availableMinutes = businessHoursService.calculateBusinessMinutes(now, targetDate);
-        console.log("Availability Result:", { availableMinutes, estimatedTime }); // DEBUG
-
-        if (estimatedTime > availableMinutes) {
-            return {
-                success: false,
-                error: `El tiempo estimado (${estimatedTime} min) supera el tiempo disponible (${availableMinutes} min).`
-            };
+            // Allow slight buffer (e.g. 1-2 mins) or just strict
+            if (estimatedTime > availableMinutes) {
+                return {
+                    success: false,
+                    error: `El tiempo estimado (${estimatedTime} min) supera el tiempo disponible (${availableMinutes} min). Seleccione "Actualizar Fecha Prometida" para continuar.`
+                };
+            }
         }
 
         // Update Repair
+        // Update Repair using direct IDs for robustness
+        // calculate Reactivation
+        const isReactivation = repair.statusId === 8 || repair.statusId === 9;
+        const targetStatusId = (updatePromisedDate || isReactivation) ? 3 : 4;
+
         await db.repair.update({
             where: { id: repairId },
             data: {
-                status: { connect: { id: 4 } }, // Pausado (Ready/Planned)
-                assignedTo: { connect: { id: technicianId } }, // NOW we assign it
+                statusId: targetStatusId,
+                assignedUserId: technicianId,
                 estimatedTime: estimatedTime,
+                // Explicitly set startedAt if status is 3
+                startedAt: targetStatusId === 3 ? new Date() : undefined,
+                // CRITICAL FIX: Clear finishedAt because we are reopening the repair
+                finishedAt: null,
                 ...(newPromisedAt ? { promisedAt: newPromisedAt } : {})
-            } as any
+            }
         });
 
         // Notify Vendor/Creator
         const technician = await db.user.findUnique({ where: { id: technicianId } });
         if (technician) {
             let message = `El técnico ${technician.name} ha asignado un tiempo de ${estimatedTime} min a la reparación #${repair.ticketNumber}.`;
+
             if (newPromisedAt) {
-                message += ` Se ha extendido la fecha prometida a ${newPromisedAt.toLocaleDateString('es-AR')} ${newPromisedAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}.`;
+                const dateStr = newPromisedAt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+                const timeStr = newPromisedAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+                message += ` Se ha actualizado la fecha prometida a: ${dateStr} ${timeStr}.`;
             }
 
             await createNotificationAction({
-                userId: repair.userId, // Creator
-                title: "Reparación Planificada",
+                userId: repair.userId, // Customer or Vendor checking
+                title: updatePromisedDate ? "Planificación Actualizada" : "Reparación Planificada",
                 message: message,
                 type: "INFO",
                 link: `/vendor/repairs/active`
             });
         }
 
-        revalidatePath("/technician/repairs");
-        revalidatePath("/technician/dashboard");
+        revalidatePath("/", "layout");
         return { success: true };
 
     } catch (error) {
@@ -338,7 +343,7 @@ export async function finishRepairAction(formData: FormData) {
 
             if (repair.parts && Array.isArray(repair.parts)) {
                 try {
-                    partsSnapshot = repair.parts.map(p => {
+                    partsSnapshot = repair.parts.map((p: any) => {
                         if (!p.sparePart) return null;
                         return {
                             id: p.id,
@@ -347,7 +352,7 @@ export async function finishRepairAction(formData: FormData) {
                             name: p.sparePart.name,
                             sku: p.sparePart.sku
                         };
-                    }).filter(p => p !== null);
+                    }).filter((p: any) => p !== null);
                 } catch (snapError) {
                     console.error("Error creating parts snapshot:", snapError);
                     // Continue without snapshot or partial
@@ -372,7 +377,7 @@ export async function finishRepairAction(formData: FormData) {
 
             const techName = (await db.user.findUnique({ where: { id: technicianId }, select: { name: true } }))?.name || "Técnico";
 
-            await Promise.all(admins.map(admin =>
+            await Promise.all(admins.map((admin: any) =>
                 createNotificationAction({
                     userId: admin.id,
                     title: "Nueva Solicitud de Devolución",

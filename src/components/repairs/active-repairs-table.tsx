@@ -6,13 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Search, Camera, Printer } from "lucide-react";
+import { Search, Camera, Printer, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TechnicianActionButton } from "./technician-action-button";
 import { TakeRepairDialog } from "./take-repair-dialog";
 import { RepairTimer } from "./repair-timer";
 import { AssignmentModal } from "./assignment-modal";
 import { AddImagesDialog } from "./add-images-dialog";
+import { RepairDetailsDialog } from "./repair-details-dialog"; // Import Dialog
 import { printRepairTicket } from "@/lib/print-utils";
 
 interface ActiveRepairsTableProps {
@@ -49,6 +50,7 @@ export function ActiveRepairsTable({
     const [takeoverRepair, setTakeoverRepair] = useState<any | null>(null);
     const [assignmentRepair, setAssignmentRepair] = useState<any | null>(null);
     const [imageUploadRepair, setImageUploadRepair] = useState<any | null>(null);
+    const [viewDetailsRepair, setViewDetailsRepair] = useState<any | null>(null); // State for Details Dialog
 
     const filteredRepairs = repairs.filter(repair => {
         const term = searchTerm.toLowerCase();
@@ -182,6 +184,18 @@ export function ActiveRepairsTable({
                                         {(enableTakeover || enableManagement || enableImageUpload) && (
                                             <TableCell className="text-center">
                                                 <div className="flex items-center justify-center gap-2">
+
+                                                    {/* Detail Button (For all Users if Actions Enabled) */}
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        onClick={() => setViewDetailsRepair(repair)}
+                                                        className="h-8 w-8 text-muted-foreground hover:text-blue-500"
+                                                        title="Ver Detalles y Notas"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+
                                                     {enableTakeover && (
                                                         <Button
                                                             size="sm"
@@ -254,6 +268,14 @@ export function ActiveRepairsTable({
                     isOpen={!!imageUploadRepair}
                     onClose={() => setImageUploadRepair(null)}
                     repair={imageUploadRepair}
+                />
+            )}
+
+            {viewDetailsRepair && (
+                <RepairDetailsDialog
+                    isOpen={!!viewDetailsRepair}
+                    onClose={() => setViewDetailsRepair(null)}
+                    repair={viewDetailsRepair}
                 />
             )}
         </div>

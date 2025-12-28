@@ -24,12 +24,11 @@ export function AssignmentModal({ repair, currentUserId, isOpen, onClose }: Assi
 
     const [isLoading, setIsLoading] = useState(false);
     const [estimatedTime, setEstimatedTime] = useState("");
-    // Check if overdue
+    const [updateDate, setUpdateDate] = useState(false);
+
+    // Check if overdue just for visual warning
     const promisedDate = new Date(repair.promisedAt);
     const isOverdue = promisedDate < new Date();
-
-    // Default extendTime to true if overdue
-    const [extendTime, setExtendTime] = useState(isOverdue);
 
     const handleAssign = async () => {
         const time = parseInt(estimatedTime);
@@ -40,15 +39,18 @@ export function AssignmentModal({ repair, currentUserId, isOpen, onClose }: Assi
 
         setIsLoading(true);
         try {
-            // Pass extendMinutes if overdue and checked
-            const extendMinutes = (isOverdue && extendTime) ? 60 : undefined;
-            const result = await assignTimeAction(repair.id, currentUserId, time, extendMinutes);
+            // Pass updateDate flag
+            const result = await assignTimeAction(repair.id, currentUserId, time, updateDate);
 
             if (result.success) {
-                toast.success("Reparación asignada correctamente.");
+                toast.success("Reparación reactivada/asignada correctamente.");
                 onClose();
             } else {
                 toast.error(result.error);
+                // If error mentions updating date, highlight the checkbox
+                if (result.error?.includes("Actualizar Fecha Prometida")) {
+                    setUpdateDate(true); // Auto-enable or just suggest
+                }
             }
         } catch (error) {
             toast.error("Error inesperado.");
@@ -61,55 +63,21 @@ export function AssignmentModal({ repair, currentUserId, isOpen, onClose }: Assi
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Asignarme Reparación #{repair.ticketNumber}</DialogTitle>
-
+                    <DialogTitle>Reactivar / Asignar Reparación #{repair.ticketNumber}</DialogTitle>
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
                     <div className="bg-muted p-3 rounded-md text-sm">
                         <p className="flex justify-between">
-                            <span className="text-muted-foreground">Fecha Prometida:</span>
-                            <span className="font-semibold text-green-600">
+                            <span className="text-muted-foreground">Fecha Prometida Actual:</span>
+                            <span className={`font-semibold ${isOverdue ? "text-red-500 line-through" : "text-green-600"}`}>
                                 {format(new Date(repair.promisedAt), "dd/MM/yyyy HH:mm", { locale: es })}
                             </span>
                         </p>
                     </div>
 
-                    {isOverdue && (
-                        <div className="border border-red-200 bg-red-50 dark:bg-red-900/10 p-4 rounded-md space-y-3">
-                            <div className="flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
-                                <div>
-                                    <h4 className="font-semibold text-red-700 dark:text-red-400">¡Retraso detectado!</h4>
-                                    <p className="text-sm text-red-600/90 dark:text-red-400/90">
-                                        La fecha prometida ya ha pasado (Disponibilidad: 0 min).
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center space-x-2 pl-8">
-                                <Checkbox
-                                    id="extendTimeAssign"
-                                    checked={extendTime}
-                                    onCheckedChange={(c) => setExtendTime(c as boolean)}
-                                />
-                                <div className="grid gap-1.5 leading-none">
-                                    <label
-                                        htmlFor="extendTimeAssign"
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                    >
-                                        Notificar
-                                    </label>
-                                    <p className="text-xs text-muted-foreground">
-                                        Se notificará al vendedor sobre el cambio de fecha.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     <div className="space-y-2">
-                        <Label htmlFor="time">Tiempo Estimado (minutos)</Label>
+                        <Label htmlFor="time">Nuevo Tiempo Estimado (minutos)</Label>
                         <div className="relative">
                             <CalendarClock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -121,18 +89,42 @@ export function AssignmentModal({ repair, currentUserId, isOpen, onClose }: Assi
                                 onChange={(e) => setEstimatedTime(e.target.value)}
                             />
                         </div>
-
+                        <p className="text-xs text-muted-foreground">
+                            Tiempo total de trabajo que necesitará para finalizar.
+                        </p>
                     </div>
+
+                    <div className="border border-blue-200 bg-blue-50 dark:bg-blue-900/10 p-3 rounded-md space-y-2">
+                        <div className="flex items-start space-x-2">
+                            <Checkbox
+                                id="updateDate"
+                                checked={updateDate}
+                                onCheckedChange={(c) => setUpdateDate(c as boolean)}
+                            />
+                            <div className="grid gap-1.5 leading-none pt-0.5">
+                                <label
+                                    htmlFor="updateDate"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer text-blue-800 dark:text-blue-300"
+                                >
+                                    Actualizar Fecha Prometida
+                                </label>
+                                <p className="text-xs text-muted-foreground">
+                                    Recalcular fecha de entrega basada en este nuevo tiempo y notificar al vendedor.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={isLoading}>Cancelar</Button>
                     <Button
                         onClick={handleAssign}
-                        disabled={isLoading || (isOverdue && !extendTime)} // Enforce extension if overdue
+                        disabled={isLoading}
                     >
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Confirmar Asignación
+                        Confirmar
                     </Button>
                 </DialogFooter>
             </DialogContent>

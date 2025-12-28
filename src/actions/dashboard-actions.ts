@@ -589,16 +589,16 @@ export async function getTechnicianStats(technicianId: string) {
         });
 
         // 2. Active Workspace (Detailed)
-        // Fetch items strictly In Progress (3) OR (started but not finished)
+        // Fetch items strictly In Progress (3) OR Paused/Planned (4)
         const activeWorkspaceRaw = await prisma.repair.findMany({
             where: {
                 assignedUserId: technicianId,
-                statusId: 3
+                statusId: { in: [3, 4] }
             },
             include: {
                 status: true
             },
-            orderBy: { startedAt: 'desc' }
+            orderBy: { updatedAt: 'desc' } // Order by recent activity so newly assigned appear top
         });
 
         const activeWorkspace = activeWorkspaceRaw.map(r => ({
@@ -659,7 +659,7 @@ export async function getTechnicianStats(technicianId: string) {
             }
         }
 
-        weeklyCompleted.forEach(r => {
+        weeklyCompleted.forEach((r: any) => {
             const dayName = days[new Date(r.updatedAt).getDay()];
             weeklyOutputMap.set(dayName, (weeklyOutputMap.get(dayName) || 0) + 1);
         });
@@ -867,7 +867,7 @@ export async function getTechniciansWorkload(branchId?: string) {
             };
         }));
 
-        return workloads;
+        return JSON.parse(JSON.stringify(workloads));
 
     } catch (error) {
         console.error("Error fetching technicians workload:", error);
