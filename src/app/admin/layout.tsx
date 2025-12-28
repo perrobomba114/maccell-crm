@@ -80,14 +80,32 @@ export default function AdminLayout({
         };
     }, []);
 
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener("resize", checkMobile);
+        return () => window.removeEventListener("resize", checkMobile);
+    }, []);
+
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
     return (
         <div className="flex min-h-screen" suppressHydrationWarning>
             <div className="print:hidden">
-                <Sidebar groups={adminGroups} onCollapseChange={setIsCollapsed} />
+                <Sidebar
+                    groups={adminGroups}
+                    onCollapseChange={setIsCollapsed}
+                    isOpen={isSidebarOpen}
+                    onClose={() => setIsSidebarOpen(false)}
+                />
             </div>
             <motion.div
                 animate={{
-                    paddingLeft: isCollapsed ? "4rem" : "16rem", // 64px : 256px
+                    paddingLeft: isMobile ? "0px" : (isCollapsed ? "4.5rem" : "17rem"),
                 }}
                 transition={{
                     duration: 0.3,
@@ -103,6 +121,7 @@ export default function AdminLayout({
                         userId={userId}
                         techniciansWorkload={techniciansWorkload}
                         profileHref="/admin/profile"
+                        onMenuClick={() => setIsSidebarOpen(true)}
                     />
                 </div>
                 <AnimatePresence mode="wait">

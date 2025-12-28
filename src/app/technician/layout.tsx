@@ -53,12 +53,30 @@ export default function TechnicianLayout({
         };
     }, []);
 
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener("resize", checkMobile);
+        return () => window.removeEventListener("resize", checkMobile);
+    }, []);
+
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
     return (
         <div className="flex min-h-screen" suppressHydrationWarning>
-            <Sidebar links={technicianLinks} onCollapseChange={setIsCollapsed} />
+            <Sidebar
+                links={technicianLinks}
+                onCollapseChange={setIsCollapsed}
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+            />
             <motion.div
                 animate={{
-                    paddingLeft: isCollapsed ? "4rem" : "16rem", // 64px : 256px
+                    paddingLeft: isMobile ? "0px" : (isCollapsed ? "4.5rem" : "17rem"),
                 }}
                 transition={{
                     duration: 0.3,
@@ -73,6 +91,7 @@ export default function TechnicianLayout({
                     userId={userId}
                     techniciansWorkload={techniciansWorkload}
                     profileHref="/technician/profile"
+                    onMenuClick={() => setIsSidebarOpen(true)}
                 />
                 <AnimatePresence mode="wait">
                     <motion.main

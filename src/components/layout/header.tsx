@@ -11,7 +11,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Menu } from "lucide-react";
 import { logout } from "@/actions/auth-actions";
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -32,6 +32,7 @@ interface HeaderProps {
         workload: number;
     }[];
     profileHref?: string;
+    onMenuClick?: () => void;
 }
 
 export function Header({
@@ -40,7 +41,8 @@ export function Header({
     userId,
     title,
     techniciansWorkload = [],
-    profileHref
+    profileHref,
+    onMenuClick
 }: HeaderProps) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
@@ -72,15 +74,25 @@ export function Header({
     return (
         <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60">
             <div className="flex h-16 items-center justify-between px-6">
-                {/* Title */}
+                {/* Title + Mobile Menu */}
                 <div className="flex items-center gap-4">
-                    <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="md:hidden"
+                        onClick={onMenuClick}
+                    >
+                        <Menu className="h-6 w-6" />
+                    </Button>
+                    <h1 className="text-xl md:text-2xl font-semibold tracking-tight truncate max-w-[150px] md:max-w-none">
+                        {title}
+                    </h1>
                 </div>
 
                 {/* Right side: Theme toggle + User menu */}
                 <div className="flex items-center gap-4">
-                    {/* Tech Widgets */}
-                    <div className="flex items-center gap-2 mr-2">
+                    {/* Tech Widgets - Hidden on mobile to avoid overcrowding */}
+                    <div className="hidden lg:flex items-center gap-2 mr-2">
                         {techniciansWorkload.map((tech) => (
                             <TechnicianTimerWidget
                                 key={tech.id}
@@ -92,7 +104,10 @@ export function Header({
                         ))}
                     </div>
 
-                    <DollarWidget />
+                    <div className="hidden sm:block">
+                        <DollarWidget />
+                    </div>
+
                     <NotificationBell userId={userId || ""} />
                     <ModeToggle />
 
