@@ -2,6 +2,7 @@
 import React from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { getImgUrl } from "@/lib/utils";
 
 export interface SaleTicketProps {
     branch: any;
@@ -14,7 +15,7 @@ export interface SaleTicketProps {
 
 export const SaleTicketComponent = React.forwardRef<HTMLDivElement, SaleTicketProps>((props, ref) => {
     const { branch, items, total, method, date, saleId } = props;
-    const logoUrl = branch?.imageUrl || "/logo.jpg";
+    const logoUrl = getImgUrl(branch?.imageUrl || "/logo.jpg");
     const name = branch?.name?.toLowerCase() || "";
 
     // Determine Review URL (kept logically but QR removed per previous stability fix)
