@@ -47,21 +47,22 @@ export async function importHistoricalSalesAction(data: any[]): Promise<ImportRe
                 // or multiple based on 'cantidad'
                 const qty = parseInt(cantidad) || 1;
                 const totalAmount = parseFloat(monto);
+                const amountPerSale = totalAmount / qty;
 
-                // We'll create one sale with the total to keep it simple, 
-                // but we could split it if needed. 
-                // The prompt says "todas las ventas... cargen todo en efectivo"
-                await tx.sale.create({
-                    data: {
-                        saleNumber: `HIST-${shift.id.slice(-6).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
-                        total: totalAmount,
-                        paymentMethod: "CASH",
-                        branchId: branch.id,
-                        vendorId: admin.id,
-                        createdAt: shift.startTime,
-                        updatedAt: shift.endTime!,
-                    }
-                });
+                // Create multiple sales based on 'cantidad' to ensure KPIs (Avg Ticket, Sales Count) are correct
+                for (let i = 0; i < qty; i++) {
+                    await tx.sale.create({
+                        data: {
+                            saleNumber: `H${shift.id.slice(-4).toUpperCase()}-${i + 1}-${Math.floor(Math.random() * 10000)}`,
+                            total: amountPerSale,
+                            paymentMethod: "CASH",
+                            branchId: branch.id,
+                            vendorId: admin.id,
+                            createdAt: shift.startTime,
+                            updatedAt: shift.endTime!,
+                        }
+                    });
+                }
 
                 importedCount++;
             }
