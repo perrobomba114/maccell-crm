@@ -54,6 +54,7 @@ export const adminGroups = [
         items: [
             { href: "/admin/users", label: "Usuarios", icon: "Users" },
             { href: "/admin/branches", label: "Sucursales", icon: "Building2" },
+            { href: "/admin/import", label: "Importar", icon: "BarChart3" },
         ]
     }
 ];

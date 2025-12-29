@@ -81,16 +81,16 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
     const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
     const startDayOfWeek = getDay(monthStart);
 
-    const getDailyTotal = (date: Date) => {
-        if (!stats) return 0;
-        return stats.shifts
-            .filter(s => isSameDay(new Date(s.startTime), date))
-            .reduce((acc, s) => acc + s.totals.totalSales, 0);
-    };
-
-    const getDailyShiftCount = (date: Date) => {
-        if (!stats) return 0;
-        return stats.shifts.filter(s => isSameDay(new Date(s.startTime), date)).length;
+    const getDailyStats = (date: Date) => {
+        if (!stats) return { total: 0, shifts: 0, sales: 0, expenses: 0, expensesCount: 0 };
+        const dayShifts = stats.shifts.filter(s => isSameDay(new Date(s.startTime), date));
+        return {
+            total: dayShifts.reduce((acc, s) => acc + s.totals.totalSales, 0),
+            shifts: dayShifts.length,
+            sales: dayShifts.reduce((acc, s) => acc + s.counts.sales, 0),
+            expenses: dayShifts.reduce((acc, s) => acc + s.totals.expenses, 0),
+            expensesCount: dayShifts.reduce((acc, s) => acc + s.counts.expenses, 0)
+        };
     };
 
     const formatCurrency = (val: number) => {
@@ -192,10 +192,9 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
                     ))}
 
                     {daysInMonth.map((date) => {
-                        const total = getDailyTotal(date);
-                        const count = getDailyShiftCount(date);
+                        const daily = getDailyStats(date);
                         const isToday = isSameDay(date, new Date());
-                        const hasData = count > 0;
+                        const hasData = daily.shifts > 0;
 
                         return (
                             <div
@@ -216,12 +215,22 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
                                 </span>
 
                                 {hasData && (
-                                    <div className="mt-auto space-y-1">
-                                        <div className="text-sm font-bold truncate text-foreground">
-                                            {formatCurrency(total)}
+                                    <div className="mt-auto space-y-1.5">
+                                        <div className="text-sm font-black truncate text-foreground leading-none">
+                                            {formatCurrency(daily.total)}
                                         </div>
-                                        <div className="text-[10px] text-muted-foreground font-medium flex items-center justify-between">
-                                            <span>{count} cajas</span>
+                                        <div className="grid grid-cols-2 gap-x-1 gap-y-0.5 text-[9px] font-bold uppercase tracking-tighter">
+                                            <div className="text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
+                                                <Store className="w-2 h-2" /> {daily.shifts}
+                                            </div>
+                                            <div className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                                                <ShoppingCart className="w-2 h-2" /> {daily.sales}
+                                            </div>
+                                            {daily.expenses > 0 && (
+                                                <div className="text-red-500 flex items-center gap-0.5 col-span-2">
+                                                    <CreditCard className="w-2 h-2" /> -{formatCurrency(daily.expenses)}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
