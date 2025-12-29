@@ -97,17 +97,32 @@ export function AdminImportData({ branches }: AdminImportDataProps) {
 
         setIsLoading(true);
         try {
-            const result = await importHistoricalSalesAction(previewData);
-            if (result.success) {
-                toast.success(`¡Importación exitosa! Se cargaron ${result.count} periodos.`);
-                setPreviewData([]);
-                setFileName(null);
-            } else {
-                toast.error(result.error);
+            // Split into chunks of 500 to avoid server timeouts and transaction limits
+            const chunkSize = 500;
+            let totalImported = 0;
+
+            for (let i = 0; i < previewData.length; i += chunkSize) {
+                const chunk = previewData.slice(i, i + chunkSize);
+                const toastId = toast.loading(`Importando lote ${Math.floor(i / chunkSize) + 1}...`);
+
+                const result = await importHistoricalSalesAction(chunk);
+                toast.dismiss(toastId);
+
+                if (result.success) {
+                    totalImported += (result.count || 0);
+                } else {
+                    toast.error(`Error en lote ${Math.floor(i / chunkSize) + 1}: ${result.error}`);
+                    throw new Error(result.error);
+                }
             }
+
+            toast.success(`¡Importación exitosa! Se cargaron ${totalImported} registros históricos.`);
+            setPreviewData([]);
+            setFileName(null);
         } catch (err: any) {
             console.error("Import client error:", err);
-            toast.error("Error al procesar: El archivo es demasiado grande o contiene datos inválidos.");
+            // toast.error is already handled inside the loop for specific chunks
+            if (!err.message) toast.error("Error al procesar el archivo masivo.");
         } finally {
             setIsLoading(false);
         }

@@ -19,6 +19,7 @@ export async function importHistoricalSalesAction(data: any[]): Promise<ImportRe
 
         let importedCount = 0;
 
+        // Increased timeout for large datasets (60 seconds)
         await db.$transaction(async (tx) => {
             for (const row of data) {
                 // Expecting columns: fecha (string YYYY-MM-DD), sucursal (string), monto (number), cantidad (number)
@@ -33,21 +34,22 @@ export async function importHistoricalSalesAction(data: any[]): Promise<ImportRe
                 const startTime = new Date(date.setHours(8, 0, 0, 0));
                 const endTime = new Date(date.setHours(21, 0, 0, 0));
 
-                // 1. AVOID DUPLICATES: Delete existing historical shifts for this branch and day
-                // We identify historical shifts by a specific start/end time or by searching for sales with 'H-' prefix
-                const existingShifts = await tx.cashShift.findMany({
+                // 1. AVOID DUPLICATES: Delete existing historical shifts and sales for this branch and day efficiently
+                await tx.sale.deleteMany({
+                    where: {
+                        branchId: branch.id,
+                        createdAt: startTime,
+                        saleNumber: { startsWith: "H" }
+                    }
+                });
+
+                await tx.cashShift.deleteMany({
                     where: {
                         branchId: branch.id,
                         startTime: startTime,
                         status: "CLOSED",
                     }
                 });
-
-                for (const oldShift of existingShifts) {
-                    // Delete associated sales first (Cascade might handle it but let's be safe)
-                    await tx.sale.deleteMany({ where: { createdAt: startTime, branchId: branch.id } });
-                    await tx.cashShift.delete({ where: { id: oldShift.id } });
-                }
 
                 // 2. Create the new Symbolic Shift
                 const shift = await tx.cashShift.create({
@@ -65,21 +67,26 @@ export async function importHistoricalSalesAction(data: any[]): Promise<ImportRe
                 const totalAmount = parseFloat(monto);
                 const amountPerSale = totalAmount / qty;
 
-                for (let i = 0; i < qty; i++) {
-                    await tx.sale.create({
-                        data: {
-                            saleNumber: `H${shift.id.slice(-4).toUpperCase()}-${i + 1}-${Math.floor(Math.random() * 10000)}`,
-                            total: amountPerSale,
-                            paymentMethod: "CASH",
-                            branchId: branch.id,
-                            vendorId: admin.id,
-                            createdAt: startTime,
-                            updatedAt: endTime,
-                        }
-                    });
-                }
+                // 3. USE bulk insert for sales - much faster for large quantities
+                const salesToCreate = Array.from({ length: qty }).map((_, i) => ({
+                    saleNumber: `H${shift.id.slice(-4).toUpperCase()}-${i + 1}-${Math.floor(Math.random() * 100000)}`,
+                    total: amountPerSale,
+                    paymentMethod: "CASH" as const,
+                    branchId: branch.id,
+                    vendorId: admin.id,
+                    createdAt: startTime,
+                    updatedAt: endTime,
+                }));
+
+                await tx.sale.createMany({
+                    data: salesToCreate
+                });
+
                 importedCount++;
             }
+        }, {
+            maxWait: 10000, // 10s wait for connection
+            timeout: 60000  // 60s total transaction time
         });
 
         revalidatePath("/admin/cash-shifts");
