@@ -30,26 +30,41 @@ export async function importHistoricalSalesAction(data: any[]): Promise<ImportRe
                 if (!branch) continue;
 
                 const date = new Date(fecha);
-                // Create a "Symbolic Shift" for this day/month record
-                // To avoid multiple shifts for the same exact time if user uploads daily data
+                const startTime = new Date(date.setHours(8, 0, 0, 0));
+                const endTime = new Date(date.setHours(21, 0, 0, 0));
+
+                // 1. AVOID DUPLICATES: Delete existing historical shifts for this branch and day
+                // We identify historical shifts by a specific start/end time or by searching for sales with 'H-' prefix
+                const existingShifts = await tx.cashShift.findMany({
+                    where: {
+                        branchId: branch.id,
+                        startTime: startTime,
+                        status: "CLOSED",
+                    }
+                });
+
+                for (const oldShift of existingShifts) {
+                    // Delete associated sales first (Cascade might handle it but let's be safe)
+                    await tx.sale.deleteMany({ where: { createdAt: startTime, branchId: branch.id } });
+                    await tx.cashShift.delete({ where: { id: oldShift.id } });
+                }
+
+                // 2. Create the new Symbolic Shift
                 const shift = await tx.cashShift.create({
                     data: {
                         branchId: branch.id,
                         userId: admin.id,
-                        startTime: new Date(date.setHours(8, 0, 0, 0)),
-                        endTime: new Date(date.setHours(21, 0, 0, 0)),
+                        startTime: startTime,
+                        endTime: endTime,
                         status: "CLOSED",
                         startAmount: 0,
                     }
                 });
 
-                // Create a single summarized Sale record for this shift
-                // or multiple based on 'cantidad'
                 const qty = parseInt(cantidad) || 1;
                 const totalAmount = parseFloat(monto);
                 const amountPerSale = totalAmount / qty;
 
-                // Create multiple sales based on 'cantidad' to ensure KPIs (Avg Ticket, Sales Count) are correct
                 for (let i = 0; i < qty; i++) {
                     await tx.sale.create({
                         data: {
@@ -58,12 +73,11 @@ export async function importHistoricalSalesAction(data: any[]): Promise<ImportRe
                             paymentMethod: "CASH",
                             branchId: branch.id,
                             vendorId: admin.id,
-                            createdAt: shift.startTime,
-                            updatedAt: shift.endTime!,
+                            createdAt: startTime,
+                            updatedAt: endTime,
                         }
                     });
                 }
-
                 importedCount++;
             }
         });
@@ -74,5 +88,32 @@ export async function importHistoricalSalesAction(data: any[]): Promise<ImportRe
     } catch (error: any) {
         console.error("Import Error:", error);
         return { success: false, error: error.message || "Error desconocido durante la importación" };
+    }
+}
+
+export async function clearAllHistoricalDataAction(): Promise<ImportResult> {
+    try {
+        await db.$transaction(async (tx) => {
+            // Delete all sales starting with H (Historical)
+            await tx.sale.deleteMany({
+                where: {
+                    saleNumber: { startsWith: "H" }
+                }
+            });
+            // Delete all closed shifts that have 0 startAmount (our symbolic shifts)
+            await tx.cashShift.deleteMany({
+                where: {
+                    status: "CLOSED",
+                    startAmount: 0,
+                    // Optionally filter by the admin user ID if needed
+                }
+            });
+        });
+
+        revalidatePath("/admin/cash-shifts");
+        revalidatePath("/admin/dashboard");
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
     }
 }
