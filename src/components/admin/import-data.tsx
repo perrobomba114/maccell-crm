@@ -75,8 +75,16 @@ export function AdminImportData({ branches }: AdminImportDataProps) {
                     return;
                 }
 
-                setPreviewData(data);
-                toast.success(`${data.length} filas detectadas`);
+                // Sanitize data: Ensure all values are plain strings or numbers, no complex objects or NaNs
+                const sanitized = data.map((row: any) => ({
+                    fecha: row.fecha ? String(row.fecha).trim() : null,
+                    sucursal: row.sucursal ? String(row.sucursal).trim() : null,
+                    monto: isNaN(parseFloat(row.monto)) ? 0 : parseFloat(row.monto),
+                    cantidad: isNaN(parseInt(row.cantidad)) ? 1 : parseInt(row.cantidad)
+                }));
+
+                setPreviewData(sanitized);
+                toast.success(`${sanitized.length} filas detectadas`);
             } catch (err) {
                 toast.error("Error al leer el archivo. Asegúrese de que sea un Excel válido.");
             }
@@ -89,6 +97,9 @@ export function AdminImportData({ branches }: AdminImportDataProps) {
 
         setIsLoading(true);
         try {
+            // Process in smaller chunks if the data is massive to avoid timeout/payload limits
+            // Since we're in a transaction on the server, we'll try the whole batch first,
+            // but we ensure the data is simple POJO.
             const result = await importHistoricalSalesAction(previewData);
             if (result.success) {
                 toast.success(`¡Importación exitosa! Se cargaron ${result.count} periodos.`);
@@ -97,8 +108,9 @@ export function AdminImportData({ branches }: AdminImportDataProps) {
             } else {
                 toast.error(result.error);
             }
-        } catch (err) {
-            toast.error("Ocurrió un error inesperado durante el procesamiento");
+        } catch (err: any) {
+            console.error("Import client error:", err);
+            toast.error("Error al procesar: El archivo es demasiado grande o contiene datos inválidos.");
         } finally {
             setIsLoading(false);
         }
