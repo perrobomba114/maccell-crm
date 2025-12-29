@@ -3,7 +3,7 @@
 import { ChangeEvent, useState, useRef, useEffect, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { X, ImagePlus, Camera } from "lucide-react";
+import { X, ImagePlus, Camera, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ export function RepairImages() {
 
     // Camera State
     const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
@@ -84,10 +85,17 @@ export function RepairImages() {
     };
 
     // Camera Handlers
-    const startCamera = async () => {
+    const startCamera = async (mode: "user" | "environment" = facingMode) => {
+        // Stop any existing stream first
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+        }
+
         setIsCameraOpen(true);
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: mode }
+            });
             streamRef.current = stream;
             // Wait for modal transition then set srcObject
             setTimeout(() => {
@@ -101,6 +109,12 @@ export function RepairImages() {
             toast.error("No se pudo acceder a la cámara. Verifique los permisos.");
             setIsCameraOpen(false);
         }
+    };
+
+    const toggleCamera = () => {
+        const newMode = facingMode === "user" ? "environment" : "user";
+        setFacingMode(newMode);
+        startCamera(newMode);
     };
 
     const stopCamera = useCallback(() => {
@@ -159,7 +173,7 @@ export function RepairImages() {
                 {/* Camera Button */}
                 <button
                     type="button"
-                    onClick={startCamera}
+                    onClick={() => startCamera()}
                     className="relative aspect-square bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors group"
                 >
                     <Camera className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -202,6 +216,16 @@ export function RepairImages() {
                             playsInline
                             className="w-full h-full object-cover"
                         />
+                        {/* Camera Toggle Button inside the video box */}
+                        <Button
+                            size="icon"
+                            variant="secondary"
+                            type="button"
+                            className="absolute bottom-4 right-4 rounded-full w-12 h-12 shadow-lg bg-black/50 border-white/20 text-white hover:bg-black/70"
+                            onClick={toggleCamera}
+                        >
+                            <RefreshCw className="h-6 w-6" />
+                        </Button>
                     </div>
                     <DialogFooter className="flex sm:justify-between gap-2">
                         <Button variant="outline" onClick={stopCamera}>Cancelar</Button>
