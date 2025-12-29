@@ -22,6 +22,7 @@ import { PromisedDateSelector } from "./promised-date-selector";
 import { SparePartSelector, SparePartItem } from "./spare-part-selector";
 import { updateRepairAction } from "@/lib/actions/repairs";
 import { ImagePreviewModal } from "./image-preview-modal";
+import { getImgUrl } from "@/lib/utils";
 
 interface EditRepairFormProps {
     repair: any;
@@ -310,7 +311,7 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
                             {existingImages.map((src, idx) => (
                                 <div key={`existing-${idx}`} className="relative aspect-square border rounded-lg overflow-hidden group cursor-pointer">
                                     <img
-                                        src={src}
+                                        src={getImgUrl(src)}
                                         alt="Existing"
                                         className="object-cover w-full h-full transition-transform hover:scale-105"
                                         onClick={() => handleImageClick(idx)}

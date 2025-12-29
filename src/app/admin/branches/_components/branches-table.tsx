@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Building2, Phone } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getImgUrl } from "@/lib/utils";
 import { CreateBranchDialog } from "./create-branch-dialog";
 import { EditBranchDialog } from "./edit-branch-dialog";
 import { DeleteBranchDialog } from "./delete-branch-dialog";
@@ -82,7 +82,7 @@ export function BranchesTable({ branches }: BranchesTableProps) {
                                             <div className="flex justify-center">
                                                 {branch.imageUrl ? (
                                                     <img
-                                                        src={branch.imageUrl}
+                                                        src={getImgUrl(branch.imageUrl)}
                                                         alt={branch.name}
                                                         className="w-12 h-12 object-cover rounded-md border"
                                                     />

@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { getImgUrl } from "@/lib/utils";
 
 interface ImagePreviewModalProps {
     isOpen: boolean;
@@ -163,7 +164,7 @@ export function ImagePreviewModal({ isOpen, onClose, images, currentIndex, onInd
 
                     {/* The Image */}
                     <img
-                        src={imageUrl}
+                        src={getImgUrl(imageUrl)}
                         alt={`Preview ${currentIndex + 1}`}
                         className={`max-w-full max-h-full object-contain pointer-events-none transition-transform ${isDragging ? "duration-0" : "duration-300"} ease-out`}
                         style={{

@@ -7,6 +7,7 @@ import { es } from "date-fns/locale";
 import { Image, Smartphone, User, Calendar, DollarSign, FileText, Clock, ImageOff } from "lucide-react";
 import { useState } from "react";
 import { ImagePreviewModal } from "./image-preview-modal";
+import { getImgUrl } from "@/lib/utils";
 
 interface RepairDetailsDialogProps {
     repair: any;
@@ -45,7 +46,7 @@ function RepairImage({ url, index, onClick }: { url: string; index: number; onCl
             onClick={onClick}
         >
             <img
-                src={url}
+                src={getImgUrl(url)}
                 alt={`Foto ${index + 1}`}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                 onError={() => setError(true)}

@@ -10,6 +10,7 @@ import { Loader2, CheckCircle, Image, Camera, X, AlertCircle } from "lucide-reac
 import { toast } from "sonner";
 import { finishRepairAction } from "@/actions/repairs/technician-actions";
 import { ImagePreviewModal } from "./image-preview-modal";
+import { getImgUrl } from "@/lib/utils";
 
 interface FinishRepairModalProps {
     repair: any;
@@ -41,8 +42,10 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const [isLoading, setIsLoading] = useState(false);
     const [statusId, setStatusId] = useState<string>(""); // No default selection
     const [diagnosis, setDiagnosis] = useState("");
-    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerIndex, setViewerIndex] = useState(0);
     const [newImages, setNewImages] = useState<File[]>([]); // New state for tech images
+    const images = (repair.deviceImages || []).filter((url: string) => url && url.includes('/'));
     const [showReturnAlert, setShowReturnAlert] = useState(false);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -232,9 +235,12 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                     <div
                                         key={`old-${idx}`}
                                         className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-zoom-in group"
-                                        onClick={() => setPreviewImage(url)}
+                                        onClick={() => {
+                                            setViewerIndex(idx);
+                                            setViewerOpen(true);
+                                        }}
                                     >
-                                        <img src={url} alt="Evidencia previa" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                        <img src={getImgUrl(url)} alt="Evidencia previa" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                                     </div>
                                 ))}
@@ -298,9 +304,11 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             </Dialog>
 
             <ImagePreviewModal
-                isOpen={!!previewImage}
-                onClose={() => setPreviewImage(null)}
-                imageUrl={previewImage}
+                isOpen={viewerOpen}
+                onClose={() => setViewerOpen(false)}
+                images={images}
+                currentIndex={viewerIndex}
+                onIndexChange={setViewerIndex}
             />
 
             <AlertDialog open={showReturnAlert} onOpenChange={setShowReturnAlert}>

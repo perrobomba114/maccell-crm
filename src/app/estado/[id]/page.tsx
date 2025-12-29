@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { motion } from "framer-motion";
+import { getImgUrl } from "@/lib/utils";
 
 interface RepairData {
     id: string;
@@ -137,7 +138,7 @@ export default function RepairStatusPage({ params }: { params: any }) {
                     {repair.branch.imageUrl ? (
                         <div className="relative w-80 h-36 filter drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
                             <Image
-                                src={repair.branch.imageUrl}
+                                src={getImgUrl(repair.branch.imageUrl)}
                                 alt={repair.branch.name}
                                 fill
                                 className="object-contain"

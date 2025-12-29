@@ -9,6 +9,7 @@ import { SparePartSelector, SparePartItem } from "./spare-part-selector";
 import { toast } from "sonner";
 import { takeRepairAction } from "@/lib/actions/repairs";
 import { ImagePreviewModal } from "./image-preview-modal";
+import { getImgUrl } from "@/lib/utils";
 
 interface TakeRepairDialogProps {
     repair: any; // Using any for simplicity in quick implementation, ideally full Repair type
@@ -27,7 +28,9 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
     const isOverdue = promisedDate < new Date();
 
     const [extendTime, setExtendTime] = useState(isOverdue); // Added new state, default true if overdue
-    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerIndex, setViewerIndex] = useState(0);
+    const images = (repair.deviceImages || []).filter((url: string) => url && url.includes('/'));
 
     const handleConfirm = async () => {
         setIsLoading(true);
@@ -85,44 +88,47 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
                     </div>
 
                     {/* IMAGES SECTION */}
-                    {repair.deviceImages && repair.deviceImages.filter((img: string) => img && img.includes('/')).length > 0 && (
+                    {images.length > 0 && (
                         <div className="bg-muted/30 p-3 rounded-md border border-dashed">
                             <div className="flex items-center gap-2 mb-2">
                                 <Image className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-xs font-semibold text-muted-foreground">EVIDENCIA FOTOGRÁFICA</span>
                             </div>
                             <div className="flex gap-2 overflow-x-auto py-1">
-                                {repair.deviceImages
-                                    .filter((url: string) => url && url.includes('/'))
-                                    .map((url: string, idx: number) => (
-                                        <div
-                                            key={idx}
-                                            className="relative h-24 w-24 flex-shrink-0 cursor-pointer rounded-md overflow-hidden border bg-white hover:opacity-90 transition-opacity"
-                                            title="Ver imagen completa"
-                                            onClick={() => setPreviewImage(url)}
-                                        >
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img
-                                                src={url}
-                                                alt={`Foto ${idx + 1}`}
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    const target = e.target as HTMLImageElement;
-                                                    const parent = target.parentElement;
-                                                    if (parent) parent.style.display = 'none';
-                                                }}
-                                            />
-                                        </div>
-                                    ))}
+                                {images.map((url: string, idx: number) => (
+                                    <div
+                                        key={idx}
+                                        className="relative h-24 w-24 flex-shrink-0 cursor-pointer rounded-md overflow-hidden border bg-white hover:opacity-90 transition-opacity"
+                                        title="Ver imagen completa"
+                                        onClick={() => {
+                                            setViewerIndex(idx);
+                                            setViewerOpen(true);
+                                        }}
+                                    >
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={getImgUrl(url)}
+                                            alt={`Foto ${idx + 1}`}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                const target = e.target as HTMLImageElement;
+                                                const parent = target.parentElement;
+                                                if (parent) parent.style.display = 'none';
+                                            }}
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
 
                     {/* Image Preview Modal */}
                     <ImagePreviewModal
-                        isOpen={!!previewImage}
-                        onClose={() => setPreviewImage(null)}
-                        imageUrl={previewImage}
+                        isOpen={viewerOpen}
+                        onClose={() => setViewerOpen(false)}
+                        images={images}
+                        currentIndex={viewerIndex}
+                        onIndexChange={setViewerIndex}
                     />
 
                     {isOverdue && (

@@ -9,6 +9,7 @@ import { updateBranch } from "@/actions/branch-actions";
 import { uploadBranchImage } from "@/actions/upload-actions";
 import { toast } from "sonner";
 import { Upload, X } from "lucide-react";
+import { getImgUrl } from "@/lib/utils";
 
 interface EditBranchDialogProps {
     open: boolean;
@@ -172,7 +173,7 @@ export function EditBranchDialog({ open, onOpenChange, branch }: EditBranchDialo
                             {imagePreview || currentImageUrl ? (
                                 <div className="relative">
                                     <img
-                                        src={imagePreview || currentImageUrl!}
+                                        src={imagePreview || getImgUrl(currentImageUrl)}
                                         alt="Branch image"
                                         className="w-full h-32 object-cover rounded-md border"
                                     />

@@ -12,6 +12,7 @@ import { Camera, Lock, User as UserIcon, Loader2, Upload } from "lucide-react";
 import { updateUserPassword, updateUserImage } from "@/actions/profile-actions";
 import { uploadProfileImage } from "@/actions/upload-actions";
 import { useRouter } from "next/navigation";
+import { getImgUrl } from "@/lib/utils";
 
 interface ProfileFormProps {
     user: any;
@@ -133,7 +134,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     <CardContent className="flex flex-col items-center justify-center p-6">
                         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                             <Avatar className="h-32 w-32 border-4 border-background shadow-xl transition-opacity group-hover:opacity-75">
-                                <AvatarImage src={user.imageUrl || ""} className="object-cover" />
+                                <AvatarImage src={getImgUrl(user.imageUrl)} className="object-cover" />
                                 <AvatarFallback className="text-3xl font-bold bg-primary text-primary-foreground">
                                     {getInitials(user.name)}
                                 </AvatarFallback>
