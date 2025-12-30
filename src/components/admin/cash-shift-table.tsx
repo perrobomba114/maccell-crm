@@ -219,7 +219,7 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleViewDetails(shift)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/5 hover:text-primary"
+                                            className="opacity-100 transition-opacity hover:bg-primary/5 hover:text-primary"
                                         >
                                             <Eye className="h-4 w-4" />
                                         </Button>
