@@ -345,10 +345,10 @@ graph TD
 
 ## 📄 Licencia y Propiedad
 
-Este software es propiedad privada de **MacCell Technology**. Queda estrictamente prohibida su redistribución o uso no autorizado en entornos de producción ajenos a la organización original.
+Este software es propiedad privada de **MACCELL Technology**. Queda estrictamente prohibida su redistribución o uso no autorizado en entornos de producción ajenos a la organización original.
 
 ---
-Generado con ❤️ por el equipo de **Advanced Agentic Coding** para **MacCell**.
+Generado con ❤️ por el equipo de **Desarrollo de Software de MACCELL** para **MAC CELL SAN LUIS SRL**.
 | Estabilidad | Rendimiento | Estética |
 | :---: | :---: | :---: |
 | 100% | Ultra Fast | Premium |
