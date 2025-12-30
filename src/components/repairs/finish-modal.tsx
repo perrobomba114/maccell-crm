@@ -126,58 +126,38 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     return (
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl">
-                    <DialogHeader className="p-6 pb-4 border-b bg-muted/10 sticky top-0 z-10 flex flex-row items-center justify-between">
-                        <div className="space-y-1">
-                            <DialogTitle className="text-xl font-bold tracking-tight">Finalizar Reparación</DialogTitle>
-                            <DialogDescription className="text-muted-foreground">
+                <DialogContent className="sm:max-w-[700px] h-[95dvh] sm:h-auto flex flex-col p-0 gap-0 overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl">
+                    <DialogHeader className="p-4 sm:p-6 pb-4 border-b bg-muted/10 shrink-0">
+                        <div className="flex flex-col gap-1 w-full text-left sm:text-left">
+                            <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight">Finalizar Reparación</DialogTitle>
+                            <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
                                 Selecciona el resultado y añade los detalles finales del servicio.
                             </DialogDescription>
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                onClose();
-                            }}
-                            className="h-8 w-8 rounded-full hover:bg-muted/20"
-                        >
-                            <X className="h-5 w-5" />
-                        </Button>
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto p-6 space-y-8">
 
                         {/* 1. Status Selection */}
                         <div className="space-y-3">
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Resultado del Servicio</Label>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Resultado del Servicio</Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                                 {finishStatuses.map((s) => {
                                     const isSelected = statusId === s.id.toString();
-
                                     const gradientColors = statusColors[s.id] || "from-primary to-primary";
-
-                                    // Map for border/text colors when unselected (Modern Hover)
                                     const solidColors: Record<number, string> = {
-                                        4: "hover:border-orange-500 hover:text-orange-600",
-                                        5: "hover:border-emerald-500 hover:text-emerald-600",
-                                        6: "hover:border-red-500 hover:text-red-600",
-                                        7: "hover:border-blue-500 hover:text-blue-600",
-                                        8: "hover:border-amber-500 hover:text-amber-600",
-                                        9: "hover:border-violet-500 hover:text-violet-600"
+                                        4: "hover:border-orange-500 hover:text-orange-600 font-bold",
+                                        5: "hover:border-emerald-500 hover:text-emerald-600 font-bold",
+                                        6: "hover:border-red-500 hover:text-red-600 font-bold",
+                                        7: "hover:border-blue-500 hover:text-blue-600 font-bold",
+                                        8: "hover:border-amber-500 hover:text-amber-600 font-bold",
+                                        9: "hover:border-violet-500 hover:text-violet-600 font-bold"
                                     };
-
                                     const hoverClass = solidColors[s.id] || "hover:border-primary hover:text-primary";
-
-                                    const baseClasses = "relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-300 text-center gap-2 h-28 overflow-hidden group cursor-pointer";
-
-                                    // If selected: Gradient Background, White Text.
-                                    // If unselected: Clean White/Dark Card. No Gray.
-
+                                    const baseClasses = "relative flex flex-col items-center justify-center p-2 sm:p-4 rounded-xl border-2 transition-all duration-300 text-center gap-1.5 sm:gap-2 h-20 sm:h-28 overflow-hidden group cursor-pointer";
                                     const finalClasses = isSelected
                                         ? `bg-gradient-to-br ${gradientColors} border-transparent text-white shadow-lg scale-[1.02] ring-0`
-                                        : `bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md ${hoverClass} text-muted-foreground transition-all`;
+                                        : `bg-muted/50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md ${hoverClass} text-muted-foreground transition-all`;
 
                                     return (
                                         <button
@@ -186,15 +166,13 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                             onClick={() => setStatusId(s.id.toString())}
                                             className={`${baseClasses} ${finalClasses}`}
                                         >
-                                            {/* Icons */}
                                             <div className={`transition-transform duration-300 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>
-                                                {s.id === 5 && <CheckCircle className={`w-8 h-8 ${isSelected ? 'text-white' : 'text-emerald-500 group-hover:text-emerald-600'}`} />}
-                                                {s.id === 6 && <X className={`w-8 h-8 ${isSelected ? 'text-white' : 'text-red-500 group-hover:text-red-600'}`} />}
-                                                {s.id === 4 && <Loader2 className={`w-8 h-8 ${isSelected ? 'text-white' : 'text-orange-500 group-hover:text-orange-600'}`} />}
-                                                {![4, 5, 6].includes(s.id) && <div className={`w-8 h-8 rounded-full border-2 border-dashed ${isSelected ? 'border-white/80' : 'border-muted-foreground/40 group-hover:border-current'}`} />}
+                                                {s.id === 5 && <CheckCircle className={`w-5 h-5 sm:w-8 sm:h-8 ${isSelected ? 'text-white' : 'text-emerald-500 group-hover:text-emerald-600'}`} />}
+                                                {s.id === 6 && <X className={`w-5 h-5 sm:w-8 sm:h-8 ${isSelected ? 'text-white' : 'text-red-500 group-hover:text-red-600'}`} />}
+                                                {s.id === 4 && <Loader2 className={`w-5 h-5 sm:w-8 sm:h-8 ${isSelected ? 'text-white' : 'text-orange-500 group-hover:text-orange-600'}`} />}
+                                                {![4, 5, 6].includes(s.id) && <div className={`w-5 h-5 sm:w-8 sm:h-8 rounded-full border-2 border-dashed ${isSelected ? 'border-white/80' : 'border-muted-foreground/40 group-hover:border-current'}`} />}
                                             </div>
-
-                                            <span className={`text-xs font-bold leading-tight w-full px-1 ${isSelected ? 'text-white' : 'group-hover:text-current'}`}>
+                                            <span className={`text-[9.5px] sm:text-xs font-bold leading-tight w-full px-1 ${isSelected ? 'text-white font-black' : 'group-hover:text-current'}`}>
                                                 {s.name}
                                             </span>
                                         </button>
@@ -282,17 +260,17 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
 
                     </div>
 
-                    <DialogFooter className="p-6 pt-2 border-t bg-muted/5">
-                        <Button variant="ghost" onClick={onClose} disabled={isLoading} className="text-muted-foreground hover:text-foreground">
+                    <DialogFooter className="p-4 sm:p-6 pt-2 border-t bg-muted/5 flex flex-row gap-2 shrink-0">
+                        <Button variant="ghost" onClick={onClose} disabled={isLoading} className="flex-1 sm:flex-none text-muted-foreground hover:text-foreground h-11 sm:h-10">
                             Cancelar
                         </Button>
                         <Button
                             onClick={handleFinish}
                             disabled={isLoading}
                             className={`
-                                min-w-[140px] shadow-lg transition-all
-                                ${statusId === '5' ? 'bg-green-600 hover:bg-green-700 hover:ring-2 hover:ring-green-600/50' : ''}
-                                ${statusId === '6' ? 'bg-red-600 hover:bg-red-700 hover:ring-2 hover:ring-red-600/50' : ''}
+                                flex-1 sm:min-w-[140px] shadow-lg transition-all h-11 sm:h-10
+                                ${statusId === '5' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                ${statusId === '6' ? 'bg-red-600 hover:bg-red-700' : ''}
                                 ${!['5', '6'].includes(statusId) ? 'bg-primary hover:bg-primary/90' : ''}
                             `}
                         >

@@ -88,30 +88,30 @@ export function CashShiftDetailsModal({
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                             <div className="space-y-4">
                                 <div>
-                                    <Badge variant="outline" className="mb-3 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-800 rounded-md px-2.5 py-0.5 font-semibold text-xs tracking-wider uppercase">
+                                    <Badge variant="outline" className="mb-2 sm:mb-3 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-800 rounded-md px-2 py-0 sm:px-2.5 sm:py-0.5 font-semibold text-[10px] sm:text-xs tracking-wider uppercase">
                                         Reporte Financiero
                                     </Badge>
-                                    <DialogTitle className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white tracking-tight flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                                    <DialogTitle className="text-xl sm:text-3xl md:text-4xl font-black text-slate-800 dark:text-white tracking-tight flex flex-wrap items-center gap-2 md:gap-4">
                                         Cierre de Caja
-                                        <span className="text-slate-300 dark:text-slate-700 hidden md:inline">/</span>
-                                        <span className="text-xl md:text-2xl font-medium text-slate-500 dark:text-slate-400">
+                                        <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">/</span>
+                                        <span className="text-base sm:text-xl md:text-2xl font-medium text-slate-500 dark:text-slate-400">
                                             #{shift.id.slice(-6).toUpperCase()}
                                         </span>
                                     </DialogTitle>
                                 </div>
 
-                                <div className="flex flex-wrap gap-2 md:gap-4 text-sm">
-                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-full font-medium">
-                                        <Store className="w-4 h-4 text-violet-500" />
+                                <div className="flex flex-wrap gap-2 md:gap-3 text-[10px] sm:text-sm">
+                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full font-medium">
+                                        <Store className="w-3 h-3 sm:w-4 sm:h-4 text-violet-500" />
                                         {shift.branch.name}
                                     </div>
-                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-full font-medium">
-                                        <Users className="w-4 h-4 text-blue-500" />
-                                        {shift.user.name}
+                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full font-medium">
+                                        <Users className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500" />
+                                        {shift.user.name.split(' ')[0]}
                                     </div>
-                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-full font-medium font-mono">
-                                        <Clock className="w-4 h-4 text-emerald-500" />
-                                        {formatDate(shift.startTime)}
+                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full font-medium font-mono">
+                                        <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500" />
+                                        {formatDate(shift.startTime).split(',')[1]}
                                     </div>
                                 </div>
                             </div>
@@ -160,8 +160,8 @@ export function CashShiftDetailsModal({
                                 </span>
                             </div>
                             <div className="relative z-10">
-                                <h3 className="text-blue-100 text-sm font-semibold uppercase tracking-wider">Ventas Totales</h3>
-                                <p className="text-3xl font-black text-white mt-1 tabular-nums tracking-tight">
+                                <h3 className="text-blue-100 text-[10px] sm:text-sm font-semibold uppercase tracking-wider">Ventas Totales</h3>
+                                <p className="text-xl sm:text-3xl font-black text-white mt-0.5 sm:mt-1 tabular-nums tracking-tight">
                                     {formatMoney(shift.totals.totalSales)}
                                 </p>
                             </div>
@@ -180,8 +180,8 @@ export function CashShiftDetailsModal({
                                 </span>
                             </div>
                             <div className="relative z-10">
-                                <h3 className="text-red-100 text-sm font-semibold uppercase tracking-wider">Gastos Operativos</h3>
-                                <p className="text-3xl font-black text-white mt-1 tabular-nums tracking-tight">
+                                <h3 className="text-red-100 text-[10px] sm:text-sm font-semibold uppercase tracking-wider">Gastos Operativos</h3>
+                                <p className="text-xl sm:text-3xl font-black text-white mt-0.5 sm:mt-1 tabular-nums tracking-tight">
                                     {formatMoney(shift.totals.expenses)}
                                 </p>
                             </div>
@@ -200,8 +200,8 @@ export function CashShiftDetailsModal({
                                 </span>
                             </div>
                             <div className="relative z-10">
-                                <h3 className="text-orange-100 text-sm font-semibold uppercase tracking-wider">Premios / Comisiones</h3>
-                                <p className="text-3xl font-black text-white mt-1 tabular-nums tracking-tight">
+                                <h3 className="text-orange-100 text-[10px] sm:text-sm font-semibold uppercase tracking-wider">Premios / Comis.</h3>
+                                <p className="text-xl sm:text-3xl font-black text-white mt-0.5 sm:mt-1 tabular-nums tracking-tight">
                                     {formatMoney(shift.totals.bonuses)}
                                 </p>
                             </div>
@@ -220,8 +220,8 @@ export function CashShiftDetailsModal({
                                 </span>
                             </div>
                             <div className="relative z-10">
-                                <h3 className="text-slate-400 dark:text-violet-200 text-sm font-semibold uppercase tracking-wider">Neto en Caja</h3>
-                                <p className="text-3xl font-black text-white mt-1 tabular-nums tracking-tight">
+                                <h3 className="text-slate-400 dark:text-violet-200 text-[10px] sm:text-sm font-semibold uppercase tracking-wider">Neto en Caja</h3>
+                                <p className="text-xl sm:text-3xl font-black text-white mt-0.5 sm:mt-1 tabular-nums tracking-tight">
                                     {formatMoney(shift.totals.netTotal)}
                                 </p>
                             </div>

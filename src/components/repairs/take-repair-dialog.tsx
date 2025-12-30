@@ -58,7 +58,7 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[600px] p-0 flex flex-col max-h-[90vh] overflow-hidden">
+            <DialogContent className="sm:max-w-[600px] p-0 flex flex-col overflow-hidden">
                 <div className="p-6 border-b bg-background shrink-0">
                     <DialogHeader className="text-left">
                         <DialogTitle className="flex items-center gap-2">
@@ -166,15 +166,15 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
                     </div>
                 </div>
 
-                <div className="p-6 border-t bg-muted/10 shrink-0">
+                <div className="p-4 sm:p-6 border-t bg-muted/10 shrink-0">
                     <DialogFooter className="flex-row gap-2 sm:justify-end">
-                        <Button variant="ghost" onClick={onClose} disabled={isLoading} className="flex-1 sm:flex-none">
+                        <Button variant="ghost" onClick={onClose} disabled={isLoading} className="flex-1 sm:flex-none h-12 sm:h-10">
                             Cancelar
                         </Button>
                         <Button
                             onClick={handleConfirm}
                             disabled={isLoading || (isOverdue && !extendTime)}
-                            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 sm:h-10"
                         >
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             CONFIRMAR RETIRO

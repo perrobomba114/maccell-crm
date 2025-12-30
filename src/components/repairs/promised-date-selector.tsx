@@ -53,7 +53,7 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
         <div className="space-y-4">
             <div className="flex gap-2 items-end">
                 <div className="flex-1">
-                    <div className="flex gap-4 items-center bg-background border border-input rounded-xl px-4 h-[84px] w-full">
+                    <div className="flex gap-2 sm:gap-4 items-center bg-background border border-input rounded-xl px-2 sm:px-4 h-[84px] w-full">
                         <input
                             type="date"
                             value={date ? (() => {
@@ -65,18 +65,18 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                             onChange={(e) => {
                                 if (e.target.value) {
                                     const [y, m, d] = e.target.value.split('-').map(Number);
-                                    // Construct new date preserving current time but changing YMD
                                     const newDate = new Date(date);
                                     newDate.setFullYear(y, m - 1, d);
                                     onChange(newDate);
                                 }
                             }}
-                            className="flex-1 font-mono text-3xl bg-transparent border-none focus:ring-0 p-0 h-full text-foreground color-scheme-dark"
+                            className="flex-1 font-mono text-xl sm:text-3xl bg-transparent border-none focus:ring-0 p-0 h-full text-foreground color-scheme-dark min-w-0"
                         />
-                        <div className="h-14 w-px bg-border/50" />
-                        <div className="flex items-center gap-1">
+                        <div className="h-10 sm:h-14 w-px bg-border/50 shrink-0" />
+                        <div className="flex items-center gap-0 sm:gap-1 shrink-0">
                             <input
                                 type="number"
+                                inputMode="numeric"
                                 min={0}
                                 max={23}
                                 value={String(date.getHours()).padStart(2, '0')}
@@ -88,11 +88,12 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                                         onChange(newDate);
                                     }
                                 }}
-                                className="w-[4rem] p-0 text-center text-4xl font-bold text-green-500 bg-transparent border-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-full leading-none"
+                                className="w-[3rem] sm:w-[4rem] p-0 text-center text-3xl sm:text-4xl font-bold text-green-600 dark:text-green-500 bg-transparent border-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-full leading-none"
                             />
-                            <span className="text-4xl font-bold text-green-500 pb-1">:</span>
+                            <span className="text-2xl sm:text-4xl font-bold text-green-600 dark:text-green-500 pb-1">:</span>
                             <input
                                 type="number"
+                                inputMode="numeric"
                                 min={0}
                                 max={45}
                                 step={15}
@@ -105,7 +106,7 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                                         onChange(newDate);
                                     }
                                 }}
-                                className="w-[4rem] p-0 text-center text-4xl font-bold text-green-500 bg-transparent border-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-full leading-none"
+                                className="w-[3rem] sm:w-[4rem] p-0 text-center text-3xl sm:text-4xl font-bold text-green-600 dark:text-green-500 bg-transparent border-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-full leading-none"
                             />
                         </div>
                     </div>

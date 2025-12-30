@@ -62,7 +62,7 @@ export function DiscrepancyModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden gap-0 border-none shadow-2xl">
+            <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden gap-0 border-none shadow-2xl h-[auto] max-h-[95dvh]">
                 {/* Header with gradient for visual impact */}
                 <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/20 p-6 pb-4 border-b">
                     <DialogHeader className="gap-1">
@@ -102,7 +102,6 @@ export function DiscrepancyModal({
                                     onChange={(e) => setAdjustment(e.target.value === "" ? "" : parseInt(e.target.value))}
                                     placeholder="-1"
                                     className="pl-9 h-11 text-lg font-mono bg-background"
-                                    autoFocus
                                 />
                             </div>
                             <p className="text-xs text-muted-foreground">

@@ -101,22 +101,22 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header / Filters - SAME AS BEFORE */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4 bg-muted/40 p-1.5 rounded-lg border">
-                    <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
+                <div className="flex items-center justify-between md:justify-start gap-4 bg-muted/40 p-1.5 rounded-lg border w-full md:w-auto">
+                    <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-10 w-10">
                         <ChevronLeft className="h-5 w-5" />
                     </Button>
-                    <div className="text-lg font-semibold capitalize w-40 text-center">
+                    <div className="text-lg font-semibold capitalize flex-1 md:flex-none md:w-40 text-center">
                         {format(currentDate, "MMMM yyyy", { locale: es })}
                     </div>
-                    <Button variant="ghost" size="icon" onClick={handleNextMonth}>
+                    <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-10 w-10">
                         <ChevronRight className="h-5 w-5" />
                     </Button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Store className="w-5 h-5 text-muted-foreground" />
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                    <Store className="w-5 h-5 text-muted-foreground shrink-0" />
                     <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                        <SelectTrigger className="w-[200px]">
+                        <SelectTrigger className="w-full md:w-[200px] h-11 md:h-10">
                             <SelectValue placeholder="Todas las Sucursales" />
                         </SelectTrigger>
                         <SelectContent>
@@ -180,13 +180,13 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
 
                 <div className="grid grid-cols-7 border-b bg-muted/20">
                     {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map(day => (
-                        <div key={day} className="py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        <div key={day} className="py-2 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             {day}
                         </div>
                     ))}
                 </div>
 
-                <div className="grid grid-cols-7 min-h-[500px]">
+                <div className="grid grid-cols-7 min-h-[400px] sm:min-h-[500px]">
                     {Array.from({ length: startDayOfWeek }).map((_, i) => (
                         <div key={`empty-${i}`} className="bg-muted/5 border-r border-b min-h-[100px]" />
                     ))}
@@ -215,11 +215,11 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
                                 </span>
 
                                 {hasData && (
-                                    <div className="mt-auto space-y-1.5">
-                                        <div className="text-sm font-black truncate text-foreground leading-none">
-                                            {formatCurrency(daily.total)}
+                                    <div className="mt-auto space-y-1 sm:space-y-1.5">
+                                        <div className="text-[10px] sm:text-sm font-black truncate text-foreground leading-none">
+                                            {formatCurrency(daily.total).split(',')[0]}
                                         </div>
-                                        <div className="grid grid-cols-2 gap-x-1 gap-y-0.5 text-[9px] font-bold uppercase tracking-tighter">
+                                        <div className="hidden sm:grid sm:grid-cols-2 gap-x-1 gap-y-0.5 text-[9px] font-bold uppercase tracking-tighter">
                                             <div className="text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
                                                 <Store className="w-2 h-2" /> {daily.shifts}
                                             </div>
@@ -231,6 +231,11 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
                                                     <CreditCard className="w-2 h-2" /> -{formatCurrency(daily.expenses)}
                                                 </div>
                                             )}
+                                        </div>
+                                        {/* Mobile simple view */}
+                                        <div className="flex sm:hidden items-center gap-1 text-[8px] font-black">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                            {daily.shifts}
                                         </div>
                                     </div>
                                 )}
@@ -248,8 +253,8 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
 
             {/* Detail Modal */}
             <Dialog open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
-                <DialogContent className="max-w-5xl h-[80vh] flex flex-col p-0 overflow-hidden">
-                    <DialogHeader className="p-6 pb-2 border-b bg-muted/10">
+                <DialogContent className="max-w-5xl h-[95dvh] sm:h-[80vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-4 sm:p-6 pb-2 border-b bg-muted/10 shrink-0">
                         <DialogTitle>
                             Movimientos del {selectedDay && format(selectedDay, "d 'de' MMMM, yyyy", { locale: es })}
                         </DialogTitle>

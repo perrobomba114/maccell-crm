@@ -61,67 +61,69 @@ export function AssignmentModal({ repair, currentUserId, isOpen, onClose }: Assi
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] h-auto max-h-[96dvh]">
                 <DialogHeader>
-                    <DialogTitle>Reactivar / Asignar Reparación #{repair.ticketNumber}</DialogTitle>
+                    <DialogTitle className="text-lg">Asignar Reparación #{repair.ticketNumber}</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4 py-4">
-                    <div className="bg-muted p-3 rounded-md text-sm">
-                        <p className="flex justify-between">
-                            <span className="text-muted-foreground">Fecha Prometida Actual:</span>
+                <div className="space-y-4 py-2 sm:py-4">
+                    <div className="bg-muted p-3 rounded-md text-xs sm:text-sm">
+                        <p className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Fecha Prometida:</span>
                             <span className={`font-semibold ${isOverdue ? "text-red-500 line-through" : "text-green-600"}`}>
-                                {format(new Date(repair.promisedAt), "dd/MM/yyyy HH:mm", { locale: es })}
+                                {format(new Date(repair.promisedAt), "dd/MM/yy HH:mm", { locale: es })}
                             </span>
                         </p>
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="time">Nuevo Tiempo Estimado (minutos)</Label>
+                        <Label htmlFor="time" className="text-xs sm:text-sm font-semibold">Nuevo Tiempo Estimado (minutos)</Label>
                         <div className="relative">
-                            <CalendarClock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <CalendarClock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                                 id="time"
                                 type="number"
+                                inputMode="numeric"
                                 placeholder="Ej: 60"
-                                className="pl-9"
+                                className="pl-9 h-11"
                                 value={estimatedTime}
                                 onChange={(e) => setEstimatedTime(e.target.value)}
                             />
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            Tiempo total de trabajo que necesitará para finalizar.
+                        <p className="text-[10px] sm:text-xs text-muted-foreground italic">
+                            Tiempo total de trabajo necesario.
                         </p>
                     </div>
 
-                    <div className="border border-blue-200 bg-blue-50 dark:bg-blue-900/10 p-3 rounded-md space-y-2">
-                        <div className="flex items-start space-x-2">
+                    <div className="border border-blue-200 bg-blue-50 dark:bg-blue-900/10 p-3 rounded-xl space-y-2">
+                        <div className="flex items-start space-x-3">
                             <Checkbox
                                 id="updateDate"
                                 checked={updateDate}
                                 onCheckedChange={(c) => setUpdateDate(c as boolean)}
+                                className="mt-1 h-5 w-5"
                             />
-                            <div className="grid gap-1.5 leading-none pt-0.5">
+                            <div className="grid gap-1.5 leading-none">
                                 <label
                                     htmlFor="updateDate"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer text-blue-800 dark:text-blue-300"
+                                    className="text-sm font-bold cursor-pointer text-blue-800 dark:text-blue-300"
                                 >
                                     Actualizar Fecha Prometida
                                 </label>
-                                <p className="text-xs text-muted-foreground">
-                                    Recalcular fecha de entrega basada en este nuevo tiempo y notificar al vendedor.
+                                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">
+                                    Recalcula la entrega y notifica al cliente/vendedor.
                                 </p>
                             </div>
                         </div>
                     </div>
-
                 </div>
 
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose} disabled={isLoading}>Cancelar</Button>
+                <DialogFooter className="flex flex-row gap-2 mt-2">
+                    <Button variant="outline" onClick={onClose} disabled={isLoading} className="flex-1 h-11">Cancelar</Button>
                     <Button
                         onClick={handleAssign}
                         disabled={isLoading}
+                        className="flex-1 h-11 font-bold shadow-lg"
                     >
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Confirmar

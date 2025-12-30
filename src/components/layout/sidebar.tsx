@@ -232,6 +232,16 @@ export function Sidebar({
                                 </motion.div>
                             )}
                         </Link>
+                        {/* Mobile Close Button */}
+                        {isMobile && isMobileOpen && (
+                            <button
+                                onClick={() => onClose?.()}
+                                className="absolute top-1/2 right-3 -translate-y-1/2 p-1 rounded-full text-sidebar-foreground/60 hover:text-primary hover:bg-sidebar-accent/50 md:hidden"
+                                aria-label="Close sidebar"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        )}
                     </div>
 
                     {/* Navigation Links */}

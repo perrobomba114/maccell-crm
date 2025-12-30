@@ -77,77 +77,73 @@ export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDi
     return (
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
+                <DialogContent className="sm:max-w-4xl p-0 overflow-hidden flex flex-col h-[95dvh] sm:h-auto">
                     {/* Header Sticky */}
-                    <DialogHeader className="p-6 pb-4 border-b bg-background sticky top-0 z-10 flex flex-row items-start justify-between">
-                        <div className="flex items-start justify-between gap-4 w-full">
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-3">
-                                    <DialogTitle className="text-2xl font-bold tracking-tight">
+                    <DialogHeader className="p-4 sm:p-6 border-b bg-background shrink-0">
+                        <div className="flex items-center justify-between gap-2 w-full">
+                            <div className="space-y-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <DialogTitle className="text-lg sm:text-2xl font-bold tracking-tight truncate">
                                         Ticket #{repair.ticketNumber}
                                     </DialogTitle>
-                                    <Badge variant="secondary" className={`font-semibold border rounded-full px-3 ${colorClass}`}>
+                                    <Badge variant="secondary" className={`font-semibold border rounded-full px-2 py-0 sm:px-3 sm:py-0.5 text-[10px] sm:text-xs ${colorClass}`}>
                                         {repair.status.name}
                                     </Badge>
                                 </div>
                                 {repair.branch && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
                                         <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                        <span>{repair.branch.name}</span>
+                                        <span className="truncate">{repair.branch.name}</span>
                                     </div>
                                 )}
                             </div>
-                            <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors">
-                                <span className="sr-only">Cerrar</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x w-5 h-5 text-muted-foreground"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                            </button>
                         </div>
                     </DialogHeader>
 
                     {/* Scrollable Content */}
                     <div className="flex-1 overflow-y-auto bg-muted/5 dark:bg-muted/10">
-                        <div className="p-6 space-y-6">
+                        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
 
                             {/* Top Stats Row */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="bg-card p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
-                                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                        <Calendar className="w-4 h-4" />
-                                        <span className="text-xs font-semibold uppercase tracking-wider">Ingreso</span>
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                                <div className="bg-card p-3 sm:p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
+                                    <div className="flex items-center gap-2 text-muted-foreground mb-1 sm:mb-2">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider">Ingreso</span>
                                     </div>
                                     <div className="space-y-0.5">
-                                        <p className="text-sm font-medium">{format(new Date(repair.createdAt), "dd/MM/yy", { locale: es })}</p>
-                                        <p className="text-xs text-muted-foreground">{format(new Date(repair.createdAt), "HH:mm", { locale: es })} hs</p>
+                                        <p className="text-xs sm:text-sm font-medium">{format(new Date(repair.createdAt), "dd/MM/yy", { locale: es })}</p>
+                                        <p className="text-[10px] sm:text-xs text-muted-foreground">{format(new Date(repair.createdAt), "HH:mm", { locale: es })} hs</p>
                                     </div>
                                 </div>
 
-                                <div className="bg-card p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
-                                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                        <Clock className="w-4 h-4" />
-                                        <span className="text-xs font-semibold uppercase tracking-wider">Prometido</span>
+                                <div className="bg-card p-3 sm:p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
+                                    <div className="flex items-center gap-2 text-muted-foreground mb-1 sm:mb-2">
+                                        <Clock className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider">Prometido</span>
                                     </div>
                                     <div className="space-y-0.5">
-                                        <p className="text-sm font-medium">{format(new Date(repair.promisedAt), "dd/MM/yy", { locale: es })}</p>
-                                        <p className="text-xs text-muted-foreground">{format(new Date(repair.promisedAt), "HH:mm", { locale: es })} hs</p>
+                                        <p className="text-xs sm:text-sm font-medium">{format(new Date(repair.promisedAt), "dd/MM/yy", { locale: es })}</p>
+                                        <p className="text-[10px] sm:text-xs text-muted-foreground">{format(new Date(repair.promisedAt), "HH:mm", { locale: es })} hs</p>
                                     </div>
                                 </div>
 
-                                <div className="bg-card p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
-                                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                        <User className="w-4 h-4" />
-                                        <span className="text-xs font-semibold uppercase tracking-wider">Técnico</span>
+                                <div className="bg-card p-3 sm:p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
+                                    <div className="flex items-center gap-2 text-muted-foreground mb-1 sm:mb-2">
+                                        <User className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider">Técnico</span>
                                     </div>
-                                    <p className="text-sm font-medium truncate">
+                                    <p className="text-xs sm:text-sm font-medium truncate">
                                         {repair.assignedTo ? repair.assignedTo.name : "Sin asignar"}
                                     </p>
                                 </div>
 
-                                <div className="bg-card p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
-                                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                        <DollarSign className="w-4 h-4" />
-                                        <span className="text-xs font-semibold uppercase tracking-wider">Presupuesto</span>
+                                <div className="bg-card p-3 sm:p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
+                                    <div className="flex items-center gap-2 text-muted-foreground mb-1 sm:mb-2 text-primary font-bold">
+                                        <DollarSign className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider">Presupuesto</span>
                                     </div>
-                                    <p className="text-lg font-bold text-primary">
+                                    <p className="text-base sm:text-lg font-bold text-primary">
                                         {repair.estimatedPrice > 0 ? `$${repair.estimatedPrice.toLocaleString()}` : "A cotizar"}
                                     </p>
                                 </div>
