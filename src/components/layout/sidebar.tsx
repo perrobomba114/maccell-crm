@@ -202,31 +202,35 @@ export function Sidebar({
             >
                 <div className="flex h-full flex-col min-w-[4.5rem]">
                     {/* Logo Area */}
-                    <div className="relative flex h-16 items-center border-b border-sidebar-border/30 px-3">
-                        <Link href="/" className="flex items-center gap-3 group overflow-hidden w-full">
-                            <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 overflow-hidden rounded-xl bg-white/10 p-1 transition-all duration-300 group-hover:scale-105 group-hover:bg-white/20">
-                                <img
-                                    src={getImgUrl("/logo.jpg")}
-                                    alt="Logo"
-                                    className="h-full w-full object-contain"
-                                />
-                            </div>
-                            <AnimatePresence mode="wait">
-                                {((!isCollapsed && !isMobile) || (isMobile && isMobileOpen)) && (
-                                    <motion.div
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -10 }}
-                                        className="flex flex-col h-10 justify-center"
-                                    >
-                                        <img
-                                            src={getImgUrl("/logo.jpg")}
-                                            alt="MacCell"
-                                            className="h-7 w-auto object-contain brightness-0 invert"
-                                        />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                    <div className="relative flex h-16 items-center border-b border-sidebar-border/30 px-3 overflow-hidden">
+                        <Link href="/" className="flex items-center justify-center group w-full transition-all duration-300">
+                            {((!isCollapsed && !isMobile) || (isMobile && isMobileOpen)) ? (
+                                <motion.div
+                                    key="expanded-logo"
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="flex items-center justify-center w-full"
+                                >
+                                    <img
+                                        src={getImgUrl("/logo.jpg")}
+                                        alt="MacCell"
+                                        className="h-10 w-auto max-w-full object-contain"
+                                    />
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="collapsed-logo"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 p-1.5 transition-colors group-hover:bg-white/10"
+                                >
+                                    <img
+                                        src={getImgUrl("/logo.jpg")}
+                                        alt="Logo"
+                                        className="h-full w-full object-contain"
+                                    />
+                                </motion.div>
+                            )}
                         </Link>
                     </div>
 
