@@ -17,18 +17,40 @@ export default function TechnicianLayout({
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [userName, setUserName] = useState<string | undefined>("Usuario");
     const [userEmail, setUserEmail] = useState<string | undefined>("");
+    const [userImage, setUserImage] = useState<string | null | undefined>(null);
     const [userId, setUserId] = useState<string | undefined>("");
     const [techniciansWorkload, setTechniciansWorkload] = useState<any[]>([]);
     const pathname = usePathname();
 
+    const fetchData = async () => {
+        const user = await getUserData();
+        if (user) {
+            setUserName(user.name);
+            setUserEmail(user.email);
+            setUserImage(user.imageUrl);
+            setUserId(user.id);
+        }
+    };
+
+    useEffect(() => {
+        const handleUserUpdate = () => {
+            console.log("User data update detected, refetching...");
+            fetchData();
+        };
+
+        window.addEventListener('user-data-updated' as any, handleUserUpdate);
+        return () => window.removeEventListener('user-data-updated' as any, handleUserUpdate);
+    }, []);
+
     useEffect(() => {
         let intervalId: NodeJS.Timeout;
 
-        const fetchData = async () => {
+        const initializeData = async () => {
             const user = await getUserData();
             if (user) {
                 setUserName(user.name);
                 setUserEmail(user.email);
+                setUserImage(user.imageUrl);
                 setUserId(user.id);
 
                 // Always fetch technicians workload
@@ -46,7 +68,7 @@ export default function TechnicianLayout({
             }
         };
 
-        fetchData();
+        initializeData();
 
         return () => {
             if (intervalId) clearInterval(intervalId);
@@ -88,6 +110,7 @@ export default function TechnicianLayout({
                     title="Panel Técnico"
                     userName={userName}
                     userEmail={userEmail}
+                    userImage={userImage}
                     userId={userId}
                     techniciansWorkload={techniciansWorkload}
                     profileHref="/technician/profile"

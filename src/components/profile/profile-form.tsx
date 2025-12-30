@@ -104,6 +104,8 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
                 if (updateResult.success) {
                     toast.success("Imagen de perfil actualizada", { id: toastId });
+                    // Dispatch custom event to notify layouts
+                    window.dispatchEvent(new CustomEvent("user-data-updated"));
                     router.refresh();
                 } else {
                     toast.error("Error al guardar la referencia de la imagen", { id: toastId });

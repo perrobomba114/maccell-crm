@@ -1,7 +1,7 @@
 "use client";
 
 import { ModeToggle } from "@/components/shared/mode-toggle";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -19,10 +19,12 @@ import { useRouter } from "next/navigation";
 import { TechnicianTimerWidget } from "../dashboard/technician-timer-widget";
 import { DollarWidget } from "../admin/dollar-widget";
 import { NotificationBell } from "@/components/ui/notification-bell";
+import { getImgUrl } from "@/lib/utils";
 
 interface HeaderProps {
     userName?: string;
     userEmail?: string;
+    userImage?: string | null;
     userId?: string;
     title: string;
     techniciansWorkload?: {
@@ -38,6 +40,7 @@ interface HeaderProps {
 export function Header({
     userName = "Usuario",
     userEmail = "",
+    userImage,
     userId,
     title,
     techniciansWorkload = [],
@@ -47,7 +50,7 @@ export function Header({
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
 
-    console.log("Header rendering. UserId:", userId);
+    console.log("Header rendering. UserId:", userId, "Image:", userImage);
 
     const handleLogout = () => {
         startTransition(async () => {
@@ -115,6 +118,9 @@ export function Header({
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                                 <Avatar className="h-10 w-10">
+                                    {userImage && (
+                                        <AvatarImage src={getImgUrl(userImage)} alt={userName} className="object-cover" />
+                                    )}
                                     <AvatarFallback className="bg-primary text-primary-foreground">
                                         {getInitials(userName)}
                                     </AvatarFallback>

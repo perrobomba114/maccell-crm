@@ -25,19 +25,41 @@ export function VendorLayoutClient({
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [userName, setUserName] = useState<string | undefined>("Usuario");
     const [userEmail, setUserEmail] = useState<string | undefined>("");
+    const [userImage, setUserImage] = useState<string | null | undefined>(null);
     const [userId, setUserId] = useState<string | undefined>("");
     const pathname = usePathname();
 
     const [techniciansWorkload, setTechniciansWorkload] = useState<any[]>([]);
 
+    const fetchData = async () => {
+        const user = await getUserData();
+        if (user) {
+            setUserName(user.name);
+            setUserEmail(user.email);
+            setUserImage(user.imageUrl);
+            setUserId(user.id);
+        }
+    };
+
+    useEffect(() => {
+        const handleUserUpdate = () => {
+            console.log("User data update detected, refetching...");
+            fetchData();
+        };
+
+        window.addEventListener('user-data-updated' as any, handleUserUpdate);
+        return () => window.removeEventListener('user-data-updated' as any, handleUserUpdate);
+    }, []);
+
     useEffect(() => {
         let intervalId: NodeJS.Timeout;
 
-        const fetchData = async () => {
+        const initializeData = async () => {
             const user = await getUserData();
             if (user) {
                 setUserName(user.name);
                 setUserEmail(user.email);
+                setUserImage(user.imageUrl);
                 setUserId(user.id);
 
                 // Fetch technicians workload
@@ -56,7 +78,7 @@ export function VendorLayoutClient({
             }
         };
 
-        fetchData();
+        initializeData();
 
         return () => {
             if (intervalId) clearInterval(intervalId);
@@ -98,6 +120,7 @@ export function VendorLayoutClient({
                     title="Panel de Ventas"
                     userName={userName}
                     userEmail={userEmail}
+                    userImage={userImage}
                     userId={userId}
                     techniciansWorkload={techniciansWorkload}
                     profileHref="/vendor/profile"

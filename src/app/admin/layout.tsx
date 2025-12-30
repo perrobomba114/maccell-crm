@@ -18,6 +18,7 @@ export default function AdminLayout({
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [userName, setUserName] = useState<string | undefined>("Usuario");
     const [userEmail, setUserEmail] = useState<string | undefined>("");
+    const [userImage, setUserImage] = useState<string | null | undefined>(null);
     const [userId, setUserId] = useState<string | undefined>("");
     const pathname = usePathname();
 
@@ -31,26 +32,47 @@ export default function AdminLayout({
             }
         };
 
+        const handleUserUpdate = () => {
+            console.log("User data update detected, refetching...");
+            fetchData();
+        };
+
         window.addEventListener('zen-mode-change' as any, handleZenMode);
-        return () => window.removeEventListener('zen-mode-change' as any, handleZenMode);
+        window.addEventListener('user-data-updated' as any, handleUserUpdate);
+
+        return () => {
+            window.removeEventListener('zen-mode-change' as any, handleZenMode);
+            window.removeEventListener('user-data-updated' as any, handleUserUpdate);
+        };
     }, []);
+
+    const fetchData = async () => {
+        try {
+            const user = await getUserData();
+            if (user) {
+                setUserName(user.name);
+                setUserEmail(user.email);
+                setUserImage(user.imageUrl);
+                setUserId(user.id);
+            }
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+        }
+    };
 
     useEffect(() => {
         let intervalId: NodeJS.Timeout;
 
-        const fetchData = async () => {
+        const initializeData = async () => {
             try {
                 const user = await getUserData();
                 if (user) {
                     setUserName(user.name);
                     setUserEmail(user.email);
+                    setUserImage(user.imageUrl);
                     setUserId(user.id);
 
-
                     // Fetch technicians workload
-                    // const { getTechniciansWorkload } = await import("@/actions/dashboard-actions");
-
-                    // Initial fetch
                     try {
                         const workload = await getTechniciansWorkload(user.branch?.id);
                         setTechniciansWorkload(workload);
@@ -73,7 +95,7 @@ export default function AdminLayout({
             }
         };
 
-        fetchData();
+        initializeData();
 
         return () => {
             if (intervalId) clearInterval(intervalId);
@@ -118,6 +140,7 @@ export default function AdminLayout({
                         title="Panel de Administración"
                         userName={userName}
                         userEmail={userEmail}
+                        userImage={userImage}
                         userId={userId}
                         techniciansWorkload={techniciansWorkload}
                         profileHref="/admin/profile"
