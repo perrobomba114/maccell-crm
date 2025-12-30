@@ -12,6 +12,7 @@ import {
     YAxis,
 } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 
 // --- Branch Profit Chart ---
 interface BranchProfitProps {
@@ -23,6 +24,11 @@ interface BranchProfitProps {
 }
 
 export function BranchProfitChart({ data }: BranchProfitProps) {
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
+
+    if (!isMounted) return <Card className="bg-[#18181b] border-zinc-800 shadow-none h-[450px]" />;
+
     return (
         <Card className="bg-[#18181b] border-zinc-800 shadow-none">
             <CardHeader>
@@ -72,6 +78,11 @@ interface BranchGrowthProps {
 }
 
 export function BranchGrowthChart({ data }: BranchGrowthProps) {
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
+
+    if (!isMounted) return <Card className="bg-[#18181b] border-zinc-800 shadow-none h-[450px]" />;
+
     return (
         <Card className="bg-[#18181b] border-zinc-800 shadow-none">
             <CardHeader>

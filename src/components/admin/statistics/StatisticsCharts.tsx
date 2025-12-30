@@ -12,6 +12,7 @@ import {
     YAxis,
 } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 // --- Branch Profit Chart ---
@@ -24,6 +25,11 @@ interface BranchProfitProps {
 }
 
 export function BranchProfitChart({ data }: BranchProfitProps) {
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
+
+    if (!isMounted) return <Card className="col-span-1 shadow-sm h-[450px]" />;
+
     return (
         <Card className="col-span-1 shadow-sm">
             <CardHeader>
@@ -69,6 +75,11 @@ interface TopProductsProps {
 }
 
 export function TopProductsChart({ data }: TopProductsProps) {
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
+
+    if (!isMounted) return <Card className="col-span-1 shadow-sm h-[450px]" />;
+
     return (
         <Card className="col-span-1 shadow-sm">
             <CardHeader>
@@ -109,6 +120,11 @@ interface BranchGrowthProps {
 }
 
 export function BranchGrowthChart({ data }: BranchGrowthProps) {
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
+
+    if (!isMounted) return <Card className="col-span-1 shadow-sm h-[450px]" />;
+
     return (
         <Card className="col-span-1 shadow-sm">
             <CardHeader>
