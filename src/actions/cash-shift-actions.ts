@@ -312,7 +312,7 @@ export async function getDeepCashShiftsForDate(
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const shifts = await getCashShiftsInRange(startOfDay, endOfDay, branchId);
+    const shifts = await getCashShiftsInRangeOptimized(startOfDay, endOfDay, branchId);
 
     // Return full details, serialized (autobalanced by Next.js)
     return shifts;
@@ -330,16 +330,23 @@ export async function getCashDashboardStats(
         const startOfPrevMonth = new Date(year, month - 1, 1);
         const endOfPrevMonth = new Date(year, month, 0, 23, 59, 59, 999);
 
-        // Fetch Current Month Shifts
-        const currentShifts = await getCashShiftsInRange(startOfMonth, endOfMonth, branchId);
-        const prevShifts = await getCashShiftsInRange(startOfPrevMonth, endOfPrevMonth, branchId);
+        // FAST PATH: Optimized current month fetch
+        const currentShifts = await getCashShiftsInRangeOptimized(startOfMonth, endOfMonth, branchId);
 
-        // Calculate Totals
+        // FAST PATH: Optimized previous month total using aggregations (no need to fetch all shifts)
+        const prevTotalResult = await prisma.sale.aggregate({
+            where: {
+                createdAt: { gte: startOfPrevMonth, lte: endOfPrevMonth },
+                branchId: (branchId && branchId !== "ALL") ? branchId : undefined
+            },
+            _sum: { total: true }
+        });
+        const prevTotal = prevTotalResult._sum.total || 0;
+
+        // Calculate Totals using current data
         const currentTotal = currentShifts.reduce((acc, s) => acc + s.totals.totalSales, 0);
         const currentCount = currentShifts.reduce((acc, s) => acc + s.counts.sales, 0);
         const currentExpenses = currentShifts.reduce((acc, s) => acc + s.totals.expenses, 0);
-
-        const prevTotal = prevShifts.reduce((acc, s) => acc + s.totals.totalSales, 0);
 
         let growth = 0;
         if (prevTotal > 0) {
@@ -350,7 +357,7 @@ export async function getCashDashboardStats(
 
         const avgTicket = currentCount > 0 ? currentTotal / currentCount : 0;
 
-        const result = {
+        return {
             shifts: currentShifts,
             kpi: {
                 totalAmount: currentTotal,
@@ -361,9 +368,6 @@ export async function getCashDashboardStats(
             }
         };
 
-        // Return result directly
-        return result;
-
     } catch (error) {
         console.error("Error fetching dashboard stats:", error);
         return {
@@ -373,17 +377,15 @@ export async function getCashDashboardStats(
     }
 }
 
-async function getCashShiftsInRange(start: Date, end: Date, branchId?: string) {
+async function getCashShiftsInRangeOptimized(start: Date, end: Date, branchId?: string) {
     const whereClause: any = {
-        startTime: {
-            gte: start,
-            lte: end
-        }
+        startTime: { gte: start, lte: end }
     };
     if (branchId && branchId !== "ALL") {
         whereClause.branchId = branchId;
     }
 
+    // 1. Fetch shifts once
     const shifts = await prisma.cashShift.findMany({
         where: whereClause,
         include: {
@@ -393,7 +395,105 @@ async function getCashShiftsInRange(start: Date, end: Date, branchId?: string) {
         orderBy: { startTime: 'desc' }
     });
 
-    return enrichShifts(shifts);
+    if (shifts.length === 0) return [];
+
+    // 2. Fetch all related sales for this range in BATCH (no items, very fast)
+    const allSales = await prisma.sale.findMany({
+        where: {
+            createdAt: { gte: start, lte: end },
+            branchId: (branchId && branchId !== "ALL") ? branchId : undefined
+        }
+    });
+
+    // 3. Fetch all related expenses for this range in BATCH
+    const allExpenses = await prisma.expense.findMany({
+        where: {
+            createdAt: { gte: start, lte: end },
+            branchId: (branchId && branchId !== "ALL") ? branchId : undefined
+        },
+        include: { user: { select: { name: true } } }
+    });
+
+    // 4. Enrich in-memory (O(N) vs O(N*Sales))
+    return shifts.map(shift => {
+        const sTime = shift.startTime;
+        const eTime = shift.endTime || new Date();
+
+        // Match sales/expenses to this shift in memory
+        const shiftSales = allSales.filter(s =>
+            s.branchId === shift.branchId &&
+            s.vendorId === shift.userId &&
+            s.createdAt >= sTime &&
+            s.createdAt <= eTime
+        );
+
+        const shiftExpenses = allExpenses.filter(e =>
+            e.branchId === shift.branchId &&
+            e.userId === shift.userId &&
+            e.createdAt >= sTime &&
+            e.createdAt <= eTime
+        );
+
+        let cash = 0, card = 0, mp = 0, totalSales = 0;
+        shiftSales.forEach(sale => {
+            totalSales += sale.total;
+            if (sale.paymentMethod === 'CASH') cash += sale.total;
+            else if (sale.paymentMethod === 'CARD') card += sale.total;
+            else if (sale.paymentMethod === 'MERCADOPAGO') mp += sale.total;
+        });
+
+        const expensesTotal = shiftExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+
+        // Replicate bonus logic
+        const storedBonus = (shift as any).bonusTotal || 0;
+        let finalBonus = storedBonus;
+        if (finalBonus === 0 && totalSales > 0) {
+            const bonusRate = totalSales > 1000000 ? 0.02 : 0.01;
+            const count = (shift as any).employeeCount || 1;
+            const perEmp = Math.round((totalSales * bonusRate) / 500) * 500;
+            finalBonus = perEmp * count;
+        }
+
+        const netTotal = shift.startAmount + cash - expensesTotal - finalBonus;
+
+        const modifiedSales = shiftSales
+            .filter(s => (s as any).wasPaymentModified)
+            .map(s => ({
+                id: s.id,
+                saleNumber: s.saleNumber,
+                total: s.total,
+                paymentMethod: s.paymentMethod,
+                originalPaymentMethod: (s as any).originalPaymentMethod,
+                updatedAt: s.updatedAt
+            }));
+
+        return {
+            ...shift,
+            totals: {
+                totalSales,
+                cash,
+                card,
+                mercadopago: mp,
+                expenses: expensesTotal,
+                bonuses: finalBonus,
+                netTotal
+            },
+            counts: {
+                sales: shiftSales.length,
+                expenses: shiftExpenses.length
+            },
+            details: {
+                expenses: shiftExpenses.map(e => ({
+                    id: e.id,
+                    description: e.description,
+                    amount: e.amount,
+                    time: e.createdAt,
+                    userName: (e as any).user.name
+                })),
+                modifiedSales
+            }
+        } as CashShiftWithDetails;
+    });
 }
 
 // Extract the mapping logic from getCashShifts to reusable function
