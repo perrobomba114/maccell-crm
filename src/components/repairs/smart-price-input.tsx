@@ -99,6 +99,7 @@ export function SmartPriceInput({ value, onChange, error }: SmartPriceInputProps
         <div className="relative" ref={containerRef}>
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">$</span>
             <Input
+                id="estimated-price"
                 type="text"
                 value={inputValue}
                 onChange={handleInputChange}

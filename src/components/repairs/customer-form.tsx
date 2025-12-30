@@ -55,6 +55,7 @@ export function CustomerForm({
                 <div className="space-y-2">
                     <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Nombre Completo</Label>
                     <Input
+                        id="customer-name"
                         value={name}
                         onChange={handleNameChange} onBlur={handleNameBlur}
                         placeholder="Juan Pérez"
@@ -66,6 +67,7 @@ export function CustomerForm({
                 <div className="space-y-2">
                     <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Teléfono (10 dígitos)</Label>
                     <Input
+                        id="customer-phone"
                         value={phone}
                         onChange={handlePhoneChange}
                         placeholder="1234567890"
@@ -77,6 +79,7 @@ export function CustomerForm({
                 <div className="space-y-2 md:col-span-2">
                     <Label>Email (Opcional)</Label>
                     <Input
+                        id="customer-email"
                         value={email}
                         onChange={(e) => onEmailChange(e.target.value)}
                         placeholder="juan@email.com"

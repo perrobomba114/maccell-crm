@@ -40,6 +40,7 @@ export function DeviceDetails({
                 <div className="space-y-2">
                     <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Marca</Label>
                     <Input
+                        id="device-brand"
                         value={brand} onChange={(e) => onBrandChange(handleCapitalize(e.target.value))}
                         placeholder="Samsung"
                         className={cn(errors?.brand && "border-red-500")}
@@ -49,6 +50,7 @@ export function DeviceDetails({
                 <div className="space-y-2">
                     <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Modelo</Label>
                     <Input
+                        id="device-model"
                         value={model} onChange={(e) => onModelChange(e.target.value)}
                         placeholder="S21, iPhone 13..."
                         className={cn(errors?.model && "border-red-500")}
@@ -60,6 +62,7 @@ export function DeviceDetails({
             <div className="space-y-2">
                 <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Problema / Falla</Label>
                 <Textarea
+                    id="device-problem"
                     value={problem} onChange={(e) => onProblemChange(handleCapitalize(e.target.value))}
                     placeholder="Describe el problema..."
                     rows={3}

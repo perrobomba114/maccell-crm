@@ -199,8 +199,46 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
         }
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            // Prevent default form submission on Enter
+            const target = e.target as HTMLElement;
+
+            // List of Input IDs in order
+            const focusOrder = [
+                "customer-name",
+                "customer-phone",
+                "customer-email",
+                "device-brand",
+                "device-model",
+                "device-problem",
+                "estimated-price",
+                "ticket-number"
+            ];
+
+            const currentIndex = focusOrder.indexOf(target.id);
+            if (currentIndex !== -1 && currentIndex < focusOrder.length - 1) {
+                e.preventDefault();
+                const nextId = focusOrder[currentIndex + 1];
+                const nextElement = document.getElementById(nextId);
+                if (nextElement) {
+                    nextElement.focus();
+                }
+            } else if (target.id === "ticket-number") {
+                // If it's the last one, we could either submit or just let it be. 
+                // User said: "despues ticket". 
+                // Let's not prevent default here so it submits if they press enter on ticket?
+                // Or better, don't prevent so standard behavior applies.
+            } else if (target.tagName !== "BUTTON" && target.tagName !== "TEXTAREA") {
+                // For any other input not in the list, also prevent accidental submission
+                // but only if it's not a button or textarea (where enter might be needed)
+                // Actually, in this form mostly we want to move focus.
+            }
+        }
+    };
+
     return (
-        <form onSubmit={handleSubmit} className="w-full max-w-5xl mx-auto p-4 md:p-6" suppressHydrationWarning>
+        <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="w-full max-w-5xl mx-auto p-4 md:p-6" suppressHydrationWarning>
             <div className="bg-card border rounded-xl shadow-sm p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
 
                 {/* LEFT COLUMN */}
