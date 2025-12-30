@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { LucideIcon, LayoutDashboard, Users, Building2, Package, Wrench, ShoppingCart, FileText, Receipt, ClipboardList, Sparkles, ChevronLeft, ChevronRight, Star, List, History, Box, BarChart3, Banknote, Percent, RotateCcw, Settings, Menu, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getImgUrl } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import {
@@ -202,21 +202,29 @@ export function Sidebar({
             >
                 <div className="flex h-full flex-col min-w-[4.5rem]">
                     {/* Logo Area */}
-                    <div className="relative flex h-16 items-center border-b border-sidebar-border/30 px-4">
+                    <div className="relative flex h-16 items-center border-b border-sidebar-border/30 px-3">
                         <Link href="/" className="flex items-center gap-3 group overflow-hidden w-full">
-                            <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 mx-auto">
-                                <Sparkles className="h-6 w-6 text-primary transition-transform duration-300 group-hover:scale-110" />
+                            <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 overflow-hidden rounded-xl bg-white/10 p-1 transition-all duration-300 group-hover:scale-105 group-hover:bg-white/20">
+                                <img
+                                    src={getImgUrl("/logo.jpg")}
+                                    alt="Logo"
+                                    className="h-full w-full object-contain"
+                                />
                             </div>
                             <AnimatePresence mode="wait">
                                 {((!isCollapsed && !isMobile) || (isMobile && isMobileOpen)) && (
-                                    <motion.span
+                                    <motion.div
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -10 }}
-                                        className="font-bold text-lg text-sidebar-foreground tracking-tight whitespace-nowrap ml-1"
+                                        className="flex flex-col h-10 justify-center"
                                     >
-                                        MacCell
-                                    </motion.span>
+                                        <img
+                                            src={getImgUrl("/logo.jpg")}
+                                            alt="MacCell"
+                                            className="h-7 w-auto object-contain brightness-0 invert"
+                                        />
+                                    </motion.div>
                                 )}
                             </AnimatePresence>
                         </Link>
