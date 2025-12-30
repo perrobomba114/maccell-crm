@@ -20,7 +20,11 @@ export const metadata: Metadata = {
   title: "Maccell CRM",
   description: "Sistema de gestión empresarial para MacCell",
   icons: {
-    icon: "/icono.png",
+    icon: [
+      { url: "/icono.png" },
+      { url: "/favicon.ico" },
+    ],
+    apple: "/icono.png",
   },
 };
 
