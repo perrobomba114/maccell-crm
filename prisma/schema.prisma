@@ -240,6 +240,33 @@ model Sale {
   @@index([vendorId])
   @@index([saleNumber])
   @@map("sales")
+
+  invoice SaleInvoice?
+}
+
+model SaleInvoice {
+  id          String   @id @default(cuid())
+  saleId      String   @unique
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  
+  invoiceType String   // "A", "B", "C"
+  invoiceNumber String // Format: 00001-00000012
+  
+  cae         String
+  caeExpiresAt DateTime
+  
+  customerDocType String // "CUIT", "DNI", "FINAL_CONSUMER"
+  customerDoc     String
+  customerName    String
+  customerAddress String?
+  
+  netAmount       Float
+  vatAmount       Float
+  totalAmount     Float
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("sale_invoices")
 }
 
 model SaleItem {

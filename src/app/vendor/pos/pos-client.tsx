@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Search, ShoppingCart, Smartphone, Monitor, CheckCircle2, PackageSearch, CreditCard, X, Lock, Unlock, DollarSign, Printer, Store, MapPin, Phone, Banknote, ArrowRight, TrendingDown, ArrowRightLeft, Truck, Edit, Trash2 } from "lucide-react";
+import { Search, ShoppingCart, Smartphone, Monitor, CheckCircle2, PackageSearch, CreditCard, X, Lock, Unlock, DollarSign, Printer, Store, MapPin, Phone, Banknote, ArrowRight, TrendingDown, ArrowRightLeft, Truck, Edit, Trash2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,13 +38,14 @@ import {
 import { getAllBranches } from "@/actions/branch-actions";
 import { createStockTransfer, getPendingTransfers, respondToTransfer } from "@/actions/transfer-actions";
 
-import { printSaleTicket, printCashShiftClosureTicket } from "../../../lib/print-utils";
+import { printSaleTicket, printCashShiftClosureTicket, printInvoiceTicket } from "../../../lib/print-utils";
 
 
 // ... existing imports
 
 
 import { cn } from "@/lib/utils";
+import { InvoiceModal, type InvoiceData } from "@/components/pos/invoice-modal";
 
 type CartItem = {
     uniqueId: string;
@@ -144,6 +145,16 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
     // Best Sellers State
     const [bestSellers, setBestSellers] = useState<any[]>([]);
+
+    // Invoice State
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+    const [invoiceData, setInvoiceData] = useState<InvoiceData | undefined>(undefined);
+
+    const handleInvoiceConfirm = (data: InvoiceData) => {
+        setInvoiceData(data);
+        setIsInvoiceModalOpen(false);
+        toast.success(`Facturación activada: Tipo ${data.invoiceType}`);
+    };
 
     useEffect(() => {
         if (branchId) {
@@ -653,7 +664,8 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 })),
                 total: totalToPay,
                 paymentMethod: "SPLIT",
-                payments: partialPayments
+                payments: partialPayments,
+                invoiceData: invoiceData
             });
 
             if (result.success) {
@@ -668,6 +680,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 setSearchQuery("");
                 setProducts([]);
                 setRepairQuery("");
+                setInvoiceData(undefined);
                 setIsCheckoutModalOpen(false);
 
                 // 2. Wait for modal to unmount (Instant unmount now enabled)
@@ -683,6 +696,34 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                             saleId: result.saleId,
                             vendorName: vendorName
                         });
+
+                        if (result.invoice) {
+                            console.log("Invoice Generated:", result.invoice);
+                            toast.info("Factura generada: " + result.invoice.number);
+
+                            // Determine method string for invoice
+                            const methodStr = partialPayments.length === 1 ? partialPayments[0].method : "SPLIT";
+
+                            printInvoiceTicket({
+                                branch: branchData,
+                                items: cart,
+                                total: totalToPay,
+                                paymentMethod: methodStr,
+                                invoice: {
+                                    type: invoiceData?.invoiceType || "B",
+                                    number: result.invoice.number,
+                                    cae: result.invoice.cae,
+                                    caeExpiresAt: result.invoice.caeExpiresAt ? new Date(result.invoice.caeExpiresAt) : new Date(),
+                                    customerName: invoiceData?.customerName || "Consumidor Final",
+                                    customerDocType: invoiceData?.docType || "FINAL",
+                                    customerDoc: invoiceData?.docNumber || "0",
+                                    customerAddress: invoiceData?.customerAddress || "",
+                                    salesPoint: invoiceData?.salesPoint || 1
+                                },
+                                vendorName: vendorName,
+                                date: new Date()
+                            });
+                        }
                     } catch (err) {
                         console.error("Print error:", err);
                     }
@@ -691,7 +732,6 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
             } else {
                 toast.error(result.error || "Error al procesar venta");
             }
-
         } catch (error) {
             console.error(error);
             toast.error("Error al procesar venta");
@@ -1549,7 +1589,11 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                                                 {p.method === "CARD" && <CreditCard className="w-3 h-3" />}
                                                 {p.method === "MERCADOPAGO" && <Smartphone className="w-3 h-3" />}
                                             </div>
-                                            <span className="font-medium text-zinc-300">{p.method}</span>
+                                            <span className="font-medium text-zinc-300">
+                                                {p.method === "CASH" ? "Efectivo" :
+                                                    p.method === "CARD" ? "Tarjeta" :
+                                                        p.method === "MERCADOPAGO" ? "MercadoPago" : p.method}
+                                            </span>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <span className="font-mono font-bold text-zinc-200">${p.amount.toLocaleString()}</span>
@@ -1569,28 +1613,58 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
                     </div>
 
-                    <DialogFooter className="p-6 bg-zinc-900 border-t border-zinc-800 flex justify-between items-center">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setIsCheckoutModalOpen(false)}
-                            className="text-zinc-500 hover:text-white"
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            className="bg-primary hover:bg-primary/90 text-black font-bold px-8 shadow-lg shadow-primary/20"
-                            size="lg"
-                            disabled={isProcessingSale || (parseFloat(editableTotal) || 0) - partialPayments.reduce((a, b) => a + b.amount, 0) > 1}
-                            onClick={confirmSplitSale}
-                        >
-                            {isProcessingSale ? (
-                                <span className="flex items-center gap-2">
-                                    <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                                    Procesando...
-                                </span>
-                            ) : "Confirmar Venta"}
-                        </Button>
+                    <DialogFooter className="p-6 bg-zinc-900 border-t border-zinc-800">
+                        <div className="grid grid-cols-3 gap-4 w-full">
+                            {/* 1. Cancelar - SOLID RED */}
+                            <Button
+                                onClick={() => setIsCheckoutModalOpen(false)}
+                                className="h-12 w-full rounded-xl flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold shadow-md transition-all border-0"
+                            >
+                                <X className="w-5 h-5" />
+                                <span>Cancelar</span>
+                            </Button>
+
+                            {/* 2. Facturar - SOLID BLUE */}
+                            <Button
+                                className={cn(
+                                    "h-12 w-full rounded-xl flex items-center justify-center gap-2 font-bold text-white shadow-md transition-all border-0",
+                                    invoiceData
+                                        ? "bg-blue-700 hover:bg-blue-800 ring-2 ring-blue-400" // Active state slightly distinct or just solid
+                                        : "bg-blue-600 hover:bg-blue-700"
+                                )}
+                                onClick={() => setIsInvoiceModalOpen(true)}
+                            >
+                                <FileText className="w-5 h-5" />
+                                <span>{invoiceData ? `Factura ${invoiceData.invoiceType}` : "Facturar"}</span>
+                            </Button>
+
+                            {/* 3. Confirmar - SOLID GREEN */}
+                            <Button
+                                className="h-12 w-full rounded-xl flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-all border-0"
+                                disabled={isProcessingSale || (parseFloat(editableTotal) || 0) - partialPayments.reduce((a, b) => a + b.amount, 0) > 1}
+                                onClick={confirmSplitSale}
+                            >
+                                {isProcessingSale ? (
+                                    <>
+                                        <span className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full" />
+                                        <span>Procesando...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        {invoiceData ? <CheckCircle2 className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6" />}
+                                        <span>{invoiceData ? "Finalizar" : "Confirmar Venta"}</span>
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </DialogFooter>
+
+                    <InvoiceModal
+                        open={isInvoiceModalOpen}
+                        onOpenChange={setIsInvoiceModalOpen}
+                        onConfirm={handleInvoiceConfirm}
+                        totalAmount={parseFloat(editableTotal) || 0}
+                    />
                 </DialogContent>
             </Dialog >
 

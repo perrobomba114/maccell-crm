@@ -29,6 +29,7 @@ export const adminGroups = [
         label: "Gestión Comercial",
         items: [
             { href: "/admin/sales", label: "Ventas", icon: "ShoppingCart" },
+            { href: "/admin/invoices", label: "Facturas", icon: "FileText" },
             { href: "/admin/cash-shifts", label: "Cierre de Caja", icon: "Banknote" },
         ]
     },

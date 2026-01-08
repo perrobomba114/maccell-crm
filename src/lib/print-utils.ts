@@ -452,3 +452,124 @@ export const printCashShiftClosureTicket = (data: {
 
     printHtml(wrapHtml("Cierre de Caja", SHARED_CSS, content));
 };
+
+export const printInvoiceTicket = (data: {
+    branch: any;
+    items: any[];
+    total: number;
+    paymentMethod: string;
+    invoice: {
+        type: "A" | "B";
+        number: string;
+        cae: string;
+        caeExpiresAt: Date;
+        customerName: string;
+        customerDocType: string;
+        customerDoc: string;
+        customerAddress?: string;
+        salesPoint: number;
+    };
+    vendorName?: string;
+    date: Date;
+}) => {
+    const { branch, items, total, paymentMethod, invoice, vendorName, date } = data;
+    const logoUrl = branch?.imageUrl || "/logo.jpg";
+
+    // AFIP QR Data
+    const formattedDate = format(date, "yyyy-MM-dd");
+    const qrData = {
+        ver: 1,
+        fecha: formattedDate,
+        cuit: 20409378472, // TODO: Use env variable in real app
+        ptoVta: invoice.salesPoint,
+        tipoCmp: invoice.type === "A" ? 1 : 6,
+        nroCmp: parseInt(invoice.number.split('-')[1]),
+        importe: total,
+        moneda: "PES",
+        ctz: 1,
+        tipoDocRec: invoice.customerDocType === "CUIT" ? 80 : (invoice.customerDocType === "DNI" ? 96 : 99),
+        nroDocRec: parseInt(invoice.customerDoc) || 0,
+        tipoCodAut: "E",
+        codAut: parseInt(invoice.cae)
+    };
+
+    const qrJson = JSON.stringify(qrData);
+    const qrBase64 = btoa(qrJson);
+    const qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" + qrBase64;
+    const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrUrl)}`;
+
+    const content = `
+        <div class="header">
+            <img src="${logoUrl}" class="logo" alt="Logo" onerror="this.style.display='none'" />
+            <div class="branch-name">${branch?.name || "MACCELL"}</div>
+            ${branch?.address ? `<div class="branch-info">${branch.address}</div>` : ''}
+            <div class="branch-info" style="font-size: 10px;">Resp. Inscripto</div>
+            
+            <div style="border: 2px solid black; width: 40px; height: 40px; margin: 10px auto; font-size: 24px; font-weight: 900; line-height: 36px;">${invoice.type}</div>
+            <div style="font-size: 12px; font-weight: bold;">Cod. 0${invoice.type === "A" ? 1 : 6}</div>
+            
+            <div class="row" style="margin-top: 10px;">
+                <span>Punto Venta: ${invoice.number.split('-')[0]}</span>
+                <span>Comp. Nro: ${invoice.number.split('-')[1]}</span>
+            </div>
+            <div class="date">Fecha Emisión: ${format(date, "dd/MM/yyyy", { locale: es })}</div>
+            <div class="branch-info">Validada por ARCA / AFIP</div>
+        </div>
+
+        <div style="margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed black;">
+            <div style="font-size: 10px; font-weight: bold;">DATOS DEL CLIENTE</div>
+            <div>${invoice.customerName}</div>
+            <div>${invoice.customerDocType}: ${invoice.customerDoc}</div>
+            ${invoice.customerAddress ? `<div>Dir: ${invoice.customerAddress}</div>` : ''}
+            <div>Condición IVA: ${invoice.type === "A" ? "Resp. Inscripto" : "Consumidor Final"}</div>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <div class="row" style="border-bottom: 2px solid black; font-size: 12px; font-weight: 900;">
+                <span class="col-desc">DESC</span>
+                <span class="col-qty">CANT</span>
+                <span class="col-price">IMPORTE</span>
+            </div>
+            ${items.map((item: any) => `
+                <div class="row" style="font-size: 14px;">
+                    <span class="col-desc">${item.name}</span>
+                    <span class="col-qty">${item.quantity}</span>
+                    <span class="col-price">$${(item.price * item.quantity).toLocaleString()}</span>
+                </div>
+            `).join('')}
+        </div>
+
+        <div class="total-section">
+            <div class="total-row" style="font-size: 20px;">
+                <span>TOTAL</span>
+                <span>$${total.toLocaleString()}</span>
+            </div>
+            ${(() => {
+            const methodMap: Record<string, string> = {
+                "CASH": "EFECTIVO",
+                "CARD": "TARJETA",
+                "SPLIT": "DIVIDIDO",
+                "MERCADOPAGO": "MERCADOPAGO"
+            };
+            const displayMethod = methodMap[paymentMethod] || paymentMethod;
+            return `<div class="payment-method">CONDICION: CONTADO (${displayMethod})</div>`;
+        })()}
+        </div>
+
+        <div class="qr-container">
+            <img src="${qrImgUrl}" style="width: 100px; height: 100px; margin: 0 auto; display: block;" />
+            <img src="https://www.afip.gob.ar/images/logo_afip.png" style="width: 60px; margin: 5px auto; display: block; opacity: 0.5;" />
+        </div>
+
+        <div style="text-align: center; margin-top: 10px; font-size: 12px;">
+            <div>CAE: ${invoice.cae}</div>
+            <div>Vto. CAE: ${format(new Date(invoice.caeExpiresAt), "dd/MM/yyyy")}</div>
+        </div>
+        
+        <div class="footer" style="font-size: 10px; margin-top: 10px;">
+            Comprobante Autorizado
+        </div>
+    `;
+
+    printHtml(wrapHtml(`Factura ${invoice.type}`, SHARED_CSS, content));
+};
