@@ -54,10 +54,10 @@ export async function getAfipClient() {
             keyContent = process.env.AFIP_KEY;
 
             // Handle Base64 from ENV if needed
-            if (!certContent.includes('BEGIN CERTIFICATE')) {
+            if (!certContent.includes('-----BEGIN')) {
                 certContent = Buffer.from(certContent, 'base64').toString('utf-8');
             }
-            if (!keyContent.includes('BEGIN PRIVATE KEY')) {
+            if (!keyContent.includes('-----BEGIN')) {
                 keyContent = Buffer.from(keyContent, 'base64').toString('utf-8');
             }
         } else {
