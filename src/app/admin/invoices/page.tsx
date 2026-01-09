@@ -15,13 +15,17 @@ import { FileText, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { CreateInvoiceModal } from "./create-invoice-modal";
+import { InvoicePrintButton } from "./invoice-print-button";
 
 export const dynamic = 'force-dynamic';
 
 export default async function InvoicesPage() {
     // Determine User/Branch (Mock or real if auth available)
-    // Assuming a default user for admin or retrieving from session if configured
-    const adminUserId = "admin-user"; // Placeholder if auth not strictly typed here
+    const adminUser = await db.user.findFirst({
+        where: { role: 'ADMIN' }
+    }) || await db.user.findFirst();
+
+    const adminUserId = adminUser?.id || "admin-user"; // Fallback to avoid breaking layout, though db might error if still not in DB
 
     // Fetch Branches for the modal
     const branches = await db.branch.findMany({ select: { id: true, name: true } });
@@ -31,7 +35,8 @@ export default async function InvoicesPage() {
         include: {
             sale: {
                 include: {
-                    branch: true
+                    branch: true,
+                    items: true
                 }
             }
         },
@@ -102,9 +107,7 @@ export default async function InvoicesPage() {
                                             ${inv.totalAmount.toLocaleString()}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                                                <Printer className="w-4 h-4 text-zinc-400 hover:text-white" />
-                                            </Button>
+                                            <InvoicePrintButton invoice={inv} />
                                         </TableCell>
                                     </TableRow>
                                 ))

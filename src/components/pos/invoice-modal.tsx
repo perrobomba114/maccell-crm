@@ -5,10 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, FileText, CheckCircle2, User, Building2, MapPin, Hash, Store } from "lucide-react";
+import { Loader2, FileText, User, Building2, MapPin, Hash, Search, ArrowRight, CircleDollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Add if needed or remove if not used
 
 export type InvoiceData = {
     generate: boolean;
@@ -18,6 +18,11 @@ export type InvoiceData = {
     docNumber: string;
     customerName: string;
     customerAddress?: string;
+    // New Fields
+    concept: number; // 1: Products, 2: Services
+    serviceDateFrom?: string;
+    serviceDateTo?: string;
+    paymentDueDate?: string;
 };
 
 interface InvoiceModalProps {
@@ -28,316 +33,254 @@ interface InvoiceModalProps {
 }
 
 export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount }: InvoiceModalProps) {
-    // Mode: "simple" (Cons Final) or "advanced" (Fact A / DNI)
-    const [mode, setMode] = useState<"final" | "detail">("final");
+    const [isLoadingCuit, setIsLoadingCuit] = useState(false);
 
     // Form State
     const [invoiceType, setInvoiceType] = useState<"A" | "B">("B");
-    const [docType, setDocType] = useState<"CUIT" | "DNI">("DNI");
+    const [docType, setDocType] = useState<"CUIT" | "DNI" | "FINAL">("FINAL"); // Default to Cons Final often
     const [docNumber, setDocNumber] = useState("");
     const [name, setName] = useState("");
     const [address, setAddress] = useState("");
-    const [salesPoint, setSalesPoint] = useState("3");
+    const [salesPoint, setSalesPoint] = useState("10"); // Default POS sales point (Matched with AFIP registration)
+    const [ivaCondition, setIvaCondition] = useState("");
 
-    // Reset logic when opening
+    // Concept & Dates
+    const [concept, setConcept] = useState<1 | 2>(1);
+    const today = new Date().toISOString().split('T')[0];
+    const [serviceDateFrom, setServiceDateFrom] = useState(today);
+    const [serviceDateTo, setServiceDateTo] = useState(today);
+    const [paymentDueDate, setPaymentDueDate] = useState(today);
+
+    // Reset logic
     useEffect(() => {
         if (open) {
-            setMode("final");
             setInvoiceType("B");
-            setDocType("DNI");
+            setDocType("FINAL");
             setDocNumber("");
             setName("");
             setAddress("");
-            setIsLoadingCuit(false);
+            setIvaCondition("");
+            setConcept(1);
+            setServiceDateFrom(today);
+            setServiceDateTo(today);
+            setPaymentDueDate(today);
         }
     }, [open]);
 
-    // CUIT Lookup Logic
-    const [isLoadingCuit, setIsLoadingCuit] = useState(false);
+    // Search CUIT Logic
+    const handleSearchCuit = async () => {
+        if (!docNumber) return;
+        setIsLoadingCuit(true);
+        try {
+            // Dynamic import to avoid server action issues if not set up in client correctly
+            const { getAfipPadronData } = await import("@/lib/actions/pos");
+            const res = await getAfipPadronData(docNumber);
 
-    const handleCuitKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            if (docNumber.length < 11) {
-                toast.error("El CUIT debe tener 11 dígitos");
-                return;
-            }
+            if (res.success && (res as any).data) {
+                const { name, address, isRespInscripto, isMonotributo, ivaCondition } = (res as any).data;
+                setName(name);
+                setAddress(address);
+                setIvaCondition(ivaCondition || "Desconocido");
 
-            setIsLoadingCuit(true);
-            try {
-                // Dynamic import to avoid server action issues if not set up in client correctly, 
-                // but standard import should work if 'use server' is at top of file, 
-                // here we imported function from client component, so we rely on it being a server action.
-                // WE MUST IMPORT IT.
-                const { getAfipPadronData } = await import("@/lib/actions/pos");
-                const res = await getAfipPadronData(docNumber);
-
-                if (res.success && 'data' in res) {
-                    const { name, address, isRespInscripto, isMonotributo } = res.data;
-                    setName(name);
-                    setAddress(address);
-
-                    // Auto-select Invoice Type
-                    if (isRespInscripto) {
-                        setInvoiceType("A");
-                        toast.success("Contribuyente Responsable Inscripto detectado. Factura A seleccionada.");
-                    } else if (isMonotributo) {
-                        setInvoiceType("B");
-                        toast.success("Monotributista detectado. Factura B seleccionada.");
-                    } else {
-                        setInvoiceType("B");
-                        toast.success(`Datos cargados: ${name}`);
-                    }
+                if (ivaCondition === "Responsable Inscripto") {
+                    setInvoiceType("A");
+                    toast.success("Responsable Inscripto detectado. Factura A seleccionada.");
                 } else {
-                    toast.error(res.error || "No se encontraron datos.");
+                    setInvoiceType("B");
+                    toast.success("Cliente cargado: " + name);
                 }
-            } catch (error) {
-                console.error(error);
-                toast.error("Error al buscar CUIT.");
-            } finally {
-                setIsLoadingCuit(false);
+            } else {
+                toast.error(res.error || "No se encontraron datos.");
             }
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al buscar CUIT.");
+        } finally {
+            setIsLoadingCuit(false);
         }
     };
 
     const handleConfirm = () => {
-        // Logic for "Consumidor Final" mode
-        if (mode === "final") {
-            onConfirm({
-                generate: true,
-                salesPoint: parseInt(salesPoint) || 3,
-                invoiceType: "B",
-                docType: "FINAL",
-                docNumber: "0",
-                customerName: "Consumidor Final",
-                customerAddress: ""
-            });
-            return;
-        }
-
-        // Logic for "Con Datos" mode
-        if (docType === "CUIT") {
-            if (docNumber.length !== 11) {
-                toast.error("El CUIT debe tener 11 dígitos");
+        // Validation
+        if (docType === "CUIT" || docType === "DNI") {
+            if (name.length < 3) {
+                toast.error("Ingrese el nombre del cliente");
                 return;
             }
-            if (invoiceType === "A" && docType !== "CUIT") {
-                toast.error("Factura A requiere CUIT");
-                return;
+            if (invoiceType === "A" && ivaCondition !== "Responsable Inscripto") {
+                // Warning? Or let it pass if user forces it.
+                // Let's warn but allow overrides if they insist? Or stricter?
+                // For POS, let's be flexible but warn.
             }
         }
 
-        if (name.trim().length < 3) {
-            toast.error("Ingrese el nombre o razón social");
-            return;
+        if (concept === 2) {
+            if (!serviceDateFrom || !serviceDateTo || !paymentDueDate) {
+                toast.error("Las fechas son obligatorias para Servicios");
+                return;
+            }
         }
 
         onConfirm({
             generate: true,
-            salesPoint: parseInt(salesPoint) || 3,
-            invoiceType: invoiceType,
-            docType: docType,
-            docNumber: docNumber,
-            customerName: name,
-            customerAddress: address
+            salesPoint: parseInt(salesPoint) || 10,
+            invoiceType,
+            docType: docType === "FINAL" ? "FINAL" : docType as any,
+            docNumber: docType === "FINAL" ? "0" : docNumber,
+            customerName: docType === "FINAL" ? "Consumidor Final" : name,
+            customerAddress: address,
+            concept,
+            serviceDateFrom: concept === 2 ? serviceDateFrom : undefined,
+            serviceDateTo: concept === 2 ? serviceDateTo : undefined,
+            paymentDueDate: concept === 2 ? paymentDueDate : undefined
         });
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px] bg-zinc-950 border-zinc-800 text-white p-0 overflow-hidden shadow-2xl">
-                {/* Header with Gradient */}
-                <div className="bg-gradient-to-r from-blue-900/20 to-zinc-900/50 p-6 border-b border-zinc-800">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-3 text-xl font-medium tracking-tight">
-                            <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                                <FileText className="w-5 h-5 text-blue-500" />
-                            </div>
-                            Datos de Facturación
-                        </DialogTitle>
-                        <DialogDescription className="text-zinc-400">
-                            Configure los detalles para el comprobante electrónico.
-                        </DialogDescription>
-                    </DialogHeader>
-                </div>
+            <DialogContent className="max-w-[95vw] lg:max-w-5xl bg-zinc-950 border-zinc-800 text-white p-0 overflow-hidden shadow-2xl">
+                <DialogHeader className="px-8 py-6 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur-xl">
+                    <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                        <div className="p-2.5 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                            <FileText className="w-6 h-6 text-blue-500" />
+                        </div>
+                        Facturación Vendedor
+                    </DialogTitle>
+                    <DialogDescription className="text-zinc-400">
+                        Configure los detalles antes de emitir el comprobante.
+                    </DialogDescription>
+                </DialogHeader>
 
-                <div className="p-6 space-y-6">
-                    {/* Amount Banner */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50">
-                        <span className="text-sm font-medium text-zinc-400">Monto Total a Facturar</span>
-                        <span className="text-2xl font-bold font-mono text-green-400">
-                            ${totalAmount.toLocaleString()}
-                        </span>
-                    </div>
+                <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    {/* Left: Customer */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-blue-400 uppercase tracking-wider mb-2">
+                            <User className="w-4 h-4" /> Datos del Cliente
+                        </div>
 
-                    <Tabs value={mode} onValueChange={(v) => setMode(v as any)} className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 bg-zinc-900 p-1">
-                            <TabsTrigger value="final" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">
-                                Consumidor Final
-                            </TabsTrigger>
-                            <TabsTrigger value="detail" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-zinc-400">
-                                Con Datos / Factura A
-                            </TabsTrigger>
-                        </TabsList>
-
-                        <div className="mt-6 space-y-5">
-                            {/* SHARED: Sales Point (HIDDEN FROM USER, but keeping in state) */}
-                            {/* User requested not to see Sales Point. We hardcode or respect default without showing input. */}
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2 opacity-50 pointer-events-none hidden">
-                                    {/* HIDDEN, default 3 */}
-                                    <Label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Punto de Venta</Label>
-                                    <Input value={salesPoint} readOnly />
+                        <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-5">
+                            <div className="space-y-2">
+                                <Label className="text-zinc-400">Tipo de Documento</Label>
+                                <div className="flex gap-2">
+                                    <button onClick={() => { setDocType("FINAL"); setDocNumber("0"); setName(""); }} className={cn("flex-1 py-2 rounded-md border text-sm font-medium transition-all", docType === "FINAL" ? "bg-zinc-100 text-zinc-900 border-white" : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-zinc-800")}>Final</button>
+                                    <button onClick={() => { setDocType("DNI"); setDocNumber(""); setName(""); }} className={cn("flex-1 py-2 rounded-md border text-sm font-medium transition-all", docType === "DNI" ? "bg-zinc-100 text-zinc-900 border-white" : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-zinc-800")}>DNI</button>
+                                    <button onClick={() => { setDocType("CUIT"); setDocNumber(""); setName(""); }} className={cn("flex-1 py-2 rounded-md border text-sm font-medium transition-all", docType === "CUIT" ? "bg-zinc-100 text-zinc-900 border-white" : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-zinc-800")}>CUIT</button>
                                 </div>
-                                {mode === "detail" && (
-                                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 col-span-2">
-
-                                        {/* Type Selection - Manual Override */}
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => { setInvoiceType("B"); /* Keep current docType or let user decide */ }}
-                                                className={cn(
-                                                    "cursor-pointer rounded-lg border p-3 flex flex-col items-center gap-2 transition-all",
-                                                    invoiceType === "B"
-                                                        ? "bg-blue-600/10 border-blue-500 text-blue-400"
-                                                        : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:bg-zinc-800 hover:border-zinc-700"
-                                                )}
-                                            >
-                                                <User className="w-5 h-5" />
-                                                <span className="font-medium text-sm">Factura B</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setInvoiceType("A"); setDocType("CUIT"); }}
-                                                className={cn(
-                                                    "cursor-pointer rounded-lg border p-3 flex flex-col items-center gap-2 transition-all",
-                                                    invoiceType === "A"
-                                                        ? "bg-blue-600/10 border-blue-500 text-blue-400"
-                                                        : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:bg-zinc-800 hover:border-zinc-700"
-                                                )}
-                                            >
-                                                <Building2 className="w-5 h-5" />
-                                                <span className="font-medium text-sm">Factura A</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
-                            {mode === "detail" && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-
-                                    {/* Type Selection - Use buttons for manual override, but auto-select works too */}
-                                    {/* Document */}
+                            {docType !== "FINAL" && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                                     <div className="space-y-2">
-                                        <div className="flex justify-between">
-                                            <Label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">
-                                                {docType} / CUIT
-                                            </Label>
+                                        <Label className="text-zinc-400">Número</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                value={docNumber}
+                                                onChange={e => setDocNumber(e.target.value)}
+                                                placeholder={docType === "CUIT" ? "20..." : "Número DNI"}
+                                                className="bg-zinc-950 border-zinc-700 font-mono text-lg"
+                                                onKeyDown={(e) => e.key === "Enter" && docType === "CUIT" && handleSearchCuit()}
+                                            />
                                             {docType === "CUIT" && (
-                                                <span className="text-[10px] text-blue-400 flex items-center">
-                                                    <Loader2 className={cn("w-3 h-3 mr-1", isLoadingCuit ? "animate-spin" : "hidden")} />
-                                                    Presione ENTER para buscar
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="relative flex gap-2">
-                                            <div className="relative flex-1">
-                                                <Hash className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                                                <Input
-                                                    value={docNumber}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setDocNumber(val);
-                                                        // Auto-switch to CUIT if typing long number (greater than 8 digits usually implies CUIT)
-                                                        if (val.length > 8) {
-                                                            if (docType !== "CUIT") setDocType("CUIT");
-                                                        } else {
-                                                            // Optional: If short, maybe DNI? But user might be typing slowly. 
-                                                            // Let's stick to auto-switching TO Cuit, but not away from it so easily unless explicit.
-                                                        }
-                                                    }}
-                                                    onKeyDown={handleCuitKeyDown}
-                                                    className="pl-9 bg-zinc-900 border-zinc-700 focus-visible:ring-blue-500/50 font-mono tracking-wide"
-                                                    placeholder={invoiceType === "A" ? "Ingrese CUIT" : "DNI o CUIT"}
-                                                    disabled={isLoadingCuit}
-                                                />
-                                            </div>
-                                            {docType === "CUIT" && (
-                                                <Button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        // Manually trigger Enter logic
-                                                        const event = { key: "Enter", preventDefault: () => { } } as any;
-                                                        handleCuitKeyDown(event);
-                                                    }}
-                                                    disabled={isLoadingCuit || docNumber.length !== 11}
-                                                    className="px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700"
-                                                >
-                                                    {isLoadingCuit ? <Loader2 className="w-4 h-4 animate-spin" /> : "Buscar"}
+                                                <Button onClick={handleSearchCuit} disabled={isLoadingCuit} variant="secondary" className="bg-zinc-800 border-zinc-700">
+                                                    {isLoadingCuit ? <Loader2 className="animate-spin w-4 h-4" /> : <Search className="w-4 h-4" />}
                                                 </Button>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Name */}
                                     <div className="space-y-2">
-                                        <Label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Nombre / Razón Social</Label>
-                                        <div className="relative">
-                                            <User className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                                            <Input
-                                                value={name}
-                                                onChange={(e) => setName(e.target.value)}
-                                                className="pl-9 bg-zinc-900 border-zinc-700 focus-visible:ring-blue-500/50"
-                                                placeholder={isLoadingCuit ? "Buscando..." : "Nombre o Razón Social"}
-                                                readOnly={isLoadingCuit}
-                                            />
-                                        </div>
+                                        <Label className="text-zinc-400">Nombre / Razón Social</Label>
+                                        <Input
+                                            value={name}
+                                            onChange={e => setName(e.target.value)}
+                                            className="bg-zinc-950 border-zinc-700"
+                                        />
                                     </div>
-
-                                    {/* Address */}
                                     <div className="space-y-2">
-                                        <Label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Dirección (Opcional)</Label>
-                                        <div className="relative">
-                                            <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                                            <Input
-                                                value={address}
-                                                onChange={(e) => setAddress(e.target.value)}
-                                                className="pl-9 bg-zinc-900 border-zinc-700 focus-visible:ring-blue-500/50"
-                                                placeholder="Dirección fiscal"
-                                                readOnly={isLoadingCuit}
-                                            />
-                                        </div>
+                                        <Label className="text-zinc-400">Dirección</Label>
+                                        <Input
+                                            value={address}
+                                            onChange={e => setAddress(e.target.value)}
+                                            className="bg-zinc-950 border-zinc-700"
+                                        />
                                     </div>
-
-                                    {/* Manual Type Override (Small UI) */}
-                                    <div className="pt-2 flex gap-2">
-                                        <span className="text-xs text-zinc-600 self-center">Forzar Tipo:</span>
-                                        <Button
-                                            size="sm"
-                                            variant={invoiceType === "A" ? "secondary" : "ghost"}
-                                            className="h-6 text-xs"
-                                            onClick={() => setInvoiceType("A")}
-                                        >A</Button>
-                                        <Button
-                                            size="sm"
-                                            variant={invoiceType === "B" ? "secondary" : "ghost"}
-                                            className="h-6 text-xs"
-                                            onClick={() => setInvoiceType("B")}
-                                        >B</Button>
+                                    <div className="space-y-2">
+                                        <Label className="text-zinc-400">Condición AFIP</Label>
+                                        <div className="px-3 py-2 rounded-md bg-zinc-950 border border-zinc-800 text-sm text-zinc-300">
+                                            {ivaCondition || "No verificado"}
+                                        </div>
                                     </div>
                                 </div>
                             )}
                         </div>
-                    </Tabs>
+                    </div>
+
+                    {/* Right: Config */}
+                    <div className="space-y-6 flex flex-col">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-blue-400 uppercase tracking-wider mb-2">
+                            <CircleDollarSign className="w-4 h-4" /> Configuración Factura
+                        </div>
+
+                        <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-6 flex-1">
+                            <div className="space-y-3">
+                                <Label className="text-zinc-400 font-medium">Tipo de Comprobante</Label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button onClick={() => setInvoiceType("A")} className={cn("flex flex-col items-center justify-center p-4 rounded-xl border transition-all gap-1", invoiceType === "A" ? "bg-blue-600/20 border-blue-500 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.15)]" : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-900")}>
+                                        <span className="text-3xl font-bold">A</span>
+                                        <span className="text-xs font-medium">Resp. Inscripto</span>
+                                    </button>
+                                    <button onClick={() => setInvoiceType("B")} className={cn("flex flex-col items-center justify-center p-4 rounded-xl border transition-all gap-1", invoiceType === "B" ? "bg-blue-600/20 border-blue-500 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.15)]" : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-900")}>
+                                        <span className="text-3xl font-bold">B</span>
+                                        <span className="text-xs font-medium">Cons. Final</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <Label className="text-zinc-400 font-medium">Concepto</Label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button onClick={() => setConcept(1)} className={cn("flex flex-col items-center justify-center p-3 rounded-xl border transition-all gap-1", concept === 1 ? "bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)]" : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-900")}>
+                                        <span className="text-lg font-bold">Productos</span>
+                                    </button>
+                                    <button onClick={() => setConcept(2)} className={cn("flex flex-col items-center justify-center p-3 rounded-xl border transition-all gap-1", concept === 2 ? "bg-amber-600/20 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]" : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-900")}>
+                                        <span className="text-lg font-bold">Servicios</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {concept === 2 && (
+                                <div className="space-y-4 p-4 bg-zinc-950/50 rounded-xl border border-zinc-800 animate-in slide-in-from-top-2">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <Label className="text-xs text-zinc-500">Inicio Servicio</Label>
+                                            <Input type="date" value={serviceDateFrom} onChange={e => setServiceDateFrom(e.target.value)} className="bg-zinc-900 border-zinc-700 h-9" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-xs text-zinc-500">Fin Servicio</Label>
+                                            <Input type="date" value={serviceDateTo} onChange={e => setServiceDateTo(e.target.value)} className="bg-zinc-900 border-zinc-700 h-9" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs text-zinc-500">Vencimiento Cobro</Label>
+                                        <Input type="date" value={paymentDueDate} onChange={e => setPaymentDueDate(e.target.value)} className="bg-zinc-900 border-zinc-700 h-9" />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Total Banner */}
+                            <div className="mt-auto bg-gradient-to-r from-zinc-900 to-zinc-950 border border-zinc-800 p-4 rounded-xl flex items-center justify-between">
+                                <span className="text-zinc-400 font-medium">Total a Facturar</span>
+                                <span className="text-2xl font-bold text-green-400 font-mono">${totalAmount.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <DialogFooter className="p-6 bg-zinc-900/50 border-t border-zinc-800">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="hover:bg-zinc-800 text-zinc-400 hover:text-white">Cancelar</Button>
-                    <Button onClick={handleConfirm} disabled={isLoadingCuit} className="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 shadow-lg shadow-blue-900/20">
-                        {isLoadingCuit ? <Loader2 className="w-4 h-4 animate-spin" /> : (mode === "final" ? "Facturar a Cons. Final" : "Confirmar Factura")}
+                <DialogFooter className="p-6 bg-zinc-900/50 border-t border-zinc-800 flex justify-between gap-4">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-zinc-400 hover:text-white hover:bg-zinc-800">Cancelar</Button>
+                    <Button onClick={handleConfirm} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-6 text-lg shadow-lg shadow-blue-900/20">
+                        {docType === "FINAL" && invoiceType === "B" ? "Emitir a Consumidor Final" : "Confirmar Factura"}
+                        <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -475,20 +475,31 @@ export const printInvoiceTicket = (data: {
     const { branch, items, total, paymentMethod, invoice, vendorName, date } = data;
     const logoUrl = branch?.imageUrl || "/logo.jpg";
 
+    // Parse Voucher Number Details Safely
+    const vNumberStr = invoice.number.toString();
+    const isHyphenated = vNumberStr.includes('-');
+    const displayPtoVta = isHyphenated ? vNumberStr.split('-')[0] : invoice.salesPoint.toString();
+    const displayNroVal = isHyphenated ? vNumberStr.split('-')[1] : vNumberStr;
+
+    const formattedPtoVta = displayPtoVta.padStart(5, '0');
+    const formattedNroComp = displayNroVal.padStart(8, '0');
+
     // AFIP QR Data
     const formattedDate = format(date, "yyyy-MM-dd");
+    const ISSUER_CUIT = 30717390314;
+
     const qrData = {
         ver: 1,
         fecha: formattedDate,
-        cuit: 20409378472, // TODO: Use env variable in real app
-        ptoVta: invoice.salesPoint,
+        cuit: ISSUER_CUIT,
+        ptoVta: parseInt(displayPtoVta),
         tipoCmp: invoice.type === "A" ? 1 : 6,
-        nroCmp: parseInt(invoice.number.split('-')[1]),
+        nroCmp: parseInt(displayNroVal),
         importe: total,
         moneda: "PES",
         ctz: 1,
         tipoDocRec: invoice.customerDocType === "CUIT" ? 80 : (invoice.customerDocType === "DNI" ? 96 : 99),
-        nroDocRec: parseInt(invoice.customerDoc) || 0,
+        nroDocRec: parseInt(invoice.customerDoc.replace(/\D/g, '')) || 0,
         tipoCodAut: "E",
         codAut: parseInt(invoice.cae)
     };
@@ -499,77 +510,100 @@ export const printInvoiceTicket = (data: {
     const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrUrl)}`;
 
     const content = `
-        <div class="header">
-            <img src="${logoUrl}" class="logo" alt="Logo" onerror="this.style.display='none'" />
-            <div class="branch-name">${branch?.name || "MACCELL"}</div>
-            ${branch?.address ? `<div class="branch-info">${branch.address}</div>` : ''}
-            <div class="branch-info" style="font-size: 10px;">Resp. Inscripto</div>
+        <div class="header" style="text-align: center;">
+            <div style="font-size: 24px; font-weight: 900; margin-bottom: 2px; text-transform: uppercase;">${branch?.name || "MACCELL"}</div>
+            <div style="font-size: 11px; margin-bottom: 8px;">${branch?.address || ""}</div>
             
-            <div style="border: 2px solid black; width: 40px; height: 40px; margin: 10px auto; font-size: 24px; font-weight: 900; line-height: 36px;">${invoice.type}</div>
-            <div style="font-size: 12px; font-weight: bold;">Cod. 0${invoice.type === "A" ? 1 : 6}</div>
-            
-            <div class="row" style="margin-top: 10px;">
-                <span>Punto Venta: ${invoice.number.split('-')[0]}</span>
-                <span>Comp. Nro: ${invoice.number.split('-')[1]}</span>
-            </div>
-            <div class="date">Fecha Emisión: ${format(date, "dd/MM/yyyy", { locale: es })}</div>
-            <div class="branch-info">Validada por ARCA / AFIP</div>
-        </div>
-
-        <div style="margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed black;">
-            <div style="font-size: 10px; font-weight: bold;">DATOS DEL CLIENTE</div>
-            <div>${invoice.customerName}</div>
-            <div>${invoice.customerDocType}: ${invoice.customerDoc}</div>
-            ${invoice.customerAddress ? `<div>Dir: ${invoice.customerAddress}</div>` : ''}
-            <div>Condición IVA: ${invoice.type === "A" ? "Resp. Inscripto" : "Consumidor Final"}</div>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <div class="row" style="border-bottom: 2px solid black; font-size: 12px; font-weight: 900;">
-                <span class="col-desc">DESC</span>
-                <span class="col-qty">CANT</span>
-                <span class="col-price">IMPORTE</span>
-            </div>
-            ${items.map((item: any) => `
-                <div class="row" style="font-size: 14px;">
-                    <span class="col-desc">${item.name}</span>
-                    <span class="col-qty">${item.quantity}</span>
-                    <span class="col-price">$${(item.price * item.quantity).toLocaleString()}</span>
+            <div style="display: flex; border: 1px solid black; margin: 10px 0; min-height: 60px;">
+                <div style="flex: 1.2; font-size: 10px; text-align: left; padding: 5px; border-right: 1px solid black; display: flex; flex-direction: column; justify-content: center;">
+                    <b>CUIT:</b> 30-71739031-4<br/>
+                    <b>IIBB:</b> 30717390314<br/>
+                    <b>Inicio:</b> 01/01/2024<br/>
+                    <b>IVA RESP. INSCRIPTO</b>
                 </div>
-            `).join('')}
+                
+                <div style="width: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; margin: -1px;">
+                    <div style="border: 2px solid black; width: 35px; height: 35px; font-size: 24px; font-weight: 900; line-height: 32px; text-align: center; margin-bottom: 2px;">${invoice.type}</div>
+                    <div style="font-size: 8px; font-weight: bold;">Cod. 00${invoice.type === "A" ? 1 : 6}</div>
+                </div>
+                
+                <div style="flex: 1.2; font-size: 11px; text-align: right; padding: 5px; border-left: 1px solid black; display: flex; flex-direction: column; justify-content: center;">
+                    <b style="font-size: 12px;">FACTURA</b><br/>
+                    <b>P.V.:</b> ${formattedPtoVta}<br/>
+                    <b>Nro:</b> ${formattedNroComp}
+                </div>
+            </div>
+            
+            <div style="text-align: right; font-size: 13px; font-weight: bold; margin-bottom: 5px;">FECHA: ${format(date, "dd/MM/yyyy", { locale: es })}</div>
         </div>
 
-        <div class="total-section">
-            <div class="total-row" style="font-size: 20px;">
+        <div style="margin: 10px 0; padding: 8px; border: 1px solid black; border-radius: 4px;">
+            <div style="font-size: 10px; font-weight: 900; color: #333; margin-bottom: 4px; border-bottom: 1px solid #ddd; text-align: left;">RECEPTOR</div>
+            <div style="font-size: 15px; font-weight: bold; text-align: left;">${invoice.customerName}</div>
+            <div style="font-size: 13px; text-align: left;">
+                ${invoice.customerDocType === "FINAL" ? "CONSUMIDOR FINAL" : `<b>${invoice.customerDocType}:</b> ${invoice.customerDoc}`}
+            </div>
+            ${invoice.customerAddress ? `<div style="font-size: 12px; text-align: left;"><b>DIR:</b> ${invoice.customerAddress}</div>` : ''}
+            <div style="font-size: 12px; text-align: left;"><b>IVA:</b> ${invoice.type === "A" ? "RESPONSABLE INSCRIPTO" : "CONSUMIDOR FINAL"}</div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="border-bottom: 2px solid black; font-weight: 900; font-size: 12px;">
+                        <th style="text-align: left; padding: 3px 0;">DESC.</th>
+                        <th style="text-align: center; width: 40px;">CANT</th>
+                        <th style="text-align: right; width: 80px;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map((item: any) => `
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 5px 0; text-align: left;">${item.name}</td>
+                            <td style="text-align: center;">${item.quantity}</td>
+                            <td style="text-align: right;">$${(item.price * item.quantity).toLocaleString()}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="total-section" style="border-top: 2px solid black; padding-top: 8px;">
+            <div style="display: flex; justify-content: space-between; font-size: 24px; font-weight: 900;">
                 <span>TOTAL</span>
                 <span>$${total.toLocaleString()}</span>
             </div>
-            ${(() => {
+            <div style="font-size: 13px; margin-top: 5px; font-weight: bold; text-align: right;">
+                PAGO: ${(() => {
             const methodMap: Record<string, string> = {
                 "CASH": "EFECTIVO",
                 "CARD": "TARJETA",
-                "SPLIT": "DIVIDIDO",
-                "MERCADOPAGO": "MERCADOPAGO"
+                "SPLIT": "PAGO MULTIPLE",
+                "MERCADOPAGO": "MERCADOPAGO / QR"
             };
-            const displayMethod = methodMap[paymentMethod] || paymentMethod;
-            return `<div class="payment-method">CONDICION: CONTADO (${displayMethod})</div>`;
+            return methodMap[paymentMethod] || paymentMethod.toUpperCase();
         })()}
+            </div>
         </div>
 
-        <div class="qr-container">
-            <img src="${qrImgUrl}" style="width: 100px; height: 100px; margin: 0 auto; display: block;" />
-            <img src="https://www.afip.gob.ar/images/logo_afip.png" style="width: 60px; margin: 5px auto; display: block; opacity: 0.5;" />
+        <div class="qr-container" style="display: flex; flex-direction: column; align-items: center; margin-top: 20px;">
+            <img src="${qrImgUrl}" style="width: 130px; height: 130px;" onerror="this.style.display='none'" />
+            <div style="margin-top: 8px; text-align: center;">
+                <img src="https://www.afip.gob.ar/images/logo_afip.png" style="width: 70px;" onerror="this.style.display='none'" />
+                <div style="font-size: 9px; color: #666; margin-top: 2px;">Comprobante Autorizado por AFIP</div>
+            </div>
         </div>
 
-        <div style="text-align: center; margin-top: 10px; font-size: 12px;">
-            <div>CAE: ${invoice.cae}</div>
-            <div>Vto. CAE: ${format(new Date(invoice.caeExpiresAt), "dd/MM/yyyy")}</div>
+        <div style="text-align: center; margin-top: 15px; font-size: 14px; border: 1px dashed black; padding: 8px;">
+            <div><b>CAE:</b> ${invoice.cae}</div>
+            <div><b>VTO. CAE:</b> ${format(new Date(invoice.caeExpiresAt), "dd/MM/yyyy")}</div>
         </div>
         
-        <div class="footer" style="font-size: 10px; margin-top: 10px;">
-            Comprobante Autorizado
+        <div class="footer" style="font-size: 10px; margin-top: 20px; text-align: center; color: #666;">
+            Comprobante Oficial de Venta<br/>
+            Maccell CRM
         </div>
     `;
 
-    printHtml(wrapHtml(`Factura ${invoice.type}`, SHARED_CSS, content));
+    printHtml(wrapHtml(`Factura ${invoice.type} - ${formattedPtoVta}-${formattedNroComp}`, SHARED_CSS, content));
 };

@@ -1,6 +1,32 @@
 import { Arca } from '@arcasdk/core';
 import fs from 'fs';
 import path from 'path';
+import https from 'https';
+import { constants } from 'crypto';
+import tls from 'tls';
+
+// --- NUCLEAR FIX FOR AFIP SSL ERROR (DH KEY TOO SMALL) ---
+// Monkey-patch tls.createSecureContext to force legacy settings globally.
+// This is necessary because some libraries (like node-soap used by AFIP SDKs) 
+// might not forward custom agent options correctly to the low-level TLS socket.
+const origCreateSecureContext = tls.createSecureContext;
+(tls as any).createSecureContext = function (options: any) {
+    if (!options) options = {};
+    // Force legacy ciphers and lower security level
+    options.ciphers = 'DEFAULT:@SECLEVEL=0';
+    options.minVersion = 'TLSv1';
+    // Force legacy server connect behavior
+    options.secureOptions = (options.secureOptions || 0) | constants.SSL_OP_LEGACY_SERVER_CONNECT;
+    return origCreateSecureContext.call(tls, options);
+};
+
+// Patch Global Agent as well just in case
+try {
+    https.globalAgent.options.ciphers = 'DEFAULT:@SECLEVEL=0';
+    https.globalAgent.options.minVersion = 'TLSv1';
+} catch (e) {
+    console.warn("Could not set global https agent options", e);
+}
 
 // Environment variables
 const PRODUCTION = String(process.env.AFIP_PRODUCTION).toLowerCase() === 'true';
@@ -50,8 +76,12 @@ export async function getAfipClient() {
         key: keyContent,
         production: PRODUCTION,
         useSoap12: false,
-        useHttpsAgent: true // REQUIRED for Node.js > 18 to handle AFIP legacy ciphers (dh key too small)
-    });
+        useHttpsAgent: true,
+        ciphers: 'DEFAULT:@SECLEVEL=0',
+        minVersion: 'TLSv1',
+        secureOptions: constants.SSL_OP_LEGACY_SERVER_CONNECT,
+        rejectUnauthorized: false
+    } as any);
 
     return arca;
 }
@@ -156,12 +186,45 @@ export async function createAfipInvoice(data: {
             payload['FchVtoPago'] = data.paymentDueDate.replace(/-/g, '');
         }
 
-        console.log("Creating Next Voucher with Payload:", JSON.stringify(payload, null, 2));
+        const res = await arca.electronicBillingService.createNextVoucher(payload) as any;
+        console.log("AFIP SDK Result:", JSON.stringify(res, null, 2));
 
-        const res = await arca.electronicBillingService.createNextVoucher(payload);
+        // SDK returns { cae: string, caeFchVto: string, response: object }
+        // If rejected, cae is empty string.
+        if (res.cae && res.cae !== "") {
+            return {
+                success: true,
+                data: {
+                    cae: res.cae,
+                    caeFchVto: res.caeFchVto,
+                    // Typically SDK returns raw response in 'response'
+                    voucherNumber: res.response?.FeDetResp?.FECAEDetResponse?.[0]?.CbteDesde || payload.CbteDesde
+                }
+            };
+        }
 
-        // Response format from @arcasdk/core might differ slightly, verify type ICreateVoucherResult
-        return { success: true, data: res };
+        // FAILURE HANDLING
+        const rawResponse = res.response || {};
+
+        // 1. Global Errors
+        const errors = rawResponse.Errors?.Err || rawResponse.Errors;
+        if (errors && Array.isArray(errors) && errors.length > 0) {
+            const msg = errors.map((e: any) => `(${e.Code}) ${e.Msg}`).join(". ");
+            throw new Error(`Rechazo AFIP: ${msg}`);
+        }
+
+        // 2. Observations in Detail
+        const detResp = rawResponse.FeDetResp?.FECAEDetResponse?.[0];
+        const obs = detResp?.Observaciones?.Obs;
+        if (obs && Array.isArray(obs) && obs.length > 0) {
+            const msg = obs.map((o: any) => `(${o.Code}) ${o.Msg}`).join(". ");
+            throw new Error(`AFIP Observaciones: ${msg}`);
+        }
+
+        // 3. Fallback
+        console.error("Critical: SDK Response unexpected", res);
+        throw new Error("AFIP rechazó la operación (CAE vacío) sin reportar errores explícitos.");
+
 
     } catch (error: any) {
         console.error("AFIP CreateVoucher Error:", error);
@@ -194,12 +257,16 @@ export async function getTaxpayerDetails(cuit: number) {
             "Desconocido";
 
         // Extract Address
-        // ARCA SDK might return it as `domicilioFiscal` object or raw array
-        const domicilio = datosGenerales.domicilioFiscal || (Array.isArray(taxPayer.domicilio) ? taxPayer.domicilio[0] : taxPayer.domicilio);
-        const address = domicilio ? `${domicilio.direccion}, ${domicilio.localidad || ''}, ${domicilio.dscrPcia || ''}` : "";
+        // ARCA SDK might return it as `domicilioFiscal` object or `domicilio` array inside datosGenerales
+        let domicilioRaw = datosGenerales.domicilioFiscal || datosGenerales.domicilio || taxPayer.domicilio;
 
-        // Determine if they can receive Factura A
-        // Determine if they can receive Factura A
+        // If it's an array, try to find FISCAL, otherwise take first
+        if (Array.isArray(domicilioRaw)) {
+            domicilioRaw = domicilioRaw.find((d: any) => d.tipoDomicilio === 'FISCAL') || domicilioRaw[0];
+        }
+
+        const address = domicilioRaw ? `${domicilioRaw.direccion}, ${domicilioRaw.localidad || ''}, ${domicilioRaw.descripcionProvincia || domicilioRaw.dscrPcia || ''}` : "Domicilio Desconocido";
+
         // Detectar condición IVA
         let condition = "Consumidor Final";
         let isRespInscripto = false;
@@ -215,35 +282,63 @@ export async function getTaxpayerDetails(cuit: number) {
             return [];
         };
 
-        if (isMonotributo) {
+        const taxes = getTaxes(datosRegimen);
+        console.log(`[AFIP] CUIT ${cuit} Taxes:`, JSON.stringify(taxes));
+
+        // Extract 'formaJuridica' for refined fallback
+        const formaJuridica = datosGenerales.formaJuridica || "";
+
+        // Tax Codes Definitions
+        const COD_MONOTRIBUTO = [20];
+        const COD_RESP_INSCRIPTO = [30, 33, 34]; // 30=IVA, 33/34 variants
+        const COD_GANANCIAS = [10, 11];          // Often implies RI
+        const COD_EXENTO = [32, 4];              // 32=Exento commonly used, 4=Condition Exento
+
+        // 1. Check Monotributo (Explicit Object or Code 20)
+        const hasMonotributoTax = taxes.some((t: any) => COD_MONOTRIBUTO.includes(parseInt(t.idImpuesto)));
+        if (isMonotributo || hasMonotributoTax) {
             condition = "Monotributo";
+            isMonotributo = true;
         } else {
-            // General Regime or Unspecified
-            const taxes = getTaxes(datosRegimen);
+            // 2. Analyze other taxes
+            const hasRI = taxes.some((t: any) => COD_RESP_INSCRIPTO.includes(parseInt(t.idImpuesto)));
+            const hasGanancias = taxes.some((t: any) => COD_GANANCIAS.includes(parseInt(t.idImpuesto)));
+            const hasExento = taxes.some((t: any) => COD_EXENTO.includes(parseInt(t.idImpuesto)));
 
-            // Check for specific taxes
-            const hasIVA = taxes.some((i: any) => i.idImpuesto == 30);
-            const hasGanancias = taxes.some((i: any) => i.idImpuesto == 10 || i.idImpuesto == 11);
-            const hasExento = taxes.some((i: any) => i.idImpuesto == 32); // Some use 32 for Exempt, though strictly it might be Retentions. 
-            // Also check for "IVA Exento" via absence of 30 but presence of correct Exempt codes if available.
-            // But relying on "Juridica -> RI" fallback is safer for the reported issue.
-
-            if (hasIVA || hasGanancias) {
-                // If they have IVA or Ganancias (General Regime), they are likely Responsable Inscripto.
-                condition = "Responsable Inscripto";
-                isRespInscripto = true;
-            } else if (hasExento) {
+            if (hasExento) {
+                // Explicit Exento Tax
                 condition = "IVA Exento";
                 isExento = true;
+            } else if (hasRI) {
+                // Explicit IVA (30)
+                condition = "Responsable Inscripto";
+                isRespInscripto = true;
+            } else if (hasGanancias) {
+                // Ganancias but no explicit IVA -> Strong indicator of RI
+                condition = "Responsable Inscripto";
+                isRespInscripto = true;
             } else {
-                // Fallback for Companies (Personas Jurídicas)
-                // If it's a company and NOT Monotributo, default to Responsable Inscripto.
-                // This fixes the issue where companies were defaulting to Exento/Final because of missing explicit tax codes in A13.
+                // Fallback for Companies (Juridica) or Entities with NO taxes
                 if (taxPayer.tipoPersona === "JURIDICA") {
-                    condition = "Responsable Inscripto";
-                    isRespInscripto = true;
+                    // Refined logic: Distinguish Non-Profits from Commercial
+                    const fjUpper = formaJuridica.toUpperCase();
+                    const isNonProfit = [
+                        "ASOCIACION", "FUNDACION", "IGLESIA", "CULTO",
+                        "COOPERADORA", "BIBLIOTECA", "ORGAN. PUBLICO",
+                        "ORGANISMO", "ESTADO", "GOBIERNO", "MUNICIPALIDAD"
+                    ].some(k => fjUpper.includes(k));
+
+                    if (isNonProfit) {
+                        condition = "IVA Exento";
+                        isExento = true;
+                        console.log(`[AFIP] Fallback: Juridica (Non-Profit) defaulted to Exento`);
+                    } else {
+                        // Likely SA, SRL, SAS -> RI
+                        condition = "Responsable Inscripto";
+                        isRespInscripto = true;
+                        console.log(`[AFIP] Fallback: Juridica (Commercial) defaulted to RI`);
+                    }
                 } else {
-                    // Individuals with no taxes -> Consumidor Final
                     condition = "Consumidor Final";
                 }
             }

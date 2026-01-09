@@ -687,16 +687,6 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 // Short delay (150ms) just to ensure DOM is clear before Print.
                 setTimeout(() => {
                     try {
-                        printSaleTicket({
-                            branch: branchData,
-                            items: cart,
-                            total: totalToPay,
-                            method: partialPayments.length === 1 ? partialPayments[0].method : "SPLIT",
-                            date: new Date(),
-                            saleId: result.saleId,
-                            vendorName: vendorName
-                        });
-
                         if (result.invoice) {
                             console.log("Invoice Generated:", result.invoice);
                             toast.info("Factura generada: " + result.invoice.number);
@@ -722,6 +712,17 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                                 },
                                 vendorName: vendorName,
                                 date: new Date()
+                            });
+                        } else {
+                            // Only print common ticket if NOT invoicing
+                            printSaleTicket({
+                                branch: branchData,
+                                items: cart,
+                                total: totalToPay,
+                                method: partialPayments.length === 1 ? partialPayments[0].method : "SPLIT",
+                                date: new Date(),
+                                saleId: result.saleId,
+                                vendorName: vendorName
                             });
                         }
                     } catch (err) {
@@ -1625,22 +1626,50 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                             </Button>
 
                             {/* 2. Facturar - SOLID BLUE */}
+                            <div className="relative group">
+                                <Button
+                                    className={cn(
+                                        "h-12 w-full rounded-xl flex items-center justify-center gap-2 font-bold text-white shadow-md transition-all border-0",
+                                        invoiceData
+                                            ? "bg-blue-700 hover:bg-blue-800 ring-2 ring-blue-400"
+                                            : "bg-blue-600 hover:bg-blue-700"
+                                    )}
+                                    onClick={() => {
+                                        if (invoiceData) {
+                                            // Toggle OFF if clicked again (or ask to edit? For speed, toggle off is nice, but editing is safer. Let's open modal)
+                                            setIsInvoiceModalOpen(true);
+                                        } else {
+                                            setIsInvoiceModalOpen(true);
+                                        }
+                                    }}
+                                >
+                                    <FileText className="w-5 h-5" />
+                                    <span>{invoiceData ? `Factura ${invoiceData.invoiceType} (Editar)` : "Agregar Factura"}</span>
+                                </Button>
+                                {invoiceData && (
+                                    <Button
+                                        size="icon"
+                                        variant="destructive"
+                                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-lg z-10"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setInvoiceData(undefined);
+                                            toast.info("Facturación cancelada");
+                                        }}
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* 3. Confirmar - DYNAMIC Color/Text */}
                             <Button
                                 className={cn(
-                                    "h-12 w-full rounded-xl flex items-center justify-center gap-2 font-bold text-white shadow-md transition-all border-0",
+                                    "h-12 w-full rounded-xl flex items-center justify-center gap-2 text-white font-bold shadow-md transition-all border-0",
                                     invoiceData
-                                        ? "bg-blue-700 hover:bg-blue-800 ring-2 ring-blue-400" // Active state slightly distinct or just solid
-                                        : "bg-blue-600 hover:bg-blue-700"
+                                        ? "bg-indigo-600 hover:bg-indigo-700 ring-2 ring-indigo-400/50"
+                                        : "bg-emerald-600 hover:bg-emerald-700"
                                 )}
-                                onClick={() => setIsInvoiceModalOpen(true)}
-                            >
-                                <FileText className="w-5 h-5" />
-                                <span>{invoiceData ? `Factura ${invoiceData.invoiceType}` : "Facturar"}</span>
-                            </Button>
-
-                            {/* 3. Confirmar - SOLID GREEN */}
-                            <Button
-                                className="h-12 w-full rounded-xl flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-all border-0"
                                 disabled={isProcessingSale || (parseFloat(editableTotal) || 0) - partialPayments.reduce((a, b) => a + b.amount, 0) > 1}
                                 onClick={confirmSplitSale}
                             >
@@ -1651,8 +1680,8 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                                     </>
                                 ) : (
                                     <>
-                                        {invoiceData ? <CheckCircle2 className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6" />}
-                                        <span>{invoiceData ? "Finalizar" : "Confirmar Venta"}</span>
+                                        {invoiceData ? <FileText className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6" />}
+                                        <span>{invoiceData ? "COBRAR + FACTURA" : "COBRAR"}</span>
                                     </>
                                 )}
                             </Button>

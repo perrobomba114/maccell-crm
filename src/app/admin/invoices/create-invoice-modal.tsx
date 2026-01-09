@@ -31,7 +31,7 @@ export function CreateInvoiceModal({ branches, userId }: { branches: any[], user
 
     // Form State
     const [branchId, setBranchId] = useState(branches[0]?.id || "");
-    const [salesPoint, setSalesPoint] = useState("4"); // Default
+    const [salesPoint, setSalesPoint] = useState("10"); // Default (Matched with AFIP registration)
     const [invoiceType, setInvoiceType] = useState<"A" | "B">("B");
 
     // Authorization Concept (1: Products, 2: Services, 3: Mixed)

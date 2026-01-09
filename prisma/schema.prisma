@@ -1,11 +1,6 @@
-// Maccell CRM - Prisma Schema
-// Database: PostgreSQL
-// Multi-tenant: Branch-based isolation
-
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
-
 }
 
 datasource db {
@@ -13,102 +8,58 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==================== ENUMS ====================
-
-enum Role {
-  ADMIN
-  VENDOR
-  TECHNICIAN
-}
-
-enum PaymentMethod {
-  CASH
-  CARD
-  MERCADOPAGO
-  SPLIT
-}
-
-
-// ==================== MULTI-BRANCH ====================
-
 model Branch {
-  id        String   @id @default(cuid())
-  name      String
-  address   String?
-  code      String   @unique
-  phone     String?
-  imageUrl  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  users    User[]
-  tickets  Ticket[]
-  sales    Sale[]
-  expenses Expense[]
-  productStocks ProductStock[]
+  id                   String          @id @default(cuid())
+  name                 String
+  address              String?
+  code                 String          @unique
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  imageUrl             String?
+  phone                String?
+  ticketPrefix         String          @default("MAC")
+  cashShifts           CashShift[]
+  customers            Customer[]
+  expenses             Expense[]
+  productStocks        ProductStock[]
+  repairs              Repair[]
+  sales                Sale[]
   stockTransfersSource StockTransfer[] @relation("SourceBranch")
-
   stockTransfersTarget StockTransfer[] @relation("TargetBranch")
-  
-  // Repair System
-  ticketPrefix String   @default("MAC")
-  customers    Customer[]
-  repairs      Repair[]
-  cashShifts   CashShift[]
+  tickets              Ticket[]
+  users                User[]
 
   @@map("branches")
 }
 
-// ==================== USERS & AUTH ====================
-
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      Role     @default(VENDOR)
-  branchId  String?
-  imageUrl  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Session Management
-  isOnline     Boolean   @default(false)
-  lastActiveAt DateTime?
-
-  // Relations
-  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  sales  Sale[]
-  expenses Expense[]
+  id                    String              @id @default(cuid())
+  email                 String              @unique
+  password              String
+  name                  String
+  role                  Role                @default(VENDOR)
+  branchId              String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  isOnline              Boolean             @default(false)
+  lastActiveAt          DateTime?
+  imageUrl              String?
+  cashShifts            CashShift[]
+  customersCreated      Customer[]
+  expenses              Expense[]
+  notifications         Notification[]
+  observations          RepairObservation[]
+  repairsAssigned       Repair[]            @relation("AssignedRepairs")
+  repairsCreated        Repair[]            @relation("CreatedRepairs")
+  resolvedReturns       ReturnRequest[]     @relation("AdminResolvedReturns")
+  technicianReturns     ReturnRequest[]     @relation("TechnicianReturns")
+  sales                 Sale[]
   stockTransfersCreated StockTransfer[]
-  
-  // Repair System
-  customersCreated Customer[]
-  repairsCreated   Repair[] @relation("CreatedRepairs")
-  repairsAssigned  Repair[] @relation("AssignedRepairs")
-  observations     RepairObservation[]
-  notifications    Notification[]
-  cashShifts       CashShift[]
-  
-  // Return System
-  technicianReturns ReturnRequest[] @relation("TechnicianReturns")
-  resolvedReturns   ReturnRequest[] @relation("AdminResolvedReturns")
+  branch                Branch?             @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
-
-  // Indexes for performance
   @@index([email])
   @@index([branchId])
   @@map("users")
-}
-
-// ==================== BUSINESS MODELS ====================
-
-// ==================== PRODUCT CATALOG & STOCK ====================
-
-enum CategoryType {
-  PRODUCT
-  PART
 }
 
 model Category {
@@ -118,32 +69,28 @@ model Category {
   description String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-
-  // Relations
-  products Product[]
-  spareParts SparePart[]
+  products    Product[]
+  spareParts  SparePart[]
 
   @@map("categories")
 }
 
 model Product {
-  id          String    @id @default(cuid())
-  name        String
-  sku         String    @unique
-  description String?
-  price       Float     // Selling Price
-  costPrice   Float     @default(0)
-  profitMargin Float    @default(0)
-  categoryId  String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime? // Soft Delete
-
-  // Relations
-  category Category?      @relation(fields: [categoryId], references: [id])
-  stock    ProductStock[]
-  stockTransfers StockTransfer[]
+  id             String          @id @default(cuid())
+  name           String
+  sku            String          @unique
+  price          Float
+  description    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  categoryId     String?
+  costPrice      Float           @default(0)
+  deletedAt      DateTime?
+  profitMargin   Float           @default(0)
+  stock          ProductStock[]
+  category       Category?       @relation(fields: [categoryId], references: [id])
   saleItems      SaleItem[]
+  stockTransfers StockTransfer[]
 
   @@index([sku])
   @@index([categoryId])
@@ -151,26 +98,18 @@ model Product {
 }
 
 model ProductStock {
-  id        String   @id @default(cuid())
-  productId String
-  branchId  String
-  quantity  Int      @default(0)
+  id            String    @id @default(cuid())
+  productId     String
+  branchId      String
+  quantity      Int       @default(0)
+  updatedAt     DateTime  @updatedAt
   lastCheckedAt DateTime?
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch        Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, branchId])
   @@index([branchId])
   @@map("product_stocks")
-}
-
-enum TransferStatus {
-  PENDING
-  COMPLETED
-  CANCELLED
 }
 
 model StockTransfer {
@@ -179,17 +118,15 @@ model StockTransfer {
   sourceBranchId String
   targetBranchId String
   quantity       Int
-  notes          String?        // Reason for transfer
   status         TransferStatus @default(PENDING)
   createdById    String
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
-
-  // Relations
-  product      Product @relation(fields: [productId], references: [id])
-  sourceBranch Branch  @relation("SourceBranch", fields: [sourceBranchId], references: [id])
-  targetBranch Branch  @relation("TargetBranch", fields: [targetBranchId], references: [id])
-  createdBy    User    @relation(fields: [createdById], references: [id])
+  notes          String?
+  createdBy      User           @relation(fields: [createdById], references: [id])
+  product        Product        @relation(fields: [productId], references: [id])
+  sourceBranch   Branch         @relation("SourceBranch", fields: [sourceBranchId], references: [id])
+  targetBranch   Branch         @relation("TargetBranch", fields: [targetBranchId], references: [id])
 
   @@index([sourceBranchId])
   @@index([targetBranchId])
@@ -198,18 +135,16 @@ model StockTransfer {
 }
 
 model Ticket {
-  id          String   @id @default(cuid())
+  id           String   @id @default(cuid())
   ticketNumber String   @unique
   customerName String
-  device      String
-  issue       String
-  status      String   @default("pending")
-  branchId    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  device       String
+  issue        String
+  status       String   @default("pending")
+  branchId     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  branch       Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([branchId])
   @@index([ticketNumber])
@@ -217,80 +152,65 @@ model Ticket {
 }
 
 model Sale {
-  id          String   @id @default(cuid())
-  saleNumber  String   @unique
-  total       Float
-  paymentMethod PaymentMethod @default(CASH)
-  vendorId    String
-  branchId    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Payment Modification Tracking
+  id                    String         @id @default(cuid())
+  saleNumber            String         @unique
+  total                 Float
+  vendorId              String
+  branchId              String
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  paymentMethod         PaymentMethod  @default(CASH)
   originalPaymentMethod PaymentMethod?
   wasPaymentModified    Boolean        @default(false)
-
-  // Relations
-  vendor User   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  items  SaleItem[]
-  payments SalePayment[]
+  invoice               SaleInvoice?
+  items                 SaleItem[]
+  payments              SalePayment[]
+  branch                Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  vendor                User           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@index([branchId])
   @@index([vendorId])
   @@index([saleNumber])
   @@map("sales")
-
-  invoice SaleInvoice?
 }
 
 model SaleInvoice {
-  id          String   @id @default(cuid())
-  saleId      String   @unique
-  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  
-  invoiceType String   // "A", "B", "C"
-  invoiceNumber String // Format: 00001-00000012
-  
-  cae         String
-  caeExpiresAt DateTime
-  
-  customerDocType String // "CUIT", "DNI", "FINAL_CONSUMER"
+  id              String   @id @default(cuid())
+  saleId          String   @unique
+  invoiceType     String
+  invoiceNumber   String
+  cae             String
+  caeExpiresAt    DateTime
+  customerDocType String
   customerDoc     String
   customerName    String
   customerAddress String?
-  
   netAmount       Float
   vatAmount       Float
   totalAmount     Float
-  
-  createdAt   DateTime @default(now())
-  
+  createdAt       DateTime @default(now())
+  sale            Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
   @@map("sale_invoices")
 }
 
 model SaleItem {
-  id        String  @id @default(cuid())
-  saleId    String
-  name      String
-  quantity  Int
-  price     Float
-  
-  productId String?
-  repairId  String?
-
-  // Price Override Tracking
-  originalPrice   Float?
+  id                String   @id @default(cuid())
+  saleId            String
+  name              String
+  quantity          Int
+  price             Float
+  productId         String?
+  repairId          String?
+  originalPrice     Float?
   priceChangeReason String?
-
-  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product   Product? @relation(fields: [productId], references: [id])
-  repair    Repair?  @relation(fields: [repairId], references: [id])
+  product           Product? @relation(fields: [productId], references: [id])
+  repair            Repair?  @relation(fields: [repairId], references: [id])
+  sale              Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
   @@index([saleId])
   @@index([productId])
   @@index([repairId])
-
   @@map("sale_items")
 }
 
@@ -299,141 +219,103 @@ model SalePayment {
   saleId    String
   amount    Float
   method    PaymentMethod
-  sale      Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
   createdAt DateTime      @default(now())
+  sale      Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
   @@index([saleId])
   @@map("sale_payments")
 }
 
-
-// ==================== SPARE PARTS ====================
-
 model SparePart {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   name          String
-  sku           String    @unique
+  sku           String       @unique
   brand         String
   categoryId    String?
-  
-  // Stock Headers
-  stockLocal    Int       @default(0)
-  stockDepot    Int       @default(0)
-  maxStockLocal Int       @default(0) // Used to calculate "Reponer" = maxStockLocal - stockLocal
-  
-  // Pricing
-  priceUsd      Float     @default(0)
-  priceArg      Float     @default(0)
-  pricePos      Float     @default(0)
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime? // Soft Delete
+  stockLocal    Int          @default(0)
+  stockDepot    Int          @default(0)
+  maxStockLocal Int          @default(0)
+  priceUsd      Float        @default(0)
+  priceArg      Float        @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
+  pricePos      Float        @default(0)
+  repairParts   RepairPart[]
+  category      Category?    @relation(fields: [categoryId], references: [id])
 
-  // Relations
-  category      Category?  @relation(fields: [categoryId], references: [id])
-  
-  // Future implementation fields (as placeholders or simple relations if needed)
-  repairParts RepairPart[]
-
-  
   @@index([sku])
   @@index([categoryId])
   @@map("spare_parts")
 }
 
-// ==================== REPAIRS SYSTEM ====================
-
 model Customer {
   id              String    @id @default(cuid())
   name            String
-  phone           String    // Unique verified in logic, but let's keep it flexible in DB or strict if safe. User said Unique in SQL.
+  phone           String
   email           String?
-  
   branchId        String
-  userId          String    // Created by
-  
+  userId          String
   isFinalConsumer Boolean   @default(false)
-  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
-
-  // Relations
   branch          Branch    @relation(fields: [branchId], references: [id])
   createdBy       User      @relation(fields: [userId], references: [id])
   repairs         Repair[]
 
-  @@unique([phone, branchId]) // Phone unique per branch usually, or globally? User SQL said phone unique. Let's make it unique globally to match SQL `phone VARCHAR(10) NOT NULL UNIQUE`
-  // Actually better unique globally if strict.
+  @@unique([phone, branchId])
   @@index([phone])
   @@index([name])
   @@map("customers")
 }
 
 model RepairStatus {
-  id          Int      @id @default(autoincrement()) // 1-10
-  name        String
-  color       String?  // Hex code or tailwind class
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  repairs     Repair[]
+  id        Int      @id @default(autoincrement())
+  name      String
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  repairs   Repair[]
 
   @@map("repair_statuses")
 }
 
 model Repair {
-  id                 String    @id @default(cuid())
-  ticketNumber       String    // Manually entered, validated unique
-  
+  id                 String              @id @default(cuid())
+  ticketNumber       String              @unique
   branchId           String
   customerId         String
-  userId             String    // Created by
-  assignedUserId     String?   // Technician
-  statusId           Int       @default(1)
-  
+  userId             String
+  assignedUserId     String?
+  statusId           Int                 @default(1)
   deviceBrand        String
   deviceModel        String
-  problemDescription String    @db.Text
-  deviceImages       String[]  // Array of URLs
-  
+  problemDescription String
+  deviceImages       String[]
   estimatedPrice     Float?
   promisedAt         DateTime
-  
-  // Technician Flow
-  estimatedTime      Int?      // In minutes
-  diagnosis          String?   @db.Text
-  startedAt          DateTime?
+  isWarranty         Boolean             @default(false)
+  originalRepairId   String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  diagnosis          String?
+  estimatedTime      Int?
   finishedAt         DateTime?
-  
-  isWarranty         Boolean   @default(false)
-  originalRepairId   String?   // If warranty, link to parent
-  
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-
-  // Relations
-  branch             Branch          @relation(fields: [branchId], references: [id])
-  customer           Customer        @relation(fields: [customerId], references: [id])
-  createdBy          User            @relation("CreatedRepairs", fields: [userId], references: [id])
-  assignedTo         User?           @relation("AssignedRepairs", fields: [assignedUserId], references: [id])
-  status             RepairStatus    @relation(fields: [statusId], references: [id])
-  
-  originalRepair     Repair?         @relation("WarrantyRelation", fields: [originalRepairId], references: [id])
-  warrantyRepairs    Repair[]        @relation("WarrantyRelation")
-  
+  startedAt          DateTime?
   observations       RepairObservation[]
   parts              RepairPart[]
-  saleItems          SaleItem[]
+  assignedTo         User?               @relation("AssignedRepairs", fields: [assignedUserId], references: [id])
+  branch             Branch              @relation(fields: [branchId], references: [id])
+  customer           Customer            @relation(fields: [customerId], references: [id])
+  originalRepair     Repair?             @relation("WarrantyRelation", fields: [originalRepairId], references: [id])
+  warrantyRepairs    Repair[]            @relation("WarrantyRelation")
+  status             RepairStatus        @relation(fields: [statusId], references: [id])
+  createdBy          User                @relation("CreatedRepairs", fields: [userId], references: [id])
   returnRequests     ReturnRequest[]
+  saleItems          SaleItem[]
 
-
-  @@unique([ticketNumber, branchId]) // Ticket unique per branch usually, or system wide? Ticket prefix is per branch. So unique per branch + number combination. 
-  // User said "ticket_number VARCHAR(255) UNIQUE". So globally unique.
-  // We will trust the validation logic, but enforce Unique on ticketNumber globally if needed.
-  @@unique([ticketNumber]) 
-  
+  @@unique([ticketNumber, branchId])
   @@index([branchId])
   @@index([customerId])
   @@index([statusId])
@@ -443,11 +325,9 @@ model Repair {
 model RepairObservation {
   id        String   @id @default(cuid())
   repairId  String
-  userId    String?  // User who made the obs
-  content   String   @db.Text
+  userId    String?
+  content   String
   createdAt DateTime @default(now())
-
-  // Relations
   repair    Repair   @relation(fields: [repairId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id])
 
@@ -456,66 +336,49 @@ model RepairObservation {
 }
 
 model RepairPart {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   repairId    String
   sparePartId String
-  quantity    Int      @default(1)
-  assignedAt  DateTime @default(now())
-
-  // Relations
+  quantity    Int       @default(1)
+  assignedAt  DateTime  @default(now())
   repair      Repair    @relation(fields: [repairId], references: [id], onDelete: Cascade)
   sparePart   SparePart @relation(fields: [sparePartId], references: [id])
 
   @@map("repair_parts")
 }
 
-// ==================== NOTIFICATIONS ====================
-
 model Notification {
-  id          String   @id @default(cuid())
-  userId      String
-  title       String
-  message     String
-  isRead      Boolean  @default(false)
-  
-  // Actionable implementation
-  type        String   @default("INFO") // "INFO", "ACTION_REQUEST"
-  actionData  Json?    // Context for action
-  status      String?  // "PENDING", "ACCEPTED", "REJECTED"
-
-  link        String?
-  createdAt   DateTime @default(now())
-
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String
+  title      String
+  message    String
+  isRead     Boolean  @default(false)
+  type       String   @default("INFO")
+  actionData Json?
+  status     String?
+  link       String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("notifications")
 }
 
 model CashShift {
-  id          String    @id @default(cuid())
-  branchId    String
-  userId      String    // Vendor who opened it
-  
-  startTime   DateTime  @default(now())
-  endTime     DateTime?
-  
-  startAmount Float     @default(0)
-  endAmount   Float?    // Null until closed
-  
-  status      String    @default("OPEN") // OPEN, CLOSED
-  
-  // Expenses or withdrawals could be added here later
-  employeeCount Int       @default(1)
+  id            String    @id @default(cuid())
+  branchId      String
+  userId        String
+  startTime     DateTime  @default(now())
+  endTime       DateTime?
+  startAmount   Float     @default(0)
+  endAmount     Float?
+  status        String    @default("OPEN")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   bonusTotal    Float     @default(0)
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relations
-  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeCount Int       @default(1)
+  branch        Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([branchId])
   @@index([userId])
@@ -530,8 +393,6 @@ model Expense {
   amount      Float
   description String
   createdAt   DateTime @default(now())
-
-  // Relations
   branch      Branch   @relation(fields: [branchId], references: [id])
   user        User     @relation(fields: [userId], references: [id])
 
@@ -540,36 +401,54 @@ model Expense {
   @@map("expenses")
 }
 
-// ==================== RETURNS SYSTEM ====================
-
-enum ReturnStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-}
-
 model ReturnRequest {
-  id              String       @id @default(cuid())
-  repairId        String
-  technicianId    String
-  status          ReturnStatus @default(PENDING)
-  technicianNote  String?      @db.Text
-  adminNote       String?      @db.Text
-  partsSnapshot   Json?        // Snapshot of parts at the time of request
-  
-  resolutionDate  DateTime?
-  resolvedBy      String?      // Admin User ID
-  
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  // Relations
-  repair          Repair       @relation(fields: [repairId], references: [id], onDelete: Cascade)
-  technician      User         @relation("TechnicianReturns", fields: [technicianId], references: [id])
-  resolvedByUser  User?        @relation("AdminResolvedReturns", fields: [resolvedBy], references: [id])
+  id             String       @id @default(cuid())
+  repairId       String
+  technicianId   String
+  status         ReturnStatus @default(PENDING)
+  technicianNote String?
+  adminNote      String?
+  resolutionDate DateTime?
+  resolvedBy     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  partsSnapshot  Json?
+  repair         Repair       @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  resolvedByUser User?        @relation("AdminResolvedReturns", fields: [resolvedBy], references: [id])
+  technician     User         @relation("TechnicianReturns", fields: [technicianId], references: [id])
 
   @@index([repairId])
   @@index([technicianId])
   @@index([status])
   @@map("return_requests")
+}
+
+enum Role {
+  ADMIN
+  VENDOR
+  TECHNICIAN
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MERCADOPAGO
+  SPLIT
+}
+
+enum CategoryType {
+  PRODUCT
+  PART
+}
+
+enum TransferStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum ReturnStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
