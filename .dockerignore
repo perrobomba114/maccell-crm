@@ -1,11 +1,7 @@
 node_modules
 .next
-out
-build
 .git
-.env
-.next_old_garbage
-.DS_Store
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+public/branches
+public/profiles
+public/repairs
+upload
