@@ -5,3 +5,6 @@ public/branches
 public/profiles
 public/repairs
 upload
+.env
+.DS_Store
+*.log
