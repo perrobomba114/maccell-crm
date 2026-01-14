@@ -50,7 +50,7 @@ export function Header({
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
 
-    console.log("Header rendering. UserId:", userId, "Image:", userImage);
+
 
     const handleLogout = () => {
         startTransition(async () => {
