@@ -37,6 +37,7 @@ interface HeaderProps {
     onMenuClick?: () => void;
 }
 
+// force cache update
 export function Header({
     userName = "Usuario",
     userEmail = "",
