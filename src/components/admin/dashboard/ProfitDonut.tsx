@@ -69,7 +69,7 @@ export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCa
 
             <div className="flex-1 flex flex-col lg:flex-row items-center justify-between p-6 gap-8 relative z-10 transition-all">
                 {/* 1. Chart Section */}
-                <div className="relative w-full lg:w-1/2 h-64 flex items-center justify-center">
+                <div className="relative w-full lg:w-1/2 h-64">
                     <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                         <PieChart>
                             <defs>
