@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 
@@ -10,6 +11,10 @@ interface VendorChartsProps {
 }
 
 export function SalesWeekChart({ data }: { data: { name: string; total: number }[] }) {
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
+
+    if (!isMounted) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-[435px]" />;
     return (
         <Card className="col-span-4 lg:col-span-2 border-none shadow-md">
             <CardHeader>
@@ -47,7 +52,7 @@ export function SalesWeekChart({ data }: { data: { name: string; total: number }
                                 }}
                                 itemStyle={{ color: 'inherit' }}
                                 labelStyle={{ color: 'inherit', fontWeight: 'bold', marginBottom: '4px' }}
-                                formatter={(value: number) => [`$${value.toLocaleString()}`, 'Venta']}
+                                formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Venta']}
                             />
                             <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} name="Total" />
                         </BarChart>

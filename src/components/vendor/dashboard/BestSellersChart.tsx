@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
@@ -17,6 +18,9 @@ const COLORS = [
 ];
 
 export function BestSellersChart({ data }: BestSellersChartProps) {
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
+
     // Inject colors if not present or just override for consistency
     const chartData = data.map((item, index) => ({
         ...item,
@@ -25,6 +29,8 @@ export function BestSellersChart({ data }: BestSellersChartProps) {
     }));
 
     const totalSold = chartData.reduce((acc, curr) => acc + curr.value, 0);
+
+    if (!isMounted) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-full min-h-[400px] flex items-center justify-center animate-pulse" />;
 
     if (data.length === 0) {
         return (
@@ -66,7 +72,7 @@ export function BestSellersChart({ data }: BestSellersChartProps) {
                             </Pie>
                             <Tooltip
                                 // Custom formatter to show Name and Value
-                                formatter={(value: number, name: string, props: any) => {
+                                formatter={(value: any, name: any, props: any) => {
                                     // Recharts tooltip formatter signature: (value, name, props)
                                     // But dataKey="value" implies the 'name' arg here refers to the dataKey unless configured.
                                     // Actually, for PieChart, the second arg is the Name from data if configured.
