@@ -385,3 +385,32 @@ export async function replenishSparePart(id: string, quantity: number) {
         return { success: false, error: "Error al reponer stock" };
     }
 }
+
+export async function decrementStockLocal(id: string) {
+    try {
+        const sparePart = await prisma.sparePart.findUnique({
+            where: { id }
+        });
+
+        if (!sparePart) {
+            return { success: false, error: "Repuesto no encontrado" };
+        }
+
+        if (sparePart.stockLocal <= 0) {
+            return { success: false, error: "No hay stock local para descontar" };
+        }
+
+        await prisma.sparePart.update({
+            where: { id },
+            data: {
+                stockLocal: { decrement: 1 }
+            }
+        });
+
+        revalidatePath("/admin/repuestos");
+        return { success: true };
+    } catch (error) {
+        console.error("Decrement error:", error);
+        return { success: false, error: "Error al descontar stock" };
+    }
+}

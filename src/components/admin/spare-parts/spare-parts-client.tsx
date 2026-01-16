@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, Pencil, Trash2, ArrowRightLeft, Download, Upload, FileBarChart, Printer, Settings, RefreshCw, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowRightLeft, Download, Upload, FileBarChart, Printer, Settings, RefreshCw, Check, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { scanForPrinters, printLabelZPL, uploadFontToPrinter } from "@/actions/printer";
@@ -40,6 +40,7 @@ import {
     bulkUpsertSpareParts,
     getAllSparePartsForExport,
     replenishSparePart,
+    decrementStockLocal,
     type SparePartImportRow
 } from "@/actions/spare-parts";
 import { toast } from "sonner";
@@ -76,6 +77,9 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
 
     // Replenish Dialog State
     const [replenishData, setReplenishData] = useState<{ part: SparePartWithCategory, quantity: number } | null>(null);
+
+    // Decrement Dialog State
+    const [decrementData, setDecrementData] = useState<{ part: SparePartWithCategory } | null>(null);
 
     // Printing State
     const [printPart, setPrintPart] = useState<SparePartWithCategory | null>(null);
@@ -516,6 +520,25 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
         }
     };
 
+    const handleConfirmDecrement = async () => {
+        if (!decrementData) return;
+
+        try {
+            const res = await decrementStockLocal(decrementData.part.id);
+            if (res.success) {
+                toast.success(`Se descontó 1 unidad de ${decrementData.part.name}`);
+                router.refresh();
+            } else {
+                toast.error(res.error);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al descontar");
+        } finally {
+            setDecrementData(null);
+        }
+    };
+
     // Barcode effect
 
 
@@ -836,6 +859,16 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
+                                                onClick={() => setDecrementData({ part: item })}
+                                                disabled={item.stockLocal <= 0}
+                                                className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                                title="Descontar 1 del Local"
+                                            >
+                                                <ArrowDown className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
                                                 onClick={() => setEditingPart(item)}
                                             >
                                                 <Pencil className="h-4 w-4" />
@@ -975,6 +1008,24 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmReplenish} className="bg-indigo-600 hover:bg-indigo-700">
                             Confirmar Reposición
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Decrement Alert */}
+            <AlertDialog open={!!decrementData} onOpenChange={(open) => !open && setDecrementData(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Confirmar uso de Repuesto?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Se descontará <strong>1 unidad</strong> de <strong>{decrementData?.part.name}</strong> del Stock Local.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDecrement} className="bg-orange-600 hover:bg-orange-700 text-white">
+                            Descontar
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
