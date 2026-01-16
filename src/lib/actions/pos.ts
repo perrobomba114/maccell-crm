@@ -326,7 +326,10 @@ export async function processPosSale(data: {
                 caeExpiresAt = new Date(`${y}-${m}-${d}`);
             }
 
-            voucherNumberString = afipResult.voucherNumber.toString();
+            // Format Voucher Number: PtoVta (5 chars) - Number (8 chars)
+            const ptoVta = data.invoiceData.salesPoint.toString().padStart(5, '0');
+            const voucherNum = afipResult.voucherNumber.toString().padStart(8, '0');
+            voucherNumberString = `${ptoVta}-${voucherNum}`;
 
         } catch (error: any) {
             console.error("Error creating invoice:", error);

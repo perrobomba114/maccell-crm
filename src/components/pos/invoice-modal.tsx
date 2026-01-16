@@ -70,6 +70,12 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount }: Inv
     // Search CUIT Logic
     const handleSearchCuit = async () => {
         if (!docNumber) return;
+
+        // If user presses search and it is 11 digits, ensure type is CUIT
+        if (docNumber.length === 11 && docType !== "CUIT") {
+            setDocType("CUIT");
+        }
+
         setIsLoadingCuit(true);
         try {
             // Dynamic import to avoid server action issues if not set up in client correctly
@@ -175,16 +181,35 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount }: Inv
                                         <div className="flex gap-2">
                                             <Input
                                                 value={docNumber}
-                                                onChange={e => setDocNumber(e.target.value)}
+                                                onChange={e => {
+                                                    const val = e.target.value.replace(/\D/g, '');
+                                                    setDocNumber(val);
+
+                                                    // Auto-detect type
+                                                    if (val.length === 11 && docType !== "CUIT") {
+                                                        setDocType("CUIT");
+                                                        // Automatically trigger search if it looks like a complete CUIT
+                                                        // Optional: could auto-trigger valid check
+                                                    } else if ((val.length === 7 || val.length === 8) && docType !== "DNI") {
+                                                        setDocType("DNI");
+                                                    }
+                                                }}
                                                 placeholder={docType === "CUIT" ? "20..." : "Número DNI"}
                                                 className="bg-zinc-950 border-zinc-700 font-mono text-lg"
-                                                onKeyDown={(e) => e.key === "Enter" && docType === "CUIT" && handleSearchCuit()}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                        e.preventDefault();
+                                                        // Trigger search if it's CUIT
+                                                        // Or just confirm inputs if DNI
+                                                        if (docType === "CUIT" || docNumber.length === 11) {
+                                                            handleSearchCuit();
+                                                        }
+                                                    }
+                                                }}
                                             />
-                                            {docType === "CUIT" && (
-                                                <Button onClick={handleSearchCuit} disabled={isLoadingCuit} variant="secondary" className="bg-zinc-800 border-zinc-700">
-                                                    {isLoadingCuit ? <Loader2 className="animate-spin w-4 h-4" /> : <Search className="w-4 h-4" />}
-                                                </Button>
-                                            )}
+                                            <Button onClick={handleSearchCuit} disabled={isLoadingCuit} variant="secondary" className="bg-zinc-800 border-zinc-700">
+                                                {isLoadingCuit ? <Loader2 className="animate-spin w-4 h-4" /> : <Search className="w-4 h-4" />}
+                                            </Button>
                                         </div>
                                     </div>
 

@@ -139,18 +139,7 @@ export async function generateAdminInvoice(data: {
         const cae = afipRes.data.cae;
         const caeFchVto = afipRes.data.caeFchVto;
         // @ts-ignore - Arca SDK type definition might be missing cbteNro or similar in interface but it exists in runtime
-        const voucherNum = afipRes.data.cbteNro || afipRes.data.voucherNumber || 0;
-        // Wait, what does `createNextVoucher` return?
-        // Arca SDK: `ICreateVoucherResult`. usually { CAE, CAEFchVto, CbteNum? }
-        // I need to be sure about the voucher number returned.
-        // Usually `createNextVoucher` response includes the assigned number.
-        // If not, I might need to query it or `getLastVoucher`.
-        // Let's assume for now `getLastVoucher` + 1 or check response.
-        // The `afip.ts` wrapper returns `res`. 
-
-        let finalVoucherNumber = "00000-00000000";
-        // We will fetch it from response if available or fallback.
-        // For now, let's create the Sale in DB.
+        const voucherNum = afipRes.data.voucherNumber || afipRes.data.cbteNro || 0;
 
         // 4. Create Sale & Invoice in DB
         const saleNumber = `ADM-${Date.now()}`;
@@ -214,7 +203,7 @@ export async function generateAdminInvoice(data: {
                 data: {
                     saleId: sale.id,
                     invoiceType: data.invoiceType,
-                    invoiceNumber: `AFIP-Generado`, // Placeholder if we don't have exact number yet
+                    invoiceNumber: `${data.salesPoint.toString().padStart(5, '0')}-${(voucherNum || 0).toString().padStart(8, '0')}`,
                     cae: cae,
                     caeExpiresAt: caeExpiresAt,
                     customerDocType: data.customer.docType,
