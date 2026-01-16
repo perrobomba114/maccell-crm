@@ -29,7 +29,7 @@ export function BranchProfitChart({ data }: BranchProfitProps) {
 
     useEffect(() => {
         setIsMounted(true);
-        const timer = setTimeout(() => setIsReady(true), 200);
+        const timer = setTimeout(() => setIsReady(true), 500);
         return () => clearTimeout(timer);
     }, []);
 
@@ -42,7 +42,7 @@ export function BranchProfitChart({ data }: BranchProfitProps) {
                 <CardDescription className="text-zinc-500">Comparativa de Ingresos vs Ganancia Real</CardDescription>
             </CardHeader>
             <CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={300} debounce={50}>
+                <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={300} debounce={50}>
                     <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-zinc-800" />
                         <XAxis
@@ -89,7 +89,7 @@ export function BranchGrowthChart({ data }: BranchGrowthProps) {
 
     useEffect(() => {
         setIsMounted(true);
-        const timer = setTimeout(() => setIsReady(true), 200);
+        const timer = setTimeout(() => setIsReady(true), 500);
         return () => clearTimeout(timer);
     }, []);
 
@@ -102,7 +102,7 @@ export function BranchGrowthChart({ data }: BranchGrowthProps) {
                 <CardDescription className="text-zinc-500">% vs Mes Anterior</CardDescription>
             </CardHeader>
             <CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={300} debounce={50}>
+                <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={300} debounce={50}>
                     <BarChart data={data}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-zinc-800" />
                         <XAxis

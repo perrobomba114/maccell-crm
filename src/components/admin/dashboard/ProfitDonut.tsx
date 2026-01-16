@@ -29,7 +29,7 @@ export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCa
 
     React.useEffect(() => {
         setIsMounted(true);
-        const timer = setTimeout(() => setIsReady(true), 150);
+        const timer = setTimeout(() => setIsReady(true), 500);
         return () => clearTimeout(timer);
     }, []);
 
@@ -73,7 +73,7 @@ export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCa
             <div className="flex-1 flex flex-col lg:flex-row items-center justify-between p-6 gap-8 relative z-10 transition-all">
                 {/* 1. Chart Section */}
                 <div className="relative w-full lg:w-1/2 min-h-[300px]" style={{ height: '300px' }}>
-                    <ResponsiveContainer width="100%" height="100%" minWidth={300} minHeight={300} debounce={50}>
+                    <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={300} minHeight={300} debounce={50}>
                         <PieChart>
                             <defs>
                                 <linearGradient id="colorVoyager" x1="0" y1="0" x2="0" y2="1">

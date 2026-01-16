@@ -23,7 +23,7 @@ export function BestSellersChart({ data }: BestSellersChartProps) {
 
     useEffect(() => {
         setIsMounted(true);
-        const timer = setTimeout(() => setIsReady(true), 200);
+        const timer = setTimeout(() => setIsReady(true), 500);
         return () => clearTimeout(timer);
     }, []);
 
@@ -54,7 +54,7 @@ export function BestSellersChart({ data }: BestSellersChartProps) {
             </CardHeader>
             <CardContent className="flex-1 min-h-[350px]">
                 <div className="h-full w-full relative">
-                    <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                    <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" debounce={50}>
                         <PieChart>
                             <defs>
                                 <filter id="shadow" height="200%">

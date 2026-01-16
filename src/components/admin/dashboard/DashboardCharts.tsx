@@ -17,7 +17,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
 
     useEffect(() => {
         setIsMounted(true);
-        const timer = setTimeout(() => setIsReady(true), 150);
+        const timer = setTimeout(() => setIsReady(true), 500);
         return () => clearTimeout(timer);
     }, []);
 
@@ -50,7 +50,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
                     <CardDescription>Tendencia de ventas últimos 6 meses</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100} debounce={50}>
+                    <ResponsiveContainer key={isReady ? "ready-area" : "not-ready-area"} width="100%" height="100%" minWidth={100} minHeight={100} debounce={50}>
                         <AreaChart data={salesData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
@@ -96,7 +96,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
                     <CardDescription>Distribución de ganancias estimadas</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100} debounce={50}>
+                    <ResponsiveContainer key={isReady ? "ready-pie" : "not-ready-pie"} width="100%" height="100%" minWidth={100} minHeight={100} debounce={50}>
                         <PieChart>
                             <Pie
                                 data={categoryDataProp}
