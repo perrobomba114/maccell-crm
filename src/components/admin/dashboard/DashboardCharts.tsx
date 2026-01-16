@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -11,6 +12,12 @@ interface DashboardChartsProps {
 }
 
 export function DashboardCharts({ stats }: DashboardChartsProps) {
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
     // Data preparation
     const salesData = stats.charts.salesByMonth || [];
     const statusData = stats.charts.repairsByStatus || [];
@@ -18,6 +25,17 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
 
     // Ensure we have some colors
     const COLORS = ['#0ea5e9', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7'];
+
+    if (!isMounted) {
+        return <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="h-[400px] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </Card>
+            <Card className="h-[400px] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </Card>
+        </div>;
+    }
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -92,7 +110,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
                             </Pie>
                             <Tooltip
                                 contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
-                                formatter={(value: number) => `$${value.toLocaleString()}`}
+                                formatter={(value: any) => `$${Number(value).toLocaleString()}`}
                             />
                             <Legend />
                         </PieChart>

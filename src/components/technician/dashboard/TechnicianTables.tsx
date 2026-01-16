@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +13,11 @@ interface ActiveWorkspaceProps {
 }
 
 export function ActiveWorkspaceTable({ data }: ActiveWorkspaceProps) {
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
+
     const formatTime = (date: Date) => {
-        if (!date) return "--:--";
+        if (!date || !isMounted) return "--:--";
         return new Date(date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
     };
 
@@ -89,7 +93,11 @@ interface QueueTableProps {
 }
 
 export function QueueTable({ data }: QueueTableProps) {
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
+
     const formatDate = (date: Date) => {
+        if (!isMounted) return "...";
         return new Date(date).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
     };
 

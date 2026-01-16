@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,6 +13,9 @@ interface DashboardTablesProps {
 }
 
 export function DashboardTables({ stats }: DashboardTablesProps) {
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
+
     const topTechnicians = stats.topTechnicians || [];
     const stockAlerts = stats.stockAlerts || [];
     const recentSales = stats.tables?.recentSales || [];
@@ -94,7 +98,9 @@ export function DashboardTables({ stats }: DashboardTablesProps) {
                             <div key={i} className="flex items-center justify-between">
                                 <div className="space-y-1">
                                     <p className="text-sm font-medium leading-none">#{sale.saleNumber}</p>
-                                    <p className="text-xs text-muted-foreground">{new Date(sale.createdAt).toLocaleDateString()}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {isMounted ? new Date(sale.createdAt).toLocaleDateString() : '...'}
+                                    </p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-sm font-bold text-emerald-600">${sale.total.toLocaleString()}</p>

@@ -259,6 +259,11 @@ export function UnifiedDashboard({ stats, branches, currentBranchId, currentUser
     const { financials, repairs, stock, categoryShare } = stats;
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [zenMode, setZenMode] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     // Filter "Recent Sales" based on selected category
     const recentSales = stats.tables?.recentSales || [];
@@ -417,7 +422,9 @@ export function UnifiedDashboard({ stats, branches, currentBranchId, currentUser
                                 <div key={i} className="flex items-center justify-between border-b border-zinc-900/50 pb-2 last:border-0 hover:bg-zinc-900/30 p-2 rounded-lg transition-colors">
                                     <div className="flex flex-col">
                                         <span className="text-sm font-bold text-white">#{sale.saleNumber}</span>
-                                        <span className="text-xs text-zinc-500">{new Date(sale.createdAt).toLocaleDateString()}</span>
+                                        <span className="text-xs text-zinc-500">
+                                            {isMounted ? new Date(sale.createdAt).toLocaleDateString() : '...'}
+                                        </span>
                                     </div>
                                     <div className="text-right">
                                         <span className="text-sm font-bold text-emerald-400 block">{fmtMoney(sale.total)}</span>
