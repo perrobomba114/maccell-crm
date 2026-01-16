@@ -210,34 +210,41 @@ export function CreateInvoiceModal({ branches, userId }: { branches: any[], user
 
                             <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-6">
                                 <div className="grid grid-cols-12 gap-4">
-                                    <div className="col-span-4 space-y-2">
-                                        <Label className="text-zinc-400 font-medium">Tipo</Label>
-                                        <Select value={docType} onValueChange={(v: any) => setDocType(v)}>
-                                            <SelectTrigger className="bg-zinc-950 border-zinc-700 h-11">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-zinc-900 border-zinc-800">
-                                                <SelectItem value="FINAL">Final</SelectItem>
-                                                <SelectItem value="DNI">DNI</SelectItem>
-                                                <SelectItem value="CUIT">CUIT</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="col-span-8 space-y-2">
+                                    <div className="col-span-12 space-y-2">
                                         <Label className="text-zinc-400 font-medium">Número / Identificación</Label>
                                         <div className="flex gap-2">
                                             <Input
                                                 value={docNumber}
-                                                onChange={e => setDocNumber(e.target.value)}
-                                                placeholder="Ingrese Documento"
+                                                onChange={e => {
+                                                    const val = e.target.value.replace(/\D/g, '');
+                                                    setDocNumber(val);
+
+                                                    // Auto-detect type
+                                                    if (val.length === 0 || val === "0") {
+                                                        setDocType("FINAL");
+                                                    } else if (val.length === 11) {
+                                                        setDocType("CUIT");
+                                                    } else if (val.length === 7 || val.length === 8) {
+                                                        setDocType("DNI");
+                                                    }
+                                                }}
+                                                placeholder={docType === "CUIT" ? "Ingrese CUIT (11 dígitos)" : "Ingrese DNI, CUIT o 0 para Final"}
                                                 className="bg-zinc-950 border-zinc-700 h-11 font-mono text-lg tracking-wide"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                        e.preventDefault();
+                                                        if (docType === "CUIT" || docNumber.length === 11) {
+                                                            handleSearchCuit();
+                                                        }
+                                                    }
+                                                }}
                                             />
                                             <Button
                                                 size="icon"
                                                 variant="secondary"
                                                 className="h-11 w-11 shrink-0 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
                                                 onClick={handleSearchCuit}
-                                                disabled={isSearching || docType === 'FINAL'}
+                                                disabled={isSearching || (docNumber.length !== 11 && docType !== 'CUIT')}
                                             >
                                                 {isSearching ? <Loader2 className="w-5 h-5 animate-spin text-zinc-400" /> : <Search className="w-5 h-5 text-zinc-400" />}
                                             </Button>

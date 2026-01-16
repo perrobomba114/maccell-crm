@@ -166,77 +166,77 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount }: Inv
 
                         <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-5">
                             <div className="space-y-2">
-                                <Label className="text-zinc-400">Tipo de Documento</Label>
-                                <div className="flex gap-2">
-                                    <button onClick={() => { setDocType("FINAL"); setDocNumber("0"); setName(""); }} className={cn("flex-1 py-2 rounded-md border text-sm font-medium transition-all", docType === "FINAL" ? "bg-zinc-100 text-zinc-900 border-white" : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-zinc-800")}>Final</button>
-                                    <button onClick={() => { setDocType("DNI"); setDocNumber(""); setName(""); }} className={cn("flex-1 py-2 rounded-md border text-sm font-medium transition-all", docType === "DNI" ? "bg-zinc-100 text-zinc-900 border-white" : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-zinc-800")}>DNI</button>
-                                    <button onClick={() => { setDocType("CUIT"); setDocNumber(""); setName(""); }} className={cn("flex-1 py-2 rounded-md border text-sm font-medium transition-all", docType === "CUIT" ? "bg-zinc-100 text-zinc-900 border-white" : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-zinc-800")}>CUIT</button>
+                                {/* Manual Type Selection removed in favor of auto-detection */}
+                            </div>
+
+
+                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                                <div className="space-y-2">
+                                    <Label className="text-zinc-400">Número</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            value={docNumber}
+                                            onChange={e => {
+                                                const val = e.target.value.replace(/\D/g, '');
+                                                setDocNumber(val);
+
+                                                // Auto-detect type
+                                                if (docType === "FINAL" && val.length > 0 && val !== "0") {
+                                                    setDocType("DNI");
+                                                }
+
+                                                // Switch back to FINAL if cleared
+                                                if (val.length === 0) {
+                                                    setDocType("FINAL");
+                                                } else if (val.length === 11 && docType !== "CUIT") {
+                                                    setDocType("CUIT");
+                                                } else if ((val.length === 7 || val.length === 8) && docType !== "DNI" && docType !== "FINAL") {
+                                                    setDocType("DNI");
+                                                }
+                                            }}
+                                            placeholder={docType === "CUIT" ? "20..." : "Número DNI"}
+                                            className="bg-zinc-950 border-zinc-700 font-mono text-lg"
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                    e.preventDefault();
+                                                    // Trigger search if it's CUIT
+                                                    // Or just confirm inputs if DNI
+                                                    if (docType === "CUIT" || docNumber.length === 11) {
+                                                        handleSearchCuit();
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                        <Button onClick={handleSearchCuit} disabled={isLoadingCuit} variant="secondary" className="bg-zinc-800 border-zinc-700">
+                                            {isLoadingCuit ? <Loader2 className="animate-spin w-4 h-4" /> : <Search className="w-4 h-4" />}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-zinc-400">Nombre / Razón Social</Label>
+                                    <Input
+                                        value={name}
+                                        onChange={e => setName(e.target.value)}
+                                        className="bg-zinc-950 border-zinc-700"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-zinc-400">Dirección</Label>
+                                    <Input
+                                        value={address}
+                                        onChange={e => setAddress(e.target.value)}
+                                        className="bg-zinc-950 border-zinc-700"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-zinc-400">Condición AFIP</Label>
+                                    <div className="px-3 py-2 rounded-md bg-zinc-950 border border-zinc-800 text-sm text-zinc-300">
+                                        {ivaCondition || "No verificado"}
+                                    </div>
                                 </div>
                             </div>
 
-                            {docType !== "FINAL" && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                                    <div className="space-y-2">
-                                        <Label className="text-zinc-400">Número</Label>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                value={docNumber}
-                                                onChange={e => {
-                                                    const val = e.target.value.replace(/\D/g, '');
-                                                    setDocNumber(val);
-
-                                                    // Auto-detect type
-                                                    if (val.length === 11 && docType !== "CUIT") {
-                                                        setDocType("CUIT");
-                                                        // Automatically trigger search if it looks like a complete CUIT
-                                                        // Optional: could auto-trigger valid check
-                                                    } else if ((val.length === 7 || val.length === 8) && docType !== "DNI") {
-                                                        setDocType("DNI");
-                                                    }
-                                                }}
-                                                placeholder={docType === "CUIT" ? "20..." : "Número DNI"}
-                                                className="bg-zinc-950 border-zinc-700 font-mono text-lg"
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter") {
-                                                        e.preventDefault();
-                                                        // Trigger search if it's CUIT
-                                                        // Or just confirm inputs if DNI
-                                                        if (docType === "CUIT" || docNumber.length === 11) {
-                                                            handleSearchCuit();
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                            <Button onClick={handleSearchCuit} disabled={isLoadingCuit} variant="secondary" className="bg-zinc-800 border-zinc-700">
-                                                {isLoadingCuit ? <Loader2 className="animate-spin w-4 h-4" /> : <Search className="w-4 h-4" />}
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label className="text-zinc-400">Nombre / Razón Social</Label>
-                                        <Input
-                                            value={name}
-                                            onChange={e => setName(e.target.value)}
-                                            className="bg-zinc-950 border-zinc-700"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-zinc-400">Dirección</Label>
-                                        <Input
-                                            value={address}
-                                            onChange={e => setAddress(e.target.value)}
-                                            className="bg-zinc-950 border-zinc-700"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-zinc-400">Condición AFIP</Label>
-                                        <div className="px-3 py-2 rounded-md bg-zinc-950 border border-zinc-800 text-sm text-zinc-300">
-                                            {ivaCondition || "No verificado"}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
 
