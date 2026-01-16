@@ -19,18 +19,24 @@ const COLORS = [
 
 export function BestSellersChart({ data }: BestSellersChartProps) {
     const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => setIsMounted(true), []);
+    const [isReady, setIsReady] = useState(false);
 
-    // Inject colors if not present or just override for consistency
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 200);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // ... existing logic ...
     const chartData = data.map((item, index) => ({
         ...item,
-        name: item.name || "Producto Desconocido", // Fallback for name
+        name: item.name || "Producto Desconocido",
         fill: COLORS[index % COLORS.length]
     }));
 
     const totalSold = chartData.reduce((acc, curr) => acc + curr.value, 0);
 
-    if (!isMounted) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-full min-h-[400px] flex items-center justify-center animate-pulse" />;
+    if (!isMounted || !isReady) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-full min-h-[400px] flex items-center justify-center animate-pulse" />;
 
     if (data.length === 0) {
         return (

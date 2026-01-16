@@ -25,21 +25,24 @@ const fmtCompact = (n: number) => new Intl.NumberFormat("es-AR", { notation: "co
 
 export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCategory }: ProfitDonutProps) {
     const [isMounted, setIsMounted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
 
     React.useEffect(() => {
         setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
     }, []);
 
-    // Sort large segments first
+    // ... existing sortedData logic ...
     const sortedData = [...(data || [])]
-        .filter(d => d.value > 0) // Only show positive values in donut
+        .filter(d => d.value > 0)
         .sort((a, b) => b.value - a.value);
 
     const safeTotal = total > 0 ? total : sortedData.reduce((acc, curr) => acc + curr.value, 0);
 
-    if (!isMounted) {
+    if (!isMounted || !isReady) {
         return (
-            <div className="bg-[#18181b] rounded-2xl border border-zinc-800/50 h-full flex items-center justify-center">
+            <div className="bg-[#18181b] rounded-2xl border border-zinc-800/50 h-[435px] flex items-center justify-center">
                 <div className="w-8 h-8 border-4 border-violet-500/20 border-t-violet-500 rounded-full animate-spin" />
             </div>
         );

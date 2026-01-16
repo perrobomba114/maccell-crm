@@ -25,9 +25,15 @@ interface BranchProfitProps {
 
 export function BranchProfitChart({ data }: BranchProfitProps) {
     const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => setIsMounted(true), []);
+    const [isReady, setIsReady] = useState(false);
 
-    if (!isMounted) return <Card className="bg-[#18181b] border-zinc-800 shadow-none h-[450px]" />;
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 200);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!isMounted || !isReady) return <Card className="bg-[#18181b] border-zinc-800 shadow-none h-[450px] animate-pulse" />;
 
     return (
         <Card className="bg-[#18181b] border-zinc-800 shadow-none">
@@ -79,9 +85,15 @@ interface BranchGrowthProps {
 
 export function BranchGrowthChart({ data }: BranchGrowthProps) {
     const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => setIsMounted(true), []);
+    const [isReady, setIsReady] = useState(false);
 
-    if (!isMounted) return <Card className="bg-[#18181b] border-zinc-800 shadow-none h-[450px]" />;
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 200);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!isMounted || !isReady) return <Card className="bg-[#18181b] border-zinc-800 shadow-none h-[450px] animate-pulse" />;
 
     return (
         <Card className="bg-[#18181b] border-zinc-800 shadow-none">

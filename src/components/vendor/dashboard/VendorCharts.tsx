@@ -12,9 +12,15 @@ interface VendorChartsProps {
 
 export function SalesWeekChart({ data }: { data: { name: string; total: number }[] }) {
     const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => setIsMounted(true), []);
+    const [isReady, setIsReady] = useState(false);
 
-    if (!isMounted) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-[435px]" />;
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!isMounted || !isReady) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-[435px] animate-pulse" />;
     return (
         <Card className="col-span-4 lg:col-span-2 border-none shadow-md">
             <CardHeader>

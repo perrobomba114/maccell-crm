@@ -13,9 +13,12 @@ interface DashboardChartsProps {
 
 export function DashboardCharts({ stats }: DashboardChartsProps) {
     const [isMounted, setIsMounted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
         setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
     }, []);
 
     // Data preparation
@@ -26,13 +29,13 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
     // Ensure we have some colors
     const COLORS = ['#0ea5e9', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7'];
 
-    if (!isMounted) {
+    if (!isMounted || !isReady) {
         return <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="h-[400px] flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            <Card className="h-[400px] flex items-center justify-center animate-pulse">
+                <div className="rounded-full h-8 w-8 border-b-2 border-primary" />
             </Card>
-            <Card className="h-[400px] flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            <Card className="h-[400px] flex items-center justify-center animate-pulse">
+                <div className="rounded-full h-8 w-8 border-b-2 border-primary" />
             </Card>
         </div>;
     }
