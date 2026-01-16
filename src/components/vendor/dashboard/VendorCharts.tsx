@@ -23,7 +23,7 @@ export function SalesWeekChart({ data }: { data: { name: string; total: number }
             </CardHeader>
             <CardContent>
                 <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" debounce={50}>
                         <BarChart data={data}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} stroke="currentColor" />
                             <XAxis

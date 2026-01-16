@@ -48,7 +48,7 @@ export function BestSellersChart({ data }: BestSellersChartProps) {
             </CardHeader>
             <CardContent className="flex-1 min-h-[350px]">
                 <div className="h-full w-full relative">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" debounce={50}>
                         <PieChart>
                             <defs>
                                 <filter id="shadow" height="200%">
