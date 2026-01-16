@@ -7,6 +7,7 @@ export const vendorLinks = [
     { href: "/vendor/repairs/history", label: "Historial de Reparacion", icon: "History" },
     { href: "/vendor/stock", label: "Consulta Stock", icon: "Box" },
     { href: "/vendor/products", label: "Productos", icon: "Package" },
+    { href: "/vendor/imei", label: "Consulta IMEI", icon: "ShieldCheck" },
 ];
 
 export const technicianLinks = [
@@ -16,6 +17,7 @@ export const technicianLinks = [
     { href: "/technician/history", label: "Historial", icon: "History" },
     { href: "/technician/returns", label: "Devoluciones", icon: "RotateCcw" },
     { href: "/vendor/stock", label: "Consulta Stock", icon: "Box" },
+    { href: "/technician/imei", label: "Consulta IMEI", icon: "ShieldCheck" },
 ];
 
 export const adminGroups = [
@@ -48,6 +50,7 @@ export const adminGroups = [
         items: [
             { href: "/admin/repairs", label: "Reparaciones", icon: "Wrench" },
             { href: "/admin/returns", label: "Devoluciones", icon: "RotateCcw" },
+            { href: "/admin/imei", label: "Consulta IMEI", icon: "ShieldCheck" },
         ]
     },
     {
