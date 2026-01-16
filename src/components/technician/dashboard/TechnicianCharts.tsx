@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
@@ -11,6 +12,16 @@ interface TechnicianChartsProps {
 }
 
 export function WeeklyOutputChart({ data }: { data: { name: string; count: number }[] }) {
+    const [isMounted, setIsMounted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!isMounted || !isReady) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-[340px] animate-pulse" />;
     return (
         <Card className="col-span-4 lg:col-span-2 border-none shadow-md">
             <CardHeader>
@@ -38,6 +49,17 @@ export function WeeklyOutputChart({ data }: { data: { name: string; count: numbe
 }
 
 export function MyStatusPieChart({ data }: { data: { name: string; value: number; color: string }[] }) {
+    const [isMounted, setIsMounted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!isMounted || !isReady) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-[340px] animate-pulse" />;
+
     const COLORS = ['#3b82f6', '#f97316', '#10b981', '#ef4444', '#8b5cf6'];
 
     return (

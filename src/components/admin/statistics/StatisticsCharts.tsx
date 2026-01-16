@@ -26,9 +26,15 @@ interface BranchProfitProps {
 
 export function BranchProfitChart({ data }: BranchProfitProps) {
     const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => setIsMounted(true), []);
+    const [isReady, setIsReady] = useState(false);
 
-    if (!isMounted) return <Card className="col-span-1 shadow-sm h-[450px]" />;
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!isMounted || !isReady) return <Card className="col-span-1 shadow-sm h-[450px] animate-pulse" />;
 
     return (
         <Card className="col-span-1 shadow-sm">
@@ -76,9 +82,15 @@ interface TopProductsProps {
 
 export function TopProductsChart({ data }: TopProductsProps) {
     const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => setIsMounted(true), []);
+    const [isReady, setIsReady] = useState(false);
 
-    if (!isMounted) return <Card className="col-span-1 shadow-sm h-[450px]" />;
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!isMounted || !isReady) return <Card className="col-span-1 shadow-sm h-[450px] animate-pulse" />;
 
     return (
         <Card className="col-span-1 shadow-sm">
@@ -121,9 +133,15 @@ interface BranchGrowthProps {
 
 export function BranchGrowthChart({ data }: BranchGrowthProps) {
     const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => setIsMounted(true), []);
+    const [isReady, setIsReady] = useState(false);
 
-    if (!isMounted) return <Card className="col-span-1 shadow-sm h-[450px]" />;
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 150);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!isMounted || !isReady) return <Card className="col-span-1 shadow-sm h-[450px] animate-pulse" />;
 
     return (
         <Card className="col-span-1 shadow-sm">
