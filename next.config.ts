@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Disable SWC Minification to prevent 'workers' crash in low-mem Docker
   swcMinify: false,
+  // Disable Image Optimization to prevent worker crash
+  images: {
+    unoptimized: true,
+  },
   webpack: (config) => {
     // config.cache = false;
     return config;
