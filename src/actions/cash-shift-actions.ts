@@ -61,112 +61,8 @@ export async function getCashShifts(
             }
         });
 
-        const shiftsWithDetails = await Promise.all(shifts.map(async (shift) => {
-            const startTime = shift.startTime;
-            const endTime = shift.endTime || new Date();
-
-            const sales = await prisma.sale.findMany({
-                where: {
-                    branchId: shift.branchId,
-                    vendorId: shift.userId,
-                    createdAt: {
-                        gte: startTime,
-                        lte: endTime
-                    }
-                },
-                include: { items: true } // Include items for display if needed
-            });
-
-            // ... expenses fetch ...
-            let expenses: any[] = [];
-            if ((prisma as any).expense) {
-                try {
-                    expenses = await (prisma as any).expense.findMany({
-                        where: {
-                            branchId: shift.branchId,
-                            userId: shift.userId,
-                            createdAt: {
-                                gte: startTime,
-                                lte: endTime
-                            }
-                        },
-                        include: {
-                            user: { select: { name: true } }
-                        }
-                    });
-                } catch (err) {
-                    // ignore
-                }
-            }
-
-            let cash = 0;
-            let card = 0;
-            let mp = 0;
-            let totalSales = 0;
-
-            sales.forEach(sale => {
-                totalSales += sale.total;
-                if (sale.paymentMethod === 'CASH') cash += sale.total;
-                else if (sale.paymentMethod === 'CARD') card += sale.total;
-                else if (sale.paymentMethod === 'MERCADOPAGO') mp += sale.total;
-            });
-
-            const expensesTotal = expenses.reduce((acc: number, curr: any) => acc + curr.amount, 0);
-
-            const storedBonus = (shift as any).bonusTotal || 0;
-            let finalBonus = storedBonus;
-
-            if (finalBonus === 0 && totalSales > 0) {
-                const bonusRate = totalSales > 1200000 ? 0.02 : 0.01;
-                const perEmp = Math.round((totalSales * bonusRate) / 500) * 500;
-                const count = (shift as any).employeeCount || 1;
-                finalBonus = perEmp * count;
-            }
-
-            const netTotal = shift.startAmount + cash - expensesTotal - finalBonus;
-
-            // Filter modified sales
-            const modifiedSales = sales
-                .filter(s => (s as any).wasPaymentModified)
-                .map(s => ({
-                    id: s.id,
-                    saleNumber: s.saleNumber,
-                    total: s.total,
-                    paymentMethod: s.paymentMethod,
-                    originalPaymentMethod: (s as any).originalPaymentMethod,
-                    updatedAt: s.updatedAt,
-                    items: s.items
-                }));
-
-            return {
-                ...shift,
-                totals: {
-                    totalSales,
-                    cash,
-                    card,
-                    mercadopago: mp,
-                    expenses: expensesTotal,
-                    bonuses: finalBonus,
-                    netTotal
-                },
-                counts: {
-                    sales: sales.length,
-                    expenses: expenses.length
-                },
-                details: {
-                    expenses: expenses.map((e: any) => ({
-                        id: e.id,
-                        description: e.description,
-                        amount: e.amount,
-                        time: e.createdAt,
-                        userName: e.user.name
-                    })),
-                    modifiedSales
-                }
-            };
-        }));
-
-        return shiftsWithDetails;
+        // Use reusable function
+        return await enrichShifts(shifts);
 
     } catch (error) {
         console.error("Error fetching cash shifts:", error);
@@ -186,104 +82,8 @@ export async function getCashShiftById(shiftId: string): Promise<CashShiftWithDe
 
         if (!shift) return null;
 
-        const startTime = shift.startTime;
-        const endTime = shift.endTime || new Date();
-
-        const sales = await prisma.sale.findMany({
-            where: {
-                branchId: shift.branchId,
-                vendorId: shift.userId,
-                createdAt: {
-                    gte: startTime,
-                    lte: endTime
-                }
-            },
-            include: { items: true }
-        });
-
-        let expenses: any[] = [];
-        if ((prisma as any).expense) {
-            try {
-                expenses = await (prisma as any).expense.findMany({
-                    where: {
-                        branchId: shift.branchId,
-                        userId: shift.userId,
-                        createdAt: {
-                            gte: startTime,
-                            lte: endTime
-                        }
-                    },
-                    include: {
-                        user: { select: { name: true } }
-                    }
-                });
-            } catch (e) { }
-        }
-
-        let cash = 0;
-        let card = 0;
-        let mp = 0;
-        let totalSales = 0;
-
-        sales.forEach(sale => {
-            totalSales += sale.total;
-            if (sale.paymentMethod === 'CASH') cash += sale.total;
-            else if (sale.paymentMethod === 'CARD') card += sale.total;
-            else if (sale.paymentMethod === 'MERCADOPAGO') mp += sale.total;
-        });
-
-        const expensesTotal = expenses.reduce((acc: number, curr: any) => acc + curr.amount, 0);
-
-        const storedBonus = (shift as any).bonusTotal || 0;
-        let finalBonus = storedBonus;
-
-        if (finalBonus === 0 && totalSales > 0) {
-            const bonusRate = totalSales > 1200000 ? 0.02 : 0.01;
-            const perEmp = Math.round((totalSales * bonusRate) / 500) * 500;
-            const count = (shift as any).employeeCount || 1;
-            finalBonus = perEmp * count;
-        }
-
-        const netTotal = shift.startAmount + cash - expensesTotal - finalBonus;
-
-        const modifiedSales = sales
-            .filter(s => (s as any).wasPaymentModified)
-            .map(s => ({
-                id: s.id,
-                saleNumber: s.saleNumber,
-                total: s.total,
-                paymentMethod: s.paymentMethod,
-                originalPaymentMethod: (s as any).originalPaymentMethod,
-                updatedAt: s.updatedAt,
-                items: s.items
-            }));
-
-        return {
-            ...shift,
-            totals: {
-                totalSales,
-                cash,
-                card,
-                mercadopago: mp,
-                expenses: expensesTotal,
-                bonuses: finalBonus,
-                netTotal
-            },
-            counts: {
-                sales: sales.length,
-                expenses: expenses.length
-            },
-            details: {
-                expenses: expenses.map((e: any) => ({
-                    id: e.id,
-                    description: e.description,
-                    amount: e.amount,
-                    time: e.createdAt,
-                    userName: e.user.name
-                })),
-                modifiedSales
-            }
-        };
+        const [enriched] = await enrichShifts([shift]);
+        return enriched || null;
 
     } catch (error) {
         console.error("Error fetching shift details:", error);
@@ -398,11 +198,13 @@ async function getCashShiftsInRangeOptimized(start: Date, end: Date, branchId?: 
     if (shifts.length === 0) return [];
 
     // 2. Fetch all related sales for this range in BATCH (no items, very fast)
+    // IMPORTANT: Include payments here too
     const allSales = await prisma.sale.findMany({
         where: {
             createdAt: { gte: start, lte: end },
             branchId: (branchId && branchId !== "ALL") ? branchId : undefined
-        }
+        },
+        include: { payments: true }
     });
 
     // 3. Fetch all related expenses for this range in BATCH
@@ -437,9 +239,18 @@ async function getCashShiftsInRangeOptimized(start: Date, end: Date, branchId?: 
         let cash = 0, card = 0, mp = 0, totalSales = 0;
         shiftSales.forEach(sale => {
             totalSales += sale.total;
-            if (sale.paymentMethod === 'CASH') cash += sale.total;
-            else if (sale.paymentMethod === 'CARD') card += sale.total;
-            else if (sale.paymentMethod === 'MERCADOPAGO') mp += sale.total;
+            if (sale.payments && sale.payments.length > 0) {
+                sale.payments.forEach(p => {
+                    if (p.method === 'CASH') cash += p.amount;
+                    else if (p.method === 'CARD') card += p.amount;
+                    else if (p.method === 'MERCADOPAGO') mp += p.amount;
+                });
+            } else {
+                // Fallback for simple legacy sales
+                if (sale.paymentMethod === 'CASH') cash += sale.total;
+                else if (sale.paymentMethod === 'CARD') card += sale.total;
+                else if (sale.paymentMethod === 'MERCADOPAGO') mp += sale.total;
+            }
         });
 
         const expensesTotal = shiftExpenses.reduce((acc, curr) => acc + curr.amount, 0);
@@ -511,7 +322,7 @@ async function enrichShifts(shifts: any[]): Promise<CashShiftWithDetails[]> {
                     lte: endTime
                 }
             },
-            include: { items: true }
+            include: { items: true, payments: true } // Added payments: true
         });
 
         // Expenses
@@ -536,9 +347,17 @@ async function enrichShifts(shifts: any[]): Promise<CashShiftWithDetails[]> {
 
         sales.forEach(sale => {
             totalSales += sale.total;
-            if (sale.paymentMethod === 'CASH') cash += sale.total;
-            else if (sale.paymentMethod === 'CARD') card += sale.total;
-            else if (sale.paymentMethod === 'MERCADOPAGO') mp += sale.total;
+            if (sale.payments && sale.payments.length > 0) {
+                sale.payments.forEach(p => {
+                    if (p.method === 'CASH') cash += p.amount;
+                    else if (p.method === 'CARD') card += p.amount;
+                    else if (p.method === 'MERCADOPAGO') mp += p.amount;
+                });
+            } else {
+                if (sale.paymentMethod === 'CASH') cash += sale.total;
+                else if (sale.paymentMethod === 'CARD') card += sale.total;
+                else if (sale.paymentMethod === 'MERCADOPAGO') mp += sale.total;
+            }
         });
 
         const expensesTotal = expenses.reduce((acc: number, curr: any) => acc + curr.amount, 0);
