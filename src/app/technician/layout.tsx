@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { getUserData } from "@/actions/get-user";
 
-import { technicianLinks } from "@/components/layout/nav-config";
+import { technicianGroups } from "@/components/layout/nav-config";
 
 export default function TechnicianLayout({
     children,
@@ -91,7 +91,7 @@ export default function TechnicianLayout({
     return (
         <div className="flex min-h-screen" suppressHydrationWarning>
             <Sidebar
-                links={technicianLinks}
+                groups={technicianGroups}
                 onCollapseChange={setIsCollapsed}
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}

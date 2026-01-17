@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { VendorLayoutClient } from "./vendor-layout-client";
-import { vendorLinks, technicianLinks } from "@/components/layout/nav-config";
+import { vendorGroups, technicianGroups } from "@/components/layout/nav-config";
 
 export default async function VendorLayout({
     children,
@@ -10,12 +10,12 @@ export default async function VendorLayout({
     const cookieStore = await cookies();
     const sessionRole = cookieStore.get("session_role")?.value;
 
-    // Determine which links to show based on role
-    // If TECHNICIAN is accessing a vendor route (like stock), show technician links
-    const links = sessionRole === "TECHNICIAN" ? technicianLinks : vendorLinks;
+    // Determine which groups to show based on role
+    // If TECHNICIAN is accessing a vendor route, show technician groups
+    const groups = sessionRole === "TECHNICIAN" ? technicianGroups : vendorGroups;
 
     return (
-        <VendorLayoutClient links={links}>
+        <VendorLayoutClient groups={groups}>
             {children}
         </VendorLayoutClient>
     );

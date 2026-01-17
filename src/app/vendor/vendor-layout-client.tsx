@@ -13,14 +13,19 @@ interface LinkItem {
     icon: string;
 }
 
+interface SidebarGroup {
+    label?: string;
+    items: LinkItem[];
+}
+
 interface VendorLayoutClientProps {
     children: React.ReactNode;
-    links: LinkItem[];
+    groups: SidebarGroup[];
 }
 
 export function VendorLayoutClient({
     children,
-    links,
+    groups,
 }: VendorLayoutClientProps) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [userName, setUserName] = useState<string | undefined>("Usuario");
@@ -101,7 +106,7 @@ export function VendorLayoutClient({
     return (
         <div className="flex min-h-screen" suppressHydrationWarning>
             <Sidebar
-                links={links}
+                groups={groups}
                 onCollapseChange={setIsCollapsed}
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}

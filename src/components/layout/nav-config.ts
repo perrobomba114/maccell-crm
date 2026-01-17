@@ -1,24 +1,63 @@
-export const vendorLinks = [
-    { href: "/vendor/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-    { href: "/vendor/pos", label: "Punto de Venta", icon: "ShoppingCart" },
-    { href: "/vendor/sales", label: "Mis Ventas", icon: "Receipt" },
-    { href: "/vendor/repairs/create", label: "Nuevo Ingreso", icon: "Wrench" },
-    { href: "/vendor/repairs/active", label: "Reparaciones Activas", icon: "List" },
-    { href: "/vendor/repairs/history", label: "Historial de Reparacion", icon: "History" },
-    { href: "/vendor/stock", label: "Consulta Stock", icon: "Box" },
-    { href: "/vendor/products", label: "Productos", icon: "Package" },
-    { href: "/vendor/imei", label: "Consulta IMEI", icon: "ShieldCheck" },
+export const vendorGroups = [
+    {
+        label: "Comercial",
+        items: [
+            { href: "/vendor/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+            { href: "/vendor/pos", label: "Punto de Venta", icon: "ShoppingCart" },
+            { href: "/vendor/sales", label: "Mis Ventas", icon: "Receipt" },
+        ]
+    },
+    {
+        label: "Servicio Técnico",
+        items: [
+            { href: "/vendor/repairs/create", label: "Nuevo Ingreso", icon: "Wrench" },
+            { href: "/vendor/repairs/active", label: "Reparaciones Activas", icon: "List" },
+            { href: "/vendor/repairs/history", label: "Historial", icon: "History" },
+        ]
+    },
+    {
+        label: "Inventario",
+        items: [
+            { href: "/vendor/stock", label: "Consulta Stock", icon: "Box" },
+            { href: "/vendor/products", label: "Productos", icon: "Package" },
+        ]
+    },
+    {
+        label: "Herramientas",
+        items: [
+            { href: "/vendor/imei", label: "Consulta IMEI", icon: "ShieldCheck" },
+        ]
+    }
 ];
 
-export const technicianLinks = [
-    { href: "/technician/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-    { href: "/technician/tickets", label: "Trabajo Disponible", icon: "ClipboardList" },
-    { href: "/technician/repairs", label: "Reparaciones", icon: "Wrench" },
-    { href: "/technician/history", label: "Historial", icon: "History" },
-    { href: "/technician/returns", label: "Devoluciones", icon: "RotateCcw" },
-    { href: "/vendor/stock", label: "Consulta Stock", icon: "Box" },
-    { href: "/technician/imei", label: "Consulta IMEI", icon: "ShieldCheck" },
+export const technicianGroups = [
+    {
+        label: "Principal",
+        items: [
+            { href: "/technician/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+        ]
+    },
+    {
+        label: "Taller",
+        items: [
+            { href: "/technician/tickets", label: "Trabajo Disponible", icon: "ClipboardList" },
+            { href: "/technician/repairs", label: "Reparaciones", icon: "Wrench" },
+            { href: "/technician/history", label: "Historial", icon: "History" },
+            { href: "/technician/returns", label: "Devoluciones", icon: "RotateCcw" },
+        ]
+    },
+    {
+        label: "Consultas",
+        items: [
+            { href: "/vendor/stock", label: "Consulta Stock", icon: "Box" },
+            { href: "/technician/imei", label: "Consulta IMEI", icon: "ShieldCheck" },
+        ]
+    }
 ];
+
+// Deprecated: kept for temporary backward compatibility if needed, but layouts will switch to groups.
+export const vendorLinks = [];
+export const technicianLinks = [];
 
 export const adminGroups = [
     {

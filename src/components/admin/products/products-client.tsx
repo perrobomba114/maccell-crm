@@ -399,18 +399,46 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
             }
 
             toast.dismiss(toastId);
-            toast.promise(bulkUpsertProducts(parsedProducts), {
-                loading: `Importando ${parsedProducts.length} productos...`,
-                success: (data) => {
-                    if (data.success) {
-                        router.refresh(); // Refresh data to show new stocks/products
-                        return `Importación exitosa: ${data.count} productos procesados.`;
+            const BATCH_SIZE = 50;
+            const total = parsedProducts.length;
+            let processed = 0;
+            let errorCount = 0;
+
+            const progressToastId = toast.loading(`Iniciando importación de ${total} productos...`);
+
+            try {
+                for (let i = 0; i < total; i += BATCH_SIZE) {
+                    const chunk = parsedProducts.slice(i, i + BATCH_SIZE);
+                    const res = await bulkUpsertProducts(chunk);
+
+                    if (!res.success) {
+                        console.error(`Error en lote ${i}-${i + BATCH_SIZE}:`, res.error);
+                        errorCount += chunk.length;
+                        toast.error(`Error en lote ${i + 1}-${Math.min(i + BATCH_SIZE, total)}: ${res.error}`, { id: progressToastId, duration: 2000 });
+                        // Option: continue or break. Let's continue but mark error.
+                        // break; // Uncomment to stop on first error
                     } else {
-                        throw new Error(data.error);
+                        processed += chunk.length;
                     }
-                },
-                error: (err) => `Error: ${err.message}`
-            });
+
+                    // Update progress
+                    toast.loading(`Importando... ${Math.min(processed + errorCount, total)}/${total} (${Math.round(((processed + errorCount) / total) * 100)}%)`, {
+                        id: progressToastId
+                    });
+                }
+
+                if (errorCount > 0) {
+                    toast.success(`Proceso finalizado. Importados: ${processed}. Fallidos: ${errorCount}.`, { id: progressToastId, duration: 5000 });
+                } else {
+                    toast.success(`Importación exitosa: ${processed} productos procesados.`, { id: progressToastId, duration: 4000 });
+                }
+
+                router.refresh();
+
+            } catch (error) {
+                console.error(error);
+                toast.error(`Error crítico durante la importación: ${error instanceof Error ? error.message : "Desconocido"}`, { id: progressToastId });
+            }
 
         } catch (error) {
             console.error(error);
