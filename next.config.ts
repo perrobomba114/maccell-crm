@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   compress: false,
   generateEtags: false,
   poweredByHeader: false,
+  // Disable SWC Minification to prevent 'workers' crash in low-mem Docker
+  swcMinify: false,
   webpack: (config) => {
     // config.cache = false;
     return config;
