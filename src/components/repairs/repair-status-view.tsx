@@ -66,11 +66,10 @@ export function RepairStatusView({ repair }: RepairStatusViewProps) {
 
     return (
         <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden selection:bg-primary selection:text-white">
-            {/* Ambient Background Effects */}
+            {/* Ambient Background Effects - Lite for Mobile */}
             <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-primary/20 blur-[150px] rounded-full opacity-40" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[150px] rounded-full opacity-30" />
-                <div className="absolute top-[30%] left-[20%] w-[30%] h-[30%] bg-purple-600/5 blur-[120px] rounded-full opacity-20" />
+                <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[80px] rounded-full opacity-30" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/5 blur-[80px] rounded-full opacity-20" />
             </div>
 
             <div className="relative z-10 max-w-2xl mx-auto px-4 py-16 space-y-12">
@@ -82,13 +81,14 @@ export function RepairStatusView({ repair }: RepairStatusViewProps) {
                     className="flex flex-col items-center text-center space-y-8"
                 >
                     {repair.branch.imageUrl ? (
-                        <div className="relative w-80 h-36 filter drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                        <div className="relative w-80 h-36 filter drop-shadow-[0_0_15px_rgba(255,255,255,0.05)]">
                             <Image
                                 src={getImgUrl(repair.branch.imageUrl)}
                                 alt={repair.branch.name}
                                 fill
                                 className="object-contain"
                                 priority
+                                sizes="(max-width: 768px) 100vw, 320px"
                             />
                         </div>
                     ) : (
@@ -117,7 +117,7 @@ export function RepairStatusView({ repair }: RepairStatusViewProps) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.1, duration: 0.5 }}
                 >
-                    <Card className="bg-white/[0.03] border-white/10 backdrop-blur-3xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.7)] overflow-hidden rounded-[3rem] border-t-white/20">
+                    <Card className="bg-white/[0.03] border-white/10 backdrop-blur-md shadow-[0_40px_80px_-15px_rgba(0,0,0,0.7)] overflow-hidden rounded-[3rem] border-t-white/20">
                         <div className="p-1.5 px-8 pt-4">
                             <div className={`h-2 w-full rounded-full ${statusInfo.color.replace('text-', 'bg-')} opacity-40 blur-[1px]`} />
                         </div>
