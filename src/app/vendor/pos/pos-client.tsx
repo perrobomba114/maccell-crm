@@ -1311,9 +1311,9 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                                         <div className="space-y-2 py-2 bg-secondary/20 rounded-lg p-2">
                                             <div className="flex justify-between items-center">
                                                 <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                                                    Premios ({shiftSummary && shiftSummary.totalSales > 1000000 ? "2%" : "1%"})
+                                                    Premios ({shiftSummary && shiftSummary.totalSales > 1200000 ? "2%" : "1%"})
                                                 </Label>
-                                                {shiftSummary && shiftSummary.totalSales > 1000000 && (
+                                                {shiftSummary && shiftSummary.totalSales > 1200000 && (
                                                     <Badge variant="default" className="text-[10px] h-4 px-1 bg-yellow-500/20 text-yellow-600 hover:bg-yellow-500/30 border-yellow-500/50">
                                                         BONUS 2%
                                                     </Badge>
@@ -1333,14 +1333,14 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                                                 <div className="flex-1 text-right">
                                                     <div className="text-[10px] text-muted-foreground mb-1">Premio p/emp</div>
                                                     <div className="font-mono text-sm font-bold">
-                                                        ${shiftSummary ? (Math.round((shiftSummary.totalSales * (shiftSummary.totalSales > 1000000 ? 0.02 : 0.01)) / 500) * 500).toLocaleString() : 0}
+                                                        ${shiftSummary ? (Math.round((shiftSummary.totalSales * (shiftSummary.totalSales > 1200000 ? 0.02 : 0.01)) / 500) * 500).toLocaleString() : 0}
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="flex justify-between text-sm pt-1 border-t border-border/10">
                                                 <span className="text-muted-foreground">Total Premios:</span>
                                                 <span className="font-bold text-orange-500">
-                                                    -${shiftSummary ? ((Math.round((shiftSummary.totalSales * (shiftSummary.totalSales > 1000000 ? 0.02 : 0.01)) / 500) * 500) * employeeCount).toLocaleString() : 0}
+                                                    -${shiftSummary ? ((Math.round((shiftSummary.totalSales * (shiftSummary.totalSales > 1200000 ? 0.02 : 0.01)) / 500) * 500) * employeeCount).toLocaleString() : 0}
                                                 </span>
                                             </div>
                                         </div>
@@ -1355,7 +1355,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                                                 <span>Sistema (Neto)</span>
                                                 <span>
                                                     ${shiftSummary ? (
-                                                        shiftSummary.expectedCash - ((Math.round((shiftSummary.totalSales * (shiftSummary.totalSales > 1000000 ? 0.02 : 0.01)) / 500) * 500) * employeeCount)
+                                                        shiftSummary.expectedCash - ((Math.round((shiftSummary.totalSales * (shiftSummary.totalSales > 1200000 ? 0.02 : 0.01)) / 500) * 500) * employeeCount)
                                                     ).toLocaleString() : 0}
                                                 </span>
                                             </div>
@@ -1373,7 +1373,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
                                         <div className={cn("p-3 rounded-lg flex items-center justify-between text-sm border",
                                             (() => {
-                                                const bonusRate = shiftSummary && shiftSummary.totalSales > 1000000 ? 0.02 : 0.01;
+                                                const bonusRate = shiftSummary && shiftSummary.totalSales > 1200000 ? 0.02 : 0.01;
                                                 const expected = shiftSummary ? (shiftSummary.expectedCash - ((Math.round((shiftSummary.totalSales * bonusRate) / 500) * 500) * employeeCount)) : 0;
                                                 const diff = parseFloat(amountInput || "0") - expected;
                                                 return diff === 0
@@ -1386,7 +1386,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                                             <span className="font-semibold">Diferencia:</span>
                                             <span className="font-mono font-bold">
                                                 ${(() => {
-                                                    const bonusRate = shiftSummary && shiftSummary.totalSales > 1000000 ? 0.02 : 0.01;
+                                                    const bonusRate = shiftSummary && shiftSummary.totalSales > 1200000 ? 0.02 : 0.01;
                                                     const expected = shiftSummary ? (shiftSummary.expectedCash - ((Math.round((shiftSummary.totalSales * bonusRate) / 500) * 500) * employeeCount)) : 0;
                                                     const diff = parseFloat(amountInput || "0") - expected;
                                                     return diff.toLocaleString('es-AR');

@@ -176,7 +176,7 @@ export async function closeRegister(shiftId: string, finalAmount: number, employ
         let bonusTotal = 0;
 
         if (summary) {
-            const bonusRate = summary.totalSales > 1000000 ? 0.02 : 0.01;
+            const bonusRate = summary.totalSales > 1200000 ? 0.02 : 0.01;
             const prizePerEmp = (Math.round((summary.totalSales * bonusRate) / 500) * 500);
             bonusTotal = prizePerEmp * employeeCount;
         }
