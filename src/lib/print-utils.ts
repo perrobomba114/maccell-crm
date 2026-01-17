@@ -735,7 +735,7 @@ export const printWarrantyTicket = (repair: any) => {
             - El equipo fue manipulado por terceros.
         </div>
         
-        <div style="margin-top: 20px; font-size: 11px;">
+        <div style="margin-top: 100px; font-size: 11px;">
              <div style="border-top: 1px solid black; display: flex; justify-content: space-between; padding-top: 5px;">
                 <span>Firma Cliente: __________________</span>
                 <span>Fecha: ${format(new Date(), "dd/MM/yyyy", { locale: es })}</span>

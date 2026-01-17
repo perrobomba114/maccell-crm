@@ -11,25 +11,47 @@ export async function GET(request: Request) {
     }
 
     try {
-        const repair = await db.repair.findFirst({
-            where: {
-                OR: [
-                    { id: id },
-                    { ticketNumber: id }
-                ]
-            },
-            include: {
-                branch: {
-                    select: {
-                        name: true,
-                        address: true,
-                        phone: true,
-                        imageUrl: true,
-                    }
-                },
-                status: true,
-            }
-        });
+        // Optimization: Clean ID and detect type to use findUnique (Index Scan) instead of findFirst with OR
+        const cleanId = id.trim();
+        let repair = null;
+
+        // Heuristic: Ticket numbers usually have prefixes or specific formats, CUIDs are long alphanumeric
+        // If it looks like a generated CUID (25+ chars, no hyphens usually, but let's be safe)
+        if (cleanId.length >= 20 && !cleanId.includes("MAC")) {
+            repair = await db.repair.findUnique({
+                where: { id: cleanId },
+                include: {
+                    branch: {
+                        select: {
+                            name: true,
+                            address: true,
+                            phone: true,
+                            imageUrl: true,
+                            // id: true // if needed
+                        }
+                    },
+                    status: true,
+                }
+            });
+        }
+
+        // If not found by ID (or it looked like a ticket), try Ticket Number
+        if (!repair) {
+            repair = await db.repair.findUnique({
+                where: { ticketNumber: cleanId },
+                include: {
+                    branch: {
+                        select: {
+                            name: true,
+                            address: true,
+                            phone: true,
+                            imageUrl: true,
+                        }
+                    },
+                    status: true,
+                }
+            });
+        }
 
         if (!repair) {
             return NextResponse.json({ error: "Repair not found" }, { status: 404 });

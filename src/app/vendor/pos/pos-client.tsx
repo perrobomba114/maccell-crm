@@ -521,9 +521,13 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                     setProducts(results);
 
                     const match = results.find(p => p.sku.toLowerCase() === searchQuery.trim().toLowerCase());
-                    if (match) {
+
+                    // Auto-add if exact SKU match OR if only one result found (User Request)
+                    const itemToAdd = match || (results.length === 1 ? results[0] : null);
+
+                    if (itemToAdd) {
                         if (cashShift) {
-                            addToCartProduct(match);
+                            addToCartProduct(itemToAdd);
                             setSearchQuery("");
                             setProducts([]);
                         } else {
