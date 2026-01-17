@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
+    console.time("API_TOTAL_DURATION");
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -15,8 +16,11 @@ export async function GET(request: Request) {
         const cleanId = id.trim();
         let repair = null;
 
+        console.log(`[API] Searching for ID: ${cleanId}`);
+
         // Heuristic: Ticket numbers usually have prefixes or specific formats, CUIDs are long alphanumeric
         // If it looks like a generated CUID (25+ chars, no hyphens usually, but let's be safe)
+        console.time("DB_QUERY_DURATION");
         if (cleanId.length >= 20 && !cleanId.includes("MAC")) {
             repair = await db.repair.findUnique({
                 where: { id: cleanId },
@@ -52,13 +56,17 @@ export async function GET(request: Request) {
                 }
             });
         }
+        console.timeEnd("DB_QUERY_DURATION");
 
         if (!repair) {
+            console.log("[API] Repair NOT FOUND");
             return NextResponse.json({ error: "Repair not found" }, { status: 404 });
         }
 
+        console.log("[API] Repair FOUND");
+
         // Return only necessary public info
-        return NextResponse.json({
+        const response = NextResponse.json({
             id: repair.id,
             ticketNumber: repair.ticketNumber,
             createdAt: repair.createdAt,
@@ -71,8 +79,13 @@ export async function GET(request: Request) {
             branch: repair.branch,
             isWet: (repair as any).isWet // Cast to any until prisma client regenerates fully or just rely on JS runtime if type isn't updated? Prisma client SHOULD be updated by db push.
         });
+
+        console.timeEnd("API_TOTAL_DURATION");
+        return response;
+
     } catch (error) {
         console.error("API Error:", error);
+        console.timeEnd("API_TOTAL_DURATION");
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
