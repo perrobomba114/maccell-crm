@@ -609,7 +609,9 @@ export async function getTechnicianStats(technicianId: string) {
             startedAt: r.startedAt || r.updatedAt, // Fallback if startedAt is null
             estimatedTime: r.estimatedTime || 0,
             statusName: r.status.name,
-            statusColor: r.status.color || "#3b82f6"
+            statusColor: r.status.color || "#3b82f6",
+            isWet: r.isWet,
+            isWarranty: r.isWarranty
         }));
 
         // 3. Queue (Pending/Assigned)
@@ -632,7 +634,9 @@ export async function getTechnicianStats(technicianId: string) {
             problem: r.problemDescription,
             createdAt: r.createdAt,
             statusName: r.status.name,
-            statusColor: r.status.color || "#888"
+            statusColor: r.status.color || "#888",
+            isWet: r.isWet,
+            isWarranty: r.isWarranty
         }));
 
         // 4. Weekly Output Chart

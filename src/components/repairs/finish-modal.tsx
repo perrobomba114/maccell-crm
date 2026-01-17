@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle, Image, Camera, X, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle, Image, Camera, X, AlertCircle, Droplets } from "lucide-react";
 import { toast } from "sonner";
 import { finishRepairAction } from "@/actions/repairs/technician-actions";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { getImgUrl } from "@/lib/utils";
 
@@ -48,6 +49,9 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const images = (repair.deviceImages || []).filter((url: string) => url && url.includes('/'));
     const [showReturnAlert, setShowReturnAlert] = useState(false);
 
+    // Initialize with existing value, allows tech to toggle ON if they find it wet
+    const [isWet, setIsWet] = useState<boolean>(!!repair.isWet);
+
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const files = Array.from(e.target.files);
@@ -76,7 +80,9 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             formData.append("technicianId", currentUserId);
             formData.append("statusId", statusId);
             formData.append("diagnosis", diagnosis);
+            formData.append("diagnosis", diagnosis);
             formData.append("createReturnRequest", createReturnRequest.toString());
+            formData.append("isWet", isWet.toString());
 
             newImages.forEach((file) => {
                 formData.append("images", file);
@@ -127,37 +133,39 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
                 <DialogContent className="sm:max-w-[700px] h-[95dvh] sm:h-auto flex flex-col p-0 gap-0 overflow-hidden bg-background/95 backdrop-blur-xl border-border/40 shadow-2xl">
-                    <DialogHeader className="p-4 sm:p-6 pb-4 border-b bg-muted/10 shrink-0">
-                        <div className="flex flex-col gap-1 w-full text-left sm:text-left">
-                            <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight">Finalizar Reparación</DialogTitle>
-                            <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
-                                Selecciona el resultado y añade los detalles finales del servicio.
-                            </DialogDescription>
+                    <DialogHeader className="p-4 pb-2 border-b bg-muted/10 shrink-0">
+                        <div className="flex flex-col w-full text-left">
+                            <DialogTitle className="text-lg font-bold tracking-tight">Finalizar Reparación</DialogTitle>
                         </div>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
 
                         {/* 1. Status Selection */}
-                        <div className="space-y-3">
-                            <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Resultado del Servicio</Label>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Resultado (Selecciona uno)</Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {finishStatuses.map((s) => {
                                     const isSelected = statusId === s.id.toString();
                                     const gradientColors = statusColors[s.id] || "from-primary to-primary";
-                                    const solidColors: Record<number, string> = {
-                                        4: "hover:border-orange-500 hover:text-orange-600 font-bold",
-                                        5: "hover:border-emerald-500 hover:text-emerald-600 font-bold",
-                                        6: "hover:border-red-500 hover:text-red-600 font-bold",
-                                        7: "hover:border-blue-500 hover:text-blue-600 font-bold",
-                                        8: "hover:border-amber-500 hover:text-amber-600 font-bold",
-                                        9: "hover:border-violet-500 hover:text-violet-600 font-bold"
+
+                                    // Solid colors for clearer visibility as requested
+                                    const unselectedStyles: Record<number, string> = {
+                                        4: "bg-orange-500 hover:bg-orange-600 text-white border-transparent",
+                                        5: "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent",
+                                        6: "bg-red-600 hover:bg-red-700 text-white border-transparent",
+                                        7: "bg-blue-600 hover:bg-blue-700 text-white border-transparent",
+                                        8: "bg-amber-500 hover:bg-amber-600 text-white border-transparent",
+                                        9: "bg-violet-600 hover:bg-violet-700 text-white border-transparent"
                                     };
-                                    const hoverClass = solidColors[s.id] || "hover:border-primary hover:text-primary";
-                                    const baseClasses = "relative flex flex-col items-center justify-center p-2 sm:p-4 rounded-xl border-2 transition-all duration-300 text-center gap-1.5 sm:gap-2 h-20 sm:h-28 overflow-hidden group cursor-pointer";
+
+                                    const styleClass = unselectedStyles[s.id] || "bg-muted text-muted-foreground";
+                                    // COMPACT: Reduced height (h-16/h-24), padding, and gap
+                                    const baseClasses = "relative flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all duration-300 text-center gap-1 h-16 sm:h-20 overflow-hidden group cursor-pointer shadow-sm hover:shadow-md active:scale-95";
+
                                     const finalClasses = isSelected
-                                        ? `bg-gradient-to-br ${gradientColors} border-transparent text-white shadow-lg scale-[1.02] ring-0`
-                                        : `bg-muted/50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md ${hoverClass} text-muted-foreground transition-all`;
+                                        ? `bg-gradient-to-br ${gradientColors} border-white/20 text-white shadow-lg scale-[1.02] ring-2 ring-offset-1 ring-primary/50`
+                                        : `${styleClass} border-transparent opacity-90 hover:opacity-100`;
 
                                     return (
                                         <button
@@ -166,13 +174,14 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                             onClick={() => setStatusId(s.id.toString())}
                                             className={`${baseClasses} ${finalClasses}`}
                                         >
-                                            <div className={`transition-transform duration-300 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>
-                                                {s.id === 5 && <CheckCircle className={`w-5 h-5 sm:w-8 sm:h-8 ${isSelected ? 'text-white' : 'text-emerald-500 group-hover:text-emerald-600'}`} />}
-                                                {s.id === 6 && <X className={`w-5 h-5 sm:w-8 sm:h-8 ${isSelected ? 'text-white' : 'text-red-500 group-hover:text-red-600'}`} />}
-                                                {s.id === 4 && <Loader2 className={`w-5 h-5 sm:w-8 sm:h-8 ${isSelected ? 'text-white' : 'text-orange-500 group-hover:text-orange-600'}`} />}
-                                                {![4, 5, 6].includes(s.id) && <div className={`w-5 h-5 sm:w-8 sm:h-8 rounded-full border-2 border-dashed ${isSelected ? 'border-white/80' : 'border-muted-foreground/40 group-hover:border-current'}`} />}
+                                            <div className={`transition-transform duration-300 flex-1 flex items-center justify-center ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>
+                                                {/* COMPACT: Smaller icons */}
+                                                {s.id === 5 && <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-sm" />}
+                                                {s.id === 6 && <X className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-sm" />}
+                                                {s.id === 4 && <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-sm" />}
+                                                {![4, 5, 6].includes(s.id) && <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-dashed border-white/80" />}
                                             </div>
-                                            <span className={`text-[9.5px] sm:text-xs font-bold leading-tight w-full px-1 ${isSelected ? 'text-white font-black' : 'group-hover:text-current'}`}>
+                                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wide leading-none w-full px-1 drop-shadow-sm">
                                                 {s.name}
                                             </span>
                                         </button>
@@ -182,12 +191,12 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                         </div>
 
                         {/* 2. Diagnosis */}
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Informe Técnico</Label>
                             <div className="relative group">
                                 <Textarea
-                                    placeholder="Detalla el trabajo realizado, repuestos cambiados o motivo de fallo..."
-                                    className="min-h-[120px] resize-none border-muted-foreground/20 bg-muted/5 p-4 text-sm leading-relaxed transition-all focus:ring-0 focus:border-primary/50 group-hover:bg-muted/10"
+                                    placeholder="Detalla el trabajo realizado..."
+                                    className="min-h-[80px] resize-none border-muted-foreground/20 bg-muted/5 p-3 text-sm leading-relaxed transition-all focus:ring-0 focus:border-primary/50 group-hover:bg-muted/10"
                                     value={diagnosis}
                                     onChange={(e) => {
                                         const val = e.target.value;
@@ -200,14 +209,36 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                             </div>
                         </div>
 
+                        {/* 2.5 Wet Equipment Flag (New) */}
+                        <div className="flex items-center space-x-2 bg-blue-50/50 dark:bg-blue-900/10 p-2.5 rounded-lg border border-blue-100 dark:border-blue-800">
+                            <Checkbox
+                                id="is_wet_finish"
+                                checked={isWet}
+                                onCheckedChange={(checked) => setIsWet(checked === true)}
+                                className="h-4 w-4 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                            />
+                            <div className="grid gap-0.5 leading-none">
+                                <Label
+                                    htmlFor="is_wet_finish"
+                                    className="text-xs font-bold text-blue-700 dark:text-blue-400 cursor-pointer flex items-center gap-1.5"
+                                >
+                                    <Droplets className="w-3.5 h-3.5" />
+                                    EQUIPO MOJADO / CON HUMEDAD
+                                </Label>
+                                <p className="text-[10px] text-muted-foreground">
+                                    Marcar si encontraste rastros de humedad.
+                                </p>
+                            </div>
+                        </div>
+
                         {/* 3. Evidence */}
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Evidencia visual</Label>
                                 <span className="text-[10px] text-muted-foreground">Máx. 3 fotos</span>
                             </div>
 
-                            <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+                            <div className="grid grid-cols-5 gap-2">
                                 {/* Existing Images */}
                                 {repair.deviceImages?.filter((url: string) => url && url.includes('/')).map((url: string, idx: number) => (
                                     <div

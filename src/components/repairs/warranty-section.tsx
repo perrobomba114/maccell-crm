@@ -105,7 +105,7 @@ export function WarrantySection({
                                             >
                                                 <Check className={cn("mr-2 h-4 w-4", originalRepairId === repair.id ? "opacity-100" : "opacity-0")} />
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold">{repair.ticketNumber}</span>
+                                                    <span className={`font-bold ${repair.isWet ? "text-blue-500 font-extrabold" : repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>{repair.ticketNumber}</span>
                                                     <span className="text-xs text-muted-foreground">{repair.customerName}</span>
                                                 </div>
                                             </CommandItem>

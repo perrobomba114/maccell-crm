@@ -83,7 +83,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDi
                         <div className="flex items-center justify-between gap-2 w-full">
                             <div className="space-y-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <DialogTitle className="text-lg sm:text-2xl font-bold tracking-tight truncate">
+                                    <DialogTitle className={`text-lg sm:text-2xl font-bold tracking-tight truncate ${repair.isWet ? "text-blue-600 dark:text-blue-400 font-extrabold" : repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
                                         Ticket #{repair.ticketNumber}
                                     </DialogTitle>
                                     <Badge variant="secondary" className={`font-semibold border rounded-full px-2 py-0 sm:px-3 sm:py-0.5 text-[10px] sm:text-xs ${colorClass}`}>

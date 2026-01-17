@@ -2,7 +2,8 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { PaymentMethod } from "@prisma/client";
+import { PaymentMethod, Role } from "@prisma/client";
+import { createNotificationAction } from "@/lib/actions/notifications";
 
 export type PosProduct = {
     id: string;
@@ -20,6 +21,7 @@ export type PosRepair = {
     customerName: string;
     price: number; // estimatedPrice or final
     status: string;
+    isWet?: boolean;
 };
 
 /**
@@ -105,7 +107,8 @@ export async function searchRepairsForPos(term: string, branchId: string): Promi
             device: `${r.deviceBrand} ${r.deviceModel}`,
             customerName: r.customer.name,
             price: r.estimatedPrice || 0,
-            status: r.status.name
+            status: r.status.name,
+            isWet: r.isWet
         }));
 
     } catch (error) {
@@ -150,7 +153,8 @@ export async function getRepairForPos(ticketNumber: string, branchId: string): P
                 device: `${repair.deviceBrand} ${repair.deviceModel}`,
                 customerName: repair.customer.name,
                 price: price,
-                status: repair.status.name
+                status: repair.status.name,
+                isWet: repair.isWet
             }
         };
 
@@ -498,6 +502,55 @@ export async function processPosSale(data: {
         revalidatePath("/vendor/sales");
         revalidatePath("/vendor/repairs");
         revalidatePath("/vendor/dashboard");
+
+        // 3. Post-Transaction: Check for Price Overrides and Notify Admins
+        try {
+            const overrideItems = data.items.filter(item => {
+                // Check if originalPrice exists and is different from final price
+                return item.originalPrice !== undefined &&
+                    item.originalPrice !== null &&
+                    Math.abs(item.originalPrice - item.price) > 0.01; // epsilon check
+            });
+
+            if (overrideItems.length > 0) {
+                console.log(`[processPosSale] Found ${overrideItems.length} price overrides. Notifying Admins...`);
+
+                // Get all ADMIN users
+                const admins = await db.user.findMany({
+                    where: { role: Role.ADMIN },
+                    select: { id: true }
+                });
+
+                if (admins.length > 0) {
+                    // Get Vendor Name (we only have ID, fetch name for nice message)
+                    const vendor = await db.user.findUnique({
+                        where: { id: data.vendorId },
+                        select: { name: true }
+                    });
+                    const vendorName = vendor?.name || "Un vendedor";
+
+                    // Construct Message
+                    // If multiple items, summarize.
+                    const details = overrideItems.map(i =>
+                        `${i.name}: $${i.originalPrice} -> $${i.price} (${i.priceChangeReason || "Sin motivo"})`
+                    ).join("\n");
+
+                    const notificationPromises = admins.map(admin => createNotificationAction({
+                        userId: admin.id,
+                        title: "⚠️ Cambio de Precio Detectado",
+                        message: `${vendorName} modificó precios en Venta #${transactionResult.saleNumber}:\n${details}`,
+                        type: "WARNING",
+                        link: `/admin/sales?search=${transactionResult.saleNumber}` // Deep link if possible
+                    }));
+
+                    await Promise.all(notificationPromises);
+                    console.log(`[processPosSale] Sent notifications to ${admins.length} admins.`);
+                }
+            }
+        } catch (notifError) {
+            console.error("[processPosSale] Error sending admin notifications:", notifError);
+            // Non-blocking error, sale already succeeded
+        }
 
         return {
             success: true,

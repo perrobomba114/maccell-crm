@@ -9,7 +9,18 @@ import { Play, Pause, Microscope, Clock } from "lucide-react";
 import Link from "next/link";
 
 interface ActiveWorkspaceProps {
-    data: { id: string; ticketNumber: string; device: string; problem: string; startedAt: Date; estimatedTime: number; statusName: string; statusColor: string }[];
+    data: {
+        id: string;
+        ticketNumber: string;
+        device: string;
+        problem: string;
+        startedAt: Date;
+        estimatedTime: number;
+        statusName: string;
+        statusColor: string;
+        isWet?: boolean;
+        isWarranty?: boolean;
+    }[];
 }
 
 export function ActiveWorkspaceTable({ data }: ActiveWorkspaceProps) {
@@ -45,7 +56,9 @@ export function ActiveWorkspaceTable({ data }: ActiveWorkspaceProps) {
                     <TableBody>
                         {data.map((item) => (
                             <TableRow key={item.id} className="bg-white/50 dark:bg-black/20">
-                                <TableCell className="font-mono font-bold">{item.ticketNumber}</TableCell>
+                                <TableCell className={`font-mono font-bold ${item.isWet ? "text-blue-500 font-extrabold" : item.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
+                                    {item.ticketNumber}
+                                </TableCell>
                                 <TableCell className="font-medium">{item.device}</TableCell>
                                 <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={item.problem}>
                                     {item.problem}
@@ -70,7 +83,7 @@ export function ActiveWorkspaceTable({ data }: ActiveWorkspaceProps) {
                         ))}
                         {data.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                     <div className="flex flex-col items-center gap-2">
                                         <div className="p-3 rounded-full bg-muted">
                                             <Pause className="h-6 w-6 text-muted-foreground" />
@@ -89,7 +102,17 @@ export function ActiveWorkspaceTable({ data }: ActiveWorkspaceProps) {
 }
 
 interface QueueTableProps {
-    data: { id: string; ticketNumber: string; device: string; problem: string; createdAt: Date; statusName: string; statusColor: string }[];
+    data: {
+        id: string;
+        ticketNumber: string;
+        device: string;
+        problem: string;
+        createdAt: Date;
+        statusName: string;
+        statusColor: string;
+        isWet?: boolean;
+        isWarranty?: boolean;
+    }[];
 }
 
 export function QueueTable({ data }: QueueTableProps) {
@@ -121,7 +144,9 @@ export function QueueTable({ data }: QueueTableProps) {
                                 <TableCell className="py-3">
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-mono text-xs font-bold bg-muted px-1 rounded">{item.ticketNumber}</span>
+                                            <span className={`font-mono text-xs font-bold bg-muted px-1 rounded ${item.isWet ? "text-blue-500 font-extrabold" : item.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
+                                                {item.ticketNumber}
+                                            </span>
                                             <span className="font-medium text-sm">{item.device}</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground truncate max-w-[180px]">{item.problem}</p>

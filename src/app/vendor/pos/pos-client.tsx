@@ -38,7 +38,7 @@ import {
 import { getAllBranches } from "@/actions/branch-actions";
 import { createStockTransfer, getPendingTransfers, respondToTransfer } from "@/actions/transfer-actions";
 
-import { printSaleTicket, printCashShiftClosureTicket, printInvoiceTicket } from "../../../lib/print-utils";
+import { printSaleTicket, printCashShiftClosureTicket, printInvoiceTicket, printWarrantyTicket, printWetReport } from "../../../lib/print-utils";
 
 
 // ... existing imports
@@ -58,6 +58,7 @@ type CartItem = {
     maxStock?: number;
     originalPrice?: number;
     priceChangeReason?: string;
+    isWet?: boolean; // Added for automatic wet report printing
 };
 
 interface BranchData {
@@ -444,7 +445,8 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
             name: `Ticket #${repair.ticketNumber}`,
             details: `${repair.device} - ${repair.customerName}`,
             price: repair.price,
-            quantity: 1
+            quantity: 1,
+            isWet: repair.isWet
         }]);
 
         setRepairQuery("");
@@ -729,6 +731,44 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                         console.error("Print error:", err);
                     }
                 }, 150);
+
+                // 3. Post-Sale: Check for Repairs and print Warranty / Wet Report
+                // We do this concurrently or slightly delayed to avoid blocking main ticket
+                setTimeout(() => {
+                    cart.forEach(item => {
+                        if (item.type === "REPAIR") {
+                            // Reconstruct minimal repair object needed for ticket
+                            // Ideally we would have the full object, but reconstruction works for print utils
+                            // We need: ticketNumber, deviceBrand, deviceModel, customer.name
+                            // item.name is "Ticket #1234"
+                            // item.details is "Samsung A10 - Juan Perez"
+
+                            const ticketNum = item.name.replace("Ticket #", "");
+                            const detailsParts = item.details?.split(" - ") || ["Equipo", "Cliente"];
+                            const deviceStr = detailsParts[0] || "Dispositivo";
+                            const customerName = detailsParts[1] || "Cliente";
+
+                            const repairStub = {
+                                ticketNumber: ticketNum,
+                                deviceBrand: deviceStr, // Hacky but works for display
+                                deviceModel: "",
+                                customer: { name: customerName },
+                                isWet: item.isWet,
+                                branch: branchData
+                            };
+
+                            console.log("Auto-printing Warranty for:", ticketNum);
+                            printWarrantyTicket(repairStub);
+
+                            if (item.isWet) {
+                                console.log("Auto-printing Wet Report for:", ticketNum);
+                                setTimeout(() => {
+                                    printWetReport(repairStub);
+                                }, 1000); // 1s delay between warranty and wet report
+                            }
+                        }
+                    });
+                }, 2000); // 2s delay to let Sale Ticket finish
 
             } else {
                 toast.error(result.error || "Error al procesar venta");

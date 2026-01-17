@@ -238,6 +238,7 @@ export async function finishRepairAction(formData: FormData) {
         const statusIdRaw = formData.get("statusId");
         const diagnosis = formData.get("diagnosis") as string;
         const createReturnRequest = formData.get("createReturnRequest") === "true";
+        const isWet = formData.get("isWet") === "true";
 
 
         console.log("finishRepairAction:", { repairId, technicianId, statusIdRaw });
@@ -311,6 +312,8 @@ export async function finishRepairAction(formData: FormData) {
             // Finalizing states (5, 6, 7...)
             dataToUpdate.finishedAt = new Date();
         }
+
+        dataToUpdate.isWet = isWet; // Always update isWet based on technician input
 
         await db.repair.update({
             where: { id: repairId },

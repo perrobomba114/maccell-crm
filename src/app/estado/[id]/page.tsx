@@ -41,6 +41,7 @@ interface RepairData {
         phone: string | null;
         imageUrl: string | null;
     };
+    isWet?: boolean; // Added optional to match API response
 }
 
 export default function RepairStatusPage({ params }: { params: any }) {
@@ -341,12 +342,53 @@ export default function RepairStatusPage({ params }: { params: any }) {
                             Maccell Secure System
                         </p>
                     </div>
-                    <div className="flex gap-6 opacity-30 hover:opacity-100 transition-all duration-500">
-                        <Smartphone className="w-5 h-5 text-white" />
-                        <CheckCircle2 className="w-5 h-5 text-white" />
-                        <Info className="w-5 h-5 text-white" />
-                    </div>
                 </div>
+
+                {/* WET EQUIPMENT REPORT */}
+                {/* @ts-ignore - isWet might be missing in type definition but present in API */}
+                {(repair as any).isWet && (
+                    <div className="mt-12 p-8 border border-blue-500/30 bg-blue-500/5 rounded-3xl backdrop-blur-sm">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-3 bg-blue-500/20 rounded-full text-blue-400">
+                                <AlertCircle className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-black text-blue-400 uppercase tracking-tight">INFORME TÉCNICO: IMPACTO DE LA HUMEDAD</h3>
+                        </div>
+
+                        <div className="prose prose-invert prose-sm max-w-none text-white/70 space-y-4">
+                            <p className="font-medium text-white/90">
+                                Estimado cliente, cuando un dispositivo entra en contacto con líquidos, se inicia un proceso químico que afecta la integridad del hardware. Este documento detalla por qué un equipo mojado requiere un tratamiento especial.
+                            </p>
+
+                            <div className="space-y-2">
+                                <h4 className="text-white font-bold uppercase text-xs tracking-wider">1. Deterioro Progresivo</h4>
+                                <p>El daño no es causado únicamente por el líquido, sino por la sulfatación (corrosión) que avanza microscópicamente incluso después de seco, pudiendo causar cortocircuitos irreversibles.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <h4 className="text-white font-bold uppercase text-xs tracking-wider">2. Baño Químico</h4>
+                                <p>Realizamos limpieza ultrasonido para remover sulfato. Es un intento de rescate, no una reparación garantizada. Si la humedad ya dañó componentes vitales, se requerirá micro-soldadura adicional.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <h4 className="text-white font-bold uppercase text-xs tracking-wider">3. Secuelas Comunes</h4>
+                                <ul className="list-disc pl-4 space-y-1 marker:text-blue-500">
+                                    <li>Audio distorsionado o bajo.</li>
+                                    <li>Fallas en botones o toques fantasma en pantalla.</li>
+                                    <li>Pérdida de señal o problemas de carga.</li>
+                                    <li>Sobrecalentamiento y consumo de batería.</li>
+                                </ul>
+                            </div>
+
+                            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl mt-4">
+                                <p className="text-red-400 font-bold text-xs uppercase tracking-wide">Importante: Garantía</p>
+                                <p className="text-red-300/80 mt-1">
+                                    Debido a la naturaleza degenerativa del daño por líquido, <strong>Maccell no puede otorgar garantía de funcionamiento a largo plazo</strong>. Se recomienda realizar backup urgente si el equipo enciende.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

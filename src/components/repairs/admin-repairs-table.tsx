@@ -119,7 +119,7 @@ export function AdminRepairsTable({ repairs }: AdminRepairsTableProps) {
                                 const colorClass = statusColorMap[repair.status.color] || "bg-gray-100 text-gray-800";
                                 return (
                                     <TableRow key={repair.id} className="hover:bg-muted/10">
-                                        <TableCell className={`text-center font-bold font-mono text-sm ${repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
+                                        <TableCell className={`text-center font-bold font-mono text-sm ${repair.isWet ? "text-blue-500 font-extrabold" : repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
                                             {repair.ticketNumber}
                                         </TableCell>
                                         <TableCell className="text-center text-sm">

@@ -46,7 +46,8 @@ export async function GET(request: Request) {
             problemDescription: repair.problemDescription,
             diagnosis: repair.diagnosis,
             statusId: repair.statusId,
-            branch: repair.branch
+            branch: repair.branch,
+            isWet: (repair as any).isWet // Cast to any until prisma client regenerates fully or just rely on JS runtime if type isn't updated? Prisma client SHOULD be updated by db push.
         });
     } catch (error) {
         console.error("API Error:", error);

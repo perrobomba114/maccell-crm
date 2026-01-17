@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Save } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Loader2, Save, Droplets } from "lucide-react";
 
 import { WarrantySection } from "./warranty-section";
 import { CustomerForm } from "./customer-form";
@@ -16,7 +18,7 @@ import { PromisedDateSelector } from "./promised-date-selector";
 import { SparePartSelector, SparePartItem } from "./spare-part-selector";
 import { SmartPriceInput } from "./smart-price-input";
 import { createRepairAction } from "@/lib/actions/repairs";
-import { printRepairTicket } from "@/lib/print-utils";
+import { printRepairTicket, printWetReport } from "@/lib/print-utils";
 
 interface CreateRepairFormProps {
     branchId: string;
@@ -70,6 +72,7 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
 
     // Form State
     const [isWarranty, setIsWarranty] = useState(false);
+    const [isWet, setIsWet] = useState(false);
     const [originalRepairId, setOriginalRepairId] = useState<string | null>(null);
     const [customerName, setCustomerName] = useState("");
     const [customerPhone, setCustomerPhone] = useState("");
@@ -161,7 +164,10 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
             const cleanPrice = estimatedPrice.replace(/\./g, "");
             formData.set("estimatedPrice", cleanPrice);
 
+            formData.set("estimatedPrice", cleanPrice);
+
             formData.set("isWarranty", String(isWarranty));
+            formData.set("isWet", String(isWet));
             if (originalRepairId) formData.set("originalRepairId", originalRepairId);
             formData.set("customerName", customerName);
             formData.set("customerPhone", customerPhone);
@@ -181,13 +187,20 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
                 // Auto-print Ticket
                 if (result.repair) {
                     printRepairTicket(result.repair);
+
+                    // Auto-print Wet Report if applicable (delayed to avoid spam protection)
+                    if ((result.repair as any).isWet) {
+                        setTimeout(() => {
+                            printWetReport(result.repair);
+                        }, 2500);
+                    }
                 }
 
                 // Redirect after delay to allow print to trigger
                 setTimeout(() => {
                     const finalPath = redirectPath;
                     router.push(finalPath);
-                }, 1500);
+                }, (result.repair as any).isWet ? 4000 : 1500);
             } else {
                 toast.error(result.error);
             }
@@ -347,9 +360,29 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
                         </div>
                     )}
 
-                    {/* PHOTOS */}
                     <div className="space-y-2">
                         <RepairImages />
+                    </div>
+
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex items-center space-x-3">
+                        <Checkbox
+                            id="isWet"
+                            checked={isWet}
+                            onCheckedChange={(c) => setIsWet(c === true)}
+                            className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                            <Label
+                                htmlFor="isWet"
+                                className="text-sm font-bold text-blue-500 flex items-center gap-2 cursor-pointer"
+                            >
+                                <Droplets className="w-4 h-4" />
+                                EQUIPO MOJADO / CON HUMEDAD
+                            </Label>
+                            <p className="text-[11px] text-muted-foreground">
+                                Se requiere informe técnico y firma adicional.
+                            </p>
+                        </div>
                     </div>
 
                     <div className="h-px bg-border w-full" />

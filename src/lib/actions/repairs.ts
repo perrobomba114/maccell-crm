@@ -42,7 +42,9 @@ export async function searchWarrantyRepairs(term: string, branchId: string) {
         deviceBrand: r.deviceBrand,
         deviceModel: r.deviceModel,
         problemDescription: r.problemDescription,
-        date: r.updatedAt.toISOString() // Using updatedAt as per new logic
+        date: r.updatedAt.toISOString(), // Using updatedAt as per new logic
+        isWet: r.isWet,
+        isWarranty: r.isWarranty
     }));
 }
 
@@ -146,6 +148,7 @@ export async function createRepairAction(formData: FormData) {
 
         // 5. Create Repair
         const isWarranty = formData.get("isWarranty") === "true";
+        const isWet = formData.get("isWet") === "true";
         const originalRepairId = formData.get("originalRepairId") as string;
         const deviceBrand = formData.get("deviceBrand") as string;
         const deviceModel = formData.get("deviceModel") as string;
@@ -178,6 +181,7 @@ export async function createRepairAction(formData: FormData) {
                 promisedAt,
                 estimatedPrice,
                 isWarranty,
+                isWet,
                 originalRepairId: isWarranty ? originalRepairId : null,
                 parts: {
                     create: parts.map((p: any) => ({
@@ -533,6 +537,7 @@ export async function updateRepairAction(formData: FormData) {
         const statusId = parseInt(formData.get("statusId") as string) || undefined;
         const diagnosis = formData.get("diagnosis") as string || null;
         const isWarranty = formData.get("isWarranty") === "true";
+        const isWet = formData.get("isWet") === "true";
         let assignedUserId: string | null = formData.get("assignedUserId") as string;
         if (!assignedUserId || assignedUserId === "unassigned") assignedUserId = null;
 
@@ -578,6 +583,7 @@ export async function updateRepairAction(formData: FormData) {
                 promisedAt,
                 estimatedPrice,
                 isWarranty,
+                isWet,
                 assignedUserId,
                 diagnosis,
                 ...(statusId ? { statusId } : {}),
