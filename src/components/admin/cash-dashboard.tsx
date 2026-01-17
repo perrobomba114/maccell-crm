@@ -253,7 +253,7 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
 
             {/* Detail Modal */}
             <Dialog open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
-                <DialogContent className="max-w-5xl h-[95dvh] sm:h-[80vh] flex flex-col p-0 overflow-hidden">
+                <DialogContent className="max-w-7xl w-[95vw] h-[95dvh] sm:h-[80vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-4 sm:p-6 pb-2 border-b bg-muted/10 shrink-0">
                         <DialogTitle>
                             Movimientos del {selectedDay && format(selectedDay, "d 'de' MMMM, yyyy", { locale: es })}
