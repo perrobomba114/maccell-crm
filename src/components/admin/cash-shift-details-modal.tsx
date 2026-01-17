@@ -77,7 +77,7 @@ export function CashShiftDetailsModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto p-0 gap-0 border-none shadow-2xl bg-[#F8F9FC] dark:bg-[#09090b]">
+            <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[95vh] overflow-y-auto p-0 gap-0 border-none shadow-2xl bg-[#F8F9FC] dark:bg-[#09090b]">
 
                 {/* Modern Header - Violet Theme */}
                 <div className="bg-white dark:bg-[#121217] border-b p-6 md:p-8 relative overflow-hidden">
