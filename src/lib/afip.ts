@@ -228,7 +228,9 @@ export async function createAfipInvoice(data: {
 
     } catch (error: any) {
         console.error("AFIP CreateVoucher Error:", error);
-        return { success: false, error: error.message || JSON.stringify(error) };
+        // Clean error message if it's an Error object
+        const msg = error instanceof Error ? error.message : String(error);
+        return { success: false, error: msg };
     }
 }
 

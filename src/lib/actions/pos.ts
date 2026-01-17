@@ -337,7 +337,8 @@ export async function processPosSale(data: {
 
         } catch (error: any) {
             console.error("Error creating invoice:", error);
-            return { success: false, error: "Error Facturación: " + error.message };
+            // Pass the original error message to the UI
+            return { success: false, error: error.message || "Error al generar factura en AFIP." };
         }
     }
 

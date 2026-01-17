@@ -652,6 +652,20 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 return;
             }
 
+            // Validation: Final Consumer Limit (ARCA 2026: ~$10M)
+            // We verify if invoiceData is present and user is attempting an anonymous Final Consumer invoice for a large amount.
+            if (invoiceData &&
+                invoiceData.docType === "FINAL" &&
+                totalToPay >= 10000000) { // 10 Million Limit
+                toast.error("Para montos superiores a $10.000.000, debe identificar al cliente (DNI/CUIT).", {
+                    duration: 6000,
+                    icon: <Lock className="h-5 w-5 text-red-500" />
+                });
+                processingRef.current = false;
+                setIsProcessingSale(false);
+                return;
+            }
+
             const result = await processPosSale({
                 vendorId,
                 branchId,
