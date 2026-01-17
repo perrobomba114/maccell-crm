@@ -64,6 +64,7 @@ export function BranchProfitChart({ data }: BranchProfitProps) {
                             cursor={{ fill: 'transparent' }}
                             contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '8px', color: '#fff' }}
                             itemStyle={{ color: '#fff' }}
+                            formatter={(value: any) => [`$${Math.round(Number(value) || 0).toLocaleString("es-AR")}`, undefined]}
                         />
                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
                         <Bar dataKey="revenue" name="Ingresos" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={50} />
