@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Disable compression and etags to offload to Cloudflare and save Server CPU/Memory
+  compress: false,
+  generateEtags: false,
+  poweredByHeader: false,
   webpack: (config) => {
     // config.cache = false;
     return config;
