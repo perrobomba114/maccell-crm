@@ -180,18 +180,41 @@ export default function SalesClient({ branchData }: { branchData: any }) {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge
-                                            variant="secondary"
-                                            className={cn(
-                                                "font-normal",
-                                                sale.paymentMethod === "CASH" ? "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400" :
-                                                    sale.paymentMethod === "CARD" ? "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400" :
-                                                        "bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400"
-                                            )}
-                                        >
-                                            {sale.paymentMethod === "CASH" ? "Efectivo" :
-                                                sale.paymentMethod === "CARD" ? "Tarjeta" : "MercadoPago"}
-                                        </Badge>
+                                        {(() => {
+                                            const payments = (sale as any).payments || [];
+                                            let method = sale.paymentMethod;
+                                            let label = "MercadoPago";
+                                            let color = "bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400"; // Default/MP
+
+                                            if (payments.length > 1) {
+                                                method = "MIXTO";
+                                                label = "Mixto";
+                                                color = "bg-orange-100 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400";
+                                            } else if (payments.length === 1) {
+                                                method = payments[0].method;
+                                            }
+
+                                            // Fallback or Single Payment Logic
+                                            if (method === "CASH") {
+                                                label = "Efectivo";
+                                                color = "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400";
+                                            } else if (method === "CARD") {
+                                                label = "Tarjeta";
+                                                color = "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400";
+                                            } else if (method === "TRANSFER") {
+                                                label = "Transferencia";
+                                                color = "bg-sky-100 text-sky-700 hover:bg-sky-100 dark:bg-sky-900/30 dark:text-sky-400";
+                                            } else if (method === "MERCADOPAGO") {
+                                                label = "MercadoPago";
+                                                color = "bg-indigo-100 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400";
+                                            }
+
+                                            return (
+                                                <Badge variant="secondary" className={cn("font-normal", color)}>
+                                                    {label}
+                                                </Badge>
+                                            );
+                                        })()}
                                     </TableCell>
                                     <TableCell className="text-right font-bold">
                                         ${sale.total.toLocaleString()}

@@ -54,6 +54,7 @@ export async function getSales(filters?: {
             include: {
                 vendor: { select: { name: true } },
                 items: true,
+                payments: true,
             },
             orderBy: { createdAt: "desc" },
             take: 50, // Pagination later if needed
@@ -68,7 +69,8 @@ export async function getSales(filters?: {
             paymentMethod: s.paymentMethod,
             createdAt: s.createdAt,
             vendor: s.vendor, // return full vendor if needed? or just details
-            items: s.items
+            items: s.items,
+            payments: s.payments
         }));
 
     } catch (error) {
@@ -162,6 +164,7 @@ export async function getAdminSales(filters?: {
                 vendor: { select: { name: true } },
                 branch: { select: { name: true } },
                 items: true,
+                payments: true,
             },
             orderBy: { createdAt: "desc" },
             take: 100, // Reasonable limit
@@ -175,7 +178,8 @@ export async function getAdminSales(filters?: {
             createdAt: s.createdAt,
             vendor: s.vendor,
             branch: s.branch,
-            items: s.items
+            items: s.items,
+            payments: s.payments
         }));
 
     } catch (error) {
