@@ -353,14 +353,35 @@ export function CashShiftDetailsModal({
                             <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center justify-between">
                                 Registro de Gastos
                                 <span className="text-xs font-medium bg-slate-100 dark:bg-white/10 px-2 py-1 rounded text-slate-500">
-                                    {shift.counts.expenses} mov.
+                                    {shift.counts.expenses + (shift.totals.bonuses > 0 ? 1 : 0)} mov.
                                 </span>
                             </h3>
 
                             <div className="bg-white dark:bg-[#18181b] rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col h-full overflow-hidden">
                                 <div className="flex-1 overflow-y-auto max-h-[400px] p-2">
-                                    {shift.details?.expenses && shift.details.expenses.length > 0 ? (
+                                    {shift.details?.expenses && (shift.details.expenses.length > 0 || shift.totals.bonuses > 0) ? (
                                         <div className="space-y-1">
+                                            {shift.totals.bonuses > 0 && (
+                                                <div className="p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-950/10 transition-colors group border border-transparent hover:border-orange-100 dark:hover:border-orange-900/30">
+                                                    <div className="flex justify-between items-start mb-1.5">
+                                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-tight">
+                                                            Pago de Premios / Comisiones
+                                                        </span>
+                                                        <span className="text-sm font-bold text-orange-500 dark:text-orange-400 tabular-nums whitespace-nowrap ml-3">
+                                                            -{formatMoney(shift.totals.bonuses)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-[11px] text-slate-400 dark:text-slate-500">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Clock className="w-3 h-3" />
+                                                            --:--
+                                                        </div>
+                                                        <div className="bg-orange-100 dark:bg-orange-900/40 px-1.5 py-0.5 rounded text-orange-600 dark:text-orange-400 uppercase font-bold tracking-wider">
+                                                            SISTEMA
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                             {shift.details.expenses.map((expense) => (
                                                 <div key={expense.id} className="p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
                                                     <div className="flex justify-between items-start mb-1.5">
@@ -393,7 +414,7 @@ export function CashShiftDetailsModal({
                                     )}
                                 </div>
                                 <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 text-center">
-                                    <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Total Gastos: <span className="text-slate-700 dark:text-slate-300">{formatMoney(shift.totals.expenses)}</span></p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Total Egresos (Gastos + Premios): <span className="text-slate-700 dark:text-slate-300">{formatMoney(shift.totals.expenses + shift.totals.bonuses)}</span></p>
                                 </div>
                             </div>
                         </div>
