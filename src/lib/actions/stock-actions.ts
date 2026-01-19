@@ -11,7 +11,9 @@ export async function getBranchProducts(
     branchId: string,
     page: number = 1,
     limit: number = 25,
-    query: string = ""
+    query: string = "",
+    sortField: string = "name",
+    sortOrder: "asc" | "desc" = "asc"
 ) {
     if (!branchId) return { products: [], total: 0, totalPages: 0 };
 
@@ -34,6 +36,21 @@ export async function getBranchProducts(
             }
         };
 
+        // Determine orderBy
+        let orderBy: any = {};
+        if (sortField === "quantity") {
+            orderBy = { quantity: sortOrder };
+        } else if (sortField === "sku") {
+            orderBy = { product: { sku: sortOrder } };
+        } else if (sortField === "categoryName") {
+            orderBy = { product: { category: { name: sortOrder } } };
+        } else if (sortField === "lastCheckedAt") {
+            orderBy = { lastCheckedAt: sortOrder };
+        } else {
+            // Default to name
+            orderBy = { product: { name: sortOrder } };
+        }
+
         // Get Total Count (for pagination)
         const total = await db.productStock.count({ where });
 
@@ -49,11 +66,7 @@ export async function getBranchProducts(
                     }
                 }
             },
-            orderBy: {
-                product: {
-                    name: 'asc'
-                }
-            },
+            orderBy,
             skip,
             take: limit
         });

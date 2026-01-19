@@ -28,6 +28,8 @@ export default async function VendorProductsPage({
     // Parse params
     const page = typeof searchParams.page === 'string' ? parseInt(searchParams.page) : 1;
     const query = typeof searchParams.q === 'string' ? searchParams.q : "";
+    const sortField = typeof searchParams.sort === 'string' ? searchParams.sort : "name";
+    const sortOrder = (searchParams.dir === "desc" ? "desc" : "asc") as "asc" | "desc";
     const currentPage = isNaN(page) || page < 1 ? 1 : page;
 
     // Trigger compliance check (side-effect)
@@ -35,7 +37,7 @@ export default async function VendorProductsPage({
 
     // Fetch paginated products and health metric
     const [branchData, healthPercentage] = await Promise.all([
-        getBranchProducts(user.branch.id, currentPage, 25, query),
+        getBranchProducts(user.branch.id, currentPage, 25, query, sortField, sortOrder),
         getStockHealthPercentage(user.branch.id)
     ]);
 
@@ -91,6 +93,8 @@ export default async function VendorProductsPage({
                     currentPage={currentPage}
                     totalPages={totalPages}
                     initialQuery={query}
+                    initialSortField={sortField}
+                    initialSortOrder={sortOrder}
                 />
             </div>
         </div>

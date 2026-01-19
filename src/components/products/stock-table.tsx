@@ -38,21 +38,39 @@ interface StockTableProps {
     currentPage: number;
     totalPages: number;
     initialQuery: string;
+    initialSortField?: string;
+    initialSortOrder?: 'asc' | 'desc';
 }
 
-type SortKey = keyof Product | 'lastCheckedAt';
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
-    key: SortKey;
+    key: string;
     direction: SortDirection;
 }
 
-export function StockTable({ products, userId, branchId, currentPage, totalPages, initialQuery }: StockTableProps) {
+export function StockTable({
+    products,
+    userId,
+    branchId,
+    currentPage,
+    totalPages,
+    initialQuery,
+    initialSortField = 'name',
+    initialSortOrder = 'asc'
+}: StockTableProps) {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState(initialQuery);
     const [isSearching, setIsSearching] = useState(false);
-    const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' });
+    const [sortConfig, setSortConfig] = useState<SortConfig>({
+        key: initialSortField,
+        direction: initialSortOrder
+    });
+
+    // Update sort state if initial values from props change
+    useEffect(() => {
+        setSortConfig({ key: initialSortField, direction: initialSortOrder });
+    }, [initialSortField, initialSortOrder]);
 
     // Debounce search
     useEffect(() => {
@@ -108,42 +126,32 @@ export function StockTable({ products, userId, branchId, currentPage, totalPages
     }, [router, branchId, lastRefreshed]);
 
     // Handle Sort
-    const handleSort = (key: SortKey) => {
-        setSortConfig(current => ({
-            key,
-            direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
-        }));
+    const handleSort = (key: string) => {
+        const direction = sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+
+        const params = new URLSearchParams(window.location.search);
+        params.set("sort", key);
+        params.set("dir", direction);
+        params.set("page", "1"); // Reset to page 1 when sorting changes
+
+        router.push(`?${params.toString()}`, { scroll: false });
     };
 
     // Pagination Handlers
     const goToPage = (page: number) => {
         const params = new URLSearchParams(window.location.search);
         params.set("page", page.toString());
-        router.push(`?${params.toString()}`);
+        router.push(`?${params.toString()}`, { scroll: false });
     };
 
-    // Sort
-    const sorted = [...products].sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
-
-        if (aValue === null && bValue === null) return 0;
-        if (aValue === null) return 1;
-        if (bValue === null) return -1;
-
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-    });
-
-    const SortIcon = ({ column }: { column: SortKey }) => {
+    const SortIcon = ({ column }: { column: string }) => {
         if (sortConfig.key !== column) return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/30" />;
         return sortConfig.direction === 'asc'
             ? <ArrowUp className="ml-2 h-4 w-4 text-primary" />
             : <ArrowDown className="ml-2 h-4 w-4 text-primary" />;
     };
 
-    const SortableHeader = ({ label, column, className }: { label: string, column: SortKey, className?: string }) => (
+    const SortableHeader = ({ label, column, className }: { label: string, column: string, className?: string }) => (
         <TableHead className={className}>
             <Button
                 variant="ghost"
@@ -172,7 +180,7 @@ export function StockTable({ products, userId, branchId, currentPage, totalPages
                     />
                 </div>
                 <div className="text-xs text-muted-foreground font-medium px-2 bg-muted/30 py-1.5 rounded-full border">
-                    {sorted.length} productos listados (Total: {totalPages} págs)
+                    {products.length} productos listados (Total: {totalPages} págs)
                 </div>
             </div>
 
@@ -182,17 +190,18 @@ export function StockTable({ products, userId, branchId, currentPage, totalPages
                     <TableHeader className="bg-muted/40">
                         <TableRow className="hover:bg-transparent border-b border-border/60">
                             <SortableHeader label="SKU" column="sku" />
-                            <SortableHeader label="Producto" column="name" className="w-[30%]" />
+                            <SortableHeader label="Producto" column="name" className="w-[25%]" />
                             <SortableHeader label="Categoría" column="categoryName" />
+                            <SortableHeader label="Precio POS" column="price" />
                             <SortableHeader label="Stock" column="quantity" />
                             <SortableHeader label="Último Control" column="lastCheckedAt" />
                             <TableHead className="text-right font-bold text-xs uppercase tracking-wider pr-6">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {sorted.length === 0 ? (
+                        {products.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-48 text-center">
+                                <TableCell colSpan={7} className="h-48 text-center">
                                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                                         <Package2 className="h-8 w-8 opacity-20" />
                                         <p>No se encontraron productos que coincidan.</p>
@@ -200,7 +209,7 @@ export function StockTable({ products, userId, branchId, currentPage, totalPages
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            sorted.map((product) => (
+                            products.map((product) => (
                                 <TableRow key={product.id} className="group hover:bg-muted/30 transition-colors border-border/40">
                                     <TableCell className="font-mono text-base font-bold text-foreground group-hover:text-primary transition-colors">
                                         {product.sku}
@@ -212,6 +221,9 @@ export function StockTable({ products, userId, branchId, currentPage, totalPages
                                         <Badge variant="outline" className="font-normal bg-background/50">
                                             {product.categoryName}
                                         </Badge>
+                                    </TableCell>
+                                    <TableCell className="font-mono font-bold text-sm text-foreground">
+                                        ${product.price.toLocaleString('es-AR')}
                                     </TableCell>
                                     <TableCell>
                                         <div className={cn(
