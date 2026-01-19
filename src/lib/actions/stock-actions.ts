@@ -6,17 +6,40 @@ import { createNotificationAction } from "./notification-creation";
 
 // Fetch products for a specific branch
 // CHANGED: Query ProductStock directly to get "All products OF THE BRANCH"
-export async function getBranchProducts(branchId: string) {
-    if (!branchId) return [];
+// Fetch products for a specific branch with Pagination and Search
+export async function getBranchProducts(
+    branchId: string,
+    page: number = 1,
+    limit: number = 25,
+    query: string = ""
+) {
+    if (!branchId) return { products: [], total: 0, totalPages: 0 };
 
     try {
+        const skip = (page - 1) * limit;
+
+        // Build where clause
+        const where: any = {
+            branchId,
+            product: {
+                deletedAt: null,
+                // Add search filter if query is present
+                ...(query ? {
+                    OR: [
+                        { name: { contains: query, mode: 'insensitive' } },
+                        { sku: { contains: query, mode: 'insensitive' } },
+                        { category: { name: { contains: query, mode: 'insensitive' } } }
+                    ]
+                } : {})
+            }
+        };
+
+        // Get Total Count (for pagination)
+        const total = await db.productStock.count({ where });
+
+        // Get Paginated Data
         const stocks = await db.productStock.findMany({
-            where: {
-                branchId,
-                product: {
-                    deletedAt: null
-                }
-            },
+            where,
             include: {
                 product: {
                     include: {
@@ -30,11 +53,12 @@ export async function getBranchProducts(branchId: string) {
                 product: {
                     name: 'asc'
                 }
-            }
+            },
+            skip,
+            take: limit
         });
 
-        // Map directly from Stock record
-        return stocks.map(s => ({
+        const products = stocks.map(s => ({
             id: s.product.id,
             sku: s.product.sku,
             name: s.product.name,
@@ -44,9 +68,16 @@ export async function getBranchProducts(branchId: string) {
             quantity: s.quantity,
             lastCheckedAt: s.lastCheckedAt
         }));
+
+        return {
+            products,
+            total,
+            totalPages: Math.ceil(total / limit)
+        };
+
     } catch (error) {
         console.error("Error fetching branch products:", error);
-        return [];
+        return { products: [], total: 0, totalPages: 0 };
     }
 }
 

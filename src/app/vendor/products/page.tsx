@@ -4,7 +4,11 @@ import { checkStockControlCompliance } from "@/lib/actions/compliance-actions";
 import { StockTable } from "@/components/products/stock-table";
 import { redirect } from "next/navigation";
 
-export default async function VendorProductsPage() {
+export default async function VendorProductsPage({
+    searchParams,
+}: {
+    searchParams: { [key: string]: string | string[] | undefined };
+}) {
     const user = await getCurrentUser();
 
     if (!user) {
@@ -19,12 +23,21 @@ export default async function VendorProductsPage() {
         );
     }
 
+    // Parse params
+    const page = typeof searchParams.page === 'string' ? parseInt(searchParams.page) : 1;
+    const query = typeof searchParams.q === 'string' ? searchParams.q : "";
+    const currentPage = isNaN(page) || page < 1 ? 1 : page;
+
     // Trigger compliance check (side-effect)
-    // We don't await this to avoid blocking UI, or we await it if we want to ensure notification appears immediately.
-    // Given the requirement "le tiene que llegar una notificacion", awaiting it ensures it's fresh.
     await checkStockControlCompliance(user.id);
 
-    const products = await getBranchProducts(user.branch.id);
+    // Fetch paginated products
+    const { products, total, totalPages } = await getBranchProducts(
+        user.branch.id,
+        currentPage,
+        25, // Limit 25
+        query
+    );
 
     return (
         <div className="container mx-auto p-6 space-y-6 max-w-7xl animate-in fade-in duration-500">
@@ -40,6 +53,9 @@ export default async function VendorProductsPage() {
                     products={products}
                     userId={user.id}
                     branchId={user.branch.id}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    initialQuery={query}
                 />
             </div>
         </div>
