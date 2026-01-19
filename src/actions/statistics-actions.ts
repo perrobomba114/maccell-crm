@@ -252,6 +252,37 @@ export async function getBranchStats(branchId?: string) {
             return dataPoint;
         });
 
+        // 4. Stock Health by Branch
+        // % of products with stock > 0 checked in the last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const stockHealthStats = await Promise.all(branches.map(async (b) => {
+            const totalWithStock = await prisma.productStock.count({
+                where: {
+                    branchId: b.id,
+                    quantity: { gt: 0 },
+                    product: { deletedAt: null }
+                }
+            });
+
+            if (totalWithStock === 0) return { name: b.name, health: 100 };
+
+            const checkedWithStock = await prisma.productStock.count({
+                where: {
+                    branchId: b.id,
+                    quantity: { gt: 0 },
+                    product: { deletedAt: null },
+                    lastCheckedAt: { gte: thirtyDaysAgo }
+                }
+            });
+
+            return {
+                name: b.name,
+                health: Math.round((checkedWithStock / totalWithStock) * 100)
+            };
+        }));
+
         const growthStats = branches.map(b => {
             const current = branchProfits.find(p => p.name === b.name)?.revenue || 0;
             const last = lastMonthSales.find(l => l.branchId === b.id)?._sum.total || 0;
@@ -264,40 +295,23 @@ export async function getBranchStats(branchId?: string) {
             };
         });
 
+        const sortOrder = (a: { name: string }, b: { name: string }) => {
+            const order: Record<string, number> = {
+                "MACCELL 1": 1,
+                "MACCELL 2": 2,
+                "MACCELL 3": 3,
+                "8 BIT ACCESORIOS": 4
+            };
+            const orderA = order[a.name.toUpperCase()] || 99;
+            const orderB = order[b.name.toUpperCase()] || 99;
+            return orderA - orderB;
+        };
+
         return {
-            branchProfits: branchProfits.sort((a, b) => {
-                const order: Record<string, number> = {
-                    "MACCELL 1": 1,
-                    "MACCELL 2": 2,
-                    "MACCELL 3": 3,
-                    "8 BIT ACCESORIOS": 4
-                };
-                const orderA = order[a.name.toUpperCase()] || 99;
-                const orderB = order[b.name.toUpperCase()] || 99;
-                return orderA - orderB;
-            }),
-            growthStats: growthStats.sort((a, b) => {
-                const order: Record<string, number> = {
-                    "MACCELL 1": 1,
-                    "MACCELL 2": 2,
-                    "MACCELL 3": 3,
-                    "8 BIT ACCESORIOS": 4
-                };
-                const orderA = order[a.name.toUpperCase()] || 99;
-                const orderB = order[b.name.toUpperCase()] || 99;
-                return orderA - orderB;
-            }),
-            undeliveredChartData: undeliveredChartData.sort((a, b) => {
-                const order: Record<string, number> = {
-                    "MACCELL 1": 1,
-                    "MACCELL 2": 2,
-                    "MACCELL 3": 3,
-                    "8 BIT ACCESORIOS": 4
-                };
-                const orderA = order[a.name.toUpperCase()] || 99;
-                const orderB = order[b.name.toUpperCase()] || 99;
-                return orderA - orderB;
-            }),
+            branchProfits: branchProfits.sort(sortOrder),
+            growthStats: growthStats.sort(sortOrder),
+            undeliveredChartData: undeliveredChartData.sort(sortOrder),
+            stockHealthStats: stockHealthStats.sort(sortOrder),
             statusKeys
         };
 

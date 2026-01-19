@@ -14,7 +14,7 @@ import {
     PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from "recharts";
 import { BranchFilter } from "@/components/admin/dashboard/BranchFilter";
-import { BranchProfitChart, BranchGrowthChart, BranchUndeliveredChart, RepairsByStatusChart } from "@/components/admin/dashboard/BranchCharts";
+import { BranchProfitChart, BranchGrowthChart, BranchUndeliveredChart, RepairsByStatusChart, BranchStockHealthChart } from "@/components/admin/dashboard/BranchCharts";
 import { ReplenishmentTable } from "@/components/admin/dashboard/ReplenishmentTable";
 import { cn } from "@/lib/utils";
 import { TechLeaderboard } from "@/components/admin/dashboard/TechLeaderboard";
@@ -400,11 +400,12 @@ export function UnifiedDashboard({ stats, branches, currentBranchId, currentUser
                 )}
             </div>
 
-            {/* Expansion: Profit & Growth Charts */}
+            {/* Expansion: Profit, Growth & Stock Health Charts */}
             {!zenMode && branchStats && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                     <BranchProfitChart data={branchStats.branchProfits} />
                     <BranchGrowthChart data={branchStats.growthStats} />
+                    <BranchStockHealthChart data={branchStats.stockHealthStats} />
                 </div>
             )}
 
