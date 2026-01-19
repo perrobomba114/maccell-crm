@@ -132,6 +132,7 @@ export function BranchGrowthChart({ data }: BranchGrowthProps) {
                             tickFormatter={(value) => `${value}%`}
                             axisLine={false}
                             tickLine={false}
+                            domain={[(min: number) => Math.min(min, 0), (max: number) => Math.max(max, 0)]}
                         />
                         <Tooltip
                             cursor={{ fill: '#ffffff05' }}

@@ -1,6 +1,7 @@
 
 import { db } from "@/lib/db";
 import { ActiveRepairsTable } from "@/components/repairs/active-repairs-table";
+import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { getUserData } from "@/actions/get-user";
 import { redirect } from "next/navigation";
 
@@ -45,6 +46,7 @@ export default async function AvailableWorkPage() {
                 enableTakeover={true}
                 currentUserId={user?.id}
             />
+            <AutoRefresh intervalMs={30000} />
         </div>
     );
 }

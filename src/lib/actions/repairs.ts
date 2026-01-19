@@ -210,6 +210,8 @@ export async function createRepairAction(formData: FormData) {
 
 
         revalidatePath("/admin/repairs");
+        revalidatePath("/technician/tickets");
+        revalidatePath("/technician/dashboard");
 
         // Notify Technicians
         try {
@@ -439,6 +441,7 @@ export async function takeRepairAction(
 
         revalidatePath("/technician/tickets");
         revalidatePath("/technician/repairs");
+        revalidatePath("/technician/dashboard");
         revalidatePath("/admin/repairs"); // Allow admin to see change too
         return { success: true };
     } catch (error) {
@@ -615,6 +618,9 @@ export async function updateRepairAction(formData: FormData) {
         }
 
         revalidatePath("/admin/repairs");
+        revalidatePath("/technician/tickets");
+        revalidatePath("/technician/dashboard");
+        revalidatePath(`/technician/repairs/${repairId}`);
         return { success: true };
 
     } catch (error) {

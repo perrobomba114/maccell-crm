@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Search, Camera, Printer, Eye } from "lucide-react";
+import { Search, Camera, Printer, Eye, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TechnicianActionButton } from "./technician-action-button";
 import { TakeRepairDialog } from "./take-repair-dialog";
@@ -52,6 +53,8 @@ export function ActiveRepairsTable({
     const [imageUploadRepair, setImageUploadRepair] = useState<any | null>(null);
     const [viewDetailsRepair, setViewDetailsRepair] = useState<any | null>(null); // State for Details Dialog
 
+    const router = useRouter();
+
     const filteredRepairs = repairs.filter(repair => {
         const term = searchTerm.toLowerCase();
         return (
@@ -73,14 +76,24 @@ export function ActiveRepairsTable({
 
     return (
         <div className="space-y-4">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar por Ticket, Cliente o Dispositivo..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 h-12 text-lg" // Larger search bar for ease
-                />
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar por Ticket, Cliente o Dispositivo..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 h-12 text-lg" // Larger search bar for ease
+                    />
+                </div>
+                <Button
+                    variant="outline"
+                    className="h-12 w-12 shrink-0"
+                    onClick={() => router.refresh()}
+                    title="Actualizar lista"
+                >
+                    <RefreshCcw className="h-5 w-5 text-muted-foreground" />
+                </Button>
             </div>
 
             <div className="border rounded-lg overflow-hidden bg-card shadow-sm">

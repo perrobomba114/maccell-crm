@@ -171,7 +171,13 @@ export function BranchGrowthChart({ data }: BranchGrowthProps) {
                             axisLine={false}
                             dy={10}
                         />
-                        <YAxis fontSize={11} tickFormatter={(value) => `${value}%`} axisLine={false} tickLine={false} />
+                        <YAxis
+                            fontSize={11}
+                            tickFormatter={(value) => `${value}%`}
+                            axisLine={false}
+                            tickLine={false}
+                            domain={[(min: number) => Math.min(min, 0), (max: number) => Math.max(max, 0)]}
+                        />
                         <Tooltip
                             cursor={{ fill: 'transparent' }}
                             contentStyle={{

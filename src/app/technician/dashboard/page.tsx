@@ -3,6 +3,7 @@ import { getTechnicianStats } from "@/actions/dashboard-actions";
 import { TechnicianKPIGrid } from "@/components/technician/dashboard/TechnicianKPIGrid";
 import { WeeklyOutputChart, MyStatusPieChart } from "@/components/technician/dashboard/TechnicianCharts";
 import { ActiveWorkspaceTable, QueueTable } from "@/components/technician/dashboard/TechnicianTables";
+import { AutoRefresh } from "@/components/ui/auto-refresh";
 
 export default async function TechnicianDashboardPage() {
     const user = await getCurrentUser();
@@ -40,6 +41,8 @@ export default async function TechnicianDashboardPage() {
                     {/* <MyStatusPieChart data={stats.statusDistribution} /> */}
                 </div>
             </section>
+
+            <AutoRefresh intervalMs={30000} />
         </div>
     );
 }
