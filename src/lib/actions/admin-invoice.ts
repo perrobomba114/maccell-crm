@@ -85,6 +85,15 @@ export async function generateAdminInvoice(data: {
         const totalVat = formatAmount(totalVat21 + totalVat105);
         const totalAmount = formatAmount(totalNet + totalVat);
 
+        // Prepare detailed IVA items for AFIP
+        const ivaItems = [];
+        if (totalNet21 > 0) {
+            ivaItems.push({ id: 5, base: totalNet21, amount: totalVat21 });
+        }
+        if (totalNet105 > 0) {
+            ivaItems.push({ id: 4, base: totalNet105, amount: totalVat105 });
+        }
+
         // 2. Prepare AFIP Payload
         const concept = data.concept || 1; // 1: Products, 2: Services, 3: Mixed
 
@@ -120,6 +129,7 @@ export async function generateAdminInvoice(data: {
             vatAmount: totalVat,
             netAmount: totalNet,
             exemptAmount: 0,
+            ivaItems: ivaItems, // NEW: Detailed VAT
             // Dates required if Concept != 1
             serviceDateFrom: serviceDateFrom,
             serviceDateTo: serviceDateTo,

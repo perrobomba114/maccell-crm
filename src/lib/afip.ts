@@ -28,6 +28,9 @@ try {
     console.warn("Could not set global https agent options", e);
 }
 
+// Helper to handle currency rounding
+const formatAmount = (num: number) => Math.round(num * 100) / 100;
+
 // Environment variables
 const PRODUCTION = String(process.env.AFIP_PRODUCTION).toLowerCase() === 'true';
 const CUIT = parseInt(process.env.AFIP_CUIT || '0');
@@ -129,6 +132,7 @@ export async function createAfipInvoice(data: {
     serviceDateFrom?: string;
     serviceDateTo?: string;
     paymentDueDate?: string;
+    ivaItems?: { id: number, base: number, amount: number }[]; // Explicit IVA blocks
 }) {
     try {
         const arca = await getAfipClient();
@@ -136,22 +140,34 @@ export async function createAfipInvoice(data: {
         // Construct payload for createNextVoucher (INextVoucher)
         const date = new Date(Date.now() - ((new Date()).getTimezoneOffset() * 60000)).toISOString().split('T')[0].replace(/-/g, '');
 
-        // Prepare IVA array
-        // NOTE: This logic assumes a single VAT rate (21% or similar) or simplifies the split.
-        // If your business logic supports multiple VAT rates, you need to pass them in 'data'.
-        // For now, we replicate previous simple logic: One IVA block if amount > 0.
-
         const ivaArray = [];
-        if (data.vatAmount > 0) {
-            // Check based on rate? 
-            // Warning: We are hardcoding ID 5 (21%) for now as per previous code implies standard VAT.
-            // Ideally should be dynamic.
+        let calculatedNet = 0;
+        let calculatedVat = 0;
+
+        if (data.ivaItems && data.ivaItems.length > 0) {
+            for (const item of data.ivaItems) {
+                ivaArray.push({
+                    'Id': item.id,
+                    'BaseImp': item.base,
+                    'Importe': item.amount
+                });
+                calculatedNet += item.base;
+                calculatedVat += item.amount;
+            }
+        } else if (data.vatAmount > 0) {
             ivaArray.push({
                 'Id': 5,
                 'BaseImp': data.netAmount,
                 'Importe': data.vatAmount
             });
+            calculatedNet = data.netAmount;
+            calculatedVat = data.vatAmount;
         }
+
+        // --- NUCLEAR CONSISTENCY FIX (Error 10051) ---
+        // AFIP demands that ImpTotal = ImpNeto + ImpIVA + ImpOpEx + ImpTrib + ImpTotConc
+        // Even 0.01 difference will trigger rejection.
+        const headerAmount = formatAmount(calculatedNet + calculatedVat + data.exemptAmount);
 
         const payload: any = {
             'CantReg': 1,
@@ -161,11 +177,11 @@ export async function createAfipInvoice(data: {
             'DocTipo': data.docType,
             'DocNro': data.docNumber,
             'CbteFch': parseInt(date),
-            'ImpTotal': data.amount,
+            'ImpTotal': headerAmount,
             'ImpTotConc': 0,
-            'ImpNeto': data.netAmount,
-            'ImpOpEx': data.exemptAmount,
-            'ImpIVA': data.vatAmount,
+            'ImpNeto': formatAmount(calculatedNet),
+            'ImpOpEx': data.exemptAmount || 0,
+            'ImpIVA': formatAmount(calculatedVat),
             'ImpTrib': 0,
             'MonId': 'PES',
             'MonCotiz': 1
@@ -248,10 +264,15 @@ export async function getTaxpayerDetails(cuit: number) {
             return { success: false, error: "No se encontraron datos para este CUIT." };
         }
 
-        // Helper to safely access data whether it's nested (ARCA SDK) or flat
-        const datosGenerales = taxPayer.datosGenerales || taxPayer;
-        const datosRegimen = taxPayer.datosRegimenGeneral || taxPayer.datosRegimenGeneral;
-        const datosMonotributo = taxPayer.datosMonotributo || taxPayer.datosMonotributo;
+        // --- IMPROVED DATA EXTRACTION ---
+        const root = (taxPayer as any).persona || taxPayer;
+        const datosGenerales = root.datosGenerales || (taxPayer as any).datosGenerales || root;
+        const datosRegimen = root.datosRegimenGeneral || (taxPayer as any).datosRegimenGeneral;
+        const datosMonotributo = root.datosMonotributo || (taxPayer as any).datosMonotributo;
+
+        if (!datosGenerales && root.errorConstancia) {
+            return { success: false, error: `AFIP: ${root.errorConstancia.error || "Error de constancia."}` };
+        }
 
         // Extract Name/Business Name
         const name = datosGenerales.razonSocial ||
@@ -259,23 +280,21 @@ export async function getTaxpayerDetails(cuit: number) {
             "Desconocido";
 
         // Extract Address
-        // ARCA SDK might return it as `domicilioFiscal` object or `domicilio` array inside datosGenerales
-        let domicilioRaw = datosGenerales.domicilioFiscal || datosGenerales.domicilio || taxPayer.domicilio;
-
-        // If it's an array, try to find FISCAL, otherwise take first
+        let domicilioRaw = datosGenerales.domicilioFiscal || datosGenerales.domicilio || root.domicilio;
         if (Array.isArray(domicilioRaw)) {
             domicilioRaw = domicilioRaw.find((d: any) => d.tipoDomicilio === 'FISCAL') || domicilioRaw[0];
         }
 
-        const address = domicilioRaw ? `${domicilioRaw.direccion}, ${domicilioRaw.localidad || ''}, ${domicilioRaw.descripcionProvincia || domicilioRaw.dscrPcia || ''}` : "Domicilio Desconocido";
+        const address = domicilioRaw ? `${domicilioRaw.direccion || domicilioRaw.calle || ''}, ${domicilioRaw.localidad || ''}, ${domicilioRaw.descripcionProvincia || domicilioRaw.dscrPcia || ''}` : "Domicilio Desconocido";
 
         // Detectar condición IVA
         let condition = "Consumidor Final";
         let isRespInscripto = false;
-        let isMonotributo = !!datosMonotributo;
+        // Optimization: Only count as monotributo if it has category or taxes
+        let isMonotributo = !!(datosMonotributo && (datosMonotributo.categoria || datosMonotributo.impuesto));
         let isExento = false;
 
-        // Helper to normalize taxes list (handle array, single object, or different property names)
+        // Helper to normalize taxes list
         const getTaxes = (regimen: any) => {
             if (!regimen) return [];
             const taxes = regimen.impuesto || regimen.impuestos;
@@ -287,61 +306,49 @@ export async function getTaxpayerDetails(cuit: number) {
         const taxes = getTaxes(datosRegimen);
         console.log(`[AFIP] CUIT ${cuit} Taxes:`, JSON.stringify(taxes));
 
-        // Extract 'formaJuridica' for refined fallback
-        const formaJuridica = datosGenerales.formaJuridica || "";
-
         // Tax Codes Definitions
         const COD_MONOTRIBUTO = [20];
-        const COD_RESP_INSCRIPTO = [30, 33, 34]; // 30=IVA, 33/34 variants
-        const COD_GANANCIAS = [10, 11];          // Often implies RI
-        const COD_EXENTO = [32, 4];              // 32=Exento commonly used, 4=Condition Exento
+        const COD_RESP_INSCRIPTO = [30, 31, 33, 34]; // 30=IVA, 31=IVA Exento (sometimes in regimen), 33/34 variants
+        const COD_GANANCIAS = [10, 11];
+        const COD_EXENTO = [32, 4, 15];
 
         // 1. Check Monotributo (Explicit Object or Code 20)
-        const hasMonotributoTax = taxes.some((t: any) => COD_MONOTRIBUTO.includes(parseInt(t.idImpuesto)));
+        const hasMonotributoTax = taxes.some((t: any) => COD_MONOTRIBUTO.includes(parseInt(t.idImpuesto || t.id || 0)));
+
         if (isMonotributo || hasMonotributoTax) {
             condition = "Monotributo";
             isMonotributo = true;
         } else {
             // 2. Analyze other taxes
-            const hasRI = taxes.some((t: any) => COD_RESP_INSCRIPTO.includes(parseInt(t.idImpuesto)));
-            const hasGanancias = taxes.some((t: any) => COD_GANANCIAS.includes(parseInt(t.idImpuesto)));
-            const hasExento = taxes.some((t: any) => COD_EXENTO.includes(parseInt(t.idImpuesto)));
+            const hasRI = taxes.some((t: any) => COD_RESP_INSCRIPTO.includes(parseInt(t.idImpuesto || t.id || 0)));
+            const hasGanancias = taxes.some((t: any) => COD_GANANCIAS.includes(parseInt(t.idImpuesto || t.id || 0)));
+            const hasExento = taxes.some((t: any) => COD_EXENTO.includes(parseInt(t.idImpuesto || t.id || 0)));
 
             if (hasExento) {
-                // Explicit Exento Tax
                 condition = "IVA Exento";
                 isExento = true;
-            } else if (hasRI) {
-                // Explicit IVA (30)
-                condition = "Responsable Inscripto";
-                isRespInscripto = true;
-            } else if (hasGanancias) {
-                // Ganancias but no explicit IVA -> Strong indicator of RI
+            } else if (hasRI || hasGanancias) {
                 condition = "Responsable Inscripto";
                 isRespInscripto = true;
             } else {
-                // Fallback for Companies (Juridica) or Entities with NO taxes
-                if (taxPayer.tipoPersona === "JURIDICA") {
-                    // Refined logic: Distinguish Non-Profits from Commercial
-                    const fjUpper = formaJuridica.toUpperCase();
-                    const isNonProfit = [
-                        "ASOCIACION", "FUNDACION", "IGLESIA", "CULTO",
-                        "COOPERADORA", "BIBLIOTECA", "ORGAN. PUBLICO",
-                        "ORGANISMO", "ESTADO", "GOBIERNO", "MUNICIPALIDAD"
-                    ].some(k => fjUpper.includes(k));
-
-                    if (isNonProfit) {
+                // FALLBACK: If it's a CUIT (not DNI) and is ACTIVO, but taxes are empty (common in some A13 responses)
+                // We default to "Responsable Inscripto" if it's a Company or has a professional activity
+                if (root.tipoPersona === "JURIDICA") {
+                    const fj = (datosGenerales.formaJuridica || "").toUpperCase();
+                    const isNP = ["ASOCIACION", "FUNDACION", "COOPERADORA", "ESTADO", "MUNICIPALIDAD"].some(k => fj.includes(k));
+                    if (isNP) {
                         condition = "IVA Exento";
                         isExento = true;
-                        console.log(`[AFIP] Fallback: Juridica (Non-Profit) defaulted to Exento`);
                     } else {
-                        // Likely SA, SRL, SAS -> RI
                         condition = "Responsable Inscripto";
                         isRespInscripto = true;
-                        console.log(`[AFIP] Fallback: Juridica (Commercial) defaulted to RI`);
                     }
-                } else {
-                    condition = "Consumidor Final";
+                } else if (root.tipoPersona === "FISICA" && root.estadoClave === "ACTIVO") {
+                    // CUITs for individuals that are ACTIVE are either Monotributistas or RI.
+                    // If we reached here, isMonotributo was false.
+                    condition = "Responsable Inscripto";
+                    isRespInscripto = true;
+                    console.log(`[AFIP] CUIT ${cuit} - No taxes found but Active Física. Defaulting to RI.`);
                 }
             }
         }

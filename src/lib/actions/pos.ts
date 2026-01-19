@@ -259,18 +259,13 @@ export async function processPosSale(data: {
 
             for (const item of data.items) {
                 const itemTotal = item.price * item.quantity;
-                let rate = 1.21;
-                let is21 = true;
-
-                if (item.type === "REPAIR") {
-                    rate = 1.105; // Services often 10.5 or 21, assuming 10.5 for repairs per legacy code
-                    is21 = false;
-                }
+                const isRepair = item.type === "REPAIR";
+                const rate = isRepair ? 1.105 : 1.21;
 
                 const net = itemTotal / rate;
                 const vat = itemTotal - net;
 
-                if (is21) {
+                if (!isRepair) {
                     totalNet21 += net;
                     totalVat21 += vat;
                 } else {
@@ -279,8 +274,25 @@ export async function processPosSale(data: {
                 }
             }
 
-            const totalNet = totalNet21 + totalNet105;
-            const totalVat = totalVat21 + totalVat105;
+            // --- FINAL ROUNDING ADJUSTMENT ---
+            // Ensure sum(Net) + sum(Vat) = Total EXACTLY for each rate group
+            // We use totalNet21 as the anchor
+            const finalNet21 = formatAmount(totalNet21);
+            const finalVat21 = formatAmount(totalVat21);
+            const finalNet105 = formatAmount(totalNet105);
+            const finalVat105 = formatAmount(totalVat105);
+
+            const totalNet = finalNet21 + finalNet105;
+            const totalVat = finalVat21 + finalVat105;
+
+            // Prepare detailed IVA items for AFIP
+            const ivaItems = [];
+            if (finalNet21 > 0) {
+                ivaItems.push({ id: 5, base: finalNet21, amount: finalVat21 });
+            }
+            if (finalNet105 > 0) {
+                ivaItems.push({ id: 4, base: finalNet105, amount: finalVat105 });
+            }
 
             // Call Standard AFIP Invoice Creator
             const afipRes = await createAfipInvoice({
@@ -295,6 +307,7 @@ export async function processPosSale(data: {
                 vatAmount: formatAmount(totalVat),
                 netAmount: formatAmount(totalNet),
                 exemptAmount: 0,
+                ivaItems: ivaItems, // NEW: Detailed VAT
                 serviceDateFrom: data.invoiceData.serviceDateFrom,
                 serviceDateTo: data.invoiceData.serviceDateTo,
                 paymentDueDate: data.invoiceData.paymentDueDate
