@@ -214,10 +214,12 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
-            // Prevent default form submission on Enter
+            // STRICTLY prevent default form submission on Enter in all cases
+            e.preventDefault();
+
             const target = e.target as HTMLElement;
 
-            // List of Input IDs in order
+            // List of Input IDs in order for navigation
             const focusOrder = [
                 "customer-name",
                 "customer-phone",
@@ -231,22 +233,14 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
 
             const currentIndex = focusOrder.indexOf(target.id);
             if (currentIndex !== -1 && currentIndex < focusOrder.length - 1) {
-                e.preventDefault();
                 const nextId = focusOrder[currentIndex + 1];
                 const nextElement = document.getElementById(nextId);
                 if (nextElement) {
                     nextElement.focus();
                 }
-            } else if (target.id === "ticket-number") {
-                // If it's the last one, we could either submit or just let it be. 
-                // User said: "despues ticket". 
-                // Let's not prevent default here so it submits if they press enter on ticket?
-                // Or better, don't prevent so standard behavior applies.
-            } else if (target.tagName !== "BUTTON" && target.tagName !== "TEXTAREA") {
-                // For any other input not in the list, also prevent accidental submission
-                // but only if it's not a button or textarea (where enter might be needed)
-                // Actually, in this form mostly we want to move focus.
             }
+            // If it's the last element (ticket-number), we DO NOT submit. 
+            // We just stop there. User must click the button.
         }
     };
 
