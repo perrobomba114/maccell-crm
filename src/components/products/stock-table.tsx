@@ -51,6 +51,7 @@ interface SortConfig {
 export function StockTable({ products, userId, branchId, currentPage, totalPages, initialQuery }: StockTableProps) {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState(initialQuery);
+    const [isSearching, setIsSearching] = useState(false);
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' });
 
     // Debounce search
@@ -64,7 +65,7 @@ export function StockTable({ products, userId, branchId, currentPage, totalPages
                     params.delete("q");
                 }
                 params.set("page", "1"); // Reset to page 1 on search
-                router.push(`?${params.toString()}`);
+                router.push(`?${params.toString()}`, { scroll: false });
             }
         }, 500);
 
@@ -73,8 +74,10 @@ export function StockTable({ products, userId, branchId, currentPage, totalPages
 
     // Update local state if URL changes (e.g. back button)
     useEffect(() => {
-        setSearchTerm(initialQuery);
-    }, [initialQuery]);
+        if (!isSearching) {
+            setSearchTerm(initialQuery);
+        }
+    }, [initialQuery, isSearching]);
 
     // Smart Polling
     const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
@@ -87,9 +90,14 @@ export function StockTable({ products, userId, branchId, currentPage, totalPages
                 const latestUpdate = await checkLatestStockUpdate(branchId);
 
                 if (latestUpdate && new Date(latestUpdate) > lastRefreshed) {
-                    console.log("New stock data detected, refreshing...");
-                    router.refresh();
-                    setLastRefreshed(new Date());
+                    // Only refresh if the user is NOT actively typing to prevent focus loss/text interruption
+                    if (!isSearching) {
+                        console.log("New stock data detected, refreshing...");
+                        router.refresh();
+                        setLastRefreshed(new Date());
+                    } else {
+                        console.log("New data available but user is searching, skipping refresh for stability.");
+                    }
                 }
             } catch (error) {
                 console.error("Polling error:", error);
@@ -158,6 +166,8 @@ export function StockTable({ products, userId, branchId, currentPage, totalPages
                         placeholder="Buscar por nombre, SKU o categoría..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
+                        onFocus={() => setIsSearching(true)}
+                        onBlur={() => setIsSearching(false)}
                         className="pl-9 bg-background border-muted-foreground/20 focus-visible:ring-primary/20"
                     />
                 </div>
