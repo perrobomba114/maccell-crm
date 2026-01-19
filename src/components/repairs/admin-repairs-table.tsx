@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { deleteRepairAction } from "@/lib/actions/repairs";
 import { toast } from "sonner";
 import { RepairDetailsDialog } from "./repair-details-dialog";
+import { checkLatestRepairUpdate } from "@/actions/repair-check-actions";
 
 interface AdminRepairsTableProps {
     repairs: any[];
@@ -76,6 +77,27 @@ export function AdminRepairsTable({ repairs }: AdminRepairsTableProps) {
         setDeleteId(null);
         router.refresh();
     };
+
+    // Smart Polling Implementation
+    const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+
+    useEffect(() => {
+        const intervalId = setInterval(async () => {
+            try {
+                const latestUpdate = await checkLatestRepairUpdate();
+
+                if (latestUpdate && new Date(latestUpdate) > lastRefreshed) {
+                    console.log("New repair data detected, refreshing...");
+                    router.refresh();
+                    setLastRefreshed(new Date());
+                }
+            } catch (error) {
+                console.error("Polling error:", error);
+            }
+        }, 10000); // Check every 10 seconds
+
+        return () => clearInterval(intervalId);
+    }, [router, lastRefreshed]);
 
     return (
         <div className="space-y-4">
