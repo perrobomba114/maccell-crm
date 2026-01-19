@@ -36,7 +36,11 @@ export default async function VendorProductsPage() {
             </div>
 
             <div className="bg-card rounded-lg border shadow-sm p-6">
-                <StockTable products={products} userId={user.id} />
+                <StockTable
+                    products={products}
+                    userId={user.id}
+                    branchId={user.branch.id}
+                />
             </div>
         </div>
     );

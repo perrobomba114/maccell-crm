@@ -10,13 +10,15 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { StockCheckButtons } from "./stock-check-buttons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, Package2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { checkLatestStockUpdate } from "@/actions/stock-check-actions";
 
 interface Product {
     id: string;
@@ -32,6 +34,7 @@ interface Product {
 interface StockTableProps {
     products: Product[];
     userId: string;
+    branchId: string;
 }
 
 type SortKey = keyof Product | 'lastCheckedAt';
@@ -42,9 +45,33 @@ interface SortConfig {
     direction: SortDirection;
 }
 
-export function StockTable({ products, userId }: StockTableProps) {
+export function StockTable({ products, userId, branchId }: StockTableProps) {
+    const router = useRouter();
     const [filter, setFilter] = useState("");
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' });
+
+    // Smart Polling
+    const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+
+    useEffect(() => {
+        if (!branchId) return;
+
+        const intervalId = setInterval(async () => {
+            try {
+                const latestUpdate = await checkLatestStockUpdate(branchId);
+
+                if (latestUpdate && new Date(latestUpdate) > lastRefreshed) {
+                    console.log("New stock data detected, refreshing...");
+                    router.refresh();
+                    setLastRefreshed(new Date());
+                }
+            } catch (error) {
+                console.error("Polling error:", error);
+            }
+        }, 10000); // Check every 10 seconds
+
+        return () => clearInterval(intervalId);
+    }, [router, branchId, lastRefreshed]);
 
     // Handle Sort
     const handleSort = (key: SortKey) => {
