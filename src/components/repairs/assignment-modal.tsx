@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, CalendarClock, AlertTriangle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { assignTimeAction } from "@/actions/repairs/technician-actions";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -22,6 +23,7 @@ interface AssignmentModalProps {
 export function AssignmentModal({ repair, currentUserId, isOpen, onClose }: AssignmentModalProps) {
     if (!repair) return null;
 
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [estimatedTime, setEstimatedTime] = useState("");
     const [updateDate, setUpdateDate] = useState(false);
@@ -44,6 +46,7 @@ export function AssignmentModal({ repair, currentUserId, isOpen, onClose }: Assi
 
             if (result.success) {
                 toast.success("Reparación reactivada/asignada correctamente.");
+                router.refresh();
                 onClose();
             } else {
                 toast.error(result.error);
