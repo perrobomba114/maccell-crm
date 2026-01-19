@@ -38,12 +38,36 @@ export function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL("/login", request.url));
         }
 
+        // Create the response object
+        const response = NextResponse.next();
+
+        // SLIDING SESSION: Refresh cookies to extend session life while active (6 hours)
+        const SIX_HOURS = 6 * 60 * 60;
+        const sessionUserId = request.cookies.get("session_user_id")?.value;
+
+        if (sessionUserId) {
+            response.cookies.set("session_user_id", sessionUserId, {
+                httpOnly: true,
+                secure: false, // Set to true in prod if HTTPS is guaranteed
+                sameSite: "lax",
+                maxAge: SIX_HOURS,
+            });
+        }
+
+        if (sessionRole) {
+            response.cookies.set("session_role", sessionRole, {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                maxAge: SIX_HOURS,
+            });
+        }
+
         // ADMIN access control
         if (pathname.startsWith("/admin") && sessionRole !== "ADMIN") {
             return NextResponse.redirect(new URL("/login", request.url));
         }
 
-        // VENDOR access control (ADMIN can also access)
         // VENDOR access control (ADMIN can also access)
         if (
             pathname.startsWith("/vendor") &&
@@ -71,7 +95,7 @@ export function middleware(request: NextRequest) {
             );
         }
 
-        return NextResponse.next();
+        return response;
     }
 
     // Root path - redirect based on role or to login

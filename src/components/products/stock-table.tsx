@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, Package2 } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, Package2, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { checkLatestStockUpdate } from "@/actions/stock-check-actions";
@@ -35,6 +35,9 @@ interface StockTableProps {
     products: Product[];
     userId: string;
     branchId: string;
+    currentPage: number;
+    totalPages: number;
+    initialQuery: string;
 }
 
 type SortKey = keyof Product | 'lastCheckedAt';
@@ -45,10 +48,33 @@ interface SortConfig {
     direction: SortDirection;
 }
 
-export function StockTable({ products, userId, branchId }: StockTableProps) {
+export function StockTable({ products, userId, branchId, currentPage, totalPages, initialQuery }: StockTableProps) {
     const router = useRouter();
-    const [filter, setFilter] = useState("");
+    const [searchTerm, setSearchTerm] = useState(initialQuery);
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'asc' });
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchTerm !== initialQuery) {
+                const params = new URLSearchParams(window.location.search);
+                if (searchTerm) {
+                    params.set("q", searchTerm);
+                } else {
+                    params.delete("q");
+                }
+                params.set("page", "1"); // Reset to page 1 on search
+                router.push(`?${params.toString()}`);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm, router, initialQuery]);
+
+    // Update local state if URL changes (e.g. back button)
+    useEffect(() => {
+        setSearchTerm(initialQuery);
+    }, [initialQuery]);
 
     // Smart Polling
     const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
@@ -81,15 +107,15 @@ export function StockTable({ products, userId, branchId }: StockTableProps) {
         }));
     };
 
-    // Filter
-    const filtered = products.filter(p =>
-        p.name.toLowerCase().includes(filter.toLowerCase()) ||
-        p.sku.toLowerCase().includes(filter.toLowerCase()) ||
-        p.categoryName.toLowerCase().includes(filter.toLowerCase())
-    );
+    // Pagination Handlers
+    const goToPage = (page: number) => {
+        const params = new URLSearchParams(window.location.search);
+        params.set("page", page.toString());
+        router.push(`?${params.toString()}`);
+    };
 
     // Sort
-    const sorted = [...filtered].sort((a, b) => {
+    const sorted = [...products].sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
 
@@ -130,13 +156,13 @@ export function StockTable({ products, userId, branchId }: StockTableProps) {
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Buscar por nombre, SKU o categoría..."
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-9 bg-background border-muted-foreground/20 focus-visible:ring-primary/20"
                     />
                 </div>
                 <div className="text-xs text-muted-foreground font-medium px-2 bg-muted/30 py-1.5 rounded-full border">
-                    {sorted.length} productos listados
+                    {sorted.length} productos listados (Total: {totalPages} págs)
                 </div>
             </div>
 
@@ -218,6 +244,35 @@ export function StockTable({ products, userId, branchId }: StockTableProps) {
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between px-2">
+                    <div className="text-sm text-muted-foreground">
+                        Página {currentPage} de {totalPages}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => goToPage(currentPage - 1)}
+                            disabled={currentPage <= 1}
+                        >
+                            <ChevronLeft className="h-4 w-4 mr-2" />
+                            Anterior
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => goToPage(currentPage + 1)}
+                            disabled={currentPage >= totalPages}
+                        >
+                            Siguiente
+                            <ChevronRight className="h-4 w-4 ml-2" />
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             <div className="flex justify-end text-xs text-muted-foreground italic">
                 * Haz clic en los encabezados para ordenar la tabla.

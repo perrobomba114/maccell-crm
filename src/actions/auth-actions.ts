@@ -36,23 +36,23 @@ export async function login(email: string, password: string) {
         });
 
         console.log("cookies() calling...");
-        // Set session cookie (expires in 4 hours)
+        // Set session cookie (expires in 6 hours)
         const cookieStore = await cookies();
-        const FOUR_HOURS = 4 * 60 * 60;
+        const SIX_HOURS = 6 * 60 * 60; // 21600 seconds
 
         console.log("cookies() acquired, setting session...");
         cookieStore.set("session_user_id", user.id, {
             httpOnly: true,
             secure: false, // process.env.NODE_ENV === "production",
             sameSite: "lax",
-            maxAge: FOUR_HOURS,
+            maxAge: SIX_HOURS,
         });
 
         cookieStore.set("session_role", user.role, {
             httpOnly: true,
             secure: false, // process.env.NODE_ENV === "production",
             sameSite: "lax",
-            maxAge: FOUR_HOURS,
+            maxAge: SIX_HOURS,
         });
 
         // Redirect based on role (STANDARD UNIFORM: All roles go to /dashboard)

@@ -10,6 +10,7 @@ import {
     Tooltip,
     XAxis,
     YAxis,
+    ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
@@ -104,30 +105,56 @@ export function BranchGrowthChart({ data }: BranchGrowthProps) {
             </CardHeader>
             <CardContent className="h-[350px]">
                 <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={300} debounce={50}>
-                    <BarChart data={data}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-zinc-800" />
+                    <BarChart data={data} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id="growthPositive" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#10b981" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0.3} />
+                            </linearGradient>
+                            <linearGradient id="growthNegative" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.3} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-zinc-800/50" />
                         <XAxis
                             dataKey="name"
-                            fontSize={12}
+                            fontSize={11}
                             tickLine={false}
                             axisLine={false}
                             interval={0}
-                            tick={{ fill: "#71717a", fontSize: 12 }}
+                            tick={{ fill: "#71717a" }}
+                            dy={10}
                         />
                         <YAxis
-                            fontSize={12}
-                            tick={{ fill: "#71717a", fontSize: 12 }}
+                            fontSize={11}
+                            tick={{ fill: "#71717a" }}
+                            tickFormatter={(value) => `${value}%`}
+                            axisLine={false}
+                            tickLine={false}
                         />
                         <Tooltip
-                            cursor={{ fill: 'transparent' }}
-                            contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '8px', color: '#fff' }}
-                            itemStyle={{ color: '#fff' }}
+                            cursor={{ fill: '#ffffff05' }}
+                            contentStyle={{
+                                backgroundColor: 'rgba(9, 9, 11, 0.8)',
+                                borderColor: 'rgba(39, 39, 42, 0.5)',
+                                borderRadius: '12px',
+                                color: '#fff',
+                                backdropFilter: 'blur(8px)',
+                                boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.5)'
+                            }}
+                            itemStyle={{ color: '#fff', fontSize: '13px', fontWeight: 500 }}
+                            formatter={(value: any) => [`${Number(value).toFixed(2)}%`, "Crecimiento"]}
                         />
-                        <Bar dataKey="percent" name="Crecimiento %" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                        <ReferenceLine y={0} stroke="#52525b" strokeDasharray="3 3" />
+                        <Bar dataKey="percent" name="Crecimiento %" radius={[6, 6, 6, 6]} maxBarSize={60} animationDuration={1500}>
                             {data.map((entry, index) => (
                                 <Cell
                                     key={`cell-${index}`}
-                                    fill={entry.percent >= 0 ? "#10b981" : "#ef4444"}
+                                    fill={entry.percent >= 0 ? "url(#growthPositive)" : "url(#growthNegative)"}
+                                    stroke={entry.percent >= 0 ? "#059669" : "#b91c1c"}
+                                    strokeWidth={1}
+                                    strokeOpacity={0.5}
                                 />
                             ))}
                         </Bar>

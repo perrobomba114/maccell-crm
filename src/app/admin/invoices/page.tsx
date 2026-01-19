@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
     Table,
     TableBody,
@@ -11,53 +11,98 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { FileText, Printer } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
+import { FileText, DollarSign, Calendar as CalendarIcon } from "lucide-react";
 import { CreateInvoiceModal } from "./create-invoice-modal";
 import { InvoicePrintButton } from "./invoice-print-button";
+import { getInvoices } from "@/actions/invoice-actions";
+import { InvoiceDateFilter } from "./invoice-date-filter";
+import { InvoicePagination } from "./invoice-pagination";
 
 export const dynamic = 'force-dynamic';
 
-export default async function InvoicesPage() {
+export default async function InvoicesPage({
+    searchParams
+}: {
+    searchParams: { page?: string, date?: string }
+}) {
+    const page = Number(searchParams.page) || 1;
+    const date = searchParams.date;
+
     // Determine User/Branch (Mock or real if auth available)
     const adminUser = await db.user.findFirst({
         where: { role: 'ADMIN' }
     }) || await db.user.findFirst();
 
-    const adminUserId = adminUser?.id || "admin-user"; // Fallback to avoid breaking layout, though db might error if still not in DB
+    const adminUserId = adminUser?.id || "admin-user";
 
     // Fetch Branches for the modal
     const branches = await db.branch.findMany({ select: { id: true, name: true } });
 
-    const invoices = await db.saleInvoice.findMany({
-        orderBy: { createdAt: "desc" },
-        include: {
-            sale: {
-                include: {
-                    branch: true,
-                    items: true
-                }
-            }
-        },
-        take: 100
+    // Fetch Invoices via Server Action
+    const { invoices, totalPages, currentPage, totalAmount, totalCount } = await getInvoices({
+        page,
+        limit: 25,
+        date
     });
 
     return (
         <div className="p-8 space-y-6 bg-black min-h-screen text-white">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight mb-2">Facturas Electrónicas</h1>
                     <p className="text-zinc-400">Historial de comprobantes emitidos vía ARCA/AFIP.</p>
                 </div>
-                <CreateInvoiceModal branches={branches} userId={adminUserId} />
+                <div className="flex items-center gap-4">
+                    <CreateInvoiceModal branches={branches} userId={adminUserId} />
+                </div>
+            </div>
+
+            {/* Filters & Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Date Filter Card */}
+                <Card className="bg-zinc-900 border-zinc-800 md:col-span-1">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
+                            <CalendarIcon className="w-4 h-4" />
+                            Filtrar por Fecha
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <InvoiceDateFilter />
+                    </CardContent>
+                </Card>
+
+                {/* Total Amount Card - Only if date selected or just show page/total? 
+                    Request: "total del monto facturado en el dia" -> Implies daily context.
+                    If date is selected, show "Total del Día". If not, maybe "Total (Página)" or "Total Histórico" (too big).
+                    Let's show "Total Registrado" based on current filter context.
+                */}
+                <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
+                            <DollarSign className="w-4 h-4 text-green-500" />
+                            {date ? "Total Facturado del Día" : "Total Facturado (Todos los registros)"}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-green-400">
+                            ${totalAmount.toLocaleString()}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-1">
+                            {date
+                                ? `Correspondiente al ${format(new Date(date + 'T00:00:00'), "dd 'de' MMMM, yyyy", { locale: es })}`
+                                : `Suma total de ${totalCount} comprobantes encontrados`
+                            }
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
 
             <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader>
                     <CardTitle className="text-xl flex items-center gap-2">
                         <FileText className="w-5 h-5 text-blue-500" />
-                        Comprobantes
+                        Comprobantes ({totalCount})
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -77,7 +122,7 @@ export default async function InvoicesPage() {
                             {invoices.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="h-24 text-center text-zinc-500">
-                                        No se encontraron facturas emitidas.
+                                        No se encontraron facturas {date ? "para esta fecha" : "emitidas"}.
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -96,7 +141,7 @@ export default async function InvoicesPage() {
                                         </TableCell>
                                         <TableCell className="text-zinc-300">
                                             <div className="flex flex-col">
-                                                <span className="font-medium">{inv.customerName}</span>
+                                                <span className="font-medium truncate max-w-[150px]" title={inv.customerName}>{inv.customerName}</span>
                                                 <span className="text-xs text-zinc-500">{inv.customerDocType}: {inv.customerDoc}</span>
                                             </div>
                                         </TableCell>
@@ -114,6 +159,8 @@ export default async function InvoicesPage() {
                             )}
                         </TableBody>
                     </Table>
+
+                    <InvoicePagination currentPage={currentPage} totalPages={totalPages} />
                 </CardContent>
             </Card>
         </div>
