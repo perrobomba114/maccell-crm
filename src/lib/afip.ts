@@ -331,8 +331,10 @@ export async function getTaxpayerDetails(cuit: number) {
                 condition = "Responsable Inscripto";
                 isRespInscripto = true;
             } else {
-                // FALLBACK: If it's a CUIT (not DNI) and is ACTIVO, but taxes are empty (common in some A13 responses)
-                // We default to "Responsable Inscripto" if it's a Company or has a professional activity
+                // FALLBACK: If it's ACTIVO but taxes are empty (common in some A13 responses)
+                const tipoClave = (datosGenerales.tipoClave || "").toUpperCase();
+                const hasActivity = !!(datosGenerales.idActividadPrincipal || datosGenerales.descripcionActividadPrincipal);
+
                 if (root.tipoPersona === "JURIDICA") {
                     const fj = (datosGenerales.formaJuridica || "").toUpperCase();
                     const isNP = ["ASOCIACION", "FUNDACION", "COOPERADORA", "ESTADO", "MUNICIPALIDAD"].some(k => fj.includes(k));
@@ -344,11 +346,17 @@ export async function getTaxpayerDetails(cuit: number) {
                         isRespInscripto = true;
                     }
                 } else if (root.tipoPersona === "FISICA" && root.estadoClave === "ACTIVO") {
-                    // CUITs for individuals that are ACTIVE are either Monotributistas or RI.
-                    // If we reached here, isMonotributo was false.
-                    condition = "Responsable Inscripto";
-                    isRespInscripto = true;
-                    console.log(`[AFIP] CUIT ${cuit} - No taxes found but Active Física. Defaulting to RI.`);
+                    // Logic: If they have a "CUIL", they are usually Consumidor Final (employees/unregistered).
+                    // If they have a "CUIT" and an "Actividad", they are registered in AFIP (RI or Monotributo).
+                    // Since we already checked Monotributo above, if they have an Activity and CUIT, they are RI.
+                    if (tipoClave === "CUIT" && hasActivity) {
+                        condition = "Responsable Inscripto";
+                        isRespInscripto = true;
+                        console.log(`[AFIP] CUIT ${cuit} - Active CUIT with activity but no taxes fetched. Assuming RI.`);
+                    } else {
+                        condition = "Consumidor Final";
+                        console.log(`[AFIP] CUIT ${cuit} - Active ${tipoClave} with no explicit activity/taxes. Assuming CF.`);
+                    }
                 }
             }
         }
