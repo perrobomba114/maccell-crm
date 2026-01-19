@@ -20,6 +20,7 @@ export interface SparePartItem {
     name: string;
     sku: string;
     price: number;
+    stock: number;
 }
 
 interface SparePartSelectorProps {
@@ -56,7 +57,8 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
             id: part.id,
             name: part.name,
             sku: part.sku,
-            price: part.price
+            price: part.price,
+            stock: part.stock
         }]);
         setOpen(false);
     };
@@ -85,7 +87,7 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
                             <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[calc(100vw-3rem)] sm:w-[400px] p-0" align="start">
+                    <PopoverContent className="w-[calc(100vw-3rem)] sm:w-[500px] p-0" align="start">
                         <Command shouldFilter={false}>
                             <CommandInput
                                 placeholder="Buscar por nombre o SKU..."
@@ -93,8 +95,6 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
                             />
                             <CommandList>
                                 <CommandGroup>
-                                    {/* Scan Button inside list as an option? Or just rely on the external button */}
-                                    {/* Usually scanner fills this list. */}
                                     {loading && <div className="p-4 text-center text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Buscando...</div>}
                                     {!loading && results.length === 0 && <CommandEmpty>No se encontraron repuestos.</CommandEmpty>}
                                     {results.map((part) => (
@@ -105,13 +105,18 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
                                             className={cn(selectedParts.some(p => p.id === part.id) && "opacity-50")}
                                         >
                                             <div className="flex flex-col w-full gap-1">
-                                                <div className="flex justify-between font-medium">
+                                                <div className="flex justify-between font-medium items-center">
                                                     <span>{part.name}</span>
-                                                    {!hidePrice && <span className="text-green-600">${part.price.toLocaleString()}</span>}
+                                                    {!hidePrice && <span className="text-green-600 font-bold">${part.price.toLocaleString()}</span>}
                                                 </div>
-                                                <div className="flex justify-between text-xs text-muted-foreground">
-                                                    <span className="font-mono">{part.sku}</span>
-                                                    <span>Stock: {part.stock}</span>
+                                                <div className="flex justify-between text-xs items-center">
+                                                    <span className="font-mono text-muted-foreground">{part.sku}</span>
+                                                    <span className={cn(
+                                                        "font-bold px-2 py-0.5 rounded text-[10px] uppercase",
+                                                        part.stock > 0 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                                                    )}>
+                                                        {part.stock > 0 ? "Disponible" : "Sin Stock"}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </CommandItem>
@@ -148,20 +153,16 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
 
                                 if (data.length === 0) {
                                     toast.error(`No se encontró repuesto con código: ${code}`);
-                                    setOpen(true); // Show empty state potentially
+                                    setOpen(true);
                                 } else if (data.length === 1) {
-                                    // Perfect match or only one result
                                     handleSelect(data[0]);
                                     toast.success(`Agregado: ${data[0].name}`);
                                 } else {
-                                    // Multiple results
-                                    // Try to find exact SKU match
                                     const exactMatch = data.find((p: any) => p.sku === code || p.sku?.endsWith(code));
                                     if (exactMatch) {
                                         handleSelect(exactMatch);
                                         toast.success(`Agregado: ${exactMatch.name}`);
                                     } else {
-                                        // Show list for user to pick
                                         setOpen(true);
                                         toast.info("Múltiples coincidencias, seleccione una.");
                                     }
@@ -182,10 +183,18 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
                 {selectedParts.map((part) => (
                     <div key={part.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/50 border border-secondary">
                         <div className="flex-1 min-w-0 mr-2">
-                            <p className="font-medium text-sm truncate">{part.name}</p>
-                            <p className="text-xs text-muted-foreground font-mono">
+                            <div className="flex items-center gap-2">
+                                <p className="font-medium text-sm truncate">{part.name}</p>
+                                <span className={cn(
+                                    "text-[10px] font-bold px-1.5 py-0.5 rounded uppercase",
+                                    (part.stock && part.stock > 0) ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                                )}>
+                                    {(part.stock && part.stock > 0) ? "Disp." : "Sin Stock"}
+                                </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground font-mono mt-0.5">
                                 {part.sku}
-                                {!hidePrice && <> • ${part.price.toLocaleString()}</>}
+                                {!hidePrice && <> • <span className="text-green-600 font-semibold">${part.price.toLocaleString()}</span></>}
                             </p>
                         </div>
                         <Button
