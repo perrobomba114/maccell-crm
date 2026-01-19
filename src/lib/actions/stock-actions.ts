@@ -206,3 +206,39 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
         return { success: false, error: "Error resolving discrepancy" };
     }
 }
+
+export async function getStockHealthPercentage(branchId: string) {
+    if (!branchId) return 0;
+
+    try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        // Count all products with stock > 0 in this branch
+        const totalWithStock = await db.productStock.count({
+            where: {
+                branchId,
+                quantity: { gt: 0 },
+                product: { deletedAt: null }
+            }
+        });
+
+        if (totalWithStock === 0) return 100;
+
+        // Count those that were checked in the last 30 days
+        const checkedWithStock = await db.productStock.count({
+            where: {
+                branchId,
+                quantity: { gt: 0 },
+                product: { deletedAt: null },
+                lastCheckedAt: { gte: thirtyDaysAgo }
+            }
+        });
+
+        const percentage = Math.round((checkedWithStock / totalWithStock) * 100);
+        return percentage;
+    } catch (error) {
+        console.error("Error calculating stock health:", error);
+        return 0;
+    }
+}

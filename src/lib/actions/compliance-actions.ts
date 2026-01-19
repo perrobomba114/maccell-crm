@@ -46,6 +46,7 @@ export async function checkStockControlCompliance(userId: string) {
             where: {
                 branchId: user.branchId,
                 productId: { in: topProductIds },
+                quantity: { gt: 0 }, // ONLY products with stock
                 OR: [
                     // @ts-ignore
                     { lastCheckedAt: null },
