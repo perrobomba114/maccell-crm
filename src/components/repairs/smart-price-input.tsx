@@ -130,13 +130,21 @@ export function SmartPriceInput({ value, onChange, error }: SmartPriceInputProps
                                 >
                                     <div className="flex flex-col">
                                         <span className="font-medium text-sm">{part.name}</span>
-                                        <span className="text-xs text-muted-foreground font-mono">{part.sku}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-muted-foreground font-mono">{part.sku}</span>
+                                            <span className={cn(
+                                                "font-bold px-1.5 py-0.5 rounded text-[9px] uppercase shadow-sm",
+                                                part.stock > 0 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                                            )}>
+                                                {part.stock > 0 ? "Disponible" : "Sin Stock"}
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="flex flex-col items-end">
                                         <span className="font-bold text-green-600 text-sm">
                                             ${(part.pricePos || 0).toLocaleString()}
                                         </span>
-                                        <Badge variant="outline" className="text-[10px] h-5 px-1 bg-background">
+                                        <Badge variant="outline" className="text-[10px] h-5 px-1 bg-background text-muted-foreground">
                                             POS
                                         </Badge>
                                     </div>
