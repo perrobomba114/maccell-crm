@@ -4,6 +4,7 @@ import { VendorKPIGrid } from "@/components/vendor/dashboard/VendorKPIGrid";
 import { SalesWeekChart } from "@/components/vendor/dashboard/VendorCharts";
 import { BestSellersChart } from "@/components/vendor/dashboard/BestSellersChart";
 import { ReadyForPickupTable, RecentActivityTable } from "@/components/vendor/dashboard/VendorTables";
+import { BranchUndeliveredChart, RepairsByStatusChart } from "@/components/admin/dashboard/BranchCharts";
 
 export default async function VendorDashboardPage() {
     const user = await getCurrentUser();
@@ -37,7 +38,20 @@ export default async function VendorDashboardPage() {
                 <BestSellersChart data={stats.topSellingProducts} />
             </section>
 
-            {/* 3. Performance & Feed */}
+            {/* 3. Repair Insights (New) */}
+            <section className="grid gap-6 md:grid-cols-2">
+                <div className="h-[450px]">
+                    <RepairsByStatusChart data={stats.monthlyStatusDistribution} />
+                </div>
+                <div className="h-[450px]">
+                    {/* Reusing BranchUndeliveredChart for single branch - it works as it takes array */}
+                    <BranchUndeliveredChart
+                        data={stats.branchUndeliveredData}
+                        keys={stats.branchUndeliveredKeys}
+                    />
+                </div>
+            </section>
+            {/* 4. Performance & Feed */}
             <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <SalesWeekChart data={stats.salesLast7Days} />
                 <RecentActivityTable data={stats.recentActivity} />

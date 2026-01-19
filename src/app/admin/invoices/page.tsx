@@ -23,10 +23,16 @@ export const dynamic = 'force-dynamic';
 export default async function InvoicesPage({
     searchParams
 }: {
-    searchParams: { page?: string, date?: string }
+    searchParams: { page?: string, date?: string, view?: string }
 }) {
     const page = Number(searchParams.page) || 1;
-    const date = searchParams.date;
+    const viewAll = searchParams.view === 'all';
+
+    // Default to Today if not "view all" and no date provided
+    let date = searchParams.date;
+    if (!date && !viewAll) {
+        date = format(new Date(), 'yyyy-MM-dd');
+    }
 
     // Determine User/Branch (Mock or real if auth available)
     const adminUser = await db.user.findFirst({
@@ -72,16 +78,12 @@ export default async function InvoicesPage({
                     </CardContent>
                 </Card>
 
-                {/* Total Amount Card - Only if date selected or just show page/total? 
-                    Request: "total del monto facturado en el dia" -> Implies daily context.
-                    If date is selected, show "Total del Día". If not, maybe "Total (Página)" or "Total Histórico" (too big).
-                    Let's show "Total Registrado" based on current filter context.
-                */}
+                {/* Total Amount Card */}
                 <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
                             <DollarSign className="w-4 h-4 text-green-500" />
-                            {date ? "Total Facturado del Día" : "Total Facturado (Todos los registros)"}
+                            {date ? "Total Facturado del Día" : "Total Facturado (Mes Actual)"}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -91,7 +93,7 @@ export default async function InvoicesPage({
                         <p className="text-xs text-zinc-500 mt-1">
                             {date
                                 ? `Correspondiente al ${format(new Date(date + 'T00:00:00'), "dd 'de' MMMM, yyyy", { locale: es })}`
-                                : `Suma total de ${totalCount} comprobantes encontrados`
+                                : `Suma total de facturación en el mes en curso`
                             }
                         </p>
                     </CardContent>

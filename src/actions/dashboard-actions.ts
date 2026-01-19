@@ -303,6 +303,27 @@ export async function getAdminStats(branchId?: string) {
             itemCount: sale.items.length
         }));
 
+        // 12. Monthly Repairs by Status (New User Request)
+        const repairsByStatusRaw = await prisma.repair.groupBy({
+            by: ['statusId'],
+            where: {
+                ...branchFilter,
+                createdAt: { gte: firstDayOfMonth }
+            },
+            _count: { _all: true }
+        });
+
+        const allStatuses = await prisma.repairStatus.findMany();
+        const monthlyStatusDistribution = repairsByStatusRaw.map(item => {
+            const status = allStatuses.find(s => s.id === item.statusId);
+            return {
+                name: status?.name || `Status ${item.statusId}`,
+                value: item._count._all,
+                color: status?.color || '#888' // Fallback color
+            };
+        }).sort((a, b) => b.value - a.value);
+
+
         // Return Unified Structure
         return {
             financials: {
@@ -311,14 +332,15 @@ export async function getAdminStats(branchId?: string) {
                 salesGrowth,
                 profitMargin
             },
-            tables: { // Added this section
+            tables: {
                 recentSales: formattedRecentSales
             },
             repairs: {
                 active: activeRepairsCount,
                 highPriority: highPriorityCount,
                 technicians: topTechnicians,
-                frequentParts
+                frequentParts,
+                monthlyStatusDistribution // Newly added
             },
             stock: {
                 health: stockHealth,
@@ -336,7 +358,7 @@ export async function getAdminStats(branchId?: string) {
         console.error("[Unified Dashboard] Error:", error);
         return {
             financials: { revenue: 0, profit: 0, salesGrowth: 0, profitMargin: 0 },
-            repairs: { active: 0, highPriority: 0, technicians: [], frequentParts: [] },
+            repairs: { active: 0, highPriority: 0, technicians: [], frequentParts: [], monthlyStatusDistribution: [] },
             stock: { health: 0, criticalCount: 0, alerts: [], topSold: [] },
             categoryShare: { total: 0, segments: [] }
         };
@@ -554,6 +576,52 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
         });
 
 
+        // 8. Monthly Repairs Distribution (Branch)
+        const repairsStatusRaw = await prisma.repair.groupBy({
+            by: ['statusId'],
+            where: {
+                branchId,
+                createdAt: { gte: firstDayOfMonth }
+            },
+            _count: { _all: true }
+        });
+
+        const allStatuses = await prisma.repairStatus.findMany();
+        const monthlyStatusDistribution = repairsStatusRaw.map(item => {
+            const status = allStatuses.find(s => s.id === item.statusId);
+            return {
+                name: status?.name || `Status ${item.statusId}`,
+                value: item._count._all,
+                color: status?.color || '#888'
+            };
+        }).sort((a, b) => b.value - a.value);
+
+        // 9. Undelivered Count (Branch, Stacked)
+        const branchUndeliveredRaw = await prisma.repair.groupBy({
+            by: ['statusId'],
+            where: {
+                branchId,
+                statusId: { not: 10 }
+            },
+            _count: { _all: true }
+        });
+
+        const branchUndeliveredDataPoint: any = { name: "Mi Sucursal" };
+        const presentUndeliveredIds = new Set<number>();
+
+        branchUndeliveredRaw.forEach(item => {
+            const sName = allStatuses.find(s => s.id === item.statusId)?.name || `Status ${item.statusId}`;
+            branchUndeliveredDataPoint[sName] = item._count._all;
+            presentUndeliveredIds.add(item.statusId);
+        });
+
+        const branchUndeliveredData = [branchUndeliveredDataPoint];
+
+        const branchUndeliveredKeys = allStatuses
+            .filter(s => presentUndeliveredIds.has(s.id))
+            .map(s => ({ name: s.name, color: s.color || '#888' }));
+
+
         return {
             salesMonthCount: salesMonthCount,
             salesMonthTotal: salesMonthTotal._sum.total || 0,
@@ -562,7 +630,10 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
             readyForPickup,
             topSellingProducts,
             salesLast7Days,
-            recentActivity
+            recentActivity,
+            monthlyStatusDistribution, // Added
+            branchUndeliveredData, // Added
+            branchUndeliveredKeys // Added
         };
 
     } catch (error) {
@@ -575,7 +646,10 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
             readyForPickup: [],
             topSellingProducts: [],
             salesLast7Days: [],
-            recentActivity: []
+            recentActivity: [],
+            monthlyStatusDistribution: [],
+            branchUndeliveredData: [],
+            branchUndeliveredKeys: []
         };
     }
 }

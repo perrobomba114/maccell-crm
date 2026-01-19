@@ -17,19 +17,30 @@ import { es } from "date-fns/locale";
 export function InvoiceDateFilter() {
     const router = useRouter();
     const searchParams = useSearchParams();
+
     const dateParam = searchParams.get("date");
-    const [date, setDate] = React.useState<Date | undefined>(
-        dateParam ? new Date(dateParam) : undefined
-    );
+    const viewAll = searchParams.get("view") === "all";
+
+    // If param exists, use it. If "view=all" exists, empty. Else (default load), use Today.
+    const initialDate = dateParam
+        ? new Date(dateParam)
+        : (viewAll ? undefined : new Date());
+
+    const [date, setDate] = React.useState<Date | undefined>(initialDate);
 
     const handleSelect = (newDate: Date | undefined) => {
         setDate(newDate);
         const params = new URLSearchParams(searchParams.toString());
+
         if (newDate) {
             params.set("date", format(newDate, "yyyy-MM-dd"));
+            params.delete("view"); // Remove explicit "view all"
         } else {
+            // Deselection -> View All
             params.delete("date");
+            params.set("view", "all");
         }
+
         params.set("page", "1"); // Reset pagination
         router.push(`?${params.toString()}`);
     };

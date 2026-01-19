@@ -44,13 +44,34 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
         take: limit
     });
 
-    // Get Total Count
+    // Get Total Count (based on table filter)
     const totalCount = await db.saleInvoice.count({ where });
     const totalPages = Math.ceil(totalCount / limit);
 
-    // Get Total Amount for the filter
+    // Get Total Amount
+    // If date filter is active, sum relevant records.
+    // If NO date filter, sum Current Month (per user request).
+    let sumWhere = where;
+
+    if (!date) {
+        const now = new Date();
+        // Construct Start of Month in GMT-3 (Approximate or Strict)
+        // Simplified: Start of Month UTC - 3h is tricky without library.
+        // Let's rely on standard current month defined by Server Time for "Current Month" concept.
+        // Or better, standard ISO: First day of current month 00:00 to now.
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        sumWhere = {
+            createdAt: {
+                gte: startOfMonth,
+                lte: endOfMonth
+            }
+        };
+    }
+
     const aggregations = await db.saleInvoice.aggregate({
-        where,
+        where: sumWhere,
         _sum: {
             totalAmount: true
         }

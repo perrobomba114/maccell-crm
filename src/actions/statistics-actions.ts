@@ -223,6 +223,35 @@ export async function getBranchStats(branchId?: string) {
             _sum: { total: true }
         });
 
+        // 3. Undelivered Repairs by Branch (Stacked Data)
+        const undeliveredStats = await prisma.repair.groupBy({
+            by: ['branchId', 'statusId'],
+            where: { statusId: { not: 10 } },
+            _count: { _all: true }
+        });
+
+        const allStatuses = await prisma.repairStatus.findMany();
+
+        // Identify which statuses are actually present in the undelivered set to keys
+        const presentStatusIds = Array.from(new Set(undeliveredStats.map(u => u.statusId)));
+        const statusKeys = allStatuses
+            .filter(s => presentStatusIds.includes(s.id))
+            .map(s => ({ name: s.name, color: s.color || '#888' }));
+
+        const undeliveredChartData = branches.map(b => {
+            const branchRepairs = undeliveredStats.filter(u => u.branchId === b.id);
+            const dataPoint: any = { name: b.name };
+
+            // Fill 0 for all known keys ensuring consistent shape if needed, 
+            // but sparse is fine for Recharts usually.
+            // Let's populate actual values.
+            branchRepairs.forEach(r => {
+                const sName = allStatuses.find(s => s.id === r.statusId)?.name || `Status ${r.statusId}`;
+                dataPoint[sName] = r._count._all;
+            });
+            return dataPoint;
+        });
+
         const growthStats = branches.map(b => {
             const current = branchProfits.find(p => p.name === b.name)?.revenue || 0;
             const last = lastMonthSales.find(l => l.branchId === b.id)?._sum.total || 0;
@@ -231,8 +260,6 @@ export async function getBranchStats(branchId?: string) {
 
             return {
                 name: b.name,
-                current,
-                last,
                 percent: Math.round(percent * 10) / 10
             };
         });
@@ -259,12 +286,24 @@ export async function getBranchStats(branchId?: string) {
                 const orderA = order[a.name.toUpperCase()] || 99;
                 const orderB = order[b.name.toUpperCase()] || 99;
                 return orderA - orderB;
-            })
+            }),
+            undeliveredChartData: undeliveredChartData.sort((a, b) => {
+                const order: Record<string, number> = {
+                    "MACCELL 1": 1,
+                    "MACCELL 2": 2,
+                    "MACCELL 3": 3,
+                    "8 BIT ACCESORIOS": 4
+                };
+                const orderA = order[a.name.toUpperCase()] || 99;
+                const orderB = order[b.name.toUpperCase()] || 99;
+                return orderA - orderB;
+            }),
+            statusKeys
         };
 
     } catch (error) {
         console.error("Error in getBranchStats:", error);
-        return { branchProfits: [], growthStats: [] };
+        return { branchProfits: [], growthStats: [], undeliveredChartData: [], statusKeys: [] };
     }
 }
 

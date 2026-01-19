@@ -14,7 +14,7 @@ import {
     PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from "recharts";
 import { BranchFilter } from "@/components/admin/dashboard/BranchFilter";
-import { BranchProfitChart, BranchGrowthChart } from "@/components/admin/dashboard/BranchCharts";
+import { BranchProfitChart, BranchGrowthChart, BranchUndeliveredChart, RepairsByStatusChart } from "@/components/admin/dashboard/BranchCharts";
 import { ReplenishmentTable } from "@/components/admin/dashboard/ReplenishmentTable";
 import { cn } from "@/lib/utils";
 import { TechLeaderboard } from "@/components/admin/dashboard/TechLeaderboard";
@@ -380,6 +380,24 @@ export function UnifiedDashboard({ stats, branches, currentBranchId, currentUser
                 <div className="lg:col-span-1 h-[450px]">
                     <TechLeaderboard technicians={repairs.technicians} />
                 </div>
+            </div>
+
+            {/* EXPANSION: REPAIR INSIGHTS (NEW) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Monthly Status Distribution */}
+                <div className="h-[500px]">
+                    <RepairsByStatusChart data={repairs.monthlyStatusDistribution} />
+                </div>
+
+                {/* Undelivered by Branch */}
+                {branchStats && (
+                    <div className="h-[500px]">
+                        <BranchUndeliveredChart
+                            data={branchStats.undeliveredChartData}
+                            keys={branchStats.statusKeys}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Expansion: Profit & Growth Charts */}
