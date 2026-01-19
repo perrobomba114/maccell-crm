@@ -60,20 +60,20 @@ export function VendorKPIGrid({ stats }: VendorKPIGridProps) {
                 <div className="absolute -top-12 -right-12 h-32 w-32 bg-gradient-to-br from-white/20 to-transparent rounded-full blur-2xl pointer-events-none"></div>
             </Card>
 
-            {/* FACTURACIÓN SERVICIOS (INGRESOS TALLER MONEY) */}
+            {/* EQUIPOS ENTREGADOS (CONTADOR) */}
             <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white transform transition-all hover:scale-105 duration-300">
                 <CardContent className="p-6">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-purple-100 font-medium text-sm mb-1 uppercase tracking-wide">Facturación Taller</p>
-                            <h3 className="text-3xl font-extrabold">{formatCurrency(stats.repairRevenueMonth)}</h3>
+                            <p className="text-purple-100 font-medium text-sm mb-1 uppercase tracking-wide">Equipos Entregados</p>
+                            <h3 className="text-3xl font-extrabold">{(stats as any).repairCountMonth || 0}</h3>
                         </div>
                         <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-inner">
                             <ShoppingBag className="h-6 w-6 text-white" />
                         </div>
                     </div>
                     <div className="mt-4 flex items-center">
-                        <span className="text-purple-100 text-xs">Generado por reparaciones este mes</span>
+                        <span className="text-purple-100 text-xs">Entregados al cliente este mes</span>
                     </div>
                 </CardContent>
                 <div className="absolute -top-12 -right-12 h-32 w-32 bg-gradient-to-br from-white/20 to-transparent rounded-full blur-2xl pointer-events-none"></div>

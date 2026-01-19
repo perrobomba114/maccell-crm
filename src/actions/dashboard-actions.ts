@@ -452,9 +452,11 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
         });
 
         let repairRevenue = 0;
+        let repairCount = 0;
         repairSales.forEach(sale => {
             sale.items.forEach(item => {
                 repairRevenue += item.price * item.quantity;
+                repairCount += item.quantity;
             });
         });
 
@@ -627,6 +629,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
             salesMonthTotal: salesMonthTotal._sum.total || 0,
             repairsIntakeMonth,
             repairRevenueMonth: repairRevenue,
+            repairCountMonth: repairCount,
             readyForPickup,
             topSellingProducts,
             salesLast7Days,
