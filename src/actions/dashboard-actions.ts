@@ -364,14 +364,20 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
             // Sales Count (Month)
             prisma.sale.count({
                 where: {
-                    vendorId,
+                    OR: [
+                        { vendorId },
+                        { branchId, saleNumber: { startsWith: 'H' } }
+                    ],
                     createdAt: { gte: firstDayOfMonth }
                 }
             }),
             // Total Revenue (Month)
             prisma.sale.aggregate({
                 where: {
-                    vendorId,
+                    OR: [
+                        { vendorId },
+                        { branchId, saleNumber: { startsWith: 'H' } }
+                    ],
                     createdAt: { gte: firstDayOfMonth }
                 },
                 _sum: { total: true }
@@ -379,7 +385,10 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
             // Sales Today (for comparison or "Live" feel)
             prisma.sale.count({
                 where: {
-                    vendorId,
+                    OR: [
+                        { vendorId },
+                        { branchId, saleNumber: { startsWith: 'H' } }
+                    ],
                     createdAt: { gte: today }
                 }
             })
@@ -462,7 +471,10 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
             by: ['productId', 'name'],
             where: {
                 sale: {
-                    vendorId,
+                    OR: [
+                        { vendorId },
+                        { branchId, saleNumber: { startsWith: 'H' } }
+                    ],
                     createdAt: { gte: firstDayOfMonth }
                 },
                 productId: { not: null } // Only products, not repairs
@@ -487,7 +499,10 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
 
         const salesLast7 = await prisma.sale.findMany({
             where: {
-                vendorId,
+                OR: [
+                    { vendorId },
+                    { branchId, saleNumber: { startsWith: 'H' } }
+                ],
                 createdAt: { gte: sevenDaysAgo }
             },
             select: { createdAt: true, total: true }
@@ -514,7 +529,12 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
 
         // 7. Recent Activity (Latest Sales)
         const recentActivityRaw = await prisma.sale.findMany({
-            where: { vendorId },
+            where: {
+                OR: [
+                    { vendorId },
+                    { branchId, saleNumber: { startsWith: 'H' } }
+                ]
+            },
             orderBy: { createdAt: 'desc' },
             take: 5,
             include: {
