@@ -200,3 +200,21 @@ export async function deleteUser(id: string) {
         return { success: false, error: "Error al eliminar usuario" };
     }
 }
+export async function getTechnicians() {
+    try {
+        const technicians = await prisma.user.findMany({
+            where: { role: "TECHNICIAN" },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+            },
+            orderBy: { name: "asc" },
+        });
+
+        return { success: true, technicians };
+    } catch (error) {
+        console.error("Get technicians error:", error);
+        return { success: false, error: "Error al obtener técnicos" };
+    }
+}

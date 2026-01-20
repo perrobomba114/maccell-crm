@@ -15,7 +15,9 @@ import { RepairTimer } from "./repair-timer";
 import { AssignmentModal } from "./assignment-modal";
 import { AddImagesDialog } from "./add-images-dialog";
 import { RepairDetailsDialog } from "./repair-details-dialog"; // Import Dialog
+import { TransferRepairDialog } from "./transfer-repair-dialog";
 import { printRepairTicket } from "@/lib/print-utils";
+import { Share2 } from "lucide-react";
 
 interface ActiveRepairsTableProps {
     repairs: any[];
@@ -52,6 +54,7 @@ export function ActiveRepairsTable({
     const [assignmentRepair, setAssignmentRepair] = useState<any | null>(null);
     const [imageUploadRepair, setImageUploadRepair] = useState<any | null>(null);
     const [viewDetailsRepair, setViewDetailsRepair] = useState<any | null>(null); // State for Details Dialog
+    const [transferRepair, setTransferRepair] = useState<any | null>(null);
 
     const router = useRouter();
 
@@ -232,16 +235,31 @@ export function ActiveRepairsTable({
                                                         </Button>
                                                     )}
 
-                                                    {/* Reprint Ticket Button */}
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        onClick={() => printRepairTicket(repair)}
-                                                        className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                        title="Reimprimir Ticket"
-                                                    >
-                                                        <Printer className="h-4 w-4" />
-                                                    </Button>
+                                                    {/* Reprint Ticket Button - Hide for Technicians if management enabled */}
+                                                    {!enableManagement && (
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            onClick={() => printRepairTicket(repair)}
+                                                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                            title="Reimprimir Ticket"
+                                                        >
+                                                            <Printer className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+
+                                                    {/* Transfer Button - Only for Technicians in process */}
+                                                    {(enableManagement && repair.assignedUserId === currentUserId && repair.statusId === 3) && (
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            onClick={() => setTransferRepair(repair)}
+                                                            className="h-8 w-8 text-muted-foreground hover:text-blue-500"
+                                                            title="Transferir a otro técnico"
+                                                        >
+                                                            <Share2 className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
 
                                                     {enableManagement && (
                                                         <TechnicianActionButton
@@ -289,6 +307,15 @@ export function ActiveRepairsTable({
                     isOpen={!!viewDetailsRepair}
                     onClose={() => setViewDetailsRepair(null)}
                     repair={viewDetailsRepair}
+                />
+            )}
+
+            {transferRepair && (
+                <TransferRepairDialog
+                    isOpen={!!transferRepair}
+                    onClose={() => setTransferRepair(null)}
+                    repair={transferRepair}
+                    currentUserId={currentUserId}
                 />
             )}
         </div>

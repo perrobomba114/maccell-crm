@@ -403,3 +403,63 @@ export async function finishRepairAction(formData: FormData) {
         return { success: false, error: "Error al finalizar reparación (Ver consola)" };
     }
 }
+export async function transferRepairAction(repairId: string, fromTechId: string, toTechId: string) {
+    try {
+        const repair = await db.repair.findUnique({
+            where: { id: repairId },
+            include: { customer: true }
+        });
+
+        if (!repair) return { success: false, error: "Reparación no encontrada" };
+        if (repair.assignedUserId !== fromTechId) {
+            return { success: false, error: "No tienes permiso para transferir esta reparación" };
+        }
+
+        const [fromTech, toTech] = await Promise.all([
+            db.user.findUnique({ where: { id: fromTechId }, select: { name: true } }),
+            db.user.findUnique({ where: { id: toTechId }, select: { name: true } })
+        ]);
+
+        if (!toTech) return { success: false, error: "Técnico receptor no encontrado" };
+
+        await db.repair.update({
+            where: { id: repairId },
+            data: {
+                assignedUserId: toTechId,
+                // Optional: Keep it in process (3) or reset to paused (4)
+                // Let's keep it in "Started" if it was, but reset timers or just hand over.
+                // Re-setting to Status 2 (Taken) might be safer so the new tech "accepts" it with their time?
+                // Actually user said "Transferir" so reassigning and keeping everything is fine.
+            }
+        });
+
+        // Notify New Technician
+        await createNotificationAction({
+            userId: toTechId,
+            title: "Reparación Transferida",
+            message: `El técnico ${fromTech?.name || "un colega"} te ha transferido la reparación #${repair.ticketNumber}.`,
+            type: "INFO",
+            link: `/technician/repairs`
+        });
+
+        // Notify Creator/Vendor
+        if (repair.userId) {
+            await createNotificationAction({
+                userId: repair.userId,
+                title: "Cambio de Técnico",
+                message: `La reparación #${repair.ticketNumber} ha sido transferida de ${fromTech?.name} a ${toTech.name}.`,
+                type: "INFO",
+                link: `/vendor/repairs/active`
+            });
+        }
+
+        revalidatePath("/technician/repairs");
+        revalidatePath("/technician/dashboard");
+        revalidatePath("/vendor/repairs/active");
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error transferring repair:", error);
+        return { success: false, error: "Error al realizar la transferencia" };
+    }
+}
