@@ -6,8 +6,7 @@ const nextConfig: NextConfig = {
   compress: false,
   generateEtags: false,
   poweredByHeader: false,
-  // Disable SWC Minification to prevent 'workers' crash in low-mem Docker
-  swcMinify: false,
+
   // Disable Image Optimization to prevent worker crash
   images: {
     unoptimized: true,
@@ -25,7 +24,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: ["sistema.maccell.com.ar", "localhost:3000"],
-      bodySizeLimit: '5mb',
+      bodySizeLimit: '20mb',
     },
   },
 };
