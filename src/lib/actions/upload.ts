@@ -20,7 +20,7 @@ export async function saveRepairImages(formData: FormData, ticketNumber: string,
 
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (!file.name) continue;
+        if (!file.name || file.size === 0) continue;
 
         // Validating file type if needed, but assuming client checks mostly.
         const buffer = Buffer.from(await file.arrayBuffer());

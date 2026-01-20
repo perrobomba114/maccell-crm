@@ -27,10 +27,12 @@ export async function GET(
         const contentTypes: Record<string, string> = {
             ".jpg": "image/jpeg",
             ".jpeg": "image/jpeg",
-            ".png": "image/longitude",
+            ".png": "image/png",
             ".gif": "image/gif",
             ".webp": "image/webp",
             ".svg": "image/svg+xml",
+            ".heic": "image/heic",
+            ".heif": "image/heif",
         };
 
         const contentType = contentTypes[extension] || "application/octet-stream";
