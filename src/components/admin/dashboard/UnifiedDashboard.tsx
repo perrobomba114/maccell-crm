@@ -21,7 +21,9 @@ import { TechLeaderboard } from "@/components/admin/dashboard/TechLeaderboard";
 import { SmartInsights } from "@/components/admin/dashboard/SmartInsights";
 import { ProfitDonut } from "@/components/admin/dashboard/ProfitDonut";
 import { useState } from "react";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, Trash2, Loader2 } from "lucide-react";
+import { cleanupCorruptedImagesAction } from "@/actions/maintenance-actions";
+import { toast } from "sonner";
 
 // --- Types ---
 interface UnifiedDashboardProps {
@@ -301,6 +303,19 @@ export function UnifiedDashboard({ stats, branches, currentBranchId, currentUser
                     >
                         <Maximize2 size={18} />
                         <span className="text-xs font-bold uppercase tracking-wider">Modo Zen</span>
+                    </button>
+                    <button
+                        onClick={async () => {
+                            if (!confirm("¿Seguro que quieres limpiar las imágenes corruptas de toda la base de datos?")) return;
+                            const res = await cleanupCorruptedImagesAction();
+                            if (res.success) toast.success(res.message);
+                            else toast.error(res.error);
+                        }}
+                        className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-colors flex items-center gap-2"
+                        title="Limpiar Fotos Corruptas"
+                    >
+                        <Trash2 size={18} />
+                        <span className="text-xs font-bold uppercase tracking-wider">Limpiar Fotos</span>
                     </button>
                 </header>
             )}

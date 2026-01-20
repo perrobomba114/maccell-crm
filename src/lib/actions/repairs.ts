@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { createNotificationAction } from "./notifications";
+import { getImgUrl, isValidImg } from "@/lib/utils";
 
 export async function searchWarrantyRepairs(term: string, branchId: string) {
     if (!branchId || term.length < 2) return [];
@@ -177,7 +178,7 @@ export async function createRepairAction(formData: FormData) {
                 deviceBrand,
                 deviceModel,
                 problemDescription,
-                deviceImages: savedImages,
+                deviceImages: savedImages.filter(isValidImg),
                 promisedAt,
                 estimatedPrice,
                 isWarranty,
@@ -595,7 +596,7 @@ export async function updateRepairAction(formData: FormData) {
 
         // 3. Handle Images
         const newImagesPaths = await saveRepairImages(formData, existingRepair.ticketNumber, existingImagesSnap.length);
-        const finalImages = [...existingImagesSnap, ...newImagesPaths];
+        const finalImages = [...existingImagesSnap, ...newImagesPaths].filter(img => img && img.length > 5 && img.includes('/') && !img.includes('undefined') && !img.includes('null'));
 
         await db.repair.update({
             where: { id: repairId },
@@ -683,7 +684,7 @@ export async function addRepairImagesAction(formData: FormData) {
         await db.repair.update({
             where: { id: repairId },
             data: {
-                deviceImages: [...currentImages, ...newImages]
+                deviceImages: [...currentImages, ...newImages].filter(img => img && img.length > 5 && img.includes('/') && !img.includes('undefined') && !img.includes('null'))
             }
         });
 

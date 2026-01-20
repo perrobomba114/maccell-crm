@@ -18,11 +18,12 @@ import {
 
 import { CustomerForm } from "./customer-form";
 import { DeviceDetails } from "./device-details";
+import { getImgUrl, isValidImg } from "@/lib/utils";
+import { ImagePreviewModal } from "./image-preview-modal";
+import { updateRepairAction } from "@/lib/actions/repairs";
+import { Trash2 } from "lucide-react";
 import { PromisedDateSelector } from "./promised-date-selector";
 import { SparePartSelector, SparePartItem } from "./spare-part-selector";
-import { updateRepairAction } from "@/lib/actions/repairs";
-import { ImagePreviewModal } from "./image-preview-modal";
-import { getImgUrl } from "@/lib/utils";
 
 interface EditRepairFormProps {
     repair: any;
@@ -30,6 +31,36 @@ interface EditRepairFormProps {
     technicians: any[]; // New Prop
     userId: string;
     redirectPath?: string;
+}
+
+
+
+function SafeImageThumbnail({ src, alt, onClick, onDelete }: { src: string; alt: string; onClick: () => void; onDelete: () => void }) {
+    const [hasError, setHasError] = useState(false);
+
+    if (hasError) return null;
+
+    return (
+        <div className="relative aspect-square border rounded-lg overflow-hidden group cursor-pointer">
+            <img
+                src={src}
+                alt={alt}
+                className="object-cover w-full h-full transition-transform hover:scale-105"
+                onClick={onClick}
+                onError={() => setHasError(true)}
+            />
+            <button
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                }}
+                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            >
+                <X className="w-3 h-3" />
+            </button>
+        </div>
+    );
 }
 
 export function EditRepairForm({ repair, statuses, technicians, userId, redirectPath = "/admin/repairs" }: EditRepairFormProps) {
@@ -45,7 +76,7 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
     const [problem, setProblem] = useState(repair.problemDescription);
     const [notes, setNotes] = useState("");
     const [promisedAt, setPromisedAt] = useState<Date>(new Date(repair.promisedAt));
-    const [existingImages, setExistingImages] = useState<string[]>(repair.deviceImages || []);
+    const [existingImages, setExistingImages] = useState<string[]>((repair.deviceImages || []).filter(isValidImg));
     const [newImages, setNewImages] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
     const [estimatedPrice, setEstimatedPrice] = useState(repair.estimatedPrice.toString());
@@ -109,7 +140,7 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
         setViewerOpen(true);
     };
 
-    const allImagesForViewer = [...existingImages, ...previews];
+    const allImagesForViewer = [...existingImages, ...previews].filter(isValidImg);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -308,23 +339,19 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
                         <h2 className="text-lg font-bold uppercase">Imágenes del Equipo</h2>
                         <div className="grid grid-cols-3 gap-2">
                             {/* Existing Images */}
-                            {existingImages.map((src, idx) => (
-                                <div key={`existing-${idx}`} className="relative aspect-square border rounded-lg overflow-hidden group cursor-pointer">
-                                    <img
-                                        src={getImgUrl(src)}
+                            {existingImages.map((src, idx) => {
+                                const url = getImgUrl(src);
+                                if (!url) return null;
+                                return (
+                                    <SafeImageThumbnail
+                                        key={`existing-${idx}`}
+                                        src={url}
                                         alt="Existing"
-                                        className="object-cover w-full h-full transition-transform hover:scale-105"
                                         onClick={() => handleImageClick(idx)}
+                                        onDelete={() => removeExistingImage(src)}
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); removeExistingImage(src); }}
-                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            ))}
+                                );
+                            })}
 
                             {/* New Image Previews */}
                             {previews.map((src, idx) => (

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Loader2, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
+import { getImgUrl, isValidImg } from "@/lib/utils";
 import { addRepairImagesAction } from "@/lib/actions/repairs";
 import { RepairImages } from "./repair-images";
 
@@ -64,9 +65,14 @@ export function AddImagesDialog({ isOpen, onClose, repair }: AddImagesDialogProp
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="p-4 border rounded-md bg-muted/10">
                         {/* Show existing count */}
-                        <p className="text-sm text-muted-foreground mb-4">
-                            Imágenes actuales: <span className="font-semibold text-foreground">{repair.deviceImages?.length || 0}</span>
-                        </p>
+                        {(() => {
+                            const validCount = (repair.deviceImages || []).filter(isValidImg).length;
+                            return (
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Imágenes actuales: <span className="font-semibold text-foreground">{validCount}</span>
+                                </p>
+                            );
+                        })()}
 
                         <RepairImages />
                     </div>

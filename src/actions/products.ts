@@ -96,7 +96,7 @@ export async function createProduct(data: {
                     data: data.stocks.map(s => ({
                         productId: newProduct.id,
                         branchId: s.branchId,
-                        quantity: s.quantity
+                        quantity: Number(s.quantity)
                     }))
                 });
             }
@@ -165,10 +165,10 @@ export async function updateProduct(id: string, data: {
                         create: {
                             productId: id,
                             branchId: stock.branchId,
-                            quantity: stock.quantity,
+                            quantity: Number(stock.quantity),
                         },
                         update: {
-                            quantity: stock.quantity,
+                            quantity: Number(stock.quantity),
                         },
                     });
                 }

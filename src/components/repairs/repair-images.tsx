@@ -23,7 +23,7 @@ export function RepairImages() {
     useEffect(() => {
         if (inputRef.current) {
             const dataTransfer = new DataTransfer();
-            files.forEach(file => dataTransfer.items.add(file));
+            files.filter(f => f && f.size > 0).forEach(file => dataTransfer.items.add(file));
             inputRef.current.files = dataTransfer.files;
         }
     }, [files]);

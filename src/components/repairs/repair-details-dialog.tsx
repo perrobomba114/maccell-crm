@@ -7,7 +7,7 @@ import { es } from "date-fns/locale";
 import { Image, Smartphone, User, Calendar, DollarSign, FileText, Clock, ImageOff } from "lucide-react";
 import { useState } from "react";
 import { ImagePreviewModal } from "./image-preview-modal";
-import { getImgUrl } from "@/lib/utils";
+import { getImgUrl, isValidImg } from "@/lib/utils";
 
 interface RepairDetailsDialogProps {
     repair: any;
@@ -40,13 +40,16 @@ function RepairImage({ url, index, onClick }: { url: string; index: number; onCl
         );
     }
 
+    const imgUrl = getImgUrl(url);
+    if (!imgUrl) return null;
+
     return (
         <div
             className="group relative aspect-square cursor-pointer rounded-xl overflow-hidden border bg-background hover:ring-2 hover:ring-primary hover:ring-offset-2 transition-all shadow-sm"
             onClick={onClick}
         >
             <img
-                src={getImgUrl(url)}
+                src={imgUrl}
                 alt={`Foto ${index + 1}`}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                 onError={() => setError(true)}
@@ -65,7 +68,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDi
 
     if (!repair) return null;
 
-    const images = (repair.deviceImages || []).filter((url: string) => url && url.includes('/'));
+    const images = (repair.deviceImages || []).filter(isValidImg);
 
     const handleImageClick = (index: number) => {
         setViewerIndex(index);
@@ -240,12 +243,12 @@ export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDi
                                         </div>
 
                                         {/* Images */}
-                                        {repair.deviceImages && repair.deviceImages.filter((img: string) => img && img.includes('/')).length > 0 && (
+                                        {repair.deviceImages && repair.deviceImages.filter(isValidImg).length > 0 && (
                                             <div className="space-y-2 pt-2">
                                                 <h3 className="text-sm font-semibold text-muted-foreground pl-1">EVIDENCIA FOTOGRÁFICA</h3>
                                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                                                     {repair.deviceImages
-                                                        .filter((url: string) => url && url.includes('/'))
+                                                        .filter(isValidImg)
                                                         .map((url: string, idx: number) => (
                                                             <RepairImage
                                                                 key={idx}

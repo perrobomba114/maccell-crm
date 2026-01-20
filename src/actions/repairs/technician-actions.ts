@@ -294,7 +294,7 @@ export async function finishRepairAction(formData: FormData) {
         const dataToUpdate: any = {
             statusId: statusId,
             diagnosis: diagnosis,
-            deviceImages: [...currentImages, ...newImages]
+            deviceImages: [...currentImages, ...newImages].filter(img => img && img.length > 5 && img.includes('/') && !img.includes('undefined') && !img.includes('null'))
         };
 
         // If Pausing (Status 4) -> Calculate Remaining Time

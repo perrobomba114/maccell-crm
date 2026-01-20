@@ -360,7 +360,10 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
                                                                                 className="text-right h-8"
                                                                                 {...field}
                                                                                 value={field.value ?? 0}
-                                                                                onChange={(e) => field.onChange(e.target.value)}
+                                                                                onChange={(e) => {
+                                                                                    const val = e.target.value === "" ? 0 : parseInt(e.target.value);
+                                                                                    field.onChange(val);
+                                                                                }}
                                                                                 onFocus={(e) => e.target.select()}
                                                                             />
                                                                         </FormControl>

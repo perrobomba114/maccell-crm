@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { finishRepairAction } from "@/actions/repairs/technician-actions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImagePreviewModal } from "./image-preview-modal";
-import { getImgUrl } from "@/lib/utils";
+import { getImgUrl, isValidImg } from "@/lib/utils";
 
 interface FinishRepairModalProps {
     repair: any;
@@ -39,6 +39,27 @@ const statusColors: Record<number, string> = {
     9: "from-violet-500 to-violet-600",
 };
 
+function SafeImageThumbnail({ src, alt, onClick }: { src: string; alt: string; onClick: () => void }) {
+    const [hasError, setHasError] = useState(false);
+
+    if (hasError) return null;
+
+    return (
+        <div
+            className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-zoom-in group"
+            onClick={onClick}
+        >
+            <img
+                src={src}
+                alt={alt}
+                className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                onError={() => setHasError(true)}
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+        </div>
+    );
+}
+
 export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: FinishRepairModalProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [statusId, setStatusId] = useState<string>(""); // No default selection
@@ -46,7 +67,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
     const [newImages, setNewImages] = useState<File[]>([]); // New state for tech images
-    const images = (repair.deviceImages || []).filter((url: string) => url && url.includes('/'));
+    const images = (repair.deviceImages || []).filter(isValidImg);
     const [showReturnAlert, setShowReturnAlert] = useState(false);
 
     // Initialize with existing value, allows tech to toggle ON if they find it wet
@@ -79,7 +100,6 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             formData.append("repairId", repair.id);
             formData.append("technicianId", currentUserId);
             formData.append("statusId", statusId);
-            formData.append("diagnosis", diagnosis);
             formData.append("diagnosis", diagnosis);
             formData.append("createReturnRequest", createReturnRequest.toString());
             formData.append("isWet", isWet.toString());
@@ -240,19 +260,21 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
 
                             <div className="grid grid-cols-5 gap-2">
                                 {/* Existing Images */}
-                                {repair.deviceImages?.filter((url: string) => url && url.includes('/')).map((url: string, idx: number) => (
-                                    <div
-                                        key={`old-${idx}`}
-                                        className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-zoom-in group"
-                                        onClick={() => {
-                                            setViewerIndex(idx);
-                                            setViewerOpen(true);
-                                        }}
-                                    >
-                                        <img src={getImgUrl(url)} alt="Evidencia previa" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                                    </div>
-                                ))}
+                                {repair.deviceImages?.filter(isValidImg).map((url: string, idx: number) => {
+                                    const imgUrl = getImgUrl(url);
+                                    if (!imgUrl) return null;
+                                    return (
+                                        <SafeImageThumbnail
+                                            key={`old-${idx}`}
+                                            src={imgUrl}
+                                            alt="Evidencia previa"
+                                            onClick={() => {
+                                                setViewerIndex(idx);
+                                                setViewerOpen(true);
+                                            }}
+                                        />
+                                    );
+                                })}
 
                                 {/* New Images */}
                                 {newImages.map((file, idx) => (
