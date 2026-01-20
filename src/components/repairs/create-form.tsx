@@ -7,7 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save, Droplets } from "lucide-react";
+import { Loader2, Save, Droplets, AlertTriangle } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { WarrantySection } from "./warranty-section";
 import { CustomerForm } from "./customer-form";
@@ -58,6 +69,7 @@ function roundUpTo15(date: Date): Date {
 export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repairs", hidePrice = false, hideParts = false, ticketPrefix, vendors }: CreateRepairFormProps) {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
     // Vendor Selection State
     const [selectedUserId, setSelectedUserId] = useState(userId);
@@ -154,6 +166,14 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
             return;
         }
 
+        // --- STAGE 1: Checklist Warning ---
+        if (!showConfirmDialog) {
+            setShowConfirmDialog(true);
+            setIsSubmitting(false);
+            return;
+        }
+
+        // --- STAGE 2: Real Submission ---
         try {
             const formData = new FormData(e.currentTarget);
             formData.set("branchId", activeBranchId); // Use dynamic branch ID
@@ -209,6 +229,7 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
             toast.error("Error inesperado");
         } finally {
             setIsSubmitting(false);
+            setShowConfirmDialog(false);
         }
     };
 
@@ -401,6 +422,56 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
                     </div>
                 </div>
             </div>
+
+            <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <AlertDialogContent className="w-[95vw] sm:max-w-5xl bg-zinc-950 border-zinc-800 border-2 p-6 sm:p-10">
+                    <AlertDialogHeader className="flex flex-col items-center justify-center">
+                        <AlertDialogTitle className="text-xl sm:text-3xl font-black text-center text-yellow-500 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 uppercase tracking-tighter">
+                            <AlertTriangle className="w-8 h-8 sm:w-12 sm:h-12" />
+                            ¡ADVERTENCIA DE SEGURIDAD!
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-6 pt-4 w-full">
+                            <Alert className="bg-yellow-500/10 border-yellow-500/50 p-6 flex flex-col items-center text-center">
+                                <div className="flex flex-col items-center justify-center w-full">
+                                    <AlertTriangle className="h-10 w-10 text-yellow-500 mb-4" />
+                                    <AlertTitle className="text-2xl font-bold text-yellow-500 mb-4 block">CHECKLIST OBLIGATORIO</AlertTitle>
+                                    <AlertDescription className="text-xl text-yellow-100/90 leading-relaxed font-medium w-full">
+                                        Antes de continuar, debés confirmar que realizaste las siguientes preguntas al cliente:
+                                        <div className="flex justify-center w-full">
+                                            <ul className="list-disc text-left mt-6 space-y-4 text-yellow-400 font-bold text-lg inline-block">
+                                                <li>¿Solicitaste el PATRÓN o PIN de desbloqueo?</li>
+                                                <li>¿Preguntaste si el equipo se MOJÓ o tuvo líquidos?</li>
+                                            </ul>
+                                        </div>
+                                    </AlertDescription>
+                                </div>
+                            </Alert>
+                            <p className="text-zinc-400 text-center text-lg italic">
+                                La omisión de estos datos dificulta el trabajo técnico y retrasa la reparación.
+                            </p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8 justify-center items-center">
+                        <AlertDialogCancel className="w-full sm:w-1/2 h-14 sm:h-16 text-sm sm:text-lg bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-300">
+                            VOLVER A LOS DATOS
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                // Trigger submission again, this time with showConfirmDialog = true
+                                // We simulate a form submission event
+                                const form = document.querySelector('form');
+                                if (form) {
+                                    const event = new Event('submit', { cancelable: true, bubbles: true });
+                                    form.dispatchEvent(event);
+                                }
+                            }}
+                            className="w-full sm:w-1/2 h-14 sm:h-16 text-base sm:text-xl font-black bg-yellow-500 hover:bg-yellow-400 text-black shadow-[0_0_30px_rgba(234,179,8,0.3)] whitespace-normal"
+                        >
+                            SÍ, TODO VERIFICADO - REGISTRAR
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </form>
     );
 }
