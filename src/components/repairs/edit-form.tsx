@@ -24,6 +24,7 @@ import { updateRepairAction } from "@/lib/actions/repairs";
 import { Trash2 } from "lucide-react";
 import { PromisedDateSelector } from "./promised-date-selector";
 import { SparePartSelector, SparePartItem } from "./spare-part-selector";
+import { SafeImageThumbnail } from "./safe-image-thumbnail";
 
 interface EditRepairFormProps {
     repair: any;
@@ -34,8 +35,6 @@ interface EditRepairFormProps {
 }
 
 
-
-import { SafeImageThumbnail } from "./safe-image-thumbnail";
 
 export function EditRepairForm({ repair, statuses, technicians, userId, redirectPath = "/admin/repairs" }: EditRepairFormProps) {
     const router = useRouter();

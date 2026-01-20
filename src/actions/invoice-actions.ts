@@ -36,7 +36,8 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
         include: {
             sale: {
                 include: {
-                    branch: true
+                    branch: true,
+                    items: true
                 }
             }
         },

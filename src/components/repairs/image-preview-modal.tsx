@@ -28,9 +28,8 @@ export function ImagePreviewModal({ isOpen, onClose, images, currentIndex, onInd
         }
     }, [isOpen, currentIndex]);
 
-    if (!images || images.length === 0) return null;
 
-    const imageUrl = images[currentIndex];
+    const imageUrl = images?.[currentIndex];
 
     const handleZoomIn = () => setScale(prev => Math.min(prev + 0.5, 5));
     const handleZoomOut = () => {
@@ -85,6 +84,8 @@ export function ImagePreviewModal({ isOpen, onClose, images, currentIndex, onInd
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [isOpen, currentIndex, images.length]);
+
+    if (!images || images.length === 0) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
