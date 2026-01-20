@@ -312,10 +312,9 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
                         <h2 className="text-lg font-bold uppercase">Imágenes del Equipo</h2>
                         <div className="grid grid-cols-3 gap-2">
                             {/* Existing Images */}
-                            {existingImages.map((src, idx) => {
-                                const url = getImgUrl(src);
-                                if (!url) return null;
-                                return (
+                            {existingImages.map((src, idx) => ({ src, idx, url: getImgUrl(src) }))
+                                .filter(item => !!item.url)
+                                .map(({ src, idx, url }) => (
                                     <SafeImageThumbnail
                                         key={`existing-${idx}`}
                                         src={url}
@@ -323,8 +322,8 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
                                         onClick={() => handleImageClick(idx)}
                                         onDelete={() => removeExistingImage(src)}
                                     />
-                                );
-                            })}
+                                ))
+                            }
 
                             {/* New Image Previews */}
                             {previews.map((src, idx) => (
