@@ -17,6 +17,16 @@ import {
     DialogFooter,
     DialogDescription
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import {
     searchProductsForPos,
@@ -150,6 +160,9 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
     // Invoice State
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [invoiceData, setInvoiceData] = useState<InvoiceData | undefined>(undefined);
+
+    // Cash Payment Confirmation
+    const [showCashConfirm, setShowCashConfirm] = useState(false);
 
     const handleInvoiceConfirm = (data: InvoiceData) => {
         setInvoiceData(data);
@@ -587,11 +600,17 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
     };
 
     const handleAddPayment = (method: "CASH" | "CARD" | "MERCADOPAGO") => {
+        if (method === "CASH" && !showCashConfirm) {
+            setShowCashConfirm(true);
+            return;
+        }
+
         const totalToPay = parseFloat(editableTotal);
         const amountToPay = parseFloat(paymentAmountInput);
 
         if (isNaN(totalToPay) || totalToPay <= 0) {
             toast.error("Total a cobrar inválido");
+            setShowCashConfirm(false);
             return;
         }
 
@@ -600,6 +619,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
             // BUT logic below handles "amountToPay" from input. 
             // If input is empty or invalid, block? 
             toast.error("Ingrese un monto válido a pagar");
+            setShowCashConfirm(false);
             return;
         }
 
@@ -608,6 +628,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
         if (amountToPay > remaining + 0.01) { // small epsilon
             toast.error(`El monto excede el restante ($${remaining.toLocaleString()})`);
+            setShowCashConfirm(false);
             return;
         }
 
@@ -620,6 +641,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
         const newRemaining = totalToPay - newPaidSoFar;
 
         setPaymentAmountInput(newRemaining > 0 ? newRemaining.toString() : "0");
+        setShowCashConfirm(false);
 
         if (newRemaining <= 0.01) {
             // Auto complete? No, let user confirm final sale
@@ -803,7 +825,35 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
 
     return (
-        <div className="flex flex-col md:flex-row h-[calc(100vh-120px)] gap-6 p-4">
+        <div className="flex flex-col h-[calc(100vh-4rem)] bg-zinc-950 overflow-hidden font-sans">
+            <AlertDialog open={showCashConfirm} onOpenChange={setShowCashConfirm}>
+                <AlertDialogContent className="w-[95vw] sm:max-w-xl bg-zinc-950 border-zinc-800 border-2 p-8">
+                    <AlertDialogHeader className="flex flex-col items-center justify-center space-y-4">
+                        <div className="p-4 bg-yellow-500/10 rounded-full border border-yellow-500/20">
+                            <Banknote className="w-12 h-12 text-yellow-500" />
+                        </div>
+                        <AlertDialogTitle className="text-2xl font-black text-center text-yellow-500 uppercase tracking-tight">
+                            ¿FACTURAR EN EFECTIVO?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-center text-zinc-400 text-lg">
+                            Estás por registrar un pago en <span className="font-bold text-white italic underline">EFECTIVO</span>.
+                            <br />
+                            Una vez confirmada, se generará la factura o comprobante.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex flex-col sm:flex-row gap-3 mt-8">
+                        <AlertDialogCancel className="w-full sm:w-1/2 h-14 text-zinc-400 bg-zinc-900 border-zinc-800 hover:bg-zinc-800 hover:text-white transition-all">
+                            VOLVER
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => handleAddPayment("CASH")}
+                            className="w-full sm:w-1/2 h-14 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-lg shadow-[0_0_20px_rgba(234,179,8,0.2)]"
+                        >
+                            SÍ, FACTURAR
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* LEFT COLUMN: Search & Catalog */}
             <div className="w-full md:w-2/3 flex flex-col gap-6">
