@@ -245,7 +245,6 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                     const imgUrl = getImgUrl(url);
                                     if (!imgUrl) return null;
                                     return (
-                                    return (
                                         <SafeImageThumbnail
                                             key={`old-${idx}`}
                                             src={imgUrl}
@@ -256,7 +255,6 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                             }}
                                             onDelete={() => { }} // Read-only in finish modal? Or strictly no-op.
                                         />
-                                    );
                                     );
                                 })}
 
