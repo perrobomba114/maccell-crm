@@ -595,15 +595,12 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
         setEditableTotal(currentTotal.toString());
         setPaymentAmountInput(currentTotal.toString());
         setPartialPayments([]);
+        cashWarningAccepted.current = false;
 
         setIsCheckoutModalOpen(true);
     };
 
     const handleAddPayment = (method: "CASH" | "CARD" | "MERCADOPAGO") => {
-        if (method === "CASH" && !showCashConfirm) {
-            setShowCashConfirm(true);
-            return;
-        }
 
         const totalToPay = parseFloat(editableTotal);
         const amountToPay = parseFloat(paymentAmountInput);
@@ -661,9 +658,18 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
 
     const processingRef = useRef(false);
+    const cashWarningAccepted = useRef(false);
 
     const confirmSplitSale = async () => {
         if (processingRef.current) return;
+
+        // Warning for Cash Invoice
+        const hasCash = partialPayments.some(p => p.method === "CASH");
+        if (invoiceData && hasCash && !cashWarningAccepted.current) {
+            setShowCashConfirm(true);
+            return;
+        }
+
         processingRef.current = true;
         setIsProcessingSale(true);
 
@@ -825,7 +831,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] bg-zinc-950 overflow-hidden font-sans">
+        <div className="flex flex-col md:flex-row gap-4 p-4 h-[calc(100vh-4rem)] bg-zinc-950 overflow-hidden font-sans">
             <AlertDialog open={showCashConfirm} onOpenChange={setShowCashConfirm}>
                 <AlertDialogContent className="w-[95vw] sm:max-w-xl bg-zinc-950 border-zinc-800 border-2 p-8">
                     <AlertDialogHeader className="flex flex-col items-center justify-center space-y-4">
@@ -846,7 +852,10 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                             VOLVER
                         </AlertDialogCancel>
                         <AlertDialogAction
-                            onClick={() => handleAddPayment("CASH")}
+                            onClick={() => {
+                                cashWarningAccepted.current = true;
+                                confirmSplitSale();
+                            }}
                             className="w-full sm:w-1/2 h-14 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-lg shadow-[0_0_20px_rgba(234,179,8,0.2)]"
                         >
                             SÍ, FACTURAR
