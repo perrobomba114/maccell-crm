@@ -596,7 +596,7 @@ export async function updateRepairAction(formData: FormData) {
 
         // 3. Handle Images
         const newImagesPaths = await saveRepairImages(formData, existingRepair.ticketNumber, existingImagesSnap.length);
-        const finalImages = [...existingImagesSnap, ...newImagesPaths].filter(img => img && img.length > 5 && img.includes('/') && !img.includes('undefined') && !img.includes('null'));
+        const finalImages = [...existingImagesSnap, ...newImagesPaths].filter(isValidImg);
 
         await db.repair.update({
             where: { id: repairId },
@@ -684,7 +684,7 @@ export async function addRepairImagesAction(formData: FormData) {
         await db.repair.update({
             where: { id: repairId },
             data: {
-                deviceImages: [...currentImages, ...newImages].filter(img => img && img.length > 5 && img.includes('/') && !img.includes('undefined') && !img.includes('null'))
+                deviceImages: [...currentImages, ...newImages].filter(isValidImg)
             }
         });
 
