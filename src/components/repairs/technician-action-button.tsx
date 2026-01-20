@@ -22,8 +22,8 @@ export function TechnicianActionButton({ repair, currentUserId }: TechnicianActi
 
     // This button is only for "My Repairs" page, so we assume it is assigned to me or we check status.
 
-    // Status 8 (Waiting Confirmation) or 9 (Waiting Spares) -> Show "Reactivar" (Add Time & Restart)
-    if (repair.statusId === 8 || repair.statusId === 9) {
+    // Status 7 (Diagnosticado), 8 (Waiting Confirmation) or 9 (Waiting Spares) -> Show "Reactivar" (Add Time & Restart)
+    if (repair.statusId === 7 || repair.statusId === 8 || repair.statusId === 9) {
         return (
             <>
                 <Button

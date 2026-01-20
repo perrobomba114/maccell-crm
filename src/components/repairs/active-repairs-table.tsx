@@ -248,8 +248,8 @@ export function ActiveRepairsTable({
                                                         </Button>
                                                     )}
 
-                                                    {/* Transfer Button - Only for Technicians in process */}
-                                                    {(enableManagement && repair.assignedUserId === currentUserId && repair.statusId === 3) && (
+                                                    {/* Transfer Button - Only for Technicians in process or waiting */}
+                                                    {(enableManagement && repair.assignedUserId === currentUserId && [3, 7, 8, 9].includes(repair.statusId)) && (
                                                         <Button
                                                             size="icon"
                                                             variant="ghost"

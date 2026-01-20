@@ -13,7 +13,7 @@ export default async function TechnicianRepairsPage() {
 
     // Filter by statuses: 2, 3, 4, 7, 8, 9
     // And ensure assigned to current user!
-    const allRepairs = await getActiveRepairsAction(user.branch?.id || "", [2, 3, 4, 8, 9]);
+    const allRepairs = await getActiveRepairsAction(user.branch?.id || "", [2, 3, 4, 7, 8, 9]);
     const repairs = allRepairs.filter((r: any) =>
         r.assignedUserId === user.id ||
         (r.statusId === 2 && !r.assignedUserId) // Show unassigned Status 2 repairs

@@ -85,7 +85,7 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
         // Update Repair
         // Update Repair using direct IDs for robustness
         // calculate Reactivation
-        const isReactivation = repair.statusId === 8 || repair.statusId === 9;
+        const isReactivation = repair.statusId === 7 || repair.statusId === 8 || repair.statusId === 9;
         const targetStatusId = (updatePromisedDate || isReactivation) ? 3 : 4;
 
         await db.repair.update({

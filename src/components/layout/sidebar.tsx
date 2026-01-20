@@ -62,8 +62,8 @@ export function Sidebar({
 
     // Check media query safely
     useEffect(() => {
-        setIsMounted(true);
         const checkMobile = () => {
+            // ... existing logic
             const mobile = window.innerWidth < 768;
             setIsMobile(mobile);
             if (!mobile) {
@@ -81,10 +81,8 @@ export function Sidebar({
 
     // Sync external collapse state for layout padding
     useEffect(() => {
-        if (isMounted) {
-            onCollapseChange?.(isCollapsed);
-        }
-    }, [isCollapsed, onCollapseChange, isMounted]);
+        onCollapseChange?.(isCollapsed);
+    }, [isCollapsed, onCollapseChange]);
 
     const toggleCollapse = () => {
         if (isMobile) {
@@ -108,7 +106,8 @@ export function Sidebar({
         }
     }, [pathname, isMobile]);
 
-    if (!isMounted) return null;
+    // Eliminated blocking isMounted check to render immediately
+    // if (!isMounted) return null;
 
     const renderLink = (link: SidebarLink) => {
         const Icon = iconMap[link.icon as keyof typeof iconMap] || LayoutDashboard;
