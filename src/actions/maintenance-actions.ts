@@ -1,41 +1,71 @@
 "use server";
 
 import { db } from "@/lib/db";
+import fs from "fs/promises";
+import path from "path";
+import { isValidImg } from "@/lib/utils";
 
 export async function cleanupCorruptedImagesAction() {
     try {
-        const repairsWithImages = await db.repair.findMany({
-            where: {
-                deviceImages: {
-                    isEmpty: false
-                }
-            },
-            select: {
-                id: true,
-                deviceImages: true
-            }
+        console.log("Staring Image Cleanup...");
+        const allRepairs = await db.repair.findMany({
+            select: { id: true, deviceImages: true }
         });
 
-        console.log(`Analyzing ${repairsWithImages.length} repairs for image cleanup...`);
+        let repairsFixed = 0;
+        let imagesRemoved = 0;
 
-        let updatedCount = 0;
-        const isValidImg = (url: string) => url && url.length > 5 && url.includes('/') && !url.includes('undefined') && !url.includes('null');
+        for (const repair of allRepairs) {
+            if (!repair.deviceImages || repair.deviceImages.length === 0) continue;
 
-        for (const repair of repairsWithImages) {
-            const filtered = repair.deviceImages.filter(isValidImg);
+            const cleanImages: string[] = [];
+            let changed = false;
 
-            if (filtered.length !== repair.deviceImages.length) {
+            for (const imgPath of repair.deviceImages) {
+                // 1. Basic Syntax Validation
+                // Local check: using isValidImg utility
+                if (!isValidImg(imgPath)) {
+                    // Double check manually for specific "undefined" strings just in case
+                    console.log(`[Cleanup] Removing invalid syntax: ${imgPath}`);
+                    changed = true;
+                    imagesRemoved++;
+                    continue;
+                }
+
+                // 2. Physical File Validation
+                // Only check local files (starting with /repairs/images)
+                if (imgPath.startsWith("/repairs/images/")) {
+                    const fullPath = path.join(process.cwd(), "public", imgPath);
+                    try {
+                        await fs.access(fullPath);
+                        cleanImages.push(imgPath);
+                    } catch {
+                        console.log(`[Cleanup] Removing missing file: ${imgPath}`);
+                        changed = true;
+                        imagesRemoved++;
+                    }
+                } else {
+                    // External URLs or others are kept
+                    cleanImages.push(imgPath);
+                }
+            }
+
+            if (changed) {
                 await db.repair.update({
                     where: { id: repair.id },
-                    data: { deviceImages: filtered }
+                    data: { deviceImages: cleanImages }
                 });
-                updatedCount++;
+                repairsFixed++;
             }
         }
 
-        return { success: true, message: `Se limpiaron ${updatedCount} reparaciones con imágenes corruptas.` };
-    } catch (error) {
+        return {
+            success: true,
+            message: `Limpieza completada. Se corrigieron ${repairsFixed} reparaciones y se eliminaron ${imagesRemoved} imágenes rotas.`
+        };
+
+    } catch (error: any) {
         console.error("Cleanup Error:", error);
-        return { success: false, error: "Error durante la limpieza de imágenes." };
+        return { success: false, error: error.message || "Error al limpiar imágenes" };
     }
 }

@@ -5,6 +5,8 @@ import { businessHoursService } from "@/lib/services/business-hours";
 import { customerService } from "@/lib/services/customers";
 import { saveRepairImages } from "@/lib/actions/upload";
 import { revalidatePath } from "next/cache";
+import path from "path";
+import fs from "fs/promises";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { createNotificationAction } from "./notifications";
@@ -138,7 +140,7 @@ export async function createRepairAction(formData: FormData) {
         });
 
         // 3. Images
-        const savedImages = await saveRepairImages(formData, ticketNumber); // Assuming formData contains "images" files
+        const savedImages = await saveRepairImages(formData, ticketNumber); // Autosave unique names
 
         // 4. Parts
         const partsJson = formData.get("spareParts") as string;
@@ -594,9 +596,53 @@ export async function updateRepairAction(formData: FormData) {
             }
         });
 
-        // 3. Handle Images
-        const newImagesPaths = await saveRepairImages(formData, existingRepair.ticketNumber, existingImagesSnap.length);
-        const finalImages = [...existingImagesSnap, ...newImagesPaths].filter(isValidImg);
+        // 3. Handle Images with Smart Concurrency & Hygiene
+        // 3. Handle Images with Smart Concurrency & Hygiene
+        const submittedKeepImagesJson = formData.get("existingImages") as string;
+        const originalImagesJson = formData.get("originalImages") as string;
+
+        const submittedKeepImages = JSON.parse(submittedKeepImagesJson || "[]") as string[];
+        const originalLoadImages = JSON.parse(originalImagesJson || "[]") as string[];
+
+        // A. Determine what was explicitly deleted by the Admin
+        // Deleted = Was in Original BUT is NOT in Submitted
+        const explicitlyDeleted = originalLoadImages.filter(img => !submittedKeepImages.includes(img));
+
+        // B. Get current DB State (to check for new images added by Techs during edit)
+        const freshRepair = await db.repair.findUnique({
+            where: { id: repairId },
+            select: { deviceImages: true }
+        });
+        const currentDbImages = freshRepair?.deviceImages || [];
+
+        // C. Calculate Final State
+        // Keep = (CurrentDB - Deleted) + NewUploads
+        // This preserves unseen images (Tech uploads) while respecting Admin deletions
+        const imagesToKeep = currentDbImages.filter(img => !explicitlyDeleted.includes(img));
+
+        // D. Save New Images
+        const newImagesPaths = await saveRepairImages(formData, existingRepair.ticketNumber);
+
+        const finalImages = [...imagesToKeep, ...newImagesPaths].filter(isValidImg);
+
+        // E. File Hygiene: Delete physical files that were explicitly deleted
+        if (explicitlyDeleted.length > 0) {
+            // We do this asynchronously to not block the UI response
+            (async () => {
+                try {
+                    const publicDir = path.join(process.cwd(), "public");
+                    for (const imgPath of explicitlyDeleted) {
+                        // Security check: ensure path is relative and safe
+                        if (!imgPath.includes('..') && imgPath.startsWith('/repairs/images/')) {
+                            const fullPath = path.join(publicDir, imgPath);
+                            await fs.unlink(fullPath).catch(err => console.error(`Failed to delete file ${imgPath}:`, err.message));
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error during file cleanup:", err);
+                }
+            })();
+        }
 
         await db.repair.update({
             where: { id: repairId },
@@ -677,8 +723,8 @@ export async function addRepairImagesAction(formData: FormData) {
             return { success: false, error: `Máximo 3 imágenes permitidas. Ya tienes ${currentImages.length} cargadas.` };
         }
 
-        // Save new images starting from the correct index
-        const newImages = await saveRepairImages(formData, repair.ticketNumber, currentImages.length);
+        // Save new images with unique names
+        const newImages = await saveRepairImages(formData, repair.ticketNumber);
 
         // Update DB
         await db.repair.update({

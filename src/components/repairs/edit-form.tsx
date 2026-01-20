@@ -159,6 +159,7 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
             if (assignedUserId && assignedUserId !== "unassigned") formData.set("assignedUserId", assignedUserId);
 
             formData.set("existingImages", JSON.stringify(existingImages));
+            formData.set("originalImages", JSON.stringify(repair.deviceImages || [])); // Pass original state for concurrency check
             newImages.forEach(file => formData.append("images", file));
 
             formData.set("spareParts", JSON.stringify(selectedParts.map(p => ({ id: p.id, quantity: 1 }))));
@@ -349,7 +350,7 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
                             <label className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
                                 <ImagePlus className="w-6 h-6 text-muted-foreground" />
                                 <span className="text-[10px] text-muted-foreground mt-1">Añadir</span>
-                                <input type="file" multiple accept="image/*" onChange={handleFileChange} className="hidden" />
+                                <input type="file" multiple accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} className="hidden" />
                             </label>
                         </div>
                     </div>

@@ -8,9 +8,11 @@ export async function getProducts(filters?: {
     categoryId?: string;
     page?: number;
     limit?: number;
+    sortColumn?: string;
+    sortDirection?: "asc" | "desc";
 }) {
     try {
-        const { search, categoryId, page = 1, limit = 50 } = filters || {};
+        const { search, categoryId, page = 1, limit = 50, sortColumn = "sku", sortDirection = "desc" } = filters || {};
         const skip = (page - 1) * limit;
 
         const where: any = {
@@ -28,7 +30,22 @@ export async function getProducts(filters?: {
             where.categoryId = categoryId;
         }
 
-        console.log("getProducts params:", { page, limit, skip, where });
+        console.log("getProducts params:", { page, limit, skip, where, sortColumn, sortDirection });
+
+        // Safe sort columns
+        const allowedSorts = ["sku", "name", "price", "costPrice", "createdAt"];
+        const safeSortColumn = allowedSorts.includes(sortColumn) ? sortColumn : "sku";
+        const safeSortDirection = sortDirection === "asc" ? "asc" : "desc";
+
+        const orderBy: any[] = [];
+
+        // Primary sort
+        orderBy.push({ [safeSortColumn]: safeSortDirection });
+
+        // Secondary stable sort to prevent pagination jitter
+        if (safeSortColumn !== "id") {
+            orderBy.push({ id: "desc" });
+        }
 
         const [products, total] = await prisma.$transaction([
             prisma.product.findMany({
@@ -39,10 +56,7 @@ export async function getProducts(filters?: {
                 },
                 skip,
                 take: limit,
-                orderBy: [
-                    { sku: "desc" },
-                    { id: "desc" } // Stable sort
-                ],
+                orderBy,
             }),
             prisma.product.count({ where }),
         ]);

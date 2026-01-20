@@ -163,7 +163,7 @@ export function RepairImages() {
                         ref={inputRef}
                         name="images"
                         type="file"
-                        accept="image/*"
+                        accept="image/png, image/jpeg, image/webp"
                         multiple
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                         onChange={handleChange}

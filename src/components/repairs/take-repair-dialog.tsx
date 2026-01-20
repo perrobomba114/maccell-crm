@@ -153,6 +153,27 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
                         </div>
                     )}
 
+                    {/* PRE-ASSIGNED PARTS SECTION */}
+                    {repair.parts && repair.parts.length > 0 && (
+                        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 p-3 rounded-md">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Box className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">REPUESTOS YA ASIGNADOS</span>
+                            </div>
+                            <div className="space-y-1">
+                                {repair.parts.map((rp: any) => (
+                                    <div key={rp.id} className="flex justify-between text-sm items-center bg-background/50 p-2 rounded border border-blue-100 dark:border-blue-800/50">
+                                        <span className="font-medium text-foreground">{rp.sparePart.name}</span>
+                                        <span className="text-muted-foreground text-xs font-mono bg-muted px-1.5 py-0.5 rounded">x{rp.quantity}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-[10px] text-blue-500/80 mt-2 italic">
+                                * Estos repuestos ya fueron cargados por el administrador.
+                            </p>
+                        </div>
+                    )}
+
                     <div className="space-y-3 pt-2">
                         <div className="flex items-center gap-2 mb-1">
                             <Box className="h-4 w-4 text-muted-foreground" />

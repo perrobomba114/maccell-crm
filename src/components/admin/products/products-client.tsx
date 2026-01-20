@@ -33,7 +33,10 @@ import {
     Printer,
     Settings,
     RefreshCw,
-    Check
+    Check,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown
 } from "lucide-react";
 import { ProductForm } from "./product-form";
 import { deleteProduct, getAllProductsForExport, bulkUpsertProducts, ProductImportRow } from "@/actions/products";
@@ -103,6 +106,11 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
     // Initialize state from URL params
     const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
     const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get("category") || "all");
+
+    // Sort state extraction
+    const currentSortColumn = searchParams.get("sort") || "sku";
+    const currentSortDirection = searchParams.get("order") || "desc";
+
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
     const [productToDelete, setProductToDelete] = useState<string | null>(null);
@@ -207,6 +215,31 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
         else params.delete("category");
         params.set("page", "1");
         router.push(`${pathname}?${params.toString()}`);
+    };
+
+    const handleSort = (column: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+
+        // If same column, toggle direction
+        if (column === currentSortColumn) {
+            const newOrder = currentSortDirection === "asc" ? "desc" : "asc";
+            params.set("order", newOrder);
+        } else {
+            // New column, default to asc for names/text, desc for numbers usually, but let's stick to asc default
+            params.set("sort", column);
+            params.set("order", "asc"); // Default new sort to ascending
+        }
+
+        // Reset to page 1 on sort change
+        params.set("page", "1");
+
+        router.push(`${pathname}?${params.toString()}`);
+    };
+
+    const renderSortArrow = (column: string) => {
+        if (currentSortColumn !== column) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-30" />;
+        if (currentSortDirection === "asc") return <ArrowUp className="ml-2 h-4 w-4 text-primary" />;
+        return <ArrowDown className="ml-2 h-4 w-4 text-primary" />;
     };
 
 
@@ -546,10 +579,26 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="text-center">SKU</TableHead>
-                            <TableHead className="text-center">Producto</TableHead>
-                            <TableHead className="text-center">Costo</TableHead>
-                            <TableHead className="text-center font-bold">Precio Venta</TableHead>
+                            <TableHead className="text-center cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("sku")}>
+                                <div className="flex items-center justify-center">
+                                    SKU {renderSortArrow("sku")}
+                                </div>
+                            </TableHead>
+                            <TableHead className="text-center cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("name")}>
+                                <div className="flex items-center justify-center">
+                                    Producto {renderSortArrow("name")}
+                                </div>
+                            </TableHead>
+                            <TableHead className="text-center cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("costPrice")}>
+                                <div className="flex items-center justify-center">
+                                    Costo {renderSortArrow("costPrice")}
+                                </div>
+                            </TableHead>
+                            <TableHead className="text-center font-bold cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("price")}>
+                                <div className="flex items-center justify-center">
+                                    Precio Venta {renderSortArrow("price")}
+                                </div>
+                            </TableHead>
                             <TableHead className="text-center">Stock Total</TableHead>
                             {branches.map(branch => (
                                 <TableHead key={branch.id} className="text-center text-xs whitespace-nowrap">

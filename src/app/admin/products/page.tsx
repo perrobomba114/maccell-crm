@@ -9,22 +9,28 @@ export const dynamic = "force-dynamic";
 export default async function ProductsPage({
     searchParams,
 }: {
-    searchParams: Promise<{ page?: string; search?: string; category?: string }>;
+    searchParams: Promise<{ page?: string; search?: string; category?: string; sort?: string; order?: string }>;
 }) {
-    const { page: pageStr, search: searchStr, category: categoryStr } = await searchParams;
+    const { page: pageStr, search: searchStr, category: categoryStr, sort: sortStr, order: orderStr } = await searchParams;
     const page = Number(pageStr) || 1;
     const search = searchStr || "";
     const categoryId = categoryStr || "all";
     const limit = 25;
 
-    console.log("ProductsPage Params:", { page, search, categoryId });
+    // Determine Sort
+    const sortColumn = sortStr || "sku";
+    const sortDirection = (orderStr === "asc" ? "asc" : "desc") as "asc" | "desc";
+
+    console.log("ProductsPage Params:", { page, search, categoryId, sortColumn, sortDirection });
 
     // Initial data fetch
     const { products, totalPages, total } = await getProducts({
         page,
         limit,
         search,
-        categoryId
+        categoryId,
+        sortColumn,
+        sortDirection
     });
 
     // Fetch options

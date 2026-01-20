@@ -3,7 +3,7 @@
 import fs from "fs/promises";
 import path from "path";
 
-export async function saveRepairImages(formData: FormData, ticketNumber: string, startIndex: number = 0): Promise<string[]> {
+export async function saveRepairImages(formData: FormData, ticketNumber: string): Promise<string[]> {
     const files = formData.getAll("images") as File[]; // Expecting 'images' key
     const savedPaths: string[] = [];
 
@@ -26,8 +26,10 @@ export async function saveRepairImages(formData: FormData, ticketNumber: string,
         const buffer = Buffer.from(await file.arrayBuffer());
         const ext = path.extname(file.name).toLowerCase() || ".jpg";
 
-        // Renaming format: TICK-123_img1.jpg (using startIndex)
-        const filename = `${ticketNumber}_img${startIndex + i + 1}${ext}`;
+        // Unique naming: TICK-timestamp-random.jpg
+        // This prevents ANY collision regardless of deletions or order.
+        const uniqueId = `${Date.now()}-${Math.round(Math.random() * 10000)}`;
+        const filename = `${ticketNumber}_${uniqueId}${ext}`;
         const filepath = path.join(uploadDir, filename);
 
         await fs.writeFile(filepath, buffer);
