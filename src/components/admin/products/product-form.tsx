@@ -100,12 +100,13 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
             const margin = ((price - costPrice) / costPrice) * 100;
             // Avoid infinite loop if values are close enough
             const currentMargin = form.getValues("profitMargin");
-            if (Math.abs(margin - currentMargin) > 0.01) {
-                form.setValue("profitMargin", parseFloat(margin.toFixed(2)));
+            if (Math.abs(margin - currentMargin) > 0.1) {
+                form.setValue("profitMargin", Math.round(margin));
             }
         }
     }, [costPrice, price, form]);
 
+    const productId = product?.id;
     useEffect(() => {
         if (open) {
             form.reset({
@@ -124,7 +125,7 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
                     : branches.map(b => ({ branchId: b.id, quantity: 0 }))
             });
         }
-    }, [product, form, open, branches]);
+    }, [productId, open, branches.length]); // Use ID and length to avoid reset on branch data refresh if content is same
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         try {
@@ -274,10 +275,13 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
                                                     <FormControl>
                                                         <Input
                                                             type="number"
-                                                            step="0.01"
+                                                            step="100"
                                                             {...field}
                                                             value={field.value ?? ""}
-                                                            onChange={(e) => field.onChange(e.target.value === "" ? 0 : e.target.valueAsNumber)}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value === "" ? 0 : parseInt(e.target.value);
+                                                                field.onChange(val);
+                                                            }}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -294,10 +298,13 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
                                                     <FormControl>
                                                         <Input
                                                             type="number"
-                                                            step="0.01"
+                                                            step="100"
                                                             {...field}
                                                             value={field.value ?? ""}
-                                                            onChange={(e) => field.onChange(e.target.value === "" ? 0 : e.target.valueAsNumber)}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value === "" ? 0 : parseInt(e.target.value);
+                                                                field.onChange(val);
+                                                            }}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
