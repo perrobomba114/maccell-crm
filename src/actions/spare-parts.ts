@@ -4,8 +4,17 @@ import { db as prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { SparePartCreateInput, SparePartUpdateInput } from "@/types/spare-parts";
 
-export async function getSpareParts() {
+export async function getSpareParts(options?: { sort?: string; order?: 'asc' | 'desc' }) {
     try {
+        const { sort = 'createdAt', order = 'desc' } = options || {};
+
+        let orderBy: any = {};
+        if (sort === 'category') {
+            orderBy = { category: { name: order } };
+        } else {
+            orderBy = { [sort]: order };
+        }
+
         const spareParts = await prisma.sparePart.findMany({
             where: {
                 deletedAt: null,
@@ -13,9 +22,7 @@ export async function getSpareParts() {
             include: {
                 category: true,
             },
-            orderBy: {
-                createdAt: "desc",
-            },
+            orderBy: orderBy,
         });
 
         // Check if pricePos is missing from the first result (stale client issue)

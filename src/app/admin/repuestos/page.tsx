@@ -7,10 +7,20 @@ import { CategoryType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-export default async function SparePartsPage() {
+interface PageProps {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function SparePartsPage({ searchParams }: PageProps) {
+    const params = await searchParams;
+    const sort = typeof params.sort === 'string' ? params.sort : undefined;
+    const order = typeof params.order === 'string' && (params.order === 'asc' || params.order === 'desc')
+        ? params.order as 'asc' | 'desc'
+        : undefined;
+
     // Fetch data in parallel
     const [sparePartsRes, categoriesRes] = await Promise.all([
-        getSpareParts(),
+        getSpareParts({ sort, order }),
         getCategories(CategoryType.PART) // "aca solamente vamos a ver las categorias de repuesto"
     ]);
 

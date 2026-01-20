@@ -72,6 +72,27 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
     const ITEMS_PER_PAGE = 25;
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+    // Sort handlers
+    const handleSort = (column: string) => {
+        const currentSort = searchParams.get("sort");
+        const currentOrder = searchParams.get("order");
+
+        const newOrder = currentSort === column && currentOrder === "asc" ? "desc" : "asc";
+
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("sort", column);
+        params.set("order", newOrder);
+        router.push(`?${params.toString()}`);
+    };
+
+    const getSortIcon = (column: string) => {
+        const currentSort = searchParams.get("sort");
+        const currentOrder = searchParams.get("order");
+
+        if (currentSort !== column) return <ArrowDown className="w-3 h-3 opacity-0 group-hover/head:opacity-50" />;
+        return <ArrowDown className={`w-3 h-3 transition-transform ${currentOrder === "asc" ? "rotate-180" : ""}`} />;
+    };
     const [editingPart, setEditingPart] = useState<SparePartWithCategory | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -787,16 +808,88 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[100px] text-center">SKU</TableHead>
-                            <TableHead className="w-[300px] text-center">Nombre</TableHead>
-                            <TableHead className="w-[150px] text-center">Marca</TableHead>
-                            <TableHead className="w-[150px] text-center">Categoría</TableHead>
-                            <TableHead className="text-center w-[100px]">Stock Local</TableHead>
-                            <TableHead className="text-center w-[100px]">Stock Depósito</TableHead>
+                            <TableHead
+                                className="w-[100px] text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => handleSort("sku")}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    SKU
+                                    {getSortIcon("sku")}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="w-[300px] text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => handleSort("name")}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    Nombre
+                                    {getSortIcon("name")}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="w-[150px] text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => handleSort("brand")}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    Marca
+                                    {getSortIcon("brand")}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="w-[150px] text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => handleSort("category")}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    Categoría
+                                    {getSortIcon("category")}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="text-center w-[100px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => handleSort("stockLocal")}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    Stock Local
+                                    {getSortIcon("stockLocal")}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="text-center w-[100px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => handleSort("stockDepot")}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    Stock Dep.
+                                    {getSortIcon("stockDepot")}
+                                </div>
+                            </TableHead>
                             <TableHead className="text-center w-[100px]">Reponer</TableHead>
-                            <TableHead className="text-center w-[100px]">USD</TableHead>
-                            <TableHead className="text-center w-[120px]">ARG</TableHead>
-                            <TableHead className="text-center w-[100px]">POS</TableHead>
+                            <TableHead
+                                className="text-center w-[100px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => handleSort("priceUsd")}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    USD
+                                    {getSortIcon("priceUsd")}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="text-center w-[120px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => handleSort("priceArg")}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    ARG
+                                    {getSortIcon("priceArg")}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="text-center w-[100px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => handleSort("pricePos")}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    POS
+                                    {getSortIcon("pricePos")}
+                                </div>
+                            </TableHead>
                             <TableHead className="text-center w-[100px]">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
