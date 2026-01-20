@@ -39,26 +39,7 @@ const statusColors: Record<number, string> = {
     9: "from-violet-500 to-violet-600",
 };
 
-function SafeImageThumbnail({ src, alt, onClick }: { src: string; alt: string; onClick: () => void }) {
-    const [hasError, setHasError] = useState(false);
-
-    if (hasError) return null;
-
-    return (
-        <div
-            className="relative aspect-square rounded-lg overflow-hidden border border-border cursor-zoom-in group"
-            onClick={onClick}
-        >
-            <img
-                src={src}
-                alt={alt}
-                className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                onError={() => setHasError(true)}
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-        </div>
-    );
-}
+import { SafeImageThumbnail } from "./safe-image-thumbnail";
 
 export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: FinishRepairModalProps) {
     const [isLoading, setIsLoading] = useState(false);
@@ -264,6 +245,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                     const imgUrl = getImgUrl(url);
                                     if (!imgUrl) return null;
                                     return (
+                                    return (
                                         <SafeImageThumbnail
                                             key={`old-${idx}`}
                                             src={imgUrl}
@@ -272,7 +254,9 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                                 setViewerIndex(idx);
                                                 setViewerOpen(true);
                                             }}
+                                            onDelete={() => { }} // Read-only in finish modal? Or strictly no-op.
                                         />
+                                    );
                                     );
                                 })}
 

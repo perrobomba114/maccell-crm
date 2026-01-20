@@ -5,7 +5,7 @@ interface SafeImageThumbnailProps {
     src: string;
     alt: string;
     onClick: () => void;
-    onDelete: () => void;
+    onDelete?: () => void;
 }
 
 export function SafeImageThumbnail({ src, alt, onClick, onDelete }: SafeImageThumbnailProps) {
@@ -15,17 +15,19 @@ export function SafeImageThumbnail({ src, alt, onClick, onDelete }: SafeImageThu
         return (
             <div className="relative aspect-square border-2 border-dashed border-red-300 rounded-lg flex flex-col items-center justify-center bg-red-50 group">
                 <span className="text-xs text-red-500 font-bold mb-1">Error</span>
-                <button
-                    type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete();
-                    }}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 transition-opacity z-10 hover:bg-red-600"
-                    title="Eliminar imagen rota"
-                >
-                    <X className="w-3 h-3" />
-                </button>
+                {onDelete && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete();
+                        }}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 transition-opacity z-10 hover:bg-red-600"
+                        title="Eliminar imagen rota"
+                    >
+                        <X className="w-3 h-3" />
+                    </button>
+                )}
             </div>
         );
     }
@@ -39,16 +41,18 @@ export function SafeImageThumbnail({ src, alt, onClick, onDelete }: SafeImageThu
                 onClick={onClick}
                 onError={() => setHasError(true)}
             />
-            <button
-                type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                }}
-                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-            >
-                <X className="w-3 h-3" />
-            </button>
+            {onDelete && (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete();
+                    }}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                >
+                    <X className="w-3 h-3" />
+                </button>
+            )}
         </div>
     );
 }
