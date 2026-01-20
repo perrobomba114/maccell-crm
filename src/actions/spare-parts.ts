@@ -11,6 +11,9 @@ export async function getSpareParts(options?: { sort?: string; order?: 'asc' | '
         let orderBy: any = {};
         if (sort === 'category') {
             orderBy = { category: { name: order } };
+        } else if (sort === 'reponer') {
+            // Default sort for DB query when using computed sort
+            orderBy = { name: 'asc' };
         } else {
             orderBy = { [sort]: order };
         }
@@ -45,6 +48,20 @@ export async function getSpareParts(options?: { sort?: string; order?: 'asc' | '
             } catch (rawError) {
                 console.error("Failed to fetch raw pricePos:", rawError);
             }
+        }
+
+        // Handle computed sort for 'reponer'
+        if (sort === 'reponer') {
+            spareParts.sort((a, b) => {
+                const neededA = Math.max(0, a.maxStockLocal - a.stockLocal);
+                const reponerA = Math.min(neededA, a.stockDepot);
+
+                const neededB = Math.max(0, b.maxStockLocal - b.stockLocal);
+                const reponerB = Math.min(neededB, b.stockDepot);
+
+                if (order === 'asc') return reponerA - reponerB;
+                return reponerB - reponerA;
+            });
         }
 
         return { success: true, spareParts };

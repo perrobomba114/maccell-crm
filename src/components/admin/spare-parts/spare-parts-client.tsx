@@ -862,7 +862,15 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
                                     {getSortIcon("stockDepot")}
                                 </div>
                             </TableHead>
-                            <TableHead className="text-center w-[100px]">Reponer</TableHead>
+                            <TableHead
+                                className="text-center w-[100px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => handleSort("reponer")}
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    Reponer
+                                    {getSortIcon("reponer")}
+                                </div>
+                            </TableHead>
                             <TableHead
                                 className="text-center w-[100px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                                 onClick={() => handleSort("priceUsd")}
