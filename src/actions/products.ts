@@ -262,31 +262,30 @@ export async function getAllProductsForExport() {
 
 export type ProductImportRow = {
     sku: string;
-    name: string;
+    name?: string;
     description?: string;
     categoryName?: string;
-    costPrice: number;
-    price: number;
+    costPrice?: number;
+    price?: number;
     stocks: { branchId: string; quantity: number }[];
 };
 
 export async function bulkUpsertProducts(products: ProductImportRow[]) {
     try {
-        // We'll process sequentially or in small batches to simple handling of categories creation
-        // Optimization: Pre-fetch categories
         const categories = await prisma.category.findMany();
         const categoryMap = new Map(categories.map(c => [c.name.toLowerCase(), c.id]));
+        const skippedSkus: string[] = [];
+        let processedCount = 0;
 
         await prisma.$transaction(async (tx) => {
             for (const p of products) {
-                // 1. Resolve Category
-                let categoryId = null;
+                // 1. Resolve Category (only if provided)
+                let categoryId = undefined;
                 if (p.categoryName) {
                     const normalizedCat = p.categoryName.toLowerCase();
                     if (categoryMap.has(normalizedCat)) {
                         categoryId = categoryMap.get(normalizedCat);
                     } else {
-                        // Create new category on the fly
                         const newCat = await tx.category.create({
                             data: { name: p.categoryName }
                         });
@@ -295,46 +294,85 @@ export async function bulkUpsertProducts(products: ProductImportRow[]) {
                     }
                 }
 
-                // 2. Upsert Product
-                // Calculate margin if strictly cost and price specific
-                // Or verify logic. If cost=0, margin=0.
-                const profitMargin = p.costPrice > 0
-                    ? ((p.price - p.costPrice) / p.costPrice) * 100
-                    : 0;
-
-                const upsertData = {
-                    name: p.name,
-                    description: p.description,
-                    categoryId: categoryId,
-                    costPrice: p.costPrice,
-                    price: p.price,
-                    profitMargin: profitMargin,
-                    deletedAt: null // Restore if it was deleted
-                };
-
-                const product = await tx.product.upsert({
-                    where: { sku: p.sku },
-                    update: upsertData,
-                    create: {
-                        sku: p.sku,
-                        ...upsertData,
-                        createdAt: new Date(),
-                    }
+                // 2. Check existence
+                const existingProduct = await tx.product.findUnique({
+                    where: { sku: p.sku }
                 });
 
-                // 3. Update Stocks
-                if (p.stocks && p.stocks.length > 0) {
+                let productId = existingProduct?.id;
+
+                if (existingProduct) {
+                    // --- UPDATE SCENARIO ---
+                    // Build update object dynamically. Only include defined fields.
+                    const updateData: any = {};
+                    if (p.name !== undefined && p.name !== "") updateData.name = p.name;
+                    if (p.description !== undefined) updateData.description = p.description;
+                    if (categoryId !== undefined) updateData.categoryId = categoryId;
+
+                    // Handle Price/Cost logic
+                    if (p.costPrice !== undefined) updateData.costPrice = p.costPrice;
+                    if (p.price !== undefined) updateData.price = p.price;
+
+                    // Recalculate margin if both new prices are available OR safely reuse existing
+                    const finalCost = p.costPrice !== undefined ? p.costPrice : existingProduct.costPrice;
+                    const finalPrice = p.price !== undefined ? p.price : existingProduct.price;
+
+                    if (finalCost > 0) {
+                        updateData.profitMargin = ((finalPrice - finalCost) / finalCost) * 100;
+                    }
+
+                    // Restore if deleted
+                    updateData.deletedAt = null;
+
+                    if (Object.keys(updateData).length > 0) {
+                        await tx.product.update({
+                            where: { id: existingProduct.id },
+                            data: updateData
+                        });
+                    }
+                    processedCount++;
+                } else {
+                    // --- CREATE SCENARIO ---
+                    // Must have required fields
+                    if (!p.name || p.price === undefined || p.costPrice === undefined) {
+                        // Skip quietly, collect SKU
+                        skippedSkus.push(p.sku);
+                        continue;
+                    }
+
+                    const profitMargin = p.costPrice > 0
+                        ? ((p.price - p.costPrice) / p.costPrice) * 100
+                        : 0;
+
+                    const newProduct = await tx.product.create({
+                        data: {
+                            sku: p.sku,
+                            name: p.name,
+                            description: p.description,
+                            categoryId: categoryId, // might be undefined/null, acceptable? Schema allows null categoryId? 
+                            // Note: Prisma schema usually has categoryId String? (optional). Assuming yes.
+                            costPrice: p.costPrice,
+                            price: p.price,
+                            profitMargin: profitMargin,
+                        }
+                    });
+                    productId = newProduct.id;
+                    processedCount++;
+                }
+
+                // 3. Update Stocks (Always, if provided)
+                if (productId && p.stocks && p.stocks.length > 0) {
                     for (const s of p.stocks) {
                         await tx.productStock.upsert({
                             where: {
                                 productId_branchId: {
-                                    productId: product.id,
+                                    productId: productId,
                                     branchId: s.branchId
                                 }
                             },
                             update: { quantity: s.quantity },
                             create: {
-                                productId: product.id,
+                                productId: productId,
                                 branchId: s.branchId,
                                 quantity: s.quantity
                             }
@@ -347,7 +385,7 @@ export async function bulkUpsertProducts(products: ProductImportRow[]) {
         });
 
         revalidatePath("/admin/products");
-        return { success: true, count: products.length };
+        return { success: true, count: processedCount, skippedCount: skippedSkus.length, skippedSkus };
     } catch (error) {
         console.error("Bulk upsert error:", error);
         return { success: false, error: "Error en carga masiva: " + (error instanceof Error ? error.message : "Error desconocido") };

@@ -382,9 +382,9 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
             const priceIdx = headers.findIndex(h => h.toLowerCase() === "precio");
             const descIdx = headers.findIndex(h => h.toLowerCase().includes("descripcion"));
 
-            if (skuIdx === -1 || nameIdx === -1 || costIdx === -1 || priceIdx === -1) {
+            if (skuIdx === -1) {
                 toast.dismiss(toastId);
-                toast.error("Formato CSV inválido. Faltan columnas requeridas (SKU, Nombre, Costo, Precio).");
+                toast.error("Formato CSV inválido. Falta columna requerida (SKU).");
                 return;
             }
 
@@ -409,10 +409,16 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
                 const sku = cols[skuIdx].trim();
                 if (!sku) continue;
 
-                const name = cols[nameIdx].trim();
+                const name = nameIdx !== -1 ? cols[nameIdx].trim() : undefined;
                 const categoryName = catIdx !== -1 ? cols[catIdx].trim() : undefined;
-                const costPrice = parseFloat(cols[costIdx].replace(/[^0-9.-]+/g, "")) || 0;
-                const price = parseFloat(cols[priceIdx].replace(/[^0-9.-]+/g, "")) || 0;
+
+                // Parse numbers safely. If NaN, undefined.
+                const rawCost = costIdx !== -1 ? cols[costIdx].replace(/[^0-9.-]+/g, "") : "";
+                const costPrice = rawCost ? parseFloat(rawCost) : undefined;
+
+                const rawPrice = priceIdx !== -1 ? cols[priceIdx].replace(/[^0-9.-]+/g, "") : "";
+                const price = rawPrice ? parseFloat(rawPrice) : undefined;
+
                 const description = descIdx !== -1 ? cols[descIdx].trim() : undefined;
 
                 const stocks = branchMap.map(bm => ({
@@ -436,6 +442,7 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
             const total = parsedProducts.length;
             let processed = 0;
             let errorCount = 0;
+            let globalSkippedSkus: string[] = [];
 
             const progressToastId = toast.loading(`Iniciando importación de ${total} productos...`);
 
@@ -447,23 +454,49 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
                     if (!res.success) {
                         console.error(`Error en lote ${i}-${i + BATCH_SIZE}:`, res.error);
                         errorCount += chunk.length;
-                        toast.error(`Error en lote ${i + 1}-${Math.min(i + BATCH_SIZE, total)}: ${res.error}`, { id: progressToastId, duration: 2000 });
-                        // Option: continue or break. Let's continue but mark error.
-                        // break; // Uncomment to stop on first error
+                        toast.error(`Error en lote: ${res.error}`, { id: progressToastId, duration: 2000 });
                     } else {
-                        processed += chunk.length;
+                        processed += (res.count || 0);
+                        if (res.skippedSkus && res.skippedSkus.length > 0) {
+                            globalSkippedSkus = [...globalSkippedSkus, ...res.skippedSkus];
+                        }
                     }
 
                     // Update progress
-                    toast.loading(`Importando... ${Math.min(processed + errorCount, total)}/${total} (${Math.round(((processed + errorCount) / total) * 100)}%)`, {
+                    toast.loading(`Importando... ${Math.min(processed + errorCount + globalSkippedSkus.length, total)}/${total} (${Math.round(((processed + errorCount + globalSkippedSkus.length) / total) * 100)}%)`, {
                         id: progressToastId
                     });
                 }
 
-                if (errorCount > 0) {
-                    toast.success(`Proceso finalizado. Importados: ${processed}. Fallidos: ${errorCount}.`, { id: progressToastId, duration: 5000 });
+                toast.dismiss(progressToastId);
+
+                if (globalSkippedSkus.length > 0) {
+                    toast.success(`Importación completada. Se omitieron ${globalSkippedSkus.length} productos por falta de datos.`);
+                    toast.custom((t: any) => (
+                        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+                            <div className="flex-1 w-0 p-4">
+                                <div className="flex flex-col gap-2">
+                                    <span className="font-semibold text-sm text-gray-900">SKUs Omitidos</span>
+                                    <p className="text-xs text-gray-500">Estos productos nuevos no tienen Nombre, Precio o Costo.</p>
+                                    <div className="max-h-32 overflow-y-auto bg-gray-50 p-2 rounded text-xs break-all border border-gray-200 text-gray-700">
+                                        {globalSkippedSkus.join(", ")}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex border-l border-gray-200">
+                                <button
+                                    onClick={() => toast.dismiss(t.id)}
+                                    className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    ), { duration: 15000 });
+                } else if (errorCount > 0) {
+                    toast.error(`Proceso finalizado con ${errorCount} errores fatales.`, { duration: 5000 });
                 } else {
-                    toast.success(`Importación exitosa: ${processed} productos procesados.`, { id: progressToastId, duration: 4000 });
+                    toast.success(`Importación exitosa: ${processed} productos procesados.`, { duration: 4000 });
                 }
 
                 router.refresh();
