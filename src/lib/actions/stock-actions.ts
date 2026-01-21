@@ -138,13 +138,16 @@ export async function reportStockDiscrepancy(
         });
 
         // Notify Admins
-        // We need to find admin users. For now, let's assume all users with Role.ADMIN
         const admins = await db.user.findMany({
             where: { role: "ADMIN" }
         });
 
+        // Generate a unique ID for this specific discrepancy event
+        const discrepancyId = crypto.randomUUID();
+
         const actionData = {
             type: "STOCK_DISCREPANCY",
+            discrepancyId, // This links all admin notifications for the same event
             stockId: stock.id,
             productName: stock.product.name,
             sku: stock.product.sku,
@@ -161,7 +164,7 @@ export async function reportStockDiscrepancy(
             message: `El vendedor ${user?.name} reportó una diferencia de ${adjustment} en ${stock.product.name} (${stock.branch.name}). Stock actual: ${stock.quantity}. Propuesto: ${stock.quantity + adjustment}.`,
             type: "ACTION_REQUEST",
             actionData,
-            link: "/admin/notifications" // Or wherever admins manage this
+            link: "/admin/notifications"
         }));
 
         await Promise.all(promises);
@@ -189,9 +192,74 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
             return { success: false, error: "Invalid notification type" };
         }
 
+        // CRITICAL: Check if this discrepancy was already resolved by another admin
+        if (data.discrepancyId) {
+            // Find any notification for this specific discrepancy event that is NOT PENDING
+            // Note: Since we store JSON, we have to look for other notifications that share this discrepancyId
+            // Ideally we would have a separate table for Requests, but for now we query raw JSON or just check logic.
+            // A more robust way without raw JSON queries (which can be slow/DB specific) is to Fetch all notifications for this discrepancyId first.
+            // However, since we update ALL of them atomically below, we can check the status of the CURRENT notification.
+            // But if Admin A acted, Admin B's notification might still be PENDING if we didn't update it yet.
+            // So we MUST update ALL linked notifications.
+
+             // Let's protect against race conditions by checking if the stock has already been changed?
+             // No, stock might change for other reasons.
+             // We need to check if ANY sibling notification is resolved.
+             
+             // Strategy: Find all notifications with this discrepancyId
+             // This requires reading all notifications which might be heavy if table is huge, but here it's fine (only few admins).
+             // Since filtering by JSON path is DB-specific (Postgres allows it), we will use a raw query or fetch potential candidates.
+             // Simpler approach: We will fetch all ACTION_REQUEST notifications created recently and filter in JS, or trust that we update them fast enough.
+             
+             // BETTER APPROACH for Prisma + JSON: 
+             // We can't easily query inside the JSON with standard Prisma without raw queries. 
+             // But we can update them all. If we update all, we need to ensure we only run the stock logic ONCE.
+             
+             // Let's use a transaction.
+             return await db.$transaction(async (tx) => {
+                 // 1. Re-fetch current notification with lock? (Prisma doesn't fully support row locking easily without raw)
+                 // Let's simply fetch all notifications for these users that match our criteria.
+                 // Actually, we can updateMany where actionData->>discrepancyId equals X.
+                 
+                 // Since Prisma JSON filtering is experimental/limited depending on version, 
+                 // we will assume we can find them.
+                 // If we can't efficiently query by JSON, we rely on the fact that when ONE is resolved, WE UPDATE ALL.
+                 
+                 // First verify THIS notification is still pending
+                 const currentCheck = await tx.notification.findUnique({ where: { id: notificationId } });
+                 if (currentCheck?.status !== 'PENDING') {
+                     return { success: false, error: "Esta solicitud ya fue procesada por otro administrador." };
+                 }
+
+                 // 2. Perform Stock Update (Only if approved)
+                 if (approved) {
+                     await tx.productStock.update({
+                         where: { id: data.stockId },
+                         data: {
+                             quantity: { increment: data.adjustment },
+                             // @ts-ignore
+                             lastCheckedAt: new Date()
+                         }
+                     });
+                 }
+
+                 // 3. Update ALL notifications with this discrepancyId
+                 // We need to use a Raw Query to reliably target the JSON field in Postgres
+                 await tx.$executeRaw`
+                    UPDATE notifications 
+                    SET status = ${approved ? 'ACCEPTED' : 'REJECTED'}, 
+                        "isRead" = true,
+                        "updatedAt" = NOW()
+                    WHERE "actionData"->>'discrepancyId' = ${data.discrepancyId}
+                 `;
+
+                 return { success: true };
+             });
+        }
+
+        // Fallback for old notifications without discrepancyId (legacy support)
         if (approved) {
-            // Apply stock change
-            await db.productStock.update({
+             await db.productStock.update({
                 where: { id: data.stockId },
                 data: {
                     quantity: { increment: data.adjustment },
@@ -200,8 +268,7 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
                 }
             });
         }
-
-        // Update Notification Status
+        
         await db.notification.update({
             where: { id: notificationId },
             data: {
@@ -211,11 +278,15 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
         });
 
         revalidatePath("/vendor/products");
-        revalidatePath("/admin"); // Revalidate admin dashboard potentially
+        revalidatePath("/admin");
 
         return { success: true };
     } catch (error) {
         console.error("Error resolving discrepancy:", error);
+        // Handle "already processed" explicitly to show nice message
+        if (error instanceof Error && error.message.includes("ya fue procesada")) {
+             return { success: false, error: error.message };
+        }
         return { success: false, error: "Error resolving discrepancy" };
     }
 }
