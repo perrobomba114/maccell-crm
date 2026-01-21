@@ -138,9 +138,9 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-gray-800">Copias de Seguridad</h2>
+                    <h2 className="text-2xl font-bold tracking-tight text-foreground">Copias de Seguridad</h2>
                     <p className="text-muted-foreground">Gestiona los puntos de restauración del sistema.</p>
                 </div>
                 <div className="flex gap-2">
@@ -169,7 +169,7 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
                 </div>
             </div>
 
-            <div className="bg-white rounded-md border shadow-sm">
+            <div className="bg-card rounded-md border shadow-sm">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -182,11 +182,11 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
                     <TableBody>
                         {initialBackups.map((backup) => (
                             <TableRow key={backup.name}>
-                                <TableCell className="font-mono text-xs">{backup.name}</TableCell>
-                                <TableCell>
+                                <TableCell className="font-mono text-xs text-foreground">{backup.name}</TableCell>
+                                <TableCell className="text-muted-foreground">
                                     {format(new Date(backup.createdAt), "PPP p", { locale: es })}
                                 </TableCell>
-                                <TableCell>{formatBytes(backup.size)}</TableCell>
+                                <TableCell className="text-muted-foreground">{formatBytes(backup.size)}</TableCell>
                                 <TableCell className="text-right space-x-2">
                                     <Button variant="outline" size="sm" asChild>
                                         <a href={`/api/backups/${backup.name}`} download>
@@ -196,7 +196,7 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
                                     <Button
                                         variant="default"
                                         size="sm"
-                                        className="bg-orange-500 hover:bg-orange-600 text-white"
+                                        className="bg-orange-600 hover:bg-orange-700 text-white dark:bg-orange-700 dark:hover:bg-orange-800"
                                         onClick={() => setRestoreTarget(backup.name)}
                                         disabled={isLoading}
                                     >
@@ -229,12 +229,12 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta acción eliminará permanentemente el archivo de backup <b>{deleteTarget}</b>.
+                            Esta acción eliminará permanentemente el archivo de backup <span className="font-mono text-foreground font-semibold">{deleteTarget}</span>.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                             Eliminar
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -242,34 +242,34 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
             </AlertDialog>
 
             <AlertDialog open={!!restoreTarget} onOpenChange={(open) => !open && setRestoreTarget(null)}>
-                <AlertDialogContent className="border-red-500 border-2">
+                <AlertDialogContent className="border-destructive/50 border-2">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-red-600 flex items-center gap-2">
+                        <AlertDialogTitle className="text-destructive flex items-center gap-2">
                             <RotateCcw className="h-6 w-6" />
                             PELIGRO: RESTAURACIÓN DE SISTEMA
                         </AlertDialogTitle>
                         <AlertDialogDescription className="space-y-3">
-                            <p className="font-bold text-gray-900">
+                            <div className="font-bold text-foreground">
                                 Vas a restaurar la base de datos al estado del archivo: <br />
-                                <span className="font-mono bg-gray-100 p-1">{restoreTarget}</span>
-                            </p>
-                            <p className="text-red-600 font-semibold">
+                                <div className="font-mono bg-muted p-2 mt-1 rounded text-sm text-foreground break-all">{restoreTarget}</div>
+                            </div>
+                            <p className="text-destructive font-semibold">
                                 ESTA ACCIÓN ES DESTRUCTIVA.
                             </p>
-                            <ul className="list-disc pl-5 text-sm">
-                                <li>Se borrarán TODOS los datos actuales que no estén en el backup.</li>
+                            <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                                <li>Se borrarán <span className="font-bold text-foreground">TODOS</span> los datos actuales que no estén en el backup.</li>
                                 <li>Se reemplazarán usuarios, productos, ventas y reparaciones.</li>
                                 <li>No se puede deshacer.</li>
                             </ul>
                             <div className="pt-2">
-                                <label className="text-xs font-semibold uppercase text-gray-500">
+                                <label className="text-xs font-semibold uppercase text-muted-foreground">
                                     Escribe "RECUPERAR" para confirmar:
                                 </label>
                                 <Input
                                     value={restoreConfirmation}
                                     onChange={(e) => setRestoreConfirmation(e.target.value)}
                                     placeholder="RECUPERAR"
-                                    className="mt-1 border-red-300 focus:ring-red-500"
+                                    className="mt-1 border-destructive/30 focus-visible:ring-destructive"
                                 />
                             </div>
                         </AlertDialogDescription>
@@ -280,7 +280,7 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
                             variant="destructive"
                             onClick={handleRestore}
                             disabled={restoreConfirmation !== "RECUPERAR" || isLoading}
-                            className="bg-red-600 hover:bg-red-700"
+                            className="bg-destructive hover:bg-destructive/90"
                         >
                             {isLoading ? "Restaurando..." : "CONFIRMAR RESTAURACIÓN"}
                         </Button>
