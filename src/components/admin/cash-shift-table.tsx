@@ -22,9 +22,11 @@ import {
     Clock,
     CheckCircle2,
     XCircle,
-    Pencil
+    Pencil,
+    Trash2,
+    AlertCircle
 } from "lucide-react";
-import { CashShiftWithDetails, updateCashShiftDate } from "@/actions/cash-shift-actions";
+import { CashShiftWithDetails, updateCashShiftDate, deleteCashShift } from "@/actions/cash-shift-actions";
 import { CashShiftDetailsModal } from "./cash-shift-details-modal";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -63,6 +65,9 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
     const [newDate, setNewDate] = useState<Date | undefined>(undefined);
     const [isUpdating, setIsUpdating] = useState(false);
 
+    // Delete State
+    const [deletingShift, setDeletingShift] = useState<CashShiftWithDetails | null>(null);
+
     const handleViewDetails = (shift: CashShiftWithDetails) => {
         setSelectedShift(shift);
         setIsModalOpen(true);
@@ -71,6 +76,10 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
     const handleEditClick = (shift: CashShiftWithDetails) => {
         setEditingShift(shift);
         setNewDate(new Date(shift.startTime));
+    };
+
+    const handleDeleteClick = (shift: CashShiftWithDetails) => {
+        setDeletingShift(shift);
     };
 
     const handleUpdateDate = async () => {
@@ -87,6 +96,25 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
             }
         } catch (error) {
             toast.error("Ocurrió un error inesperado");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deletingShift) return;
+
+        setIsUpdating(true);
+        try {
+            const res = await deleteCashShift(deletingShift.id);
+            if (res.success) {
+                toast.success("Cierre eliminado correctamente");
+                setDeletingShift(null);
+            } else {
+                toast.error(res.error || "Error al eliminar");
+            }
+        } catch (error) {
+            toast.error("Error al eliminar");
         } finally {
             setIsUpdating(false);
         }
@@ -266,6 +294,15 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
                                             >
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleDeleteClick(shift)}
+                                                className="opacity-100 transition-opacity hover:bg-red-500/10 hover:text-red-600"
+                                                title="Eliminar cierre"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -274,6 +311,37 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Confirm Delete Dialog */}
+            <Dialog open={!!deletingShift} onOpenChange={(open) => !open && setDeletingShift(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-500 flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5" />
+                            Eliminar Cierre de Caja
+                        </DialogTitle>
+                        <div className="text-sm text-muted-foreground pt-2">
+                            ¿Estás seguro de que querés eliminar el cierre <b>#{deletingShift?.id.slice(-6).toUpperCase()}</b> de <b>{deletingShift?.branch.name}</b>?
+                            <div className="bg-red-50 border border-red-100 rounded-lg p-3 mt-3 text-red-800 text-xs">
+                                <strong>Advertencia:</strong> Si este cierre fue importado históricamente, también se eliminarán las ventas asociadas ("H-...").
+                                Si es un cierre real, las ventas quedarán sin asignar.
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="flex justify-end gap-2 mt-4">
+                        <Button variant="ghost" onClick={() => setDeletingShift(null)} disabled={isUpdating}>
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleConfirmDelete}
+                            disabled={isUpdating}
+                        >
+                            {isUpdating ? "Eliminando..." : "Confirmar Eliminación"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Detail Modal */}
             <CashShiftDetailsModal
