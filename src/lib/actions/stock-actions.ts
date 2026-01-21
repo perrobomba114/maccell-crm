@@ -202,64 +202,64 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
             // But if Admin A acted, Admin B's notification might still be PENDING if we didn't update it yet.
             // So we MUST update ALL linked notifications.
 
-             // Let's protect against race conditions by checking if the stock has already been changed?
-             // No, stock might change for other reasons.
-             // We need to check if ANY sibling notification is resolved.
-             
-             // Strategy: Find all notifications with this discrepancyId
-             // This requires reading all notifications which might be heavy if table is huge, but here it's fine (only few admins).
-             // Since filtering by JSON path is DB-specific (Postgres allows it), we will use a raw query or fetch potential candidates.
-             // Simpler approach: We will fetch all ACTION_REQUEST notifications created recently and filter in JS, or trust that we update them fast enough.
-             
-             // BETTER APPROACH for Prisma + JSON: 
-             // We can't easily query inside the JSON with standard Prisma without raw queries. 
-             // But we can update them all. If we update all, we need to ensure we only run the stock logic ONCE.
-             
-             // Let's use a transaction.
-             return await db.$transaction(async (tx) => {
-                 // 1. Re-fetch current notification with lock? (Prisma doesn't fully support row locking easily without raw)
-                 // Let's simply fetch all notifications for these users that match our criteria.
-                 // Actually, we can updateMany where actionData->>discrepancyId equals X.
-                 
-                 // Since Prisma JSON filtering is experimental/limited depending on version, 
-                 // we will assume we can find them.
-                 // If we can't efficiently query by JSON, we rely on the fact that when ONE is resolved, WE UPDATE ALL.
-                 
-                 // First verify THIS notification is still pending
-                 const currentCheck = await tx.notification.findUnique({ where: { id: notificationId } });
-                 if (currentCheck?.status !== 'PENDING') {
-                     return { success: false, error: "Esta solicitud ya fue procesada por otro administrador." };
-                 }
+            // Let's protect against race conditions by checking if the stock has already been changed?
+            // No, stock might change for other reasons.
+            // We need to check if ANY sibling notification is resolved.
 
-                 // 2. Perform Stock Update (Only if approved)
-                 if (approved) {
-                     await tx.productStock.update({
-                         where: { id: data.stockId },
-                         data: {
-                             quantity: { increment: data.adjustment },
-                             // @ts-ignore
-                             lastCheckedAt: new Date()
-                         }
-                     });
-                 }
+            // Strategy: Find all notifications with this discrepancyId
+            // This requires reading all notifications which might be heavy if table is huge, but here it's fine (only few admins).
+            // Since filtering by JSON path is DB-specific (Postgres allows it), we will use a raw query or fetch potential candidates.
+            // Simpler approach: We will fetch all ACTION_REQUEST notifications created recently and filter in JS, or trust that we update them fast enough.
 
-                 // 3. Update ALL notifications with this discrepancyId
-                 // We need to use a Raw Query to reliably target the JSON field in Postgres
-                 await tx.$executeRaw`
+            // BETTER APPROACH for Prisma + JSON: 
+            // We can't easily query inside the JSON with standard Prisma without raw queries. 
+            // But we can update them all. If we update all, we need to ensure we only run the stock logic ONCE.
+
+            // Let's use a transaction.
+            return await db.$transaction(async (tx) => {
+                // 1. Re-fetch current notification with lock? (Prisma doesn't fully support row locking easily without raw)
+                // Let's simply fetch all notifications for these users that match our criteria.
+                // Actually, we can updateMany where actionData->>discrepancyId equals X.
+
+                // Since Prisma JSON filtering is experimental/limited depending on version, 
+                // we will assume we can find them.
+                // If we can't efficiently query by JSON, we rely on the fact that when ONE is resolved, WE UPDATE ALL.
+
+                // First verify THIS notification is still pending
+                const currentCheck = await tx.notification.findUnique({ where: { id: notificationId } });
+                if (currentCheck?.status !== 'PENDING') {
+                    return { success: false, error: "Esta solicitud ya fue procesada por otro administrador." };
+                }
+
+                // 2. Perform Stock Update (Only if approved)
+                if (approved) {
+                    await tx.productStock.update({
+                        where: { id: data.stockId },
+                        data: {
+                            quantity: { increment: data.adjustment },
+                            // @ts-ignore
+                            lastCheckedAt: new Date()
+                        }
+                    });
+                }
+
+                // 3. Update ALL notifications with this discrepancyId
+                // We need to use a Raw Query to reliably target the JSON field in Postgres
+                await tx.$executeRaw`
                     UPDATE notifications 
                     SET status = ${approved ? 'ACCEPTED' : 'REJECTED'}, 
-                        "isRead" = true,
-                        "updatedAt" = NOW()
+                        "isRead" = true
                     WHERE "actionData"->>'discrepancyId' = ${data.discrepancyId}
                  `;
 
-                 return { success: true };
-             });
+
+                return { success: true };
+            });
         }
 
         // Fallback for old notifications without discrepancyId (legacy support)
         if (approved) {
-             await db.productStock.update({
+            await db.productStock.update({
                 where: { id: data.stockId },
                 data: {
                     quantity: { increment: data.adjustment },
@@ -268,7 +268,7 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
                 }
             });
         }
-        
+
         await db.notification.update({
             where: { id: notificationId },
             data: {
@@ -285,7 +285,7 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
         console.error("Error resolving discrepancy:", error);
         // Handle "already processed" explicitly to show nice message
         if (error instanceof Error && error.message.includes("ya fue procesada")) {
-             return { success: false, error: error.message };
+            return { success: false, error: error.message };
         }
         return { success: false, error: "Error resolving discrepancy" };
     }
