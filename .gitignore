@@ -45,3 +45,7 @@ next-env.d.ts
 
 # User Uploads
 public/repairs/images/
+
+# System Backups (do not commit!)
+/backups/
+*.sql
