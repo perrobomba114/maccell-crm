@@ -421,10 +421,17 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
 
                 const description = descIdx !== -1 ? cols[descIdx].trim() : undefined;
 
-                const stocks = branchMap.map(bm => ({
-                    branchId: bm.branchId,
-                    quantity: parseInt(cols[bm.index].replace(/[^0-9-]+/g, "") || "0")
-                }));
+                const stocks = branchMap.map(bm => {
+                    const cellValue = cols[bm.index]?.trim();
+                    // If cell is empty, return null (to filter out later)
+                    if (!cellValue) return null;
+
+                    const quantity = parseInt(cellValue.replace(/[^0-9-]+/g, "") || "0");
+                    return {
+                        branchId: bm.branchId,
+                        quantity
+                    };
+                }).filter((s): s is { branchId: string; quantity: number } => s !== null);
 
                 parsedProducts.push({
                     sku,
