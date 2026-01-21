@@ -5,3 +5,5 @@ public/repairs
 .env
 .DS_Store
 *.log
+Dockerfile
+docker-compose.yml

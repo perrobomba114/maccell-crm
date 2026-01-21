@@ -1,1 +1,0 @@
-- /500: Ultimate fix for persistent "Internal Server Error", "ENOENT" loops, and "Zombie" processes.
