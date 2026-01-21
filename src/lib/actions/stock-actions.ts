@@ -142,6 +142,26 @@ export async function reportStockDiscrepancy(
             where: { role: "ADMIN" }
         });
 
+        // CHECK FOR DUPLICATES: Prevent spamming discrepancies for same product
+        const existingPending = await db.notification.findFirst({
+            where: {
+                status: 'PENDING',
+                type: 'STOCK_DISCREPANCY', // Ensure we only check this type
+                actionData: {
+                    path: ['stockId'],
+                    equals: stockId
+                }
+            }
+        });
+
+        if (existingPending) {
+            return {
+                success: false,
+                error: "Ya existe una solicitud pendiente para este producto. Espere a que un administrador la revise."
+            };
+        }
+
+
         // Generate a unique ID for this specific discrepancy event
         const discrepancyId = crypto.randomUUID();
 
