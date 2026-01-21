@@ -52,6 +52,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
+# Create backups directory with correct permissions
+RUN mkdir -p backups
+RUN chown nextjs:nodejs backups
+
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

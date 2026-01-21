@@ -10,9 +10,15 @@ const execAsync = util.promisify(exec);
 
 const BACKUP_DIR = path.join(process.cwd(), "backups");
 
-// Ensure backup directory exists
-if (!fs.existsSync(BACKUP_DIR)) {
-    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+function ensureBackupDir() {
+    if (!fs.existsSync(BACKUP_DIR)) {
+        try {
+            fs.mkdirSync(BACKUP_DIR, { recursive: true });
+        } catch (e) {
+            console.error("Failed to create backup directory:", e);
+            throw new Error("No se pudo crear el directorio de backups. Verifique permisos.");
+        }
+    }
 }
 
 export type BackupFile = {
@@ -23,9 +29,7 @@ export type BackupFile = {
 
 export async function listBackups(): Promise<{ success: boolean; backups?: BackupFile[]; error?: string }> {
     try {
-        if (!fs.existsSync(BACKUP_DIR)) {
-            return { success: true, backups: [] };
-        }
+        ensureBackupDir();
 
         const files = fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith(".sql"));
         const backups = files.map(file => {
@@ -40,12 +44,13 @@ export async function listBackups(): Promise<{ success: boolean; backups?: Backu
         return { success: true, backups };
     } catch (error) {
         console.error("List backups error:", error);
-        return { success: false, error: "Error al listar backups" };
+        return { success: false, error: "Error al listar backups: " + (error instanceof Error ? error.message : "Desconocido") };
     }
 }
 
 export async function createBackup(): Promise<{ success: boolean; filename?: string; error?: string }> {
     try {
+        ensureBackupDir();
         const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
         const filename = `backup_${timestamp}.sql`;
         const filepath = path.join(BACKUP_DIR, filename);
@@ -53,11 +58,13 @@ export async function createBackup(): Promise<{ success: boolean; filename?: str
         const dbUrl = process.env.DATABASE_URL;
         if (!dbUrl) throw new Error("DATABASE_URL no definida");
 
+        // Clean query params (like ?schema=public) which native tools might reject
+        const url = new URL(dbUrl);
+        url.search = "";
+        const cleanDbUrl = url.toString();
+
         // pg_dump command
-        // --clean: drops database objects before creating them
-        // --if-exists: used with --clean to prevent errors if objects don't exist
-        // --no-owner --no-acl: usually good for restoring across different users/machines
-        const command = `pg_dump "${dbUrl}" --clean --if-exists --no-owner --no-acl -f "${filepath}"`;
+        const command = `pg_dump "${cleanDbUrl}" --clean --if-exists --no-owner --no-acl -f "${filepath}"`;
 
         await execAsync(command);
 
@@ -79,9 +86,11 @@ export async function restoreBackup(filename: string): Promise<{ success: boolea
         const dbUrl = process.env.DATABASE_URL;
         if (!dbUrl) throw new Error("DATABASE_URL no definida");
 
-        // Restore using psql
-        // We use the < operator to pipe the file into psql
-        const command = `psql "${dbUrl}" < "${filepath}"`;
+        const url = new URL(dbUrl);
+        url.search = "";
+        const cleanDbUrl = url.toString();
+
+        const command = `psql "${cleanDbUrl}" < "${filepath}"`;
 
         await execAsync(command);
 
@@ -97,7 +106,6 @@ export async function deleteBackup(filename: string): Promise<{ success: boolean
     try {
         const filepath = path.join(BACKUP_DIR, filename);
 
-        // Prevent directory traversal
         if (!filepath.startsWith(BACKUP_DIR)) {
             throw new Error("Ruta inválida");
         }
@@ -116,6 +124,7 @@ export async function deleteBackup(filename: string): Promise<{ success: boolean
 
 export async function uploadBackup(formData: FormData): Promise<{ success: boolean; error?: string }> {
     try {
+        ensureBackupDir();
         const file = formData.get("file") as File;
         if (!file) throw new Error("No se recibió ningún archivo");
 
