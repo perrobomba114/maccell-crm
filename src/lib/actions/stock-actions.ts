@@ -217,18 +217,26 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
 
             // Let's use a transaction.
             return await db.$transaction(async (tx) => {
-                // 1. ATOMIC LOCK: Try to update all related notifications first.
-                // We add "AND status = 'PENDING'" so that if this runs twice, the second time it affects 0 rows.
-                const affectedRows = await tx.$executeRaw`
-                    UPDATE notifications 
-                    SET status = ${approved ? 'ACCEPTED' : 'REJECTED'}, 
-                        "isRead" = true
-                    WHERE "actionData"->>'discrepancyId' = ${data.discrepancyId}
-                    AND status = 'PENDING'
-                 `;
+                // 1. ATOMIC LOCK & UPDATE: Try to update all related notifications first.
+                // We use Prisma's native updateMany for type safety and to avoid SQL syntax errors.
+                const result = await tx.notification.updateMany({
+                    where: {
+                        // We can filter inside the JSON field using Prisma 6 syntax or simplified path
+                        // Note: Prisma's JSON filtering syntax might vary by DB, but for Postgres:
+                        actionData: {
+                            path: ['discrepancyId'],
+                            equals: data.discrepancyId
+                        },
+                        status: 'PENDING'
+                    },
+                    data: {
+                        status: approved ? 'ACCEPTED' : 'REJECTED',
+                        isRead: true
+                    }
+                });
 
                 // If no rows were updated, it means another admin already resolved it just now.
-                if (Number(affectedRows) === 0) {
+                if (result.count === 0) {
                     return { success: false, error: "Esta solicitud ya fue procesada por otro administrador." };
                 }
 
