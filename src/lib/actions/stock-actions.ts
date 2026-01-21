@@ -143,15 +143,18 @@ export async function reportStockDiscrepancy(
         });
 
         // CHECK FOR DUPLICATES: Prevent spamming discrepancies for same product
-        const existingPending = await db.notification.findFirst({
+        // We fetch all pending stock discrepancies and filter in memory to ensure JSON check works reliably
+        const pendingDiscrepancies = await db.notification.findMany({
             where: {
                 status: 'PENDING',
-                type: 'STOCK_DISCREPANCY', // Ensure we only check this type
-                actionData: {
-                    path: ['stockId'],
-                    equals: stockId
-                }
-            }
+                type: 'STOCK_DISCREPANCY'
+            },
+            select: { actionData: true }
+        });
+
+        const existingPending = pendingDiscrepancies.find(n => {
+            const data = n.actionData as any;
+            return data?.stockId === stockId;
         });
 
         if (existingPending) {
