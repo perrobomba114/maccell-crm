@@ -217,21 +217,22 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
 
             // Let's use a transaction.
             return await db.$transaction(async (tx) => {
-                // 1. Re-fetch current notification with lock? (Prisma doesn't fully support row locking easily without raw)
-                // Let's simply fetch all notifications for these users that match our criteria.
-                // Actually, we can updateMany where actionData->>discrepancyId equals X.
+                // 1. ATOMIC LOCK: Try to update all related notifications first.
+                // We add "AND status = 'PENDING'" so that if this runs twice, the second time it affects 0 rows.
+                const affectedRows = await tx.$executeRaw`
+                    UPDATE notifications 
+                    SET status = ${approved ? 'ACCEPTED' : 'REJECTED'}, 
+                        "isRead" = true
+                    WHERE "actionData"->>'discrepancyId' = ${data.discrepancyId}
+                    AND status = 'PENDING'
+                 `;
 
-                // Since Prisma JSON filtering is experimental/limited depending on version, 
-                // we will assume we can find them.
-                // If we can't efficiently query by JSON, we rely on the fact that when ONE is resolved, WE UPDATE ALL.
-
-                // First verify THIS notification is still pending
-                const currentCheck = await tx.notification.findUnique({ where: { id: notificationId } });
-                if (currentCheck?.status !== 'PENDING') {
+                // If no rows were updated, it means another admin already resolved it just now.
+                if (Number(affectedRows) === 0) {
                     return { success: false, error: "Esta solicitud ya fue procesada por otro administrador." };
                 }
 
-                // 2. Perform Stock Update (Only if approved)
+                // 2. Perform Stock Update (Only if approved AND we won the race)
                 if (approved) {
                     await tx.productStock.update({
                         where: { id: data.stockId },
@@ -242,16 +243,6 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
                         }
                     });
                 }
-
-                // 3. Update ALL notifications with this discrepancyId
-                // We need to use a Raw Query to reliably target the JSON field in Postgres
-                await tx.$executeRaw`
-                    UPDATE notifications 
-                    SET status = ${approved ? 'ACCEPTED' : 'REJECTED'}, 
-                        "isRead" = true
-                    WHERE "actionData"->>'discrepancyId' = ${data.discrepancyId}
-                 `;
-
 
                 return { success: true };
             });
