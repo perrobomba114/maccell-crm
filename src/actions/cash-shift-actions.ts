@@ -2,6 +2,7 @@
 
 import { db as prisma } from "@/lib/db";
 import { CashShift } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 export type CashShiftWithDetails = CashShift & {
     branch: { name: string };
@@ -412,4 +413,40 @@ async function enrichShifts(shifts: any[]): Promise<CashShiftWithDetails[]> {
             }
         };
     }));
+}
+
+export async function updateCashShiftDate(shiftId: string, newDate: Date) {
+    try {
+        const shift = await prisma.cashShift.findUnique({
+            where: { id: shiftId }
+        });
+
+        if (!shift) throw new Error("Cierre de caja no encontrado");
+
+        // Calculate new start time preserving original time
+        const newStartTime = new Date(newDate);
+        newStartTime.setHours(shift.startTime.getHours(), shift.startTime.getMinutes(), shift.startTime.getSeconds());
+
+        // Calculate new end time if exists
+        let newEndTime = null;
+        if (shift.endTime) {
+            newEndTime = new Date(newDate);
+            newEndTime.setHours(shift.endTime.getHours(), shift.endTime.getMinutes(), shift.endTime.getSeconds());
+        }
+
+        await prisma.cashShift.update({
+            where: { id: shiftId },
+            data: {
+                startTime: newStartTime,
+                endTime: newEndTime,
+                updatedAt: new Date()
+            }
+        });
+
+        revalidatePath("/admin/cash-shifts");
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating cash shift date:", error);
+        return { success: false, error: "Error al actualizar la fecha" };
+    }
 }

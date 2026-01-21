@@ -21,15 +21,18 @@ import {
     Wallet,
     Clock,
     CheckCircle2,
-    XCircle
+    XCircle,
+    Pencil
 } from "lucide-react";
-import { CashShiftWithDetails } from "@/actions/cash-shift-actions";
+import { CashShiftWithDetails, updateCashShiftDate } from "@/actions/cash-shift-actions";
 import { CashShiftDetailsModal } from "./cash-shift-details-modal";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 interface CashShiftTableProps {
     shifts: CashShiftWithDetails[];
@@ -55,10 +58,40 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [date, setDate] = useState<Date | undefined>(undefined);
 
+    // Edit State
+    const [editingShift, setEditingShift] = useState<CashShiftWithDetails | null>(null);
+    const [newDate, setNewDate] = useState<Date | undefined>(undefined);
+    const [isUpdating, setIsUpdating] = useState(false);
+
     const handleViewDetails = (shift: CashShiftWithDetails) => {
         setSelectedShift(shift);
         setIsModalOpen(true);
     };
+
+    const handleEditClick = (shift: CashShiftWithDetails) => {
+        setEditingShift(shift);
+        setNewDate(new Date(shift.startTime));
+    };
+
+    const handleUpdateDate = async () => {
+        if (!editingShift || !newDate) return;
+
+        setIsUpdating(true);
+        try {
+            const res = await updateCashShiftDate(editingShift.id, newDate);
+            if (res.success) {
+                toast.success("Fecha actualizada correctamente");
+                setEditingShift(null);
+            } else {
+                toast.error(res.error || "Error al actualizar fecha");
+            }
+        } catch (error) {
+            toast.error("Ocurrió un error inesperado");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
@@ -215,14 +248,25 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleViewDetails(shift)}
-                                            className="opacity-100 transition-opacity hover:bg-primary/5 hover:text-primary"
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex items-center justify-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleViewDetails(shift)}
+                                                className="opacity-100 transition-opacity hover:bg-primary/5 hover:text-primary"
+                                            >
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleEditClick(shift)}
+                                                className="opacity-100 transition-opacity hover:bg-orange-500/10 hover:text-orange-600"
+                                                title="Editar fecha"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -231,11 +275,45 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
                 </Table>
             </div>
 
+            {/* Detail Modal */}
             <CashShiftDetailsModal
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
                 shift={selectedShift}
             />
-        </div>
+
+            {/* Edit Date Modal */}
+            <Dialog open={!!editingShift} onOpenChange={(open) => !open && setEditingShift(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Modificar Fecha de Cierre</DialogTitle>
+                        <div className="text-sm text-muted-foreground">
+                            Selecciona la nueva fecha para este cierre de caja.
+                            <br />
+                            <span className="font-mono text-xs">ID: {editingShift?.id.slice(-6).toUpperCase()}</span>
+                        </div>
+                    </DialogHeader>
+                    <div className="flex justify-center py-4">
+                        <Calendar
+                            mode="single"
+                            selected={newDate}
+                            onSelect={setNewDate}
+                            initialFocus
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setEditingShift(null)} disabled={isUpdating}>
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleUpdateDate}
+                            disabled={!newDate || isUpdating}
+                        >
+                            {isUpdating ? "Guardando..." : "Guardar Cambios"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div >
     );
 }

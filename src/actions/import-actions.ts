@@ -30,9 +30,16 @@ export async function importHistoricalSalesAction(data: any[]): Promise<ImportRe
                 const branch = branches.find(b => b.name.toLowerCase() === sucursal.toLowerCase());
                 if (!branch) continue;
 
-                const date = new Date(fecha);
-                const startTime = new Date(date.setHours(8, 0, 0, 0));
-                const endTime = new Date(date.setHours(21, 0, 0, 0));
+                const [y, m, d] = fecha.split('-').map(Number);
+                // Create dates in Local Time (server timezone) by using the constructor with components
+                // This ensures "2024-01-17" becomes Jan 17 00:00 Local, not Jan 17 00:00 UTC (which might be Jan 16 Local)
+                const date = new Date(y, m - 1, d); // Months are 0-indexed
+
+                const startTime = new Date(date);
+                startTime.setHours(8, 0, 0, 0); // 8 AM Local
+
+                const endTime = new Date(date);
+                endTime.setHours(21, 0, 0, 0); // 9 PM Local
 
                 // 1. AVOID DUPLICATES: Delete existing historical shifts and sales for this branch and day efficiently
                 await tx.sale.deleteMany({

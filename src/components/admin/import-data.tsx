@@ -66,8 +66,9 @@ export function AdminImportData({ branches }: AdminImportDataProps) {
 
         // 2. If it's an Excel Serial Number (e.g. 46038)
         if (typeof value === "number") {
-            // Excel epoch starts at Dec 30, 1899 due to leap year bug
-            const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+            // Excel epoch starts at Dec 30, 1899
+            // Use Math.floor to ignore time fraction and prevent rounding up to next day
+            const date = new Date(Math.floor((value - 25569) * 86400 * 1000));
             // Adjust for timezone offset if needed, but usually UTC for date-only is safer here
             // or just use format YYYY-MM-DD manually to avoid timezone shifts
             const y = date.getUTCFullYear();
