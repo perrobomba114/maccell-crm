@@ -56,6 +56,42 @@ export function AdminImportData({ branches }: AdminImportDataProps) {
         toast.success("Plantilla descargada");
     };
 
+    const parseExcelDate = (value: any): string | null => {
+        if (!value) return null;
+
+        // 1. If it's already a JS Date
+        if (value instanceof Date) {
+            return value.toISOString().split("T")[0];
+        }
+
+        // 2. If it's an Excel Serial Number (e.g. 46038)
+        if (typeof value === "number") {
+            // Excel epoch starts at Dec 30, 1899 due to leap year bug
+            const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+            // Adjust for timezone offset if needed, but usually UTC for date-only is safer here
+            // or just use format YYYY-MM-DD manually to avoid timezone shifts
+            const y = date.getUTCFullYear();
+            const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const d = String(date.getUTCDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // 3. If it's a string
+        if (typeof value === "string") {
+            const trimmed = value.trim();
+            // Try standard ISO
+            if (trimmed.match(/^\d{4}-\d{2}-\d{2}$/)) return trimmed;
+
+            // Try standard Date parsing
+            const date = new Date(trimmed);
+            if (!isNaN(date.getTime())) {
+                return date.toISOString().split("T")[0];
+            }
+        }
+
+        return null;
+    };
+
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -65,7 +101,7 @@ export function AdminImportData({ branches }: AdminImportDataProps) {
         reader.onload = (evt) => {
             try {
                 const bstr = evt.target?.result;
-                const wb = XLSX.read(bstr, { type: "binary" });
+                const wb = XLSX.read(bstr, { type: "binary", cellDates: true });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
                 const data = XLSX.utils.sheet_to_json(ws);
@@ -77,7 +113,7 @@ export function AdminImportData({ branches }: AdminImportDataProps) {
 
                 // Sanitize data: Ensure all values are plain strings or numbers, no complex objects or NaNs
                 const sanitized = data.map((row: any) => ({
-                    fecha: row.fecha ? String(row.fecha).trim() : null,
+                    fecha: parseExcelDate(row.fecha),
                     sucursal: row.sucursal ? String(row.sucursal).trim() : null,
                     monto: isNaN(parseFloat(row.monto)) ? 0 : parseFloat(row.monto),
                     cantidad: isNaN(parseInt(row.cantidad)) ? 1 : parseInt(row.cantidad)
@@ -86,6 +122,7 @@ export function AdminImportData({ branches }: AdminImportDataProps) {
                 setPreviewData(sanitized);
                 toast.success(`${sanitized.length} filas detectadas`);
             } catch (err) {
+                console.error(err);
                 toast.error("Error al leer el archivo. Asegúrese de que sea un Excel válido.");
             }
         };
