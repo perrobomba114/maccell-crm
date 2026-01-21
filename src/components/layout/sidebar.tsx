@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { LucideIcon, LayoutDashboard, Users, Building2, Package, Wrench, ShoppingCart, FileText, Receipt, ClipboardList, Sparkles, ChevronLeft, ChevronRight, Star, List, History, Box, BarChart3, Banknote, Percent, RotateCcw, Settings, Menu, X, ShieldCheck } from "lucide-react";
+import { LucideIcon, LayoutDashboard, Users, Building2, Package, Wrench, ShoppingCart, FileText, Receipt, ClipboardList, Sparkles, ChevronLeft, ChevronRight, Star, List, History, Box, BarChart3, Banknote, Percent, RotateCcw, Settings, Menu, X, ShieldCheck, Database } from "lucide-react";
 import { cn, getImgUrl } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -18,7 +18,7 @@ import {
 
 // Icon mapping (same as before)
 const iconMap: Record<string, LucideIcon> = {
-    LayoutDashboard, Users, Building2, Package, Wrench, ShoppingCart, FileText, Receipt, ClipboardList, Star, List, History, Box, BarChart3, Banknote, Percent, RotateCcw, Settings, ShieldCheck
+    LayoutDashboard, Users, Building2, Package, Wrench, ShoppingCart, FileText, Receipt, ClipboardList, Star, List, History, Box, BarChart3, Banknote, Percent, RotateCcw, Settings, ShieldCheck, Database
 };
 
 interface SidebarLink {
