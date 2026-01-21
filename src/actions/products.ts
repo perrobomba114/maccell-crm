@@ -30,7 +30,60 @@ export async function getProducts(filters?: {
             where.categoryId = categoryId;
         }
 
-        console.log("getProducts params:", { page, limit, skip, where, sortColumn, sortDirection });
+        // --- BRANCH STOCK SORTING LOGIC ---
+        if (sortColumn.startsWith("stock_")) {
+            const targetBranchId = sortColumn.replace("stock_", "");
+
+            // 1. Fetch ALL matching IDs (lightweight)
+            const allMatchingProducts = await prisma.product.findMany({
+                where,
+                select: { id: true }
+            });
+
+            const allIds = allMatchingProducts.map(p => p.id);
+            const total = allIds.length;
+
+            // 2. Fetch stocks for these products in the target branch
+            const stocks = await prisma.productStock.findMany({
+                where: {
+                    productId: { in: allIds },
+                    branchId: targetBranchId
+                },
+                select: { productId: true, quantity: true }
+            });
+
+            // Map productId -> quantity
+            const stockMap = new Map<string, number>();
+            stocks.forEach(s => stockMap.set(s.productId, s.quantity));
+
+            // 3. Sort IDs in memory
+            allIds.sort((a, b) => {
+                const qtyA = stockMap.get(a) || 0;
+                const qtyB = stockMap.get(b) || 0;
+
+                if (sortDirection === "asc") return qtyA - qtyB;
+                return qtyB - qtyA;
+            });
+
+            // 4. Slice for pagination
+            const pagedIds = allIds.slice(skip, skip + limit);
+
+            // 5. Fetch full data for the slice
+            const products = await prisma.product.findMany({
+                where: { id: { in: pagedIds } },
+                include: {
+                    category: true,
+                    stock: true,
+                }
+            });
+
+            // 6. Re-order results to match the sorted pagedIds (database doesn't guarantee order with 'in')
+            const sortedProducts = pagedIds.map(id => products.find(p => p.id === id)).filter(Boolean);
+
+            return { success: true, products: sortedProducts, total, totalPages: Math.ceil(total / limit) };
+        }
+
+        // --- STANDARD SORTING LOGIC ---
 
         // Safe sort columns
         const allowedSorts = ["sku", "name", "price", "costPrice", "createdAt"];

@@ -641,8 +641,14 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
                             </TableHead>
                             <TableHead className="text-center">Stock Total</TableHead>
                             {branches.map(branch => (
-                                <TableHead key={branch.id} className="text-center text-xs whitespace-nowrap">
-                                    {branch.name}
+                                <TableHead
+                                    key={branch.id}
+                                    className="text-center text-xs whitespace-nowrap cursor-pointer hover:bg-muted/50 transition-colors"
+                                    onClick={() => handleSort(`stock_${branch.id}`)}
+                                >
+                                    <div className="flex items-center justify-center">
+                                        {branch.name} {renderSortArrow(`stock_${branch.id}`)}
+                                    </div>
                                 </TableHead>
                             ))}
                             <TableHead className="text-center">Acciones</TableHead>
