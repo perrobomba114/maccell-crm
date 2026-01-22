@@ -211,6 +211,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDi
                                             </div>
                                         </div>
 
+
                                         {/* Diagnosis (Highlighted) */}
                                         <div className="space-y-2">
                                             <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400 pl-1 flex items-center gap-2">
@@ -241,6 +242,34 @@ export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDi
                                                 )}
                                             </div>
                                         </div>
+
+                                        {/* Assigned Parts Section */}
+                                        {repair.parts && repair.parts.length > 0 && (
+                                            <div className="space-y-2">
+                                                <h3 className="text-sm font-semibold text-muted-foreground pl-1 flex items-center gap-2">
+                                                    REPUESTOS ASIGNADOS
+                                                </h3>
+                                                <div className="bg-card rounded-xl border shadow-sm divide-y">
+                                                    {repair.parts.map((p: any, idx: number) => (
+                                                        <div key={idx} className="p-3 flex items-center justify-between text-sm">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400">
+                                                                    <span className="font-bold text-xs">R</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-medium text-foreground">{p.sparePart.name}</p>
+                                                                    <p className="text-xs text-muted-foreground">SKU: {p.sparePart.sku}</p>
+                                                                </div>
+                                                            </div>
+                                                            <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700 dark:bg-orange-900/10 dark:text-orange-400">
+                                                                Asignado
+                                                            </Badge>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
 
                                         {/* Images */}
                                         {repair.deviceImages && repair.deviceImages.filter(isValidImg).length > 0 && (

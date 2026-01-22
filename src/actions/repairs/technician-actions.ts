@@ -39,8 +39,8 @@ export async function takeRepairAction(repairId: string, technicianId: string) {
     }
 }
 
-export async function assignTimeAction(repairId: string, technicianId: string, estimatedTime: number, updatePromisedDate: boolean = false) {
-    console.log("assignTimeAction CALLED", { repairId, technicianId, estimatedTime, updatePromisedDate });
+export async function assignTimeAction(repairId: string, technicianId: string, estimatedTime: number, updatePromisedDate: boolean = false, parts: { id: string, name: string }[] = []) {
+    console.log("assignTimeAction CALLED", { repairId, technicianId, estimatedTime, updatePromisedDate, parts });
 
     if (!estimatedTime || estimatedTime <= 0) {
         return { success: false, error: "El tiempo estimado es inválido." };
@@ -88,17 +88,40 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
         const isReactivation = repair.statusId === 7 || repair.statusId === 8 || repair.statusId === 9;
         const targetStatusId = (updatePromisedDate || isReactivation) ? 3 : 4;
 
-        await db.repair.update({
-            where: { id: repairId },
-            data: {
-                statusId: targetStatusId,
-                assignedUserId: technicianId,
-                estimatedTime: estimatedTime,
-                // Explicitly set startedAt if status is 3
-                startedAt: targetStatusId === 3 ? new Date() : undefined,
-                // CRITICAL FIX: Clear finishedAt because we are reopening the repair
-                finishedAt: null,
-                ...(newPromisedAt ? { promisedAt: newPromisedAt } : {})
+        await db.$transaction(async (tx) => {
+            await tx.repair.update({
+                where: { id: repairId },
+                data: {
+                    statusId: targetStatusId,
+                    assignedUserId: technicianId,
+                    estimatedTime: estimatedTime,
+                    // Explicitly set startedAt if status is 3
+                    startedAt: targetStatusId === 3 ? new Date() : undefined,
+                    // CRITICAL FIX: Clear finishedAt because we are reopening the repair
+                    finishedAt: null,
+                    ...(newPromisedAt ? { promisedAt: newPromisedAt } : {})
+                }
+            });
+
+            // Handle New Parts
+            if (parts.length > 0) {
+                for (const part of parts) {
+                    await tx.repairPart.create({
+                        data: {
+                            repairId,
+                            sparePartId: part.id,
+                            quantity: 1
+                        }
+                    });
+
+                    // Decrement stock
+                    await tx.sparePart.update({
+                        where: { id: part.id },
+                        data: {
+                            stockLocal: { decrement: 1 }
+                        }
+                    });
+                }
             }
         });
 
@@ -111,6 +134,10 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
                 const dateStr = newPromisedAt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
                 const timeStr = newPromisedAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
                 message += ` Se ha actualizado la fecha prometida a: ${dateStr} ${timeStr}.`;
+            }
+
+            if (parts.length > 0) {
+                message += ` Se agregaron repuestos: ${parts.map(p => p.name).join(", ")}.`;
             }
 
             await createNotificationAction({

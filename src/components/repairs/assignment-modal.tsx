@@ -12,6 +12,8 @@ import { useRouter } from "next/navigation";
 import { assignTimeAction } from "@/actions/repairs/technician-actions";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { SparePartSelector, SparePartItem } from "./spare-part-selector";
+import { Box } from "lucide-react";
 
 interface AssignmentModalProps {
     repair: any;
@@ -27,6 +29,7 @@ export function AssignmentModal({ repair, currentUserId, isOpen, onClose }: Assi
     const [isLoading, setIsLoading] = useState(false);
     const [estimatedTime, setEstimatedTime] = useState("");
     const [updateDate, setUpdateDate] = useState(false);
+    const [selectedParts, setSelectedParts] = useState<SparePartItem[]>([]);
 
     // Check if overdue just for visual warning
     const promisedDate = new Date(repair.promisedAt);
@@ -42,7 +45,7 @@ export function AssignmentModal({ repair, currentUserId, isOpen, onClose }: Assi
         setIsLoading(true);
         try {
             // Pass updateDate flag
-            const result = await assignTimeAction(repair.id, currentUserId, time, updateDate);
+            const result = await assignTimeAction(repair.id, currentUserId, time, updateDate, selectedParts);
 
             if (result.success) {
                 toast.success("Reparación reactivada/asignada correctamente.");
@@ -119,6 +122,18 @@ export function AssignmentModal({ repair, currentUserId, isOpen, onClose }: Assi
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div className="space-y-3 pt-2 border-t">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Box className="h-4 w-4 text-muted-foreground" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Agregar Repuestos</h4>
+                    </div>
+                    <SparePartSelector
+                        selectedParts={selectedParts}
+                        onPartsChange={setSelectedParts}
+                        hidePrice={true}
+                    />
                 </div>
 
                 <DialogFooter className="flex flex-row gap-2 mt-2">

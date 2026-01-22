@@ -3,7 +3,7 @@
 import fs from "fs/promises";
 import path from "path";
 
-export async function saveRepairImages(formData: FormData, ticketNumber: string): Promise<string[]> {
+export async function saveRepairImages(formData: FormData, ticketNumber: string, startIndex: number = 0): Promise<string[]> {
     const files = formData.getAll("images") as File[]; // Expecting 'images' key
     const savedPaths: string[] = [];
 

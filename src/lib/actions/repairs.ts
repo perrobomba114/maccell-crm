@@ -651,17 +651,47 @@ export async function updateRepairAction(formData: FormData) {
 
         // 4. Handle Parts (Delete all and recreate? Or diff?)
         // Delete all repairParts and recreate is easiest for now.
-        if (parts.length >= 0) { // If parts array is sent (empty or not)
-            await db.repairPart.deleteMany({ where: { repairId } });
-            if (parts.length > 0) {
-                await db.repairPart.createMany({
-                    data: parts.map((p: any) => ({
-                        repairId,
-                        sparePartId: p.id,
-                        quantity: 1
-                    }))
-                });
-            }
+        // 4. Handle Parts with Stock Management (Diffing)
+        if (partsJson) { // Only if parts field was sent (check based on logic)
+            // Fetch current parts to compare
+            const currentRepairParts = await db.repairPart.findMany({
+                where: { repairId },
+                select: { id: true, sparePartId: true, quantity: true }
+            });
+
+            const newPartIds = parts.map((p: any) => p.id);
+            const currentPartIds = currentRepairParts.map(p => p.sparePartId);
+
+            // Determine Additions and Removals
+            const partsToAdd = parts.filter((p: any) => !currentPartIds.includes(p.id));
+            const partsToRemove = currentRepairParts.filter(p => !newPartIds.includes(p.sparePartId));
+
+            // Execute Updates
+            await db.$transaction(async (tx) => {
+                // A. Remove Parts -> Increment Stock
+                for (const p of partsToRemove) {
+                    await tx.repairPart.delete({ where: { id: p.id } });
+                    await tx.sparePart.update({
+                        where: { id: p.sparePartId },
+                        data: { stockLocal: { increment: p.quantity } }
+                    });
+                }
+
+                // B. Add Parts -> Decrement Stock
+                for (const p of partsToAdd) {
+                    await tx.repairPart.create({
+                        data: {
+                            repairId,
+                            sparePartId: p.id,
+                            quantity: 1
+                        }
+                    });
+                    await tx.sparePart.update({
+                        where: { id: p.id },
+                        data: { stockLocal: { decrement: 1 } }
+                    });
+                }
+            });
         }
 
         revalidatePath("/admin/repairs");
