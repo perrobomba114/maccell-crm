@@ -35,14 +35,27 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import { useRouter, useSearchParams } from "next/navigation";
+
+// ... inside component
 export default function AdminDiscountsPage() {
+    const searchParams = useSearchParams();
     const [overrides, setOverrides] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
+    // Initialize from URL if present
+    const [searchTerm, setSearchTerm] = useState(searchParams.get("query") || "");
 
     useEffect(() => {
         loadData();
     }, []);
+
+    // Sync URL changes to state
+    useEffect(() => {
+        const query = searchParams.get("query");
+        if (query !== null) {
+            setSearchTerm(query);
+        }
+    }, [searchParams]);
 
     const loadData = async () => {
         setLoading(true);

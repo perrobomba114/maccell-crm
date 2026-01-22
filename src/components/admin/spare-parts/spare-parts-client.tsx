@@ -71,6 +71,15 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 25;
 
+    // React to URL changes (e.g. clicking a notification while already on the page)
+    useEffect(() => {
+        const query = searchParams.get("query");
+        if (query) {
+            setSearchTerm(query);
+            setCurrentPage(1);
+        }
+    }, [searchParams]);
+
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
     // Sort handlers
