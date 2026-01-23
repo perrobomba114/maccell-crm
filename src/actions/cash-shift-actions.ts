@@ -144,10 +144,27 @@ export async function getCashDashboardStats(
         });
         const prevTotal = prevTotalResult._sum.total || 0;
 
-        // Calculate Totals using current data
-        const currentTotal = currentShifts.reduce((acc, s) => acc + s.totals.totalSales, 0);
-        const currentCount = currentShifts.reduce((acc, s) => acc + s.counts.sales, 0);
-        const currentExpenses = currentShifts.reduce((acc, s) => acc + s.totals.expenses, 0);
+        // Calculate Totals using DIRECT AGGREGATION (Fixed: includes orphan sales/expenses)
+        const currentSalesAgg = await prisma.sale.aggregate({
+            where: {
+                createdAt: { gte: startOfMonth, lte: endOfMonth },
+                branchId: (branchId && branchId !== "ALL") ? branchId : undefined
+            },
+            _sum: { total: true },
+            _count: { id: true }
+        });
+        const currentTotal = currentSalesAgg._sum.total || 0;
+        const currentCount = currentSalesAgg._count.id || 0;
+
+        // Calculate Expenses Total
+        const currentExpensesAgg = await prisma.expense.aggregate({
+            where: {
+                createdAt: { gte: startOfMonth, lte: endOfMonth },
+                branchId: (branchId && branchId !== "ALL") ? branchId : undefined
+            },
+            _sum: { amount: true }
+        });
+        const currentExpenses = currentExpensesAgg._sum.amount || 0;
 
         let growth = 0;
         if (prevTotal > 0) {

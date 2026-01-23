@@ -373,12 +373,12 @@ export function UnifiedDashboard({ stats, branches, currentBranchId, currentUser
                     subtext={`${repairs.highPriority} Urgentes`}
                 />
                 <MetricCard
-                    title="Salud de Stock"
-                    value={`${stock.health.toFixed(0)}%`}
+                    title="Gasto en Repuestos"
+                    value={fmtMoney(stock.health)} // stock.health now holds the monetary cost
                     accentColor="orange"
                     icon={Package}
-                    trend={{ value: "Óptimo", positive: stock.health > 80 }}
-                    subtext={`${stock.criticalCount} Quiebres`}
+                    trend={{ value: "Costo Mensual", positive: false }} // Red/Neutral since it's an expense? Or just info. Let's make it neutral-ish or just 'info'
+                    subtext="Costo de repuestos usados"
                 />
             </div>
 

@@ -55,13 +55,22 @@ export async function getAdminStats(branchId?: string) {
         });
         const lastMonthRevenue = salesLastMonth.reduce((acc, curr) => acc + curr.total, 0);
 
-        // Calculate Current Month Metrics
-        let revenue = 0;
+        // Calculate Current Month Metrics (Fixed: Revenue via Aggregation)
+        // 1. Get Revenue via Aggregate (Consistent with Cash Shift)
+        const revenueAgg = await prisma.sale.aggregate({
+            where: {
+                ...branchFilter,
+                createdAt: { gte: firstDayOfMonth }
+            },
+            _sum: { total: true }
+        });
+        const revenue = revenueAgg._sum.total || 0;
+
         let cost = 0;
         const categoryMap = new Map<string, number>();
 
         salesCurrentMonth.forEach(sale => {
-            revenue += sale.total;
+            // Revenue is calculated via aggregate now
             sale.items.forEach((item: any) => {
                 let itemCost = 0;
                 let catName = "Otros";
@@ -71,10 +80,11 @@ export async function getAdminStats(branchId?: string) {
                     catName = "Servicio Técnico";
                     // Calculate cost from spare parts used
                     if (item.repair.parts && item.repair.parts.length > 0) {
-                        itemCost = item.repair.parts.reduce((sum: number, part: any) => {
+                        const partsCost = item.repair.parts.reduce((sum: number, part: any) => {
                             // Assuming priceArg is the cost as discussed
                             return sum + (part.sparePart?.priceArg || 0) * part.quantity;
                         }, 0);
+                        itemCost = partsCost;
                     }
                 } else {
                     // It's a Product
@@ -83,14 +93,13 @@ export async function getAdminStats(branchId?: string) {
                 }
 
                 // If item has quantity > 1 (rare for repairs but possible for products)
-                // For repairs, the cost calculated above is total for the repair (parts), 
-                // but item.quantity in SaleItem for repair is usually 1. 
-                // If SaleItem quantity > 1, we multiply cost.
-                cost += itemCost * item.quantity;
+                // We multiply the unit cost (or repair total cost) by the quantity sold
+                const totalLineCost = itemCost * item.quantity;
+                cost += totalLineCost;
 
                 // Profit per category
                 // For repairs: item.price is the Service Price. itemCost is the Spare Part cost.
-                const profit = (item.price - itemCost) * item.quantity;
+                const profit = (item.price * item.quantity) - totalLineCost;
 
                 if (profit > 0) {
                     categoryMap.set(catName, (categoryMap.get(catName) || 0) + profit);
@@ -102,17 +111,25 @@ export async function getAdminStats(branchId?: string) {
         const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
         const salesGrowth = lastMonthRevenue > 0 ? ((revenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
 
-        // 4. Stock Health Metrics
-        const stockItems = await prisma.productStock.findMany({
-            where: branchFilter,
-            select: { quantity: true }
+        // 4. Repair Parts Cost (Expenses Control)
+        // Replaces "Stock Health" KPI
+        // We sum the cost of parts for all Sales in the current month that are repairs
+        let totalRepairPartsCost = 0;
+        salesCurrentMonth.forEach(sale => {
+            sale.items.forEach((item: any) => {
+                if (item.repair && item.repair.parts && item.repair.parts.length > 0) {
+                    const repairBaseCost = item.repair.parts.reduce((sum: number, part: any) => {
+                        return sum + (part.sparePart?.priceArg || 0) * part.quantity;
+                    }, 0);
+                    // Multiply by sold quantity (usually 1)
+                    totalRepairPartsCost += repairBaseCost * item.quantity;
+                }
+            });
         });
-        const totalStockItems = stockItems.length;
-        const criticalStockItems = stockItems.filter(s => s.quantity <= 3).length;
-        // If 0 items, health is 100%.
-        const stockHealth = totalStockItems > 0
-            ? ((totalStockItems - criticalStockItems) / totalStockItems) * 100
-            : 100;
+
+        // Reuse the stock health structure but pass the cost value
+        const stockHealth = totalRepairPartsCost;
+        const criticalStockItems = 0; // Not used for this new KPI anymore
 
 
         // 5. Active Repairs & Priority
