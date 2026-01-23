@@ -33,7 +33,7 @@ export function ReadyForPickupTable({ data }: ReadyForPickupTableProps) {
     };
 
     return (
-        <Card className="col-span-4 lg:col-span-2 border-none shadow-xl bg-white dark:bg-zinc-900 overflow-hidden flex flex-col h-full rounded-2xl">
+        <Card className="col-span-4 lg:col-span-2 border border-zinc-800/50 shadow-sm bg-[#18181b] overflow-hidden flex flex-col h-full rounded-2xl">
             <CardHeader className="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-10">
                     <CheckCircle2 className="h-32 w-32 -mr-10 -mt-10" />
@@ -128,7 +128,7 @@ interface RecentActivityProps {
 
 export function RecentActivityTable({ data }: RecentActivityProps) {
     return (
-        <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-full">
+        <Card className="col-span-4 lg:col-span-2 border border-zinc-800/50 shadow-sm bg-[#18181b] h-full rounded-2xl">
             <CardHeader>
                 <CardTitle>Actividad Reciente</CardTitle>
                 <CardDescription>Ultimos movimientos de la sucursal</CardDescription>

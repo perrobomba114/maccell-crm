@@ -64,6 +64,7 @@ export const adminGroups = [
         label: "Principal",
         items: [
             { href: "/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+            { href: "/admin/statistics", label: "Estadísticas", icon: "BarChart3" },
         ]
     },
     {

@@ -1,5 +1,5 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { ListTodo, PlayCircle, CheckCircle, Timer } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface TechnicianKPIGridProps {
     stats: {
@@ -10,86 +10,77 @@ interface TechnicianKPIGridProps {
     }
 }
 
+function MetricCard({ title, value, subtext, accentColor, icon: Icon }: any) {
+    const colorMap: any = {
+        emerald: "from-emerald-600/20 to-emerald-600/5 text-emerald-500 border-emerald-600/20",
+        blue: "from-blue-600/20 to-blue-600/5 text-blue-500 border-blue-600/20",
+        violet: "from-violet-600/20 to-violet-600/5 text-violet-500 border-violet-600/20",
+        orange: "from-orange-600/20 to-orange-600/5 text-orange-500 border-orange-600/20"
+    };
+    const styles = colorMap[accentColor] || colorMap.blue;
+
+    return (
+        <div className={cn(
+            "relative overflow-hidden rounded-2xl p-6 border border-zinc-800/50 bg-[#18181b] flex flex-col justify-between h-full min-h-[140px] hover:border-zinc-700 transition-all shadow-sm group"
+        )}>
+            {/* Background Glow */}
+            <div className={cn("absolute -right-6 -top-6 w-24 h-24 rounded-full blur-3xl opacity-20 bg-gradient-to-br", styles)}></div>
+
+            <div className="flex justify-between items-start z-10 relative">
+                <div className="flex-1 w-full overflow-hidden">
+                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-2">{title}</p>
+                    <div className="flex items-baseline gap-1 w-full">
+                        <h3 className={cn(
+                            "font-bold text-white tracking-tight truncate leading-none",
+                            String(value).length > 12 ? "text-2xl" : "text-3xl xl:text-4xl"
+                        )} title={String(value)}>
+                            {value}
+                        </h3>
+                    </div>
+                </div>
+                <div className={cn("p-2.5 rounded-xl ml-3 flex-shrink-0 bg-zinc-900/50 border border-current opacity-80", styles.split(" ")[2], styles.split(" ")[3])}>
+                    <Icon size={20} strokeWidth={2} />
+                </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-4 z-10 relative">
+                <span className="text-xs text-zinc-500 font-medium truncate">{subtext}</span>
+            </div>
+        </div>
+    );
+}
+
 export function TechnicianKPIGrid({ stats }: TechnicianKPIGridProps) {
     return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-
-            {/* EN MESA (FOCUS) */}
-            <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
-                <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-blue-100 font-medium text-sm mb-1">En Mesa</p>
-                            <h3 className="text-4xl font-extrabold">{stats.activeRepairs}</h3>
-                        </div>
-                        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm animate-pulse">
-                            <PlayCircle className="h-6 w-6 text-white" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                        <span className="text-blue-100 text-xs">Equipos procesándose ahora</span>
-                    </div>
-                </CardContent>
-                <div className="absolute -top-12 -right-12 h-32 w-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-            </Card>
-
-            {/* PENDIENTES (TO DO) */}
-            <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-orange-500 to-amber-600 text-white">
-                <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-orange-100 font-medium text-sm mb-1">En Cola</p>
-                            <h3 className="text-4xl font-extrabold">{stats.pendingTickets}</h3>
-                        </div>
-                        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                            <ListTodo className="h-6 w-6 text-white" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                        <span className="text-orange-100 text-xs">Tickets asignados pendientes</span>
-                    </div>
-                </CardContent>
-                <div className="absolute -top-12 -right-12 h-32 w-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-            </Card>
-
-            {/* COMPLETADOS HOY (SUCCESS) */}
-            <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
-                <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-emerald-100 font-medium text-sm mb-1">Listos Hoy</p>
-                            <h3 className="text-3xl font-bold">{stats.completedToday}</h3>
-                        </div>
-                        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                            <CheckCircle className="h-6 w-6 text-white" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                        <span className="text-emerald-100 text-xs text-center">¡Gran trabajo hoy!</span>
-                    </div>
-                </CardContent>
-                <div className="absolute -top-12 -right-12 h-32 w-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-            </Card>
-
-            {/* TIEMPO PROMEDIO (EFFICIENCY) */}
-            <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-purple-500 to-pink-600 text-white">
-                <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-purple-100 font-medium text-sm mb-1">Ritmo</p>
-                            <h3 className="text-3xl font-bold">{stats.avgRepairTime}</h3>
-                        </div>
-                        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                            <Timer className="h-6 w-6 text-white" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                        <span className="text-purple-100 text-xs">Tiempo promedio reparación</span>
-                    </div>
-                </CardContent>
-                <div className="absolute -top-12 -right-12 h-32 w-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-            </Card>
-
+            <MetricCard
+                title="En Mesa"
+                value={stats.activeRepairs}
+                subtext="Equipos procesándose"
+                accentColor="blue"
+                icon={PlayCircle}
+            />
+            <MetricCard
+                title="En Cola"
+                value={stats.pendingTickets}
+                subtext="Tickets asignados pendientes"
+                accentColor="orange"
+                icon={ListTodo}
+            />
+            <MetricCard
+                title="Listos Hoy"
+                value={stats.completedToday}
+                subtext="Gran trabajo hoy"
+                accentColor="emerald"
+                icon={CheckCircle}
+            />
+            <MetricCard
+                title="Ritmo"
+                value={stats.avgRepairTime}
+                subtext="Tiempo promedio reparación"
+                accentColor="violet"
+                icon={Timer}
+            />
         </div>
     );
 }

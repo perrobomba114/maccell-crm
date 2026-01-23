@@ -41,40 +41,84 @@ const fmtCompact = (n: number) => new Intl.NumberFormat("es-AR", { notation: "co
 
 // --- Sub-Components ---
 
-// 1. Metric Card (Unchanged, already good)
-function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon }: any) {
+// --- Sub-Components ---
+
+// 1. Metric Card (Refined for Large Numbers & Clickable)
+import Link from "next/link"; // Ensure Link is imported if not globally available, usually fine to rename/import inside. 
+// Actually Link global import is better. checking file imports... it is NOT imported yet.
+// I can't inject import easily with this tool at top. I see "use client" at top.
+// I will use fully qualified name or just assume I'll add import at top later? No, duplicate imports logic.
+// The file has imports at 3-24. 
+// I will rely on the fact that I can't easily add import statement far away unless I replace a larger chunk or use multi_replace.
+// I'll assume I can add it to the component or use standard <a> or replace the imports area.
+// Best approach: Replace the component AND the imports section if needed? 
+// Actually, `Link` is standard next.js. 
+// I'll use multi_replace_file_content to add import and update component.
+
+function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, href }: any) {
     const colorMap: any = {
-        blue: "text-blue-500 bg-blue-500/10",
-        emerald: "text-emerald-500 bg-emerald-500/10",
-        violet: "text-violet-500 bg-violet-500/10",
-        orange: "text-orange-500 bg-orange-500/10"
+        blue: "from-blue-600/20 to-blue-600/5 text-blue-500 border-blue-600/20",
+        emerald: "from-emerald-600/20 to-emerald-600/5 text-emerald-500 border-emerald-600/20",
+        violet: "from-violet-600/20 to-violet-600/5 text-violet-500 border-violet-600/20",
+        orange: "from-orange-600/20 to-orange-600/5 text-orange-500 border-orange-600/20"
     };
 
-    return (
-        <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 flex flex-col justify-between h-full min-h-[160px] hover:border-zinc-700 transition-all shadow-sm group">
-            <div className="flex justify-between items-start">
-                <div className="flex-1 mr-4">
-                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-3 group-hover:text-zinc-400 transition-colors">{title}</p>
-                    <h3 className="text-3xl font-bold text-white tracking-tight truncate" title={String(value)}>
-                        {value}
-                    </h3>
+    const styles = colorMap[accentColor] || colorMap.blue;
+    const valueStr = String(value);
+    const isLong = valueStr.length > 10;
+    const isVeryLong = valueStr.length > 14;
+
+    const Content = () => (
+        <>
+            {/* Background Glow */}
+            <div className={cn("absolute -right-6 -top-6 w-24 h-24 rounded-full blur-3xl opacity-20 bg-gradient-to-br", styles)}></div>
+
+            <div className="flex justify-between items-start z-10 relative">
+                <div className="flex-1 w-full overflow-hidden">
+                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-2 group-hover:text-zinc-400 transition-colors">{title}</p>
+                    <div className="flex items-baseline gap-1 w-full">
+                        <h3 className={cn(
+                            "font-bold text-white tracking-tight truncate leading-none",
+                            isVeryLong ? "text-xl" : isLong ? "text-2xl" : "text-3xl"
+                        )} title={valueStr}>
+                            {value}
+                        </h3>
+                    </div>
                 </div>
-                <div className={cn("p-3 rounded-xl flex-shrink-0 transition-transform group-hover:scale-110", colorMap[accentColor])}>
-                    <Icon size={24} strokeWidth={2} />
+                <div className={cn("p-2.5 rounded-xl ml-3 flex-shrink-0 bg-zinc-900/50 border border-current opacity-80", styles.split(" ")[2], styles.split(" ")[3])}>
+                    <Icon size={20} strokeWidth={2} />
                 </div>
             </div>
 
-            <div className="flex items-center gap-3 mt-4">
+            <div className="flex items-center gap-3 mt-4 z-10 relative">
                 {trend && (
                     <span className={cn(
-                        "text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0",
-                        trend.positive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
+                        "text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0 flex items-center gap-1",
+                        trend.positive ? "bg-emerald-500/10 text-emerald-500" : (accentColor === 'orange' ? "bg-zinc-800 text-zinc-400" : "bg-red-500/10 text-red-500")
                     )}>
-                        {trend.value}
+                        {trend.positive ? "↑" : (accentColor === 'orange' ? "•" : "↓")} {trend.value}
                     </span>
                 )}
-                <span className="text-xs text-zinc-500 font-medium truncate">{subtext}</span>
+                <span className="text-xs text-zinc-500 font-medium truncate group-hover:text-zinc-400 transition-colors">{subtext}</span>
             </div>
+        </>
+    );
+
+    if (href) {
+        return (
+            <Link href={href} className={cn(
+                "relative overflow-hidden rounded-2xl p-6 border border-zinc-800/50 bg-[#18181b] flex flex-col justify-between h-full min-h-[140px] hover:border-zinc-700 hover:bg-zinc-900/50 transition-all shadow-sm group cursor-pointer"
+            )}>
+                <Content />
+            </Link>
+        );
+    }
+
+    return (
+        <div className={cn(
+            "relative overflow-hidden rounded-2xl p-6 border border-zinc-800/50 bg-[#18181b] flex flex-col justify-between h-full min-h-[140px] hover:border-zinc-700 transition-all shadow-sm group"
+        )}>
+            <Content />
         </div>
     );
 }
@@ -82,11 +126,11 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon }: a
 // 3. Tech Performance - Redesigned (Modern Leaderboard)
 function TechPerformance({ technicians }: any) {
     return (
-        <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 h-full flex flex-col overflow-hidden">
+        <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 h-full flex flex-col overflow-hidden text-zinc-100">
             <div className="mb-6 flex justify-between items-start">
                 <div>
                     <h3 className="font-bold text-lg text-white mb-1">Top Técnicos</h3>
-                    <p className="text-sm text-zinc-500">Líderes en reparaciones</p>
+                    <p className="text-sm text-zinc-400">Líderes en reparaciones</p>
                 </div>
                 <div className="bg-violet-500/10 p-2 rounded-lg text-violet-500">
                     <Trophy size={18} />
@@ -148,74 +192,135 @@ function TechPerformance({ technicians }: any) {
     );
 }
 
-// 4. Stock Alerts Widget (Refined)
+// 4. Stock Alerts Widget (Redesigned - Modern Cards)
 function StockAlertsWidget({ alerts, health }: any) {
     return (
         <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 flex flex-col h-full">
             <div className="flex justify-between items-start mb-6">
                 <div>
-                    <h3 className="font-bold text-lg text-white mb-1">Alertas de Stock</h3>
-                    <p className="text-sm text-zinc-500">Productos críticos (&lt;3 unidades)</p>
+                    <h3 className="font-bold text-lg text-white mb-1">Alertas Criticas</h3>
+                    <p className="text-sm text-zinc-500">Stock por agotarse</p>
                 </div>
-                <div className="bg-red-500/10 p-2 rounded-lg text-red-500"><AlertTriangle size={18} /></div>
+                <div className="bg-red-500/10 p-2 rounded-lg text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                    <AlertTriangle size={18} />
+                </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="flex-1 overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-zinc-800 custom-scrollbar max-h-[350px]">
                 {alerts.length === 0 ? (
-                    <div className="p-4 text-center text-zinc-500 text-sm bg-zinc-900/30 rounded-xl">Todo en orden</div>
+                    <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-3 py-10">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-2">
+                            <CheckCircle2 size={24} />
+                        </div>
+                        <span className="text-sm font-medium">Inventario Saludable</span>
+                    </div>
                 ) : (
-                    alerts.slice(0, 10).map((item: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/30 hover:bg-zinc-900/60 transition-colors border border-transparent hover:border-zinc-800">
-                            <div className="flex items-center gap-3 overflow-hidden">
-                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 animate-pulse"></div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-sm text-zinc-200 font-medium truncate pr-2">{item.productName}</span>
-                                    <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{item.branchName}</span>
+                    alerts.slice(0, 15).map((item: any, i: number) => {
+                        // Determine urgency color
+                        const isCritical = item.quantity <= 1;
+                        const colorClass = isCritical ? "bg-red-500" : "bg-orange-500";
+                        const textClass = isCritical ? "text-red-500" : "text-orange-500";
+                        const borderClass = isCritical ? "border-red-500/20" : "border-orange-500/20";
+                        const bgClass = isCritical ? "bg-red-500/5 hover:bg-red-500/10" : "bg-orange-500/5 hover:bg-orange-500/10";
+
+                        return (
+                            <div key={i} className={cn(
+                                "relative overflow-hidden rounded-xl p-3 border transition-all duration-300 group",
+                                borderClass, bgClass
+                            )}>
+                                <div className="flex justify-between items-start mb-2 relative z-10">
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-bold text-zinc-200 group-hover:text-white transition-colors truncate max-w-[150px] lg:max-w-[180px]">
+                                            {item.productName}
+                                        </span>
+                                        <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mt-0.5 flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
+                                            {item.branchName}
+                                        </span>
+                                    </div>
+                                    <div className={cn("px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 shadow-sm", borderClass, "bg-[#18181b]")}>
+                                        <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", colorClass)}></div>
+                                        <span className={textClass}>{item.quantity} un.</span>
+                                    </div>
+                                </div>
+
+                                {/* Visual Progress Bar hinting at scarcity */}
+                                <div className="h-1 w-full bg-zinc-800/50 rounded-full overflow-hidden mt-1">
+                                    <div className={cn("h-full rounded-full w-[15%]", colorClass)}></div>
                                 </div>
                             </div>
-                            <span className="px-2.5 py-1 bg-red-500/10 text-red-400 text-xs font-bold rounded-lg border border-red-500/10">
-                                {item.quantity} low
-                            </span>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
         </div>
     );
 }
 
-// 5. Parts Table (Refined)
+// 5. Top Parts Widget (Redesigned - Visual Leaderboard)
 function PartsTable({ parts }: any) {
+    // Determine max usage for relative bars
+    const maxUsage = parts.length > 0 ? parts[0].usage : 1;
+
     return (
         <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 flex flex-col h-full">
-            <div className="mb-6">
-                <h3 className="font-bold text-lg text-white mb-1">Repuestos Top</h3>
-                <p className="text-sm text-zinc-500">Alta rotación en taller</p>
+            <div className="mb-6 flex justify-between items-start">
+                <div>
+                    <h3 className="font-bold text-lg text-white mb-1">Repuestos Top</h3>
+                    <p className="text-sm text-zinc-500">Mayor rotación en taller</p>
+                </div>
+                <div className="bg-blue-500/10 p-2 rounded-lg text-blue-500">
+                    <Package size={18} />
+                </div>
             </div>
 
-            <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-800">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider border-b border-zinc-800/50">
-                        <tr>
-                            <th className="pb-3 pl-2">Item</th>
-                            <th className="pb-3 text-right">Uso</th>
-                            <th className="pb-3 text-right pr-2">Stock</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800/30">
-                        {parts.slice(0, 10).map((p: any, i: number) => (
-                            <tr key={i} className="group hover:bg-zinc-900/40 transition-colors">
-                                <td className="py-3 pl-2 text-zinc-300 font-medium truncate max-w-[140px] group-hover:text-white">
-                                    {p.name}
-                                </td>
-                                <td className="py-3 text-right text-zinc-400">{p.usage}</td>
-                                <td className={`py-3 pr-2 text-right font-bold ${p.stock <= 2 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                    {p.stock}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-thin scrollbar-thumb-zinc-800 max-h-[350px]">
+                {parts.slice(0, 10).map((p: any, i: number) => {
+                    const percent = (p.usage / maxUsage) * 100;
+                    return (
+                        <div key={i} className="group">
+                            <div className="flex justify-between items-center mb-1.5">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className={cn(
+                                        "w-6 h-6 flex items-center justify-center rounded-md text-[10px] font-bold border border-zinc-800",
+                                        i < 3 ? "bg-zinc-800 text-white" : "bg-transparent text-zinc-500"
+                                    )}>
+                                        #{i + 1}
+                                    </div>
+                                    <span className="text-sm text-zinc-300 font-medium truncate group-hover:text-white transition-colors">{p.name}</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                        <span className="text-xs font-bold text-white block">{p.usage}</span>
+                                        <span className="text-[9px] text-zinc-500 uppercase">Usados</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Visual Bar */}
+                            <div className="relative h-2 w-full bg-zinc-900 rounded-full overflow-hidden">
+                                {/* Background Track */}
+                                <div className="absolute inset-0 bg-zinc-800/30"></div>
+                                {/* Fill */}
+                                <div
+                                    className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.3)] transition-all duration-1000"
+                                    style={{ width: `${percent}%` }}
+                                ></div>
+                            </div>
+
+                            {/* Stock Status Mini-Indicator */}
+                            <div className="flex justify-end mt-1">
+                                <span className={cn(
+                                    "text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-1",
+                                    p.stock <= 2 ? "text-red-400 border-red-500/20 bg-red-500/5" : "text-zinc-500 border-zinc-800 bg-zinc-900"
+                                )}>
+                                    {p.stock <= 2 ? <AlertTriangle size={8} /> : <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                                    Stock: {p.stock}
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
@@ -256,11 +361,53 @@ function TopProductsWidget({ products }: any) {
     );
 }
 
+// Timeline Feed Component
+function SalesFeedTimeline({ sales, mounted }: { sales: any[], mounted: boolean }) {
+    if (!sales || sales.length === 0) {
+        return <div className="text-zinc-500 text-sm text-center py-10 bg-zinc-900/30 rounded-xl">Sin actividad reciente</div>;
+    }
+
+    return (
+        <div className="relative pl-4 border-l border-zinc-800 space-y-8 py-2">
+            {sales.map((sale: any, i: number) => (
+                <div key={i} className="relative group">
+                    {/* Timeline Dot */}
+                    <div className="absolute -left-[21px] top-3 w-3 h-3 rounded-full bg-zinc-900 border-2 border-zinc-700 group-hover:border-violet-500 group-hover:bg-violet-500 transition-colors shadow-sm"></div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-zinc-900/30 border border-zinc-800/50 hover:bg-zinc-900 hover:border-violet-500/30 transition-all hover:shadow-lg hover:shadow-violet-500/5">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-400 group-hover:bg-violet-500/20 group-hover:text-violet-400 transition-colors">
+                                #{sale.saleNumber?.toString().slice(-2) || "??"}
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-white group-hover:text-violet-200 transition-colors">
+                                    Venta #{sale.saleNumber}
+                                </h4>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[10px] text-zinc-500 uppercase tracking-wider bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800 group-hover:border-zinc-700">
+                                        {sale.branchName}
+                                    </span>
+                                    <span className="text-[10px] text-zinc-500">
+                                        {mounted ? new Date(sale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-base font-bold text-white block">{fmtMoney(sale.total)}</span>
+                            <span className="text-[10px] text-zinc-500">{sale.paymentMethod || 'Efectivo'}</span>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 // --- Main Layout ---
 export function UnifiedDashboard({ stats, branches, currentBranchId, currentUser, branchStats, productStats }: UnifiedDashboardProps) {
     const { financials, repairs, stock, categoryShare } = stats;
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-    const [zenMode, setZenMode] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
 
     React.useEffect(() => {
@@ -274,36 +421,20 @@ export function UnifiedDashboard({ stats, branches, currentBranchId, currentUser
         : recentSales;
 
     return (
-        <div className={cn(
-            "min-h-screen bg-[#09090b] text-zinc-50 font-sans p-6 lg:p-10 selection:bg-violet-500/30 transition-all duration-500",
-            zenMode ? "p-4 lg:p-4" : ""
-        )}>
+        <div className="min-h-screen bg-[#09090b] text-zinc-50 font-sans p-6 lg:p-8 xl:p-10 selection:bg-violet-500/30">
 
             {/* Header */}
-            {!zenMode && (
-                <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-10">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-gradient-to-br from-violet-600 to-indigo-600 p-3 rounded-2xl text-white shadow-lg shadow-violet-500/20">
-                            <Zap size={28} fill="currentColor" />
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard Ejecutivo</h1>
-                        </div>
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-zinc-900/50 pb-6">
+                <div className="flex items-center gap-4">
+                    <div className="bg-zinc-900 p-3 rounded-2xl border border-zinc-800 shadow-sm">
+                        <Zap size={24} className="text-white" fill="currentColor" />
                     </div>
-                    <button
-                        onClick={() => {
-                            const newState = !zenMode;
-                            setZenMode(newState);
-                            if (typeof window !== 'undefined') {
-                                window.dispatchEvent(new CustomEvent('zen-mode-change', { detail: { collapsed: newState } }));
-                            }
-                        }}
-                        className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors flex items-center gap-2"
-                        title="Modo Zen"
-                    >
-                        <Maximize2 size={18} />
-                        <span className="text-xs font-bold uppercase tracking-wider">Modo Zen</span>
-                    </button>
+                    <div>
+                        <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard Ejecutivo</h1>
+                        <p className="text-zinc-500 text-sm">Visión general del negocio</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
                     <button
                         onClick={async () => {
                             if (!confirm("¿Seguro que quieres limpiar las imágenes corruptas de toda la base de datos?")) return;
@@ -311,169 +442,172 @@ export function UnifiedDashboard({ stats, branches, currentBranchId, currentUser
                             if (res.success) toast.success(res.message);
                             else toast.error(res.error);
                         }}
-                        className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-colors flex items-center gap-2"
-                        title="Limpiar Fotos Corruptas"
+                        className="p-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 transition-all flex items-center gap-2 text-sm font-medium"
                     >
-                        <Trash2 size={18} />
-                        <span className="text-xs font-bold uppercase tracking-wider">Limpiar Fotos</span>
-                    </button>
-                </header>
-            )}
-
-            {zenMode && (
-                <div className="flex justify-end mb-4">
-                    <button
-                        onClick={() => {
-                            setZenMode(false);
-                            if (typeof window !== 'undefined') {
-                                window.dispatchEvent(new CustomEvent('zen-mode-change', { detail: { collapsed: false } }));
-                            }
-                        }}
-                        className="p-2 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 transition-colors"
-                    >
-                        <Minimize2 size={24} />
+                        <Trash2 size={16} />
+                        Limpiar Fotos
                     </button>
                 </div>
-            )}
+            </header>
 
-            {/* Smart Insights (Collapsible) */}
-            {!zenMode && <SmartInsights stats={stats} />}
+            {/* Smart Insights */}
+            <div className="mb-8">
+                <SmartInsights stats={stats} />
+            </div>
 
             {/* Filters */}
-            {!zenMode && (
-                <div className="mb-10 overflow-x-auto pb-4 scrollbar-hide">
-                    <BranchFilter branches={branches} currentBranchId={currentBranchId} />
-                </div>
-            )}
-
-            {/* Top Metrics Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-                <MetricCard
-                    title="Ingresos Mensuales"
-                    value={fmtMoney(financials.revenue)}
-                    accentColor="blue"
-                    icon={DollarSign}
-                    trend={{ value: `${financials.salesGrowth > 0 ? '+' : ''}${financials.salesGrowth.toFixed(1)}%`, positive: financials.salesGrowth >= 0 }}
-                    subtext="vs mes anterior"
-                />
-                <MetricCard
-                    title="Ganancia Neta"
-                    value={fmtMoney(financials.profit)}
-                    accentColor="emerald"
-                    icon={CheckCircle2}
-                    trend={{ value: `+${financials.profitMargin.toFixed(1)}%`, positive: true }}
-                    subtext="Margen real"
-                />
-                <MetricCard
-                    title="Reparaciones Activas"
-                    value={`${repairs.active}`}
-                    accentColor="violet"
-                    icon={Wrench}
-                    trend={{ value: "En Taller", positive: true }}
-                    subtext={`${repairs.highPriority} Urgentes`}
-                />
-                <MetricCard
-                    title="Gasto en Repuestos"
-                    value={fmtMoney(stock.health)} // stock.health now holds the monetary cost
-                    accentColor="orange"
-                    icon={Package}
-                    trend={{ value: "Costo Mensual", positive: false }} // Red/Neutral since it's an expense? Or just info. Let's make it neutral-ish or just 'info'
-                    subtext="Costo de repuestos usados"
-                />
+            <div className="mb-8">
+                <BranchFilter branches={branches} currentBranchId={currentBranchId} />
             </div>
 
-            {/* Middle Row: Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                <div className="lg:col-span-2 h-[450px]">
-                    <ProfitDonut
-                        data={categoryShare.segments}
-                        total={categoryShare.total}
-                        onCategorySelect={setSelectedCategory}
-                        selectedCategory={selectedCategory}
+            {/* SECTION 1: FINANCIAL OVERVIEW */}
+            <div className="space-y-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="flex items-center gap-2 mb-2">
+                    <h2 className="text-lg font-bold text-white">Finanzas & Operaciones</h2>
+                    <div className="h-px bg-zinc-900 flex-1 ml-4"></div>
+                </div>
+
+                {/* Key Metrics Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+                    <MetricCard
+                        title="Ingresos Mensuales"
+                        value={fmtMoney(financials.revenue)}
+                        accentColor="blue"
+                        icon={DollarSign}
+                        trend={{ value: `${financials.salesGrowth > 0 ? '+' : ''}${financials.salesGrowth.toFixed(1)}%`, positive: financials.salesGrowth >= 0 }}
+                        subtext="vs mes anterior"
+                        href="/admin/sales"
+                    />
+                    <MetricCard
+                        title="Ganancia Neta"
+                        value={fmtMoney(financials.profit)}
+                        accentColor="emerald"
+                        icon={CheckCircle2}
+                        trend={{ value: `+${financials.profitMargin.toFixed(1)}%`, positive: true }}
+                        subtext="Margen real"
+                        href="/admin/statistics"
+                    />
+                    <MetricCard
+                        title="Reparaciones Activas"
+                        value={`${repairs.active}`}
+                        accentColor="violet"
+                        icon={Wrench}
+                        trend={{ value: "En Taller", positive: true }}
+                        subtext={`${repairs.highPriority} Urgentes`}
+                        href="/admin/repairs"
+                    />
+                    <MetricCard
+                        title="Gasto en Repuestos"
+                        value={fmtMoney(stock.health)}
+                        accentColor="orange"
+                        icon={Package}
+                        trend={{ value: "Costo Mes", positive: false }}
+                        subtext="Costo de repuestos usados"
+                        href="/admin/repuestos"
                     />
                 </div>
-                <div className="lg:col-span-1 h-[450px]">
-                    <TechLeaderboard technicians={repairs.technicians} />
+
+                {/* Charts Row: Profit Distribution & Tech Leaderboard */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div className="xl:col-span-2 min-h-[400px]">
+                        {/* Using the Donut Chart for profit Segments (Categories) */}
+                        <ProfitDonut
+                            data={categoryShare.segments}
+                            total={categoryShare.total}
+                            onCategorySelect={setSelectedCategory}
+                            selectedCategory={selectedCategory}
+                        />
+                    </div>
+                    <div className="xl:col-span-1 min-h-[400px]">
+                        <TechLeaderboard technicians={repairs.technicians} />
+                    </div>
                 </div>
             </div>
 
-            {/* EXPANSION: REPAIR INSIGHTS (NEW) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                {/* Monthly Status Distribution */}
-                <div className="h-[500px]">
-                    <RepairsByStatusChart data={repairs.monthlyStatusDistribution} />
+            {/* SECTION 2: OPERATIONS DETAIL */}
+            <div className="space-y-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+                <div className="flex items-center gap-2 mb-2">
+                    <h2 className="text-lg font-bold text-white">Detalle Operativo</h2>
+                    <div className="h-px bg-zinc-900 flex-1 ml-4"></div>
                 </div>
 
-                {/* Undelivered by Branch */}
-                {branchStats && (
-                    <div className="h-[500px]">
-                        <BranchUndeliveredChart
-                            data={branchStats.undeliveredChartData}
-                            keys={branchStats.statusKeys}
-                        />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Monthly Status Distribution Chart */}
+                    <div className="h-[450px]">
+                        <RepairsByStatusChart data={repairs.monthlyStatusDistribution} />
+                    </div>
+
+                    {/* Pending by Branch (If available) */}
+                    {branchStats && (
+                        <div className="min-h-[450px]">
+                            <BranchUndeliveredChart
+                                data={branchStats.undeliveredChartData}
+                                keys={branchStats.statusKeys}
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* SECTION 3: INVENTORY CONTROL (Split Section) */}
+            <div className="space-y-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+                <div className="flex items-center gap-2 mb-2">
+                    <h2 className="text-lg font-bold text-white">Control de Inventario</h2>
+                    <div className="h-px bg-zinc-900 flex-1 ml-4"></div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 1. Stock Alerts */}
+                    <div className="col-span-1 h-full min-h-[350px]">
+                        <StockAlertsWidget alerts={stock.alerts} health={stock.health} />
+                    </div>
+
+                    {/* 2. Top Parts (High Rotation) */}
+                    <div className="col-span-1 h-full min-h-[350px]">
+                        <PartsTable parts={repairs.frequentParts} />
+                    </div>
+                </div>
+                {/* Low Stock Replenishment Table (If Data Exists) */}
+                {productStats && productStats.lowStock.length > 0 && (
+                    <div className="mt-8">
+                        <ReplenishmentTable data={productStats.lowStock} />
                     </div>
                 )}
             </div>
 
-            {/* Expansion: Profit, Growth & Stock Health Charts */}
-            {!zenMode && branchStats && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-                    <BranchProfitChart data={branchStats.branchProfits} />
-                    <BranchGrowthChart data={branchStats.growthStats} />
-                    <BranchStockHealthChart data={branchStats.stockHealthStats} />
+            {/* SECTION 4: RECENT TRANSACTIONS (New Section) */}
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+                <div className="flex items-center gap-2 mb-2">
+                    <h2 className="text-lg font-bold text-white">Últimas Transacciones</h2>
+                    <div className="h-px bg-zinc-900 flex-1 ml-4"></div>
                 </div>
-            )}
 
-            {/* Expansion: Low Stock Table */}
-            {productStats && productStats.lowStock.length > 0 && (
-                <div className="mb-8">
-                    <ReplenishmentTable data={productStats.lowStock} />
-                </div>
-            )}
+                <div className="grid grid-cols-1">
+                    {/* Recent Transactions Feed - Full Width for clarity */}
+                    <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 flex flex-col h-full min-h-[300px]">
+                        <div className="mb-6 flex justify-between items-start">
+                            <div>
+                                <h3 className="font-bold text-lg text-white mb-1">
+                                    {selectedCategory ? `Ventas: ${selectedCategory}` : "Feed de Ventas"}
+                                </h3>
+                                <p className="text-sm text-zinc-500">Actividad en tiempo real de todas las sucursales</p>
+                            </div>
+                            <div className="bg-emerald-500/10 p-2 rounded-lg text-emerald-500">
+                                <DollarSign size={18} />
+                            </div>
+                        </div>
 
-            {/* Bottom Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StockAlertsWidget alerts={stock.alerts} health={stock.health} />
-
-                {/* Replaced TopProducts with Recent Sales Table if available, or keep TopProducts? */}
-                {/* Actually, let's use the recent sales data we added for a new widget 'Recent Transactions' */}
-                {/* But to keep layout, let's replace TopProductsWidget with a 'Transaction Feed' if we have data, or keep it. */}
-                {/* Let's keep TopProducts but add Recent Sales below or swap one. */}
-                {/* The user asked for Drill Down. Let's make the 2nd widget dynamic. */}
-
-                <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 flex flex-col h-full col-span-1">
-                    <div className="mb-4">
-                        <h3 className="font-bold text-lg text-white mb-1">
-                            {selectedCategory ? `Ventas: ${selectedCategory}` : "Últimas Ventas"}
-                        </h3>
-                        <p className="text-sm text-zinc-500">Transacciones recientes</p>
-                    </div>
-                    <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[300px] scrollbar-thin scrollbar-thumb-zinc-800">
-                        {filteredRecentSales.length === 0 ? (
-                            <div className="text-zinc-500 text-sm text-center py-4">Sin ventas recientes en esta categoría</div>
-                        ) : (
-                            filteredRecentSales.map((sale: any, i: number) => (
-                                <div key={i} className="flex items-center justify-between border-b border-zinc-900/50 pb-2 last:border-0 hover:bg-zinc-900/30 p-2 rounded-lg transition-colors">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-white">#{sale.saleNumber}</span>
-                                        <span className="text-xs text-zinc-500">
-                                            {isMounted ? new Date(sale.createdAt).toLocaleDateString() : '...'}
-                                        </span>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-sm font-bold text-emerald-400 block">{fmtMoney(sale.total)}</span>
-                                        <span className="text-[10px] text-zinc-600 uppercase">{sale.branchName}</span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
+                        <div className="flex-1 overflow-y-auto pr-2 space-y-3 max-h-[400px] scrollbar-thin scrollbar-thumb-zinc-800">
+                            <SalesFeedTimeline sales={filteredRecentSales} mounted={isMounted} />
+                        </div>
                     </div>
                 </div>
-
-                <PartsTable parts={repairs.frequentParts} />
             </div>
 
-        </div>
+            <div className="mt-12 text-center text-zinc-600 text-xs py-4 border-t border-zinc-900">
+                MacCell CRM v2.5 • Panel Ejecutivo Unificado
+            </div>
+        </div >
     );
 }
 

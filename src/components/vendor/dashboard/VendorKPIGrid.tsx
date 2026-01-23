@@ -1,5 +1,5 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Banknote, Users, ShoppingBag, PackageCheck, AlertCircle, Wrench } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface VendorKPIGridProps {
     stats: {
@@ -11,6 +11,51 @@ interface VendorKPIGridProps {
     }
 }
 
+function MetricCard({ title, value, subtext, accentColor, icon: Icon, trend }: any) {
+    const colorMap: any = {
+        emerald: "from-emerald-600/20 to-emerald-600/5 text-emerald-500 border-emerald-600/20",
+        blue: "from-blue-600/20 to-blue-600/5 text-blue-500 border-blue-600/20",
+        violet: "from-violet-600/20 to-violet-600/5 text-violet-500 border-violet-600/20",
+        orange: "from-orange-600/20 to-orange-600/5 text-orange-500 border-orange-600/20"
+    };
+    const styles = colorMap[accentColor] || colorMap.blue;
+
+    return (
+        <div className={cn(
+            "relative overflow-hidden rounded-2xl p-6 border border-zinc-800/50 bg-[#18181b] flex flex-col justify-between h-full min-h-[140px] hover:border-zinc-700 transition-all shadow-sm group"
+        )}>
+            {/* Background Glow */}
+            <div className={cn("absolute -right-6 -top-6 w-24 h-24 rounded-full blur-3xl opacity-20 bg-gradient-to-br", styles)}></div>
+
+            <div className="flex justify-between items-start z-10 relative">
+                <div className="flex-1 w-full overflow-hidden">
+                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-2">{title}</p>
+                    <div className="flex items-baseline gap-1 w-full">
+                        <h3 className={cn(
+                            "font-bold text-white tracking-tight truncate leading-none",
+                            String(value).length > 12 ? "text-2xl" : "text-3xl xl:text-4xl"
+                        )} title={String(value)}>
+                            {value}
+                        </h3>
+                    </div>
+                </div>
+                <div className={cn("p-2.5 rounded-xl ml-3 flex-shrink-0 bg-zinc-900/50 border border-current opacity-80", styles.split(" ")[2], styles.split(" ")[3])}>
+                    <Icon size={20} strokeWidth={2} />
+                </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-4 z-10 relative">
+                {trend && (
+                    <span className="bg-zinc-800 text-zinc-400 text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0">
+                        {trend}
+                    </span>
+                )}
+                <span className="text-xs text-zinc-500 font-medium truncate">{subtext}</span>
+            </div>
+        </div>
+    );
+}
+
 export function VendorKPIGrid({ stats }: VendorKPIGridProps) {
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value);
@@ -18,88 +63,36 @@ export function VendorKPIGrid({ stats }: VendorKPIGridProps) {
 
     return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-
-            {/* VENTAS MES */}
-            <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white transform transition-all hover:scale-105 duration-300">
-                <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-emerald-100 font-medium text-sm mb-1 uppercase tracking-wide">Ventas Mes</p>
-                            <h3 className="text-3xl font-extrabold">{formatCurrency(stats.salesMonthTotal)}</h3>
-                        </div>
-                        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-inner">
-                            <Banknote className="h-6 w-6 text-white" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                        <span className="bg-white/20 px-2 py-1 rounded text-xs font-semibold backdrop-blur-md">
-                            {stats.salesMonthCount} ventas
-                        </span>
-                        <span className="ml-2 text-emerald-100 text-xs">este mes</span>
-                    </div>
-                </CardContent>
-                <div className="absolute -top-12 -right-12 h-32 w-32 bg-gradient-to-br from-white/20 to-transparent rounded-full blur-2xl pointer-events-none"></div>
-            </Card>
-
-            {/* INGRESOS TALLER (EQUIPOS RECIBIDOS) */}
-            <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white transform transition-all hover:scale-105 duration-300">
-                <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-blue-100 font-medium text-sm mb-1 uppercase tracking-wide">Equipos Ingresados</p>
-                            <h3 className="text-3xl font-extrabold">{stats.repairsIntakeMonth}</h3>
-                        </div>
-                        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-inner">
-                            <Wrench className="h-6 w-6 text-white" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                        <span className="text-blue-100 text-xs">Recibidos para reparación este mes</span>
-                    </div>
-                </CardContent>
-                <div className="absolute -top-12 -right-12 h-32 w-32 bg-gradient-to-br from-white/20 to-transparent rounded-full blur-2xl pointer-events-none"></div>
-            </Card>
-
-            {/* EQUIPOS ENTREGADOS (CONTADOR) */}
-            <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white transform transition-all hover:scale-105 duration-300">
-                <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-purple-100 font-medium text-sm mb-1 uppercase tracking-wide">Equipos Entregados</p>
-                            <h3 className="text-3xl font-extrabold">{(stats as any).repairCountMonth || 0}</h3>
-                        </div>
-                        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-inner">
-                            <ShoppingBag className="h-6 w-6 text-white" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                        <span className="text-purple-100 text-xs">Entregados al cliente este mes</span>
-                    </div>
-                </CardContent>
-                <div className="absolute -top-12 -right-12 h-32 w-32 bg-gradient-to-br from-white/20 to-transparent rounded-full blur-2xl pointer-events-none"></div>
-            </Card>
-
-            {/* PARA RETIRAR */}
-            <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-amber-400 to-orange-600 text-white transform transition-all hover:scale-105 duration-300">
-                <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-amber-100 font-medium text-sm mb-1 uppercase tracking-wide">Para Retirar</p>
-                            <h3 className="text-3xl font-extrabold">{stats.readyForPickup.length}</h3>
-                        </div>
-                        <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-inner">
-                            <AlertCircle className="h-6 w-6 text-white" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                        <span className="bg-white/20 px-2 py-1 rounded text-xs font-bold backdrop-blur-md animate-pulse">
-                            ¡Avisar a clientes!
-                        </span>
-                    </div>
-                </CardContent>
-                <div className="absolute -top-12 -right-12 h-32 w-32 bg-gradient-to-br from-white/20 to-transparent rounded-full blur-2xl pointer-events-none"></div>
-            </Card>
-
+            <MetricCard
+                title="Ventas Mes"
+                value={formatCurrency(stats.salesMonthTotal)}
+                subtext="Total facturado"
+                trend={`${stats.salesMonthCount} ventas`}
+                accentColor="emerald"
+                icon={Banknote}
+            />
+            <MetricCard
+                title="Equipos Ingresados"
+                value={stats.repairsIntakeMonth}
+                subtext="Recibidos para reparación"
+                accentColor="blue"
+                icon={Wrench}
+            />
+            <MetricCard
+                title="Equipos Entregados"
+                value={(stats as any).repairCountMonth || 0}
+                subtext="Entregados al cliente"
+                accentColor="violet"
+                icon={ShoppingBag}
+            />
+            <MetricCard
+                title="Para Retirar"
+                value={stats.readyForPickup.length}
+                subtext="Notificar a clientes"
+                accentColor="orange"
+                icon={AlertCircle}
+                trend="Acción requerida"
+            />
         </div>
     );
 }

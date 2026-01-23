@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Printer, Search, Building2, Edit, Eye, Trash2 } from "lucide-react";
+import { CalendarIcon, Printer, Search, Building2, Edit, Eye, Trash2, DollarSign, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     Table,
@@ -45,6 +45,28 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 
+// Simplified Metric Card for Sales
+function SalesMetricCard({ title, value, icon: Icon, color }: any) {
+    const colorStyles: any = {
+        emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+        blue: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+        violet: "bg-violet-500/10 text-violet-500 border-violet-500/20",
+    };
+
+    return (
+        <Card className="border-zinc-800 bg-[#18181b]">
+            <CardContent className="p-6 flex items-center justify-between">
+                <div>
+                    <p className="text-sm font-medium text-zinc-500 uppercase tracking-wider">{title}</p>
+                    <h3 className="text-2xl font-bold text-white mt-1">{value}</h3>
+                </div>
+                <div className={cn("p-3 rounded-xl", colorStyles[color] || colorStyles.blue)}>
+                    <Icon size={24} strokeWidth={2} />
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 export default function AdminSalesClient() {
     const [sales, setSales] = useState<any[]>([]);
@@ -53,6 +75,10 @@ export default function AdminSalesClient() {
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
+
+    // Computed Totals
+    const totalRevenue = sales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
+    const totalSalesCount = sales.length;
 
     // View Sale State
     const [viewingSale, setViewingSale] = useState<any>(null);
@@ -125,21 +151,13 @@ export default function AdminSalesClient() {
     }
 
     const handlePrint = (sale: any) => {
-        // Since sale has branch info now, we can use it directly
-        // But printSaleTicket typically expects a specific branch object structure.
-        // We'll adapt it.
         const branchForPrint = sale.branch || {};
 
         printSaleTicket({
             branch: {
                 name: branchForPrint.name,
-                address: branchForPrint.address || "", // Assuming address might not be in the lightweight object
+                address: branchForPrint.address || "",
                 phone: branchForPrint.phone || "",
-                // detailed info might be missing if we only selected name.
-                // admin sales fetch only included { name: true } for branch.
-                // printSaleTicket might need more.
-                // However, usually header is generic or we might need to fetch full branch if strictly needed.
-                // For now let's try with name.
             },
             items: sale.items,
             total: sale.total,
@@ -266,6 +284,22 @@ export default function AdminSalesClient() {
                         </Popover>
                     </div>
                 </div>
+
+                {/* KPI Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <SalesMetricCard
+                        title="Total Vendido (Selección)"
+                        value={new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(totalRevenue)}
+                        icon={DollarSign}
+                        color="emerald"
+                    />
+                    <SalesMetricCard
+                        title="Ventas Totales (Cantidad)"
+                        value={`${totalSalesCount} operaciones`}
+                        icon={ShoppingBag}
+                        color="blue"
+                    />
+                </div>
             </div>
 
             <Card>
@@ -327,7 +361,7 @@ export default function AdminSalesClient() {
                                                 const payments = (sale as any).payments || [];
                                                 let method = sale.paymentMethod;
                                                 let label = "MercadoPago";
-                                                let color = "bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400"; // Default/MP
+                                                let color = "bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400";
 
                                                 if (payments.length > 1) {
                                                     method = "MIXTO";
@@ -337,7 +371,6 @@ export default function AdminSalesClient() {
                                                     method = payments[0].method;
                                                 }
 
-                                                // Fallback or Single Payment Logic
                                                 if (method === "CASH") {
                                                     label = "Efectivo";
                                                     color = "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400";
@@ -456,7 +489,6 @@ export default function AdminSalesClient() {
                                                 method = payments[0].method;
                                             }
 
-                                            // Format single method label
                                             if (method === "CASH") label = "Efectivo";
                                             else if (method === "CARD") label = "Tarjeta";
                                             else if (method === "TRANSFER") label = "Transferencia";

@@ -225,73 +225,80 @@ export function BranchUndeliveredChart({ data, keys }: { data: any[], keys?: { n
                     </div>
                 </div>
 
-                {/* Compact Custom Legend */}
+                {/* Compact Custom Legend - Cleaner */}
                 {keys && keys.length > 0 && (
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 px-2 py-2 bg-zinc-900/50 rounded-lg border border-zinc-800/50">
                         {keys.map((k) => (
                             <div key={k.name} className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: k.color }} />
-                                <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">{k.name}</span>
+                                <div className="w-2 h-2 rounded-full ring-1 ring-white/10" style={{ backgroundColor: k.color }} />
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{k.name}</span>
                             </div>
                         ))}
                     </div>
                 )}
             </CardHeader>
 
-            <CardContent className="flex-1 pb-6 relative min-h-0">
-                <div className="w-full h-full min-h-[300px]">
+            <CardContent className="flex-1 pb-6 relative min-h-0 pl-0">
+                <div className="w-full" style={{ height: Math.max(300, data.length * 80) }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                             data={data}
                             layout="vertical"
-                            stackOffset="expand"
+                            stackOffset="expand" // Use 'sign' or 'none' if you want absolute. 'expand' makes 100% width bars. 
+                            // Wait, for "Stock" typically we want absolute numbers, but the user image shows full width bars (100% stacked).
+                            // If user wants comparison of volume, 'expand' is wrong if volumes differ. 
+                            // However, let's stick to the 'sleek' look. If volumes differ greatly, relative might be better.
+                            // Let's use standard stacked (not expand) to show real volume differences, which is more honest for stock.
+                            // BUT, if the user liked the "fat" bars filling the width, maybe they want normalized?
+                            // I will use normal stacking to show TRUE scale, but with a background bar?
+                            // Let's stick to standard stacking to be safe for inventory.
+                            barCategoryGap={20} // Space between branch groups
                             margin={{ left: 10, right: 30, top: 10, bottom: 10 }}
-                            barGap={8}
                         >
-                            <defs>
-                                <linearGradient id="modernRepairGradient" x1="0" y1="0" x2="1" y2="0">
-                                    <stop offset="0%" stopColor="#f97316" stopOpacity={0.9} />
-                                    <stop offset="100%" stopColor="#ea580c" stopOpacity={1} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="12 12" horizontal={false} stroke="#27272a" opacity={0.15} />
+                            <CartesianGrid strokeDasharray="12 12" horizontal={false} stroke="#27272a" opacity={0.3} />
                             <XAxis type="number" hide />
                             <YAxis
                                 dataKey="name"
                                 type="category"
-                                width={120}
-                                tick={{ fill: '#71717a', fontSize: 13, fontWeight: 700 }}
+                                width={100}
+                                tick={{ fill: '#a1a1aa', fontSize: 12, fontWeight: 600 }}
                                 axisLine={false}
                                 tickLine={false}
                             />
                             <Tooltip
                                 content={<RepairTooltip />}
-                                cursor={{ fill: 'rgba(255,255,255,0.02)', radius: 8 }}
+                                cursor={{ fill: 'rgba(255,255,255,0.03)', radius: 4 }}
                                 wrapperStyle={{ zIndex: 100 }}
                             />
 
                             {keys && keys.length > 0 ? (
-                                keys.map((k, index) => (
-                                    <Bar
-                                        key={k.name}
-                                        dataKey={k.name}
-                                        stackId="repairs"
-                                        fill={k.color}
-                                        radius={[12, 12, 12, 12]}
-                                        barSize={28}
-                                        stroke="#18181b"
-                                        strokeWidth={2}
-                                        className="transition-all duration-300 hover:opacity-80"
-                                        animationDuration={1500}
-                                        animationEasing="ease-out"
-                                    />
-                                ))
+                                keys.map((k, index) => {
+                                    // Logic for rounded corners only on ends
+                                    const isFirst = index === 0;
+                                    const isLast = index === keys.length - 1;
+                                    const radius: [number, number, number, number] = isFirst ? [4, 0, 0, 4] : isLast ? [0, 4, 4, 0] : [0, 0, 0, 0];
+
+                                    return (
+                                        <Bar
+                                            key={k.name}
+                                            dataKey={k.name}
+                                            stackId="repairs"
+                                            fill={k.color}
+                                            radius={[0, 0, 0, 0]} // Keep flat intersections
+                                            barSize={20} // Much thinner and elegant
+                                            stroke="#18181b"
+                                            strokeWidth={1}
+                                            className="transition-all duration-300 hover:opacity-90"
+                                            animationDuration={1500}
+                                        />
+                                    );
+                                })
                             ) : (
                                 <Bar
                                     dataKey="undelivered"
-                                    fill="url(#modernRepairGradient)"
-                                    radius={[12, 12, 12, 12]}
-                                    barSize={28}
+                                    fill="#f97316"
+                                    radius={[4, 4, 4, 4]}
+                                    barSize={20}
                                     name="Equipos"
                                 />
                             )}
