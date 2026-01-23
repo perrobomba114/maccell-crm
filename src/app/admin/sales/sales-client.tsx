@@ -12,6 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Printer, Search, Building2, Edit, Eye, Trash2, DollarSign, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
 import {
     Table,
     TableBody,
@@ -69,12 +70,22 @@ function SalesMetricCard({ title, value, icon: Icon, color }: any) {
 }
 
 export default function AdminSalesClient() {
+    const searchParams = useSearchParams();
     const [sales, setSales] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
+
+    // Handle initial search param from notifications
+    useEffect(() => {
+        const querySearch = searchParams.get("search");
+        if (querySearch) {
+            setSearchTerm(querySearch);
+            setDate(undefined); // Clear date filter to search globally
+        }
+    }, [searchParams]);
 
     // Computed Totals
     const totalRevenue = sales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);

@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/actions/auth-actions";
 import { redirect } from "next/navigation";
 import AdminSalesClient from "./sales-client";
+import { Suspense } from "react";
 
 export default async function AdminSalesPage() {
     const user = await getCurrentUser();
@@ -9,5 +10,9 @@ export default async function AdminSalesPage() {
         redirect("/login");
     }
 
-    return <AdminSalesClient />;
+    return (
+        <Suspense fallback={<div className="p-8 text-center">Cargando ventas...</div>}>
+            <AdminSalesClient />
+        </Suspense>
+    );
 }

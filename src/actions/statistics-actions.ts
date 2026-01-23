@@ -51,7 +51,8 @@ export async function getGlobalStats(branchId?: string) {
         // 3. Sales Growth (Current Month vs Last Month)
         const salesCurrentMonth = await prisma.sale.aggregate({
             where: whereClauseMonth,
-            _sum: { total: true }
+            _sum: { total: true },
+            _count: { _all: true }
         });
         const salesLastMonth = await prisma.sale.aggregate({
             where: whereClauseLastMonth,
@@ -66,7 +67,9 @@ export async function getGlobalStats(branchId?: string) {
             totalSalesMetadata: totalSales._sum.total || 0,
             profitThisMonth,
             growthPercent: Math.round(growthPercent * 10) / 10,
-            salesThisMonth: currentTotal
+            salesThisMonth: currentTotal,
+            averageTicket: salesCurrentMonth._count._all > 0 ? Math.round(currentTotal / salesCurrentMonth._count._all) : 0,
+            totalSalesCount: salesCurrentMonth._count._all
         };
     } catch (error) {
         console.error("Error in getGlobalStats:", error);
@@ -154,7 +157,7 @@ export async function getProductStats(branchId?: string) {
         return {
             topSelling,
             lowStock: lowStock.map(s => ({
-                product: s.product.name,
+                name: s.product.name,
                 branch: s.branch.name,
                 quantity: s.quantity
             })),
@@ -351,7 +354,7 @@ export async function getRepairStats(branchId?: string) {
             const info = partsInfo.find(p => p.id === t.sparePartId);
             return {
                 name: info?.name || 'Unknown',
-                quantity: t._sum.quantity || 0,
+                count: t._sum.quantity || 0,
                 stockLocal: info?.stockLocal, // Note: This stock is global in schema, wait. 
                 // Schema: SparePart has 'stockLocal', 'stockDepot'. It doesn't seem per-branch in SparePart model. 
                 // Ah, SparePart is generic. 'ProductStock' is per branch. 'SparePart' has 'stockLocal'.

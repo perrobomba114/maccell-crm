@@ -262,7 +262,7 @@ export function UnifiedStatisticsDashboard({
                 />
                 <MetricCard
                     title="Ticket Promedio"
-                    value={fmtMoney(globalStats.salesThisMonth / (Math.max(globalStats.totalSalesCount || 1, 1)))}
+                    value={fmtMoney(globalStats.averageTicket || 0)}
                     subtext="Valor medio por venta"
                     accentColor="pink"
                     icon={TrendingUp}
