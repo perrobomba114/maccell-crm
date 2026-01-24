@@ -94,8 +94,8 @@ export function generateProductZpl(
     const totalH = Math.round(160 * factor);
 
     // OPTIMIZED SETTINGS
-    // Module Width: 4 for balanced readability
-    const modWidth = Math.round(4 * factor);
+    // Module Width: 2 for safe fitting (3 was causing overflow on right for some SKUs)
+    const modWidth = Math.round(2 * factor);
 
     // Barcode Height: 85 dots for better spacing
     const barHeight = Math.round(85 * factor);
@@ -103,8 +103,8 @@ export function generateProductZpl(
     // Y Position: 40 dots from top (more space from product name)
     const bcY = Math.round(40 * factor);
 
-    // X Position: Adjusted for module width 4
-    const baseX = Math.round(80 * factor);
+    // X Position: Move to the left (decreased from 100 to 30)
+    const baseX = Math.round(30 * factor);
     const bcX = baseX + manualOffset;
 
     // Font Config - Condensed for long product names
@@ -125,7 +125,7 @@ export function generateProductZpl(
     zpl += `
 ^FO0,${Math.round(12 * factor)}^A0N,${fontNameH},${fontNameW}^FB${totalW},1,0,C^FD${name}^FS
 
-^FO${bcX},${bcY}^BY${modWidth},3,${barHeight}^BCN,${barHeight},N,N,N^F${sku}^FS
+^FO${bcX},${bcY}^BY${modWidth},3,${barHeight}^BCN,${barHeight},N,N,N^FD${sku}^FS
 
 ^FO0,${skuY}^A0N,${fontSkuH},${fontSkuW}^FB${totalW},1,0,C^FD${sku}^FS
 
