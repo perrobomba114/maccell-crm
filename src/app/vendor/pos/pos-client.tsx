@@ -779,16 +779,13 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 }, 150);
 
                 // 3. Post-Sale: Check for Repairs and print Warranty / Wet Report
-                // We do this concurrently or slightly delayed to avoid blocking main ticket
+                // We do this concurrently with a slight stagger to avoid blocking main ticket and each other
                 setTimeout(() => {
-                    cart.forEach(item => {
-                        if (item.type === "REPAIR") {
-                            // Reconstruct minimal repair object needed for ticket
-                            // Ideally we would have the full object, but reconstruction works for print utils
-                            // We need: ticketNumber, deviceBrand, deviceModel, customer.name
-                            // item.name is "Ticket #1234"
-                            // item.details is "Samsung A10 - Juan Perez"
+                    const repairsInCart = cart.filter(item => item.type === "REPAIR");
 
+                    repairsInCart.forEach((item, index) => {
+                        // Stagger each repair by 2 seconds to ensure printer/browser can handle it
+                        setTimeout(() => {
                             const ticketNum = item.name.replace("Ticket #", "");
                             const detailsParts = item.details?.split(" - ") || ["Equipo", "Cliente"];
                             const deviceStr = detailsParts[0] || "Dispositivo";
@@ -796,7 +793,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
                             const repairStub = {
                                 ticketNumber: ticketNum,
-                                deviceBrand: deviceStr, // Hacky but works for display
+                                deviceBrand: deviceStr,
                                 deviceModel: "",
                                 customer: { name: customerName },
                                 isWet: item.isWet,
@@ -808,13 +805,14 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
                             if (item.isWet) {
                                 console.log("Auto-printing Wet Report for:", ticketNum);
+                                // Stagger wet report after its own warranty
                                 setTimeout(() => {
                                     printWetReport(repairStub);
-                                }, 1000); // 1s delay between warranty and wet report
+                                }, 1200);
                             }
-                        }
+                        }, index * 2500); // 2.5s between each repair warranty
                     });
-                }, 2000); // 2s delay to let Sale Ticket finish
+                }, 2500); // Start the first warranty 2.5s after the Sale ticket to respect the guard time safely
 
             } else {
                 toast.error(result.error || "Error al procesar venta");

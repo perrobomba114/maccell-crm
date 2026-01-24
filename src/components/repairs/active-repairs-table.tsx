@@ -16,7 +16,7 @@ import { AssignmentModal } from "./assignment-modal";
 import { AddImagesDialog } from "./add-images-dialog";
 import { RepairDetailsDialog } from "./repair-details-dialog"; // Import Dialog
 import { TransferRepairDialog } from "./transfer-repair-dialog";
-import { printRepairTicket } from "@/lib/print-utils";
+import { printRepairTicket, printWarrantyTicket, printWetReport } from "@/lib/print-utils";
 import { Share2 } from "lucide-react";
 
 interface ActiveRepairsTableProps {
@@ -57,6 +57,34 @@ export function ActiveRepairsTable({
     const [transferRepair, setTransferRepair] = useState<any | null>(null);
 
     const router = useRouter();
+
+    const handlePrint = (repair: any) => {
+        // Always print the repair ticket
+        printRepairTicket(repair);
+
+        // If status is "Entregado" (ID 10), also print warranty and wet report (if applicable)
+        if (repair.statusId === 10 || repair.status?.id === 10 || repair.status?.name === "Entregado") {
+            const repairStub = {
+                ticketNumber: repair.ticketNumber,
+                deviceBrand: repair.deviceBrand,
+                deviceModel: repair.deviceModel,
+                customer: { name: repair.customer.name },
+                isWet: repair.isWet,
+                branch: repair.branch
+            };
+
+            setTimeout(() => {
+                console.log("Printing extra docs for delivered repair:", repair.ticketNumber);
+                printWarrantyTicket(repairStub);
+
+                if (repair.isWet) {
+                    setTimeout(() => {
+                        printWetReport(repairStub);
+                    }, 1200);
+                }
+            }, 1000);
+        }
+    };
 
     const filteredRepairs = repairs.filter(repair => {
         const term = searchTerm.toLowerCase();
@@ -240,7 +268,7 @@ export function ActiveRepairsTable({
                                                         <Button
                                                             size="icon"
                                                             variant="ghost"
-                                                            onClick={() => printRepairTicket(repair)}
+                                                            onClick={() => handlePrint(repair)}
                                                             className="h-8 w-8 text-muted-foreground hover:text-primary"
                                                             title="Reimprimir Ticket"
                                                         >

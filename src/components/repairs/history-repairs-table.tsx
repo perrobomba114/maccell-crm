@@ -13,7 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { RepairDetailsDialog } from "@/components/repairs/repair-details-dialog";
 import { getRepairByIdAction } from "@/lib/actions/repairs";
 import { toast } from "sonner";
-import { printRepairTicket } from "@/lib/print-utils";
+import { printRepairTicket, printWarrantyTicket, printWetReport } from "@/lib/print-utils";
 
 interface HistoryRepairsTableProps {
     repairs: any[];
@@ -46,6 +46,34 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [loadingId, setLoadingId] = useState<string | null>(null);
+
+    const handlePrint = (repair: any) => {
+        // Always print the repair ticket
+        printRepairTicket(repair);
+
+        // If status is "Entregado" (ID 10), also print warranty and wet report (if applicable)
+        if (repair.statusId === 10 || repair.status?.id === 10 || repair.status?.name === "Entregado") {
+            const repairStub = {
+                ticketNumber: repair.ticketNumber,
+                deviceBrand: repair.deviceBrand,
+                deviceModel: repair.deviceModel,
+                customer: { name: repair.customer.name },
+                isWet: repair.isWet,
+                branch: repair.branch
+            };
+
+            setTimeout(() => {
+                console.log("Printing extra docs for delivered repair:", repair.ticketNumber);
+                printWarrantyTicket(repairStub);
+
+                if (repair.isWet) {
+                    setTimeout(() => {
+                        printWetReport(repairStub);
+                    }, 1200);
+                }
+            }, 1000);
+        }
+    };
 
     const handleViewDetails = async (repairId: string) => {
         setLoadingId(repairId);
@@ -184,7 +212,7 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    onClick={() => printRepairTicket(repair)}
+                                                    onClick={() => handlePrint(repair)}
                                                     className="h-8 w-8 text-muted-foreground hover:text-primary"
                                                     title="Imprimir Ticket"
                                                 >

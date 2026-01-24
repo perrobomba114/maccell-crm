@@ -282,6 +282,7 @@ export async function getActiveRepairsAction(branchId: string, statusIds?: numbe
                 customer: true,
                 status: true,
                 assignedTo: true,
+                branch: true,
                 parts: {
                     include: { sparePart: true }
                 }
@@ -327,6 +328,7 @@ export async function getRepairHistoryAction(branchId: string, query: string = "
                 customer: true,
                 status: true,
                 assignedTo: true,
+                branch: true,
                 parts: {
                     include: { sparePart: true }
                 }

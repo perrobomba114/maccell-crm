@@ -15,7 +15,8 @@ const PRINT_LOCK_DURATION = 5000; // 5 seconds lock
 // Classic Iframe Write Strategy (Restoring original behavior)
 const printHtml = (htmlContent: string) => {
     const now = Date.now();
-    if (now - lastPrintTime < 2000) {
+    // Reduced from 2000 to 800 to allow sequential tickets (Sale -> Warranty)
+    if (now - lastPrintTime < 800) {
         console.warn("Print ignored (spam protection).");
         return;
     }
