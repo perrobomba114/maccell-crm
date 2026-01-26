@@ -120,6 +120,12 @@ export function Sidebar({
             <Link
                 key={link.href}
                 href={link.href}
+                onClick={() => {
+                    if (isMobile && isMobileOpen) {
+                        if (onClose) onClose();
+                        else setInternalIsMobileOpen(false);
+                    }
+                }}
                 className={cn(
                     "group relative flex items-center transition-all duration-200 overflow-hidden",
                     isActive
