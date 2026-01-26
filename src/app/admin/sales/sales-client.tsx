@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Printer, Search, Building2, Edit, Eye, Trash2, DollarSign, ShoppingBag } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import {
@@ -45,6 +46,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 
 // Simplified Metric Card for Sales
 function SalesMetricCard({ title, value, icon: Icon, color }: any) {
@@ -333,11 +335,17 @@ export default function AdminSalesClient() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                                        Cargando ventas...
-                                    </TableCell>
-                                </TableRow>
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell><Skeleton className="h-4 w-24 mx-auto" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-20 mx-auto" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-32 mx-auto" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                                        <TableCell><Skeleton className="h-6 w-24 rounded-full mx-auto" /></TableCell>
+                                        <TableCell><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
+                                    </TableRow>
+                                ))
                             ) : sales.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
