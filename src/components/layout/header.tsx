@@ -76,7 +76,7 @@ export function Header({
     };
 
     return (
-        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60">
+        <header className="fixed top-0 left-0 right-0 z-50 md:sticky md:top-0 border-b border-border bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60">
             <div className="flex h-16 items-center justify-between px-6">
                 {/* Title + Mobile Menu */}
                 <div className="flex items-center gap-4">

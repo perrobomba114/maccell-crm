@@ -1,29 +1,88 @@
-import { getBranchesList, getBranchStats, getGlobalStats, getProductStats, getRepairStats } from "@/actions/statistics-actions";
-import { UnifiedStatisticsDashboard } from "@/components/admin/statistics/UnifiedStatisticsDashboard";
+import { Suspense } from "react";
+import {
+    getBranchesList,
+    getBranchStats,
+    getGlobalStats,
+    getProductStats,
+    getRepairStats
+} from "@/actions/statistics-actions";
+import { getRepairAnalytics } from "@/actions/dashboard-actions"; // Cross-import for Unified Tech Logic
+import { StatisticsHeader } from "@/components/admin/statistics/StatisticsHeader";
+import {
+    FinancialsRowWidget,
+    BranchProfitWidget,
+    MainChartsWidget,
+    OperationalRowWidget
+} from "@/components/admin/statistics/StatisticsWidgets";
+import { Card } from "@/components/ui/card";
 
 export const dynamic = 'force-dynamic';
 
-export default async function StatisticsPage(props: { searchParams: Promise<{ branchId?: string }> }) {
-    const searchParams = await props.searchParams;
-    const branchId = searchParams.branchId;
+function SectionSkeleton({ height = "h-[450px]" }: { height?: string }) {
+    return <div className={`w-full ${height} bg-[#18181b]/50 rounded-2xl animate-pulse border border-zinc-800/50 mb-8`} />;
+}
 
-    // Parallel fetch
-    const [branches, globalStats, productStats, branchStats, repairStats] = await Promise.all([
-        getBranchesList(),
-        getGlobalStats(branchId),
-        getProductStats(branchId),
-        getBranchStats(branchId),
-        getRepairStats(branchId)
-    ]);
+export default async function StatisticsPage({ searchParams }: { searchParams: Promise<{ branchId?: string }> }) {
+    const resolvedParams = await searchParams;
+    const branchId = resolvedParams.branchId;
+
+    // 1. Fast Data (Shell)
+    const branches = await getBranchesList();
+
+    // 2. Parallel Promises
+    const globalStatsPromise = getGlobalStats(branchId);
+    const branchStatsPromise = getBranchStats(branchId);
+    const productStatsPromise = getProductStats(branchId);
+
+    // Legacy repair stats (parts, etc)
+    const repairStatsPromise = getRepairStats(branchId);
+
+    // NEW: Unified Technician Logic from Dashboard Actions
+    const repairsAnalyticsPromise = getRepairAnalytics(branchId);
 
     return (
-        <UnifiedStatisticsDashboard
-            globalStats={globalStats}
-            branchStats={branchStats}
-            productStats={productStats}
-            repairStats={repairStats}
-            branches={branches}
-            currentBranchId={branchId}
-        />
+        <div className="min-h-screen bg-[#09090b] text-zinc-50 font-sans p-6 lg:p-8">
+
+            {/* Header (Static) */}
+            <StatisticsHeader branches={branches} currentBranchId={branchId} />
+
+            {/* KPI Cards (Streaming) */}
+            <Suspense fallback={<div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10"><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /></div>}>
+                <FinancialsRowWidget
+                    globalStatsPromise={globalStatsPromise}
+                    repairStatsPromise={repairStatsPromise}
+                />
+            </Suspense>
+
+            {/* Main Visuals Grid (Streaming) */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
+                {/* Revenue Chart */}
+                <Suspense fallback={<SectionSkeleton />}>
+                    <BranchProfitWidget branchStatsPromise={branchStatsPromise} />
+                </Suspense>
+
+                {/* Top Products Chart */}
+                <Suspense fallback={<SectionSkeleton />}>
+                    <MainChartsWidget
+                        branchStatsPromise={branchStatsPromise}
+                        productStatsPromise={productStatsPromise}
+                        repairStatsPromise={repairStatsPromise}
+                    />
+                </Suspense>
+            </div>
+
+            {/* Operational Tables (Streaming) - Includes Unified Tech Leaderboard */}
+            <Suspense fallback={<SectionSkeleton height="h-[350px]" />}>
+                <OperationalRowWidget
+                    repairStatsPromise={repairStatsPromise}
+                    productStatsPromise={productStatsPromise}
+                    repairsAnalyticsPromise={repairsAnalyticsPromise}
+                />
+            </Suspense>
+
+            <div className="text-center text-xs text-zinc-700 pb-10">
+                MacCell Analytics • Streaming Enabled
+            </div>
+        </div>
     );
 }

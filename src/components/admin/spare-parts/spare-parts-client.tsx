@@ -758,7 +758,7 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
 
 
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
 
                 <Input
                     placeholder="Buscar por nombre, SKU o marca..."
@@ -813,7 +813,7 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
                 </div>
             </div>
 
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>

@@ -3,25 +3,18 @@
 import { db as prisma } from "@/lib/db";
 
 // Admin Dashboard Stats - Unified Executive Version
-export async function getAdminStats(branchId?: string) {
+// --- Granular Data Fetching for Streaming ---
+
+export async function getSalesAnalytics(branchId?: string) {
     try {
+        const branchFilter = branchId ? { branchId } : {};
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-        sixMonthsAgo.setDate(1);
 
-        const branchFilter = branchId ? { branchId } : {};
-
-        // 1. Basic Counts
-        const [totalSalesCount] = await Promise.all([
-            prisma.sale.count({ where: branchFilter }),
-        ]);
-
-        // 2. Financials (Current Month)
+        // 1. Fetch Sales for Analysis
         const salesCurrentMonth = await prisma.sale.findMany({
             where: {
                 ...branchFilter,
@@ -45,60 +38,50 @@ export async function getAdminStats(branchId?: string) {
             }
         });
 
-        // 3. Financials (Last Month)
-        const salesLastMonth = await prisma.sale.findMany({
-            where: {
-                ...branchFilter,
-                createdAt: { gte: lastMonthStart, lte: lastMonthEnd } // Strictly last month
-            },
-            select: { total: true }
-        });
-        const lastMonthRevenue = salesLastMonth.reduce((acc, curr) => acc + curr.total, 0);
-
-        // Calculate Current Month Metrics (Fixed: Revenue via Aggregation)
-        // 1. Get Revenue via Aggregate (Consistent with Cash Shift)
+        // 2. Revenue & Last Month
         const revenueAgg = await prisma.sale.aggregate({
-            where: {
-                ...branchFilter,
-                createdAt: { gte: firstDayOfMonth }
-            },
+            where: { ...branchFilter, createdAt: { gte: firstDayOfMonth } },
             _sum: { total: true }
         });
         const revenue = revenueAgg._sum.total || 0;
 
+        const salesLastMonth = await prisma.sale.aggregate({
+            where: { ...branchFilter, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } },
+            _sum: { total: true }
+        });
+        const lastMonthRevenue = salesLastMonth._sum.total || 0;
+        const salesGrowth = lastMonthRevenue > 0 ? ((revenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
+
+        // 3. Process Sales (Profit, Categories, Stock Cost)
         let cost = 0;
+        let totalRepairPartsCost = 0;
         const categoryMap = new Map<string, number>();
+        const productMap = new Map<string, number>();
 
         salesCurrentMonth.forEach(sale => {
-            // Revenue is calculated via aggregate now
             sale.items.forEach((item: any) => {
                 let itemCost = 0;
                 let catName = "Otros";
 
+                // Product Count
+                productMap.set(item.name, (productMap.get(item.name) || 0) + item.quantity);
+
                 if (item.repair) {
-                    // It's a Repair
                     catName = "Servicio Técnico";
-                    // Calculate cost from spare parts used
                     if (item.repair.parts && item.repair.parts.length > 0) {
                         const partsCost = item.repair.parts.reduce((sum: number, part: any) => {
-                            // Assuming priceArg is the cost as discussed
                             return sum + (part.sparePart?.priceArg || 0) * part.quantity;
                         }, 0);
                         itemCost = partsCost;
+                        totalRepairPartsCost += partsCost * item.quantity;
                     }
                 } else {
-                    // It's a Product
                     itemCost = item.product?.costPrice || 0;
                     catName = item.product?.category?.name || "Otros";
                 }
 
-                // If item has quantity > 1 (rare for repairs but possible for products)
-                // We multiply the unit cost (or repair total cost) by the quantity sold
                 const totalLineCost = itemCost * item.quantity;
                 cost += totalLineCost;
-
-                // Profit per category
-                // For repairs: item.price is the Service Price. itemCost is the Spare Part cost.
                 const profit = (item.price * item.quantity) - totalLineCost;
 
                 if (profit > 0) {
@@ -109,137 +92,21 @@ export async function getAdminStats(branchId?: string) {
 
         const profit = revenue - cost;
         const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
-        const salesGrowth = lastMonthRevenue > 0 ? ((revenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
 
-        // 4. Repair Parts Cost (Expenses Control)
-        // Replaces "Stock Health" KPI
-        // We sum the cost of parts for all Sales in the current month that are repairs
-        let totalRepairPartsCost = 0;
-        salesCurrentMonth.forEach(sale => {
-            sale.items.forEach((item: any) => {
-                if (item.repair && item.repair.parts && item.repair.parts.length > 0) {
-                    const repairBaseCost = item.repair.parts.reduce((sum: number, part: any) => {
-                        return sum + (part.sparePart?.priceArg || 0) * part.quantity;
-                    }, 0);
-                    // Multiply by sold quantity (usually 1)
-                    totalRepairPartsCost += repairBaseCost * item.quantity;
-                }
-            });
-        });
-
-        // Reuse the stock health structure but pass the cost value
-        const stockHealth = totalRepairPartsCost;
-        const criticalStockItems = 0; // Not used for this new KPI anymore
-
-
-        // 5. Active Repairs & Priority
-        const repairsActive = await prisma.repair.findMany({
-            where: {
-                ...branchFilter,
-                statusId: { notIn: [10] } // 10 = Delivered
-            },
-            select: { promisedAt: true, statusId: true }
-        });
-
-        const activeRepairsCount = repairsActive.length;
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const highPriorityCount = repairsActive.filter(r =>
-            r.promisedAt && new Date(r.promisedAt) < tomorrow
-        ).length;
-
-
-        // 6. Category Share
         const categoryShare = Array.from(categoryMap.entries())
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
 
+        const topProducts = Array.from(productMap.entries())
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
 
-        // 7. Top Technicians
-
-
-        // 8. Top Technicians (Corrected to include ALL technicians)
-        const techUsers = await prisma.user.findMany({
-            where: {
-                role: 'TECHNICIAN',
-                // Removed branchId filter to include global technicians (like Alejandro)
-            },
-            select: { id: true, name: true }
-        });
-
-        // Fetch detailed repairs to calculate REAL-TIME remaining workload
-        const detailedTechRepairs = await prisma.repair.findMany({
-            where: {
-                assignedUserId: { in: techUsers.map(u => u.id) },
-                OR: [
-                    { statusId: { in: [3, 4] } }, // Active (Started) or Paused (Planned)
-                    {
-                        statusId: { in: [5, 6, 7, 10] }, // Completed (This month)
-                        updatedAt: { gte: firstDayOfMonth }
-                    }
-                ],
-                ...(branchId ? { branchId } : {})
-            },
-            select: {
-                assignedUserId: true,
-                statusId: true,
-                estimatedTime: true,
-                startedAt: true
-            }
-        });
-
-        const topTechnicians = techUsers.map(user => {
-            const userRepairs = detailedTechRepairs.filter(r => r.assignedUserId === user.id);
-
-            // 1. Calculate Count (Total Throughput + Active Load)
-            const count = userRepairs.length;
-
-            // 2. Calculate Remaining Time (Load)
-            let remainingLoad = 0;
-            const now = new Date();
-
-            userRepairs.forEach(r => {
-                if (r.statusId === 4) {
-                    // Paused/Planned: Full estimated time counts as load
-                    remainingLoad += (r.estimatedTime || 0);
-                } else if (r.statusId === 3) {
-                    // In Progress: Remaining time = Estimated - Elapsed
-                    if (r.startedAt && r.estimatedTime) {
-                        const elapsedMs = now.getTime() - new Date(r.startedAt).getTime();
-                        const elapsedMinutes = Math.floor(elapsedMs / (1000 * 60));
-                        const remaining = Math.max(0, r.estimatedTime - elapsedMinutes);
-                        remainingLoad += remaining;
-                    } else {
-                        // Fallback if missing data, assume full time
-                        remainingLoad += (r.estimatedTime || 0);
-                    }
-                }
-                // Completed repairs (5, 6, 7, 10) contribute 0 to "Remaining Load"
-            });
-
-            return {
-                name: user.name,
-                repairs: count,
-                time: remainingLoad, // This is now "Remaining Minutes"
-                percent: 0
-            };
-        }).sort((a, b) => b.repairs - a.repairs); // Sort by count, or maybe by time? User didn't specify, stick to repairs count for rank.
-
-        const maxRepairs = topTechnicians.length > 0 ? topTechnicians[0].repairs : 0;
-        topTechnicians.forEach(t => t.percent = maxRepairs > 0 ? (t.repairs / maxRepairs) * 100 : 0);
-
-
-        // 8. Stock Alerts List
+        // Stock Alerts (Independent of sales, but grouping in "Sales/Finance" block for now or separate?)
+        // Let's add it here to fill the "Stock" object as in original
         const stockAlertsRaw = await prisma.productStock.findMany({
-            where: {
-                ...branchFilter,
-                quantity: { lte: 3 }
-            },
-            include: {
-                product: { select: { name: true } },
-                branch: { select: { name: true } }
-            },
+            where: { ...branchFilter, quantity: { lte: 3 } },
+            include: { product: { select: { name: true } }, branch: { select: { name: true } } },
             take: 10,
             orderBy: { quantity: 'asc' }
         });
@@ -249,52 +116,130 @@ export async function getAdminStats(branchId?: string) {
             quantity: s.quantity
         }));
 
+        return {
+            financials: { revenue, profit, salesGrowth, profitMargin },
+            categoryShare: { total: profit, segments: categoryShare },
+            stock: {
+                health: totalRepairPartsCost,
+                criticalCount: 0,
+                alerts: stockAlerts,
+                topSold: topProducts
+            }
+        };
 
-        // 9. Top Products
-        const productMap = new Map<string, number>();
-        salesCurrentMonth.forEach(sale => {
-            sale.items.forEach((item: any) => {
-                productMap.set(item.name, (productMap.get(item.name) || 0) + item.quantity);
-            });
+    } catch (e) {
+        console.error("getSalesAnalytics error", e);
+        return { financials: {}, categoryShare: { segments: [] }, stock: { alerts: [], topSold: [] } };
+    }
+}
+
+export async function getRepairAnalytics(branchId?: string) {
+    try {
+        const branchFilter = branchId ? { branchId } : {};
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        // 1. Active & Priority
+        const repairsActive = await prisma.repair.findMany({
+            where: { ...branchFilter, statusId: { notIn: [10] } },
+            select: { promisedAt: true, statusId: true }
         });
-        const topProducts = Array.from(productMap.entries())
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 10);
+        const activeRepairsCount = repairsActive.length;
+        const highPriorityCount = repairsActive.filter(r => r.promisedAt && new Date(r.promisedAt) < tomorrow).length;
 
-        // 10. Spare Parts stats 
-        // Requires join with RepairPart -> SparePart
+        // 2. Technicians (Complex logic, copy from original)
+        const techUsers = await prisma.user.findMany({
+            where: { role: 'TECHNICIAN' },
+            select: { id: true, name: true }
+        });
+        const detailedTechRepairs = await prisma.repair.findMany({
+            where: {
+                assignedUserId: { in: techUsers.map(u => u.id) },
+                OR: [
+                    { statusId: { in: [3, 4] } },
+                    { statusId: { in: [5, 6, 7, 10] }, updatedAt: { gte: firstDayOfMonth } }
+                ],
+                ...branchFilter
+            },
+            select: { assignedUserId: true, statusId: true, estimatedTime: true, startedAt: true }
+        });
+
+        const topTechnicians = techUsers.map(user => {
+            const userRepairs = detailedTechRepairs.filter(r => r.assignedUserId === user.id);
+            const count = userRepairs.length;
+            let remainingLoad = 0;
+            const now = new Date();
+            userRepairs.forEach(r => {
+                if (r.statusId === 4) remainingLoad += (r.estimatedTime || 0);
+                else if (r.statusId === 3) {
+                    if (r.startedAt && r.estimatedTime) {
+                        const elapsedMs = now.getTime() - new Date(r.startedAt).getTime();
+                        remainingLoad += Math.max(0, r.estimatedTime - Math.floor(elapsedMs / 60000));
+                    } else remainingLoad += (r.estimatedTime || 0);
+                }
+            });
+            return { name: user.name, repairs: count, time: remainingLoad, percent: 0 };
+        }).sort((a, b) => b.repairs - a.repairs);
+
+        const maxRepairs = topTechnicians.length > 0 ? topTechnicians[0].repairs : 0;
+        topTechnicians.forEach(t => t.percent = maxRepairs > 0 ? (t.repairs / maxRepairs) * 100 : 0);
+
+        // 3. Frequent Parts
         const partsStats = await prisma.repairPart.groupBy({
             by: ['sparePartId'],
-            where: {
-                repair: branchFilter // This works in newer prisma
-            },
-            _count: { _all: true }, // usage count
+            where: { repair: branchFilter },
+            _count: { _all: true },
             orderBy: { _count: { sparePartId: 'desc' } },
             take: 10
         });
-        // Fetch part details
-        const partIds = partsStats.map(p => p.sparePartId);
         const partsDetails = await prisma.sparePart.findMany({
-            where: { id: { in: partIds } },
+            where: { id: { in: partsStats.map(p => p.sparePartId) } },
             select: { id: true, name: true, stockLocal: true }
         });
         const frequentParts = partsStats.map(p => {
             const detail = partsDetails.find(d => d.id === p.sparePartId);
-            return {
-                name: detail?.name || "Unknown Part",
-                usage: p._count._all,
-                stock: detail?.stockLocal || 0
-            };
+            return { name: detail?.name || "Unknown", usage: p._count._all, stock: detail?.stockLocal || 0 };
         });
 
+        // 4. Monthly Distribution
+        const repairsByStatusRaw = await prisma.repair.groupBy({
+            by: ['statusId'],
+            where: { ...branchFilter, createdAt: { gte: firstDayOfMonth } },
+            _count: { _all: true }
+        });
+        const allStatuses = await prisma.repairStatus.findMany();
+        const monthlyStatusDistribution = repairsByStatusRaw.map(item => {
+            const status = allStatuses.find(s => s.id === item.statusId);
+            return { name: status?.name || `Status ${item.statusId}`, value: item._count._all, color: status?.color || '#888' };
+        }).sort((a, b) => b.value - a.value);
 
-        // 11. Recent Sales (Rich Data for Dashboard Tables)
+        return {
+            repairs: {
+                active: activeRepairsCount,
+                highPriority: highPriorityCount,
+                technicians: topTechnicians,
+                frequentParts,
+                monthlyStatusDistribution
+            }
+        };
+
+    } catch (e) {
+        console.error("getRepairAnalytics error", e);
+        return { repairs: { active: 0, technicians: [], frequentParts: [], monthlyStatusDistribution: [] } };
+    }
+}
+
+export async function getRecentTransactions(branchId?: string) {
+    try {
+        const branchFilter = branchId ? { branchId } : {};
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
         const recentSales = await prisma.sale.findMany({
-            where: {
-                ...branchFilter,
-                createdAt: { gte: firstDayOfMonth }
-            },
+            where: { ...branchFilter, createdAt: { gte: firstDayOfMonth } },
             include: {
                 items: {
                     include: {
@@ -311,75 +256,32 @@ export async function getAdminStats(branchId?: string) {
         const formattedRecentSales = recentSales.map((sale: any) => ({
             id: sale.id,
             saleNumber: sale.saleNumber,
-            customerName: "Cliente Final", // Placeholder as not in schema
+            customerName: "Cliente Final",
             total: sale.total,
             branchName: sale.branch?.name || "Sucursal",
             createdAt: sale.createdAt,
-            // Determine "Main Category" of the sale for filtering
             category: sale.items[0]?.repair ? "Servicio Técnico" : sale.items[0]?.product?.category?.name || "Otros",
             itemCount: sale.items.length
         }));
 
-        // 12. Monthly Repairs by Status (New User Request)
-        const repairsByStatusRaw = await prisma.repair.groupBy({
-            by: ['statusId'],
-            where: {
-                ...branchFilter,
-                createdAt: { gte: firstDayOfMonth }
-            },
-            _count: { _all: true }
-        });
-
-        const allStatuses = await prisma.repairStatus.findMany();
-        const monthlyStatusDistribution = repairsByStatusRaw.map(item => {
-            const status = allStatuses.find(s => s.id === item.statusId);
-            return {
-                name: status?.name || `Status ${item.statusId}`,
-                value: item._count._all,
-                color: status?.color || '#888' // Fallback color
-            };
-        }).sort((a, b) => b.value - a.value);
-
-
-        // Return Unified Structure
-        return {
-            financials: {
-                revenue,
-                profit,
-                salesGrowth,
-                profitMargin
-            },
-            tables: {
-                recentSales: formattedRecentSales
-            },
-            repairs: {
-                active: activeRepairsCount,
-                highPriority: highPriorityCount,
-                technicians: topTechnicians,
-                frequentParts,
-                monthlyStatusDistribution // Newly added
-            },
-            stock: {
-                health: stockHealth,
-                criticalCount: criticalStockItems,
-                alerts: stockAlerts,
-                topSold: topProducts
-            },
-            categoryShare: {
-                total: profit,
-                segments: categoryShare
-            }
-        };
-
-    } catch (error) {
-        console.error("[Unified Dashboard] Error:", error);
-        return {
-            financials: { revenue: 0, profit: 0, salesGrowth: 0, profitMargin: 0 },
-            repairs: { active: 0, highPriority: 0, technicians: [], frequentParts: [], monthlyStatusDistribution: [] },
-            stock: { health: 0, criticalCount: 0, alerts: [], topSold: [] },
-            categoryShare: { total: 0, segments: [] }
-        };
+        return { tables: { recentSales: formattedRecentSales } };
+    } catch (e) {
+        return { tables: { recentSales: [] } };
     }
+}
+
+export async function getAdminStats(branchId?: string) {
+    const [sales, repairs, transactions] = await Promise.all([
+        getSalesAnalytics(branchId),
+        getRepairAnalytics(branchId),
+        getRecentTransactions(branchId)
+    ]);
+
+    return {
+        ...sales,
+        ...repairs,
+        ...transactions
+    };
 }
 
 // Vendor and Technician Stats - RESTORED

@@ -137,7 +137,7 @@ export default function AdminLayout({
             >
                 <div className="print:hidden">
                     <Header
-                        title="Panel de Administración"
+                        title=""
                         userName={userName}
                         userEmail={userEmail}
                         userImage={userImage}
@@ -157,7 +157,7 @@ export default function AdminLayout({
                             duration: 0.3,
                             ease: [0.4, 0, 0.2, 1],
                         }}
-                        className="p-6 print:p-0"
+                        className="p-6 pt-[5.5rem] md:pt-6 print:p-0"
                     >
                         {children}
                     </motion.main>

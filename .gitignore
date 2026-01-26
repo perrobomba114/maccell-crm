@@ -49,3 +49,7 @@ afip-certs/
 # Editor
 .vscode/
 .idea/
+
+# Agent related
+.agent/
+.agents/
