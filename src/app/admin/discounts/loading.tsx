@@ -1,27 +1,29 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Loading() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <div>
-                    <Skeleton className="h-9 w-48 mb-2" />
-                    <Skeleton className="h-4 w-64" />
-                </div>
+                <Skeleton className="h-9 w-48" />
+                <Button disabled>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nuevo Descuento
+                </Button>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle><Skeleton className="h-6 w-40" /></CardTitle>
+                    <CardTitle><Skeleton className="h-6 w-32" /></CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                        <Skeleton className="h-10 w-full sm:w-48" /> {/* Month/Date Picker */}
-                        <Skeleton className="h-10 w-full sm:w-48" /> {/* Branch Select */}
+                    <div className="mb-4">
+                        <Skeleton className="h-10 w-full max-w-sm" /> {/* Search */}
                     </div>
-                    <TableSkeleton columnCount={6} rowCount={10} />
+                    <TableSkeleton columnCount={5} rowCount={8} />
                 </CardContent>
             </Card>
         </div>
