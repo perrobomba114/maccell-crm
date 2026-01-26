@@ -122,7 +122,7 @@ export function VendorLayoutClient({
                 className="flex-1"
             >
                 <Header
-                    title="Panel de Ventas"
+                    title=""
                     userName={userName}
                     userEmail={userEmail}
                     userImage={userImage}
@@ -141,7 +141,7 @@ export function VendorLayoutClient({
                             duration: 0.3,
                             ease: [0.4, 0, 0.2, 1],
                         }}
-                        className="p-6"
+                        className="p-6 pt-[5.5rem] md:pt-6"
                     >
                         {children}
                     </motion.main>
