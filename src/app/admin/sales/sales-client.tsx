@@ -73,17 +73,25 @@ function SalesMetricCard({ title, value, icon: Icon, color }: any) {
 
 export default function AdminSalesClient() {
     const searchParams = useSearchParams();
+
+    // Initialize state directly from URL params to avoid race conditions
+    const initialQuery = searchParams.get("search") || "";
+
     const [sales, setSales] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [date, setDate] = useState<Date | undefined>(new Date());
-    const [searchTerm, setSearchTerm] = useState("");
+
+    // If we have an initial search, we clear the date. Otherwise default to Today.
+    const [date, setDate] = useState<Date | undefined>(
+        initialQuery ? undefined : new Date()
+    );
+    const [searchTerm, setSearchTerm] = useState(initialQuery);
     const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
 
-    // Handle initial search param from notifications
+    // Handle search param updates (navigation while on page)
     useEffect(() => {
         const querySearch = searchParams.get("search");
-        if (querySearch) {
+        if (querySearch && querySearch !== searchTerm) {
             setSearchTerm(querySearch);
             setDate(undefined); // Clear date filter to search globally
         }
