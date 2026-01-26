@@ -147,21 +147,9 @@ export default function AdminLayout({
                         onMenuClick={() => setIsSidebarOpen(true)}
                     />
                 </div>
-                <AnimatePresence mode="wait">
-                    <motion.main
-                        key={pathname}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{
-                            duration: 0.3,
-                            ease: [0.4, 0, 0.2, 1],
-                        }}
-                        className="p-6 pt-[5.5rem] md:pt-6 print:p-0"
-                    >
-                        {children}
-                    </motion.main>
-                </AnimatePresence>
+                <main className="p-6 pt-[5.5rem] md:pt-6 print:p-0">
+                    {children}
+                </main>
             </motion.div>
         </div>
     );
