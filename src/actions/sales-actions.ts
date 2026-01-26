@@ -79,12 +79,15 @@ export async function getSales(filters?: {
     }
 }
 
+import { createNotificationAction } from "@/lib/actions/notifications";
+
 export async function updateSalePaymentMethod(saleId: string, newMethod: "CASH" | "CARD" | "MERCADOPAGO") {
     const user = await getCurrentUser();
+    const isSystemAction = (user as any)?.isSystem === true; // Allow system bypass
 
     // Allow Admin or the specific Vendor who made the sale (if needed, but user said Admin role context)
     // For safety, let's allow Admin and Vendor.
-    if (!user || !user.branch) {
+    if (!isSystemAction && (!user || !user.branch)) {
         return { success: false, error: "No autorizado" };
     }
 
@@ -98,7 +101,7 @@ export async function updateSalePaymentMethod(saleId: string, newMethod: "CASH" 
         }
 
         // Optional: Check if user has right to edit
-        if (user.role !== "ADMIN" && sale.vendorId !== user.id) {
+        if (!isSystemAction && user && (user.role !== "ADMIN" && sale.vendorId !== user.id)) {
             return { success: false, error: "No tienes permiso para editar esta venta" };
         }
 
@@ -123,6 +126,54 @@ export async function updateSalePaymentMethod(saleId: string, newMethod: "CASH" 
     } catch (error) {
         console.error("Error updating payment method:", error);
         return { success: false, error: "Error al actualizar la venta" };
+    }
+}
+
+export async function requestPaymentMethodChange(saleId: string, newMethod: "CASH" | "CARD" | "MERCADOPAGO" | "TRANSFER") {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "No autorizado" };
+
+    try {
+        const sale = await db.sale.findUnique({
+            where: { id: saleId },
+            include: { vendor: true }
+        });
+
+        if (!sale) return { success: false, error: "Venta no encontrada" };
+
+        // Find Admins
+        const admins = await db.user.findMany({
+            where: { role: "ADMIN" }
+        });
+
+        const methodLabels: any = {
+            "CASH": "Efectivo",
+            "CARD": "Tarjeta",
+            "MERCADOPAGO": "MercadoPago",
+            "TRANSFER": "Transferencia"
+        };
+        const label = methodLabels[newMethod] || newMethod;
+
+        for (const admin of admins) {
+            await createNotificationAction({
+                userId: admin.id,
+                title: "Solicitud Cambio de Pago",
+                message: `${user.name} solicita cambiar venta #${sale.saleNumber.split("SALE-").pop()} a ${label}.`,
+                type: "ACTION_REQUEST",
+                actionData: {
+                    type: "CHANGE_PAYMENT",
+                    saleId: sale.id,
+                    newMethod: newMethod,
+                    previousMethod: sale.paymentMethod,
+                    requesterName: user.name
+                }
+            });
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error requesting payment change:", error);
+        return { success: false, error: "Error al enviar solicitud" };
     }
 }
 

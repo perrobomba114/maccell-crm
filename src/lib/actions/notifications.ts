@@ -112,6 +112,26 @@ export async function respondToNotificationAction(notificationId: string, respon
             return resolveStockDiscrepancy(notificationId, response === 'ACCEPTED');
         }
 
+        // Special handling for Payment Method Change
+        if (notification.actionData && (notification.actionData as any).type === "CHANGE_PAYMENT" && response === "ACCEPTED") {
+            const { saleId, newMethod } = notification.actionData as any;
+            // Direct DB update to avoid circular dependency with sales-actions.ts
+            const sale = await db.sale.findUnique({ where: { id: saleId } });
+            if (sale) {
+                const dataToUpdate: any = {
+                    paymentMethod: newMethod,
+                    wasPaymentModified: true,
+                };
+                if ((sale as any).originalPaymentMethod === null) {
+                    dataToUpdate.originalPaymentMethod = sale.paymentMethod;
+                }
+                await db.sale.update({
+                    where: { id: saleId },
+                    data: dataToUpdate
+                });
+            }
+        }
+
         // Update status
         await db.notification.update({
             where: { id: notificationId },

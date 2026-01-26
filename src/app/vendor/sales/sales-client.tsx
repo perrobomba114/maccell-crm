@@ -20,7 +20,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { updateSalePaymentMethod } from "@/actions/sales-actions";
+import { updateSalePaymentMethod, requestPaymentMethodChange } from "@/actions/sales-actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -81,13 +81,13 @@ export default function SalesClient({ branchData }: { branchData: any }) {
         if (!editingSale || !newPaymentMethod) return;
         setIsUpdating(true);
         try {
-            const result = await updateSalePaymentMethod(editingSale.id, newPaymentMethod as any);
+            // Vendors must request change
+            const result = await requestPaymentMethodChange(editingSale.id, newPaymentMethod as any);
             if (result.success) {
-                toast.success("Método de pago actualizado");
+                toast.success("Solicitud enviada al Administrador");
                 setEditingSale(null);
-                fetchSales(); // Refresh list
             } else {
-                toast.error(result.error || "Error al actualizar");
+                toast.error(result.error || "Error al enviar solicitud");
             }
         } catch (error) {
             toast.error("Error de conexión");
@@ -276,7 +276,7 @@ export default function SalesClient({ branchData }: { branchData: any }) {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setEditingSale(null)}>Cancelar</Button>
                         <Button onClick={handleUpdatePayment} disabled={isUpdating}>
-                            {isUpdating ? "Guardando..." : "Guardar Cambios"}
+                            {isUpdating ? "Enviando..." : "Enviar Solicitud"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
