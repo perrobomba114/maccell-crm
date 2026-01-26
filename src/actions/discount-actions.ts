@@ -2,14 +2,39 @@
 
 import { db } from "@/lib/db";
 
-export async function getPriceOverrides(limit: number = 50) {
+import { startOfDay, endOfDay } from "date-fns";
+
+interface GetPriceOverridesParams {
+    page?: number;
+    limit?: number;
+    date?: Date | null;
+}
+
+export async function getPriceOverrides({ page = 1, limit = 25, date }: GetPriceOverridesParams = {}) {
     try {
-        const overrides = await db.saleItem.findMany({
-            where: {
-                originalPrice: {
-                    not: null
+        const whereClause: any = {
+            originalPrice: {
+                not: null
+            }
+        };
+
+        if (date) {
+            whereClause.sale = {
+                createdAt: {
+                    gte: startOfDay(date),
+                    lte: endOfDay(date)
                 }
-            },
+            };
+        }
+
+        const total = await db.saleItem.count({
+            where: whereClause
+        });
+
+        const totalPages = Math.ceil(total / limit);
+
+        const overrides = await db.saleItem.findMany({
+            where: whereClause,
             include: {
                 sale: {
                     include: {
@@ -25,11 +50,11 @@ export async function getPriceOverrides(limit: number = 50) {
                     createdAt: "desc"
                 }
             },
-            take: limit
+            take: limit,
+            skip: (page - 1) * limit
         });
 
-        // Add explicit type check validation
-        return { success: true, overrides };
+        return { success: true, overrides, total, totalPages };
     } catch (error) {
         console.error("Error fetching price overrides:", error);
         return { success: false, error: "Error al cargar historial de descuentos." };

@@ -6,17 +6,14 @@ import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
-    Calendar,
+    Calendar as CalendarIcon,
     Store,
     User,
-    Tag,
     ArrowDown,
     ArrowUp,
     Search,
     Package,
-    Wrench,
     Clock,
-    AlertCircle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -34,22 +31,44 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 
 import { useRouter, useSearchParams } from "next/navigation";
 
-// ... inside component
 export default function AdminDiscountsPage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
+
     const [overrides, setOverrides] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    // Initialize from URL if present
+
+    // Filters
+    const [date, setDate] = useState<Date | undefined>(new Date()); // Default to Today
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+
+    // Client-side search (within the fetched page)
     const [searchTerm, setSearchTerm] = useState(searchParams.get("query") || "");
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [page, date]);
 
-    // Sync URL changes to state
+    // Sync URL changes to state for search
     useEffect(() => {
         const query = searchParams.get("query");
         if (query !== null) {
@@ -59,13 +78,34 @@ export default function AdminDiscountsPage() {
 
     const loadData = async () => {
         setLoading(true);
-        const res = await getPriceOverrides(100);
+        const res = await getPriceOverrides({
+            page,
+            limit: 25,
+            date: date || null
+        });
+
         if (res.success && res.overrides) {
             setOverrides(res.overrides);
+            setTotalPages(res.totalPages || 1);
         }
         setLoading(false);
     };
 
+    const handleSearch = (term: string) => {
+        setSearchTerm(term);
+        const params = new URLSearchParams(searchParams.toString());
+        if (term) params.set("query", term);
+        else params.delete("query");
+        router.replace(`?${params.toString()}`, { scroll: false });
+    };
+
+    const handleDateSelect = (newDate: Date | undefined) => {
+        setDate(newDate);
+        setPage(1); // Reset to page 1 on date change
+    };
+
+    // Client-side filtering of the SERVER-SIDE filtered page
+    // Note: This only filters what's on the current page. Ideal for small datasets per day.
     const filteredItems = overrides.filter(item =>
         item.product?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.sale.branch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -84,14 +124,42 @@ export default function AdminDiscountsPage() {
                         Registro y auditoría de modificaciones de precio.
                     </p>
                 </div>
-                <div className="relative w-full md:w-80 group">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input
-                        placeholder="Buscar..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 bg-background/50 focus:bg-background transition-all"
-                    />
+
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                    {/* Date Picker */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                    "w-full sm:w-[240px] justify-start text-left font-normal",
+                                    !date && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {date ? format(date, "PPP", { locale: es }) : <span>Seleccionar fecha</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end">
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={handleDateSelect}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
+
+                    {/* Search */}
+                    <div className="relative w-full sm:w-64 group">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                            placeholder="Buscar en esta página..."
+                            value={searchTerm}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            className="pl-9 bg-background/50 focus:bg-background transition-all"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -110,18 +178,17 @@ export default function AdminDiscountsPage() {
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="h-32 text-center">
-                                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground animate-pulse">
-                                        <Package className="h-8 w-8 opacity-50" />
-                                        <p>Cargando datos...</p>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <TableRow key={i}>
+                                    <TableCell colSpan={6} className="h-16 text-center">
+                                        <div className="h-4 bg-muted/50 rounded w-3/4 mx-auto animate-pulse" />
+                                    </TableCell>
+                                </TableRow>
+                            ))
                         ) : filteredItems.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                                    No se encontraron registros.
+                                    No se encontraron registros para la fecha seleccionada.
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -139,7 +206,7 @@ export default function AdminDiscountsPage() {
                                         <TableCell className="text-center py-4">
                                             <div className="flex flex-col items-center justify-center gap-1">
                                                 <div className="flex items-center gap-1.5 font-bold text-foreground">
-                                                    <Calendar className="h-3.5 w-3.5 text-primary/70" />
+                                                    <CalendarIcon className="h-3.5 w-3.5 text-primary/70" />
                                                     {format(new Date(item.sale.createdAt), "dd MMM", { locale: es })}
                                                 </div>
                                                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -241,6 +308,41 @@ export default function AdminDiscountsPage() {
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex justify-end pt-4">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                />
+                            </PaginationItem>
+
+                            {Array.from({ length: totalPages }).map((_, i) => (
+                                <PaginationItem key={i}>
+                                    <PaginationLink
+                                        isActive={page === i + 1}
+                                        onClick={() => setPage(i + 1)}
+                                        className="cursor-pointer"
+                                    >
+                                        {i + 1}
+                                    </PaginationLink>
+                                </PaginationItem>
+                            ))}
+
+                            <PaginationItem>
+                                <PaginationNext
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
         </div>
     );
 }
