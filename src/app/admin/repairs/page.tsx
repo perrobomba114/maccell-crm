@@ -2,6 +2,7 @@ import { getUserData } from "@/actions/get-user";
 import { getAllRepairsForAdminAction } from "@/lib/actions/repairs";
 import { getAllBranches } from "@/actions/get-branches";
 import { AdminRepairsTable } from "@/components/repairs/admin-repairs-table";
+import { TechnicianStatsCards } from "@/components/repairs/technician-stats-cards";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,9 @@ export default async function AdminRepairsPage() {
                     </Button>
                 </Link>
             </div>
+
+            {/* Performance Cards */}
+            <TechnicianStatsCards />
 
             <Card>
                 <CardHeader>
