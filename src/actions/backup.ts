@@ -5,23 +5,16 @@ import fs from "fs";
 import path from "path";
 import util from "util";
 import { revalidatePath } from "next/cache";
+import { db } from "@/lib/db";
+import os from "os";
 
 const execAsync = util.promisify(exec);
 
-const BACKUP_DIR = path.join(process.cwd(), "backups");
-
-function ensureBackupDir() {
-    if (!fs.existsSync(BACKUP_DIR)) {
-        try {
-            fs.mkdirSync(BACKUP_DIR, { recursive: true });
-        } catch (e) {
-            console.error("Failed to create backup directory:", e);
-            throw new Error("No se pudo crear el directorio de backups. Verifique permisos.");
-        }
-    }
-}
+// Temporary directory for processing
+const TEMP_DIR = os.tmpdir();
 
 export type BackupFile = {
+    id: string; // Changed from just name to include ID
     name: string;
     size: number;
     createdAt: Date;
@@ -29,17 +22,17 @@ export type BackupFile = {
 
 export async function listBackups(): Promise<{ success: boolean; backups?: BackupFile[]; error?: string }> {
     try {
-        ensureBackupDir();
-
-        const files = fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith(".sql"));
-        const backups = files.map(file => {
-            const stats = fs.statSync(path.join(BACKUP_DIR, file));
-            return {
-                name: file,
-                size: stats.size,
-                createdAt: stats.birthtime
-            };
-        }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const backups = await db.backup.findMany({
+            select: {
+                id: true,
+                name: true,
+                size: true,
+                createdAt: true
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
 
         return { success: true, backups };
     } catch (error) {
@@ -50,23 +43,36 @@ export async function listBackups(): Promise<{ success: boolean; backups?: Backu
 
 export async function createBackup(): Promise<{ success: boolean; filename?: string; error?: string }> {
     try {
-        ensureBackupDir();
         const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
         const filename = `backup_${timestamp}.sql`;
-        const filepath = path.join(BACKUP_DIR, filename);
+        const filepath = path.join(TEMP_DIR, filename);
 
         const dbUrl = process.env.DATABASE_URL;
         if (!dbUrl) throw new Error("DATABASE_URL no definida");
 
-        // Clean query params (like ?schema=public) which native tools might reject
         const url = new URL(dbUrl);
         url.search = "";
         const cleanDbUrl = url.toString();
 
-        // pg_dump command
+        // 1. Create Dump to Temp File
         const command = `pg_dump "${cleanDbUrl}" --clean --if-exists --no-owner --no-acl -f "${filepath}"`;
-
         await execAsync(command);
+
+        // 2. Read file to buffer
+        const fileBuffer = fs.readFileSync(filepath);
+        const stats = fs.statSync(filepath);
+
+        // 3. Save to DB
+        await db.backup.create({
+            data: {
+                name: filename,
+                size: stats.size,
+                content: fileBuffer
+            }
+        });
+
+        // 4. Cleanup Temp File
+        fs.unlinkSync(filepath);
 
         revalidatePath("/admin/backups");
         return { success: true, filename };
@@ -78,10 +84,20 @@ export async function createBackup(): Promise<{ success: boolean; filename?: str
 
 export async function restoreBackup(filename: string): Promise<{ success: boolean; error?: string }> {
     try {
-        const filepath = path.join(BACKUP_DIR, filename);
-        if (!fs.existsSync(filepath)) {
-            throw new Error("Archivo de backup no encontrado");
+        // Find by name since UI sends filename currently (or id if we updated it)
+        // Let's support both if possible or stick to name as unique
+        const backup = await db.backup.findUnique({
+            where: { name: filename }
+        });
+
+        if (!backup) {
+            throw new Error("Archivo de backup no encontrado en base de datos");
         }
+
+        const filepath = path.join(TEMP_DIR, backup.name);
+
+        // 1. Write Buffer to Temp File
+        fs.writeFileSync(filepath, backup.content);
 
         const dbUrl = process.env.DATABASE_URL;
         if (!dbUrl) throw new Error("DATABASE_URL no definida");
@@ -90,9 +106,12 @@ export async function restoreBackup(filename: string): Promise<{ success: boolea
         url.search = "";
         const cleanDbUrl = url.toString();
 
+        // 2. Restore from Temp File
         const command = `psql "${cleanDbUrl}" < "${filepath}"`;
-
         await execAsync(command);
+
+        // 3. Cleanup
+        fs.unlinkSync(filepath);
 
         revalidatePath("/admin/backups");
         return { success: true };
@@ -104,15 +123,9 @@ export async function restoreBackup(filename: string): Promise<{ success: boolea
 
 export async function deleteBackup(filename: string): Promise<{ success: boolean; error?: string }> {
     try {
-        const filepath = path.join(BACKUP_DIR, filename);
-
-        if (!filepath.startsWith(BACKUP_DIR)) {
-            throw new Error("Ruta inválida");
-        }
-
-        if (fs.existsSync(filepath)) {
-            fs.unlinkSync(filepath);
-        }
+        await db.backup.delete({
+            where: { name: filename }
+        });
 
         revalidatePath("/admin/backups");
         return { success: true };
@@ -124,7 +137,6 @@ export async function deleteBackup(filename: string): Promise<{ success: boolean
 
 export async function uploadBackup(formData: FormData): Promise<{ success: boolean; error?: string }> {
     try {
-        ensureBackupDir();
         const file = formData.get("file") as File;
         if (!file) throw new Error("No se recibió ningún archivo");
 
@@ -133,9 +145,14 @@ export async function uploadBackup(formData: FormData): Promise<{ success: boole
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const filepath = path.join(BACKUP_DIR, file.name);
 
-        fs.writeFileSync(filepath, buffer);
+        await db.backup.create({
+            data: {
+                name: file.name,
+                size: file.size,
+                content: buffer
+            }
+        });
 
         revalidatePath("/admin/backups");
         return { success: true };
@@ -144,3 +161,4 @@ export async function uploadBackup(formData: FormData): Promise<{ success: boole
         return { success: false, error: "Error al subir backup" };
     }
 }
+
