@@ -61,8 +61,16 @@ export function AdminRepairsTable({ repairs, branches = [] }: AdminRepairsTableP
 
     const [isPending, startTransition] = useTransition();
 
-    // Helper to update URL params
-    const updateParams = (updates: Record<string, string | null>) => {
+    // Local state for debounced input
+    const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
+
+    // Sync local state when URL params change (e.g. navigation)
+    useEffect(() => {
+        setLocalSearchTerm(searchTerm);
+    }, [searchTerm]);
+
+    // Helper to update URL params - Memoized to use in effects
+    const updateParams = useMemo(() => (updates: Record<string, string | null>) => {
         startTransition(() => {
             const params = new URLSearchParams(searchParams.toString());
             Object.entries(updates).forEach(([key, value]) => {
@@ -76,10 +84,23 @@ export function AdminRepairsTable({ repairs, branches = [] }: AdminRepairsTableP
             if (!updates.page) params.delete("page");
             router.push(`${pathname}?${params.toString()}`, { scroll: false });
         });
-    };
+    }, [searchParams, pathname, router]);
+
+    // Debounce effect
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (localSearchTerm !== searchTerm) {
+                updateParams({ q: localSearchTerm });
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [localSearchTerm, searchTerm, updateParams]);
 
     const filteredRepairs = useMemo(() => {
         return repairs.filter(repair => {
+            // Use localSearchTerm for immediate feedback if desired, or searchTerm for consistent URL state.
+            // Using searchTerm (URL) ensures filtering happens only after debounce, which is the goal for performance.
             const term = searchTerm.toLowerCase();
             const matchesSearch = (
                 repair.ticketNumber.toLowerCase().includes(term) ||
@@ -94,7 +115,7 @@ export function AdminRepairsTable({ repairs, branches = [] }: AdminRepairsTableP
 
             return matchesSearch && matchesBranch;
         });
-    }, [repairs, searchTerm, selectedBranchId]);
+    }, [repairs, searchTerm, selectedBranchId]); // Depend on searchTerm (debounced via URL), not localSearchTerm
 
     const totalPages = Math.ceil(filteredRepairs.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -145,8 +166,8 @@ export function AdminRepairsTable({ repairs, branches = [] }: AdminRepairsTableP
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-muted-foreground group-focus-within:text-primary transition-colors duration-200" />
                     <Input
                         placeholder="Buscar por ticket, cliente, dispositivo…"
-                        value={searchTerm}
-                        onChange={(e) => updateParams({ q: e.target.value })}
+                        value={localSearchTerm}
+                        onChange={(e) => setLocalSearchTerm(e.target.value)}
                         className="pl-10 h-12 text-lg shadow-sm border-muted-foreground/20 focus-visible:ring-offset-2 transition-all duration-200 bg-background/50 backdrop-blur-sm"
                     />
                 </div>
