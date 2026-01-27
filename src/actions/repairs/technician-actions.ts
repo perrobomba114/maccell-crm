@@ -518,3 +518,78 @@ export async function transferRepairAction(repairId: string, fromTechId: string,
         return { success: false, error: "Error al realizar la transferencia" };
     }
 }
+
+export async function createSinglePartReturnAction(repairPartId: string, technicianId: string) {
+    try {
+        // 1. Get the RepairPart with details
+        const repairPart = await db.repairPart.findUnique({
+            where: { id: repairPartId },
+            include: {
+                sparePart: true,
+                repair: true
+            }
+        });
+
+        if (!repairPart || !repairPart.repair) {
+            return { success: false, error: "Repuesto no encontrado en la reparación." };
+        }
+
+        const repair = repairPart.repair;
+        if (repair.assignedUserId !== technicianId) {
+            return { success: false, error: "No tienes asignada esta reparación." };
+        }
+
+        // 2. Create the Snapshot for the Return Request
+        const partsSnapshot = [{
+            id: repairPart.id,
+            sparePartId: repairPart.sparePartId,
+            quantity: repairPart.quantity,
+            name: repairPart.sparePart.name,
+            sku: repairPart.sparePart.sku
+        }];
+
+        // 3. Transaction: Create Return Request AND Delete RepairPart
+        await db.$transaction(async (tx) => {
+            // Create Request
+            await tx.returnRequest.create({
+                data: {
+                    repairId: repair.id,
+                    technicianId: technicianId,
+                    technicianNote: `Devolución rápida desde reparación activa #${repair.ticketNumber}`,
+                    status: "PENDING",
+                    partsSnapshot: partsSnapshot
+                } as any
+            });
+
+            // Delete from BOM (Bill of Materials) of the repair
+            await tx.repairPart.delete({
+                where: { id: repairPartId }
+            });
+        });
+
+        // 4. Notify Admins
+        const admins = await db.user.findMany({
+            where: { role: "ADMIN" },
+            select: { id: true }
+        });
+
+        const techName = (await db.user.findUnique({ where: { id: technicianId }, select: { name: true } }))?.name || "Técnico";
+
+        await Promise.all(admins.map((admin: any) =>
+            createNotificationAction({
+                userId: admin.id,
+                title: "Devolución de Repuesto (Inmediata)",
+                message: `${techName} devolvió ${repairPart.sparePart.name} de la reparación #${repair.ticketNumber}.`,
+                type: "INFO",
+                link: "/admin/returns"
+            })
+        ));
+
+        revalidatePath("/technician/repairs");
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error creating single part return:", error);
+        return { success: false, error: "Error al procesar la devolución." };
+    }
+}

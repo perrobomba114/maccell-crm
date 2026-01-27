@@ -4,15 +4,21 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Image, Smartphone, User, Calendar, DollarSign, FileText, Clock, ImageOff } from "lucide-react";
+import { Image, Smartphone, User, Calendar, DollarSign, FileText, Clock, ImageOff, Plus, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { getImgUrl, isValidImg } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { createSinglePartReturnAction } from "@/actions/repairs/technician-actions";
+import { useRouter } from "next/navigation";
 
 interface RepairDetailsDialogProps {
     repair: any;
     isOpen: boolean;
     onClose: () => void;
+    currentUserId?: string;
+    onAddPart?: () => void;
 }
 
 const statusColorMap: Record<string, string> = {
@@ -62,7 +68,7 @@ function RepairImage({ url, index, onClick }: { url: string; index: number; onCl
     );
 }
 
-export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDialogProps) {
+export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, onAddPart }: RepairDetailsDialogProps) {
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
 
@@ -73,6 +79,31 @@ export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDi
     const handleImageClick = (index: number) => {
         setViewerIndex(index);
         setViewerOpen(true);
+    };
+
+    const router = useRouter();
+    const handleReturnPart = async (partId: string) => {
+        if (!currentUserId) return;
+
+        // Simple confirmation via browser native or just toast action (native is safer for destructive)
+        if (!confirm("¿Seguro que quieres devolver este repuesto? Se creará una solicitud de devolución y se eliminará de esta reparación.")) {
+            return;
+        }
+
+        const toastId = toast.loading("Procesando devolución...");
+
+        try {
+            const result = await createSinglePartReturnAction(partId, currentUserId);
+            if (result.success) {
+                toast.success("Repuesto devuelto y solicitud creada.", { id: toastId });
+                router.refresh();
+                // We keep dialog open, but data refreshes
+            } else {
+                toast.error(result.error || "Error al devolver.", { id: toastId });
+            }
+        } catch (error) {
+            toast.error("Error de conexión.", { id: toastId });
+        }
     };
 
     const colorClass = statusColorMap[repair.status.color] || "bg-gray-100 text-gray-800";
@@ -244,31 +275,69 @@ export function RepairDetailsDialog({ repair, isOpen, onClose }: RepairDetailsDi
                                         </div>
 
                                         {/* Assigned Parts Section */}
-                                        {repair.parts && repair.parts.length > 0 && (
-                                            <div className="space-y-2">
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
                                                 <h3 className="text-sm font-semibold text-muted-foreground pl-1 flex items-center gap-2">
                                                     REPUESTOS ASIGNADOS
                                                 </h3>
+                                                {/* Add Part Button (If active and owned) */}
+                                                {onAddPart && repair.assignedUserId === currentUserId && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-7 text-xs gap-1 border-dashed border-primary/50 text-primary hover:bg-primary/5 hover:text-primary hover:border-primary"
+                                                        onClick={onAddPart}
+                                                    >
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                        Agregar Repuesto
+                                                    </Button>
+                                                )}
+                                            </div>
+
+                                            {(!repair.parts || repair.parts.length === 0) && (
+                                                <div className="p-4 border border-dashed rounded-xl bg-muted/20 text-center">
+                                                    <p className="text-xs text-muted-foreground italic">No hay repuestos asignados a esta reparación.</p>
+                                                </div>
+                                            )}
+
+                                            {repair.parts && repair.parts.length > 0 && (
                                                 <div className="bg-card rounded-xl border shadow-sm divide-y">
                                                     {repair.parts.map((p: any, idx: number) => (
-                                                        <div key={idx} className="p-3 flex items-center justify-between text-sm">
+                                                        <div key={idx} className="p-3 flex items-center justify-between text-sm group">
                                                             <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400">
+                                                                <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
                                                                     <span className="font-bold text-xs">R</span>
                                                                 </div>
-                                                                <div>
-                                                                    <p className="font-medium text-foreground">{p.sparePart.name}</p>
-                                                                    <p className="text-xs text-muted-foreground">SKU: {p.sparePart.sku}</p>
+                                                                <div className="min-w-0">
+                                                                    <p className="font-medium text-foreground truncate">{p.sparePart.name}</p>
+                                                                    <p className="text-xs text-muted-foreground font-mono">SKU: {p.sparePart.sku}</p>
                                                                 </div>
                                                             </div>
-                                                            <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700 dark:bg-orange-900/10 dark:text-orange-400">
-                                                                Asignado
-                                                            </Badge>
+
+                                                            <div className="flex items-center gap-2">
+                                                                <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700 dark:bg-orange-900/10 dark:text-orange-400 whitespace-nowrap">
+                                                                    Asignado
+                                                                </Badge>
+
+                                                                {/* Return Button */}
+                                                                {currentUserId && repair.assignedUserId === currentUserId && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="destructive"
+                                                                        className="h-7 px-2 text-[10px] gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 border-0 shadow-none"
+                                                                        onClick={() => handleReturnPart(p.id)}
+                                                                        title="Devolver al inventario (Falla/Error)"
+                                                                    >
+                                                                        <RotateCcw className="w-3 h-3" />
+                                                                        Devolver
+                                                                    </Button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
 
 
                                         {/* Images */}

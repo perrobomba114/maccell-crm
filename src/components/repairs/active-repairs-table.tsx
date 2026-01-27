@@ -335,6 +335,21 @@ export function ActiveRepairsTable({
                     isOpen={!!viewDetailsRepair}
                     onClose={() => setViewDetailsRepair(null)}
                     repair={viewDetailsRepair}
+                    currentUserId={currentUserId}
+                    onAddPart={() => {
+                        // Close details and open assignment
+                        // Or keep details underneath? Better to close details or layer them?
+                        // AssignmentModal is a Dialog, simpler to switch.
+                        setAssignmentRepair(viewDetailsRepair);
+                        // Optional: setViewDetailsRepair(null); // Keep active if we want to return to it?
+                        // Let's close details to avoid stacking issues unless AssignmentModal handles it well.
+                        // Actually, user flow: Details -> Add Part -> AssignmentModal -> Close -> Details?
+                        // Simpler: Details -> Add Part (AssignmentModal opens on top)
+                        // If AssignmentModal is z-indexed higher, it's fine.
+                        // But let's close details for clarity, or just let them coexist.
+                        // Let's close details to avoid confusion.
+                        setViewDetailsRepair(null);
+                    }}
                 />
             )}
 
