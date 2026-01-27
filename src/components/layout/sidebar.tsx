@@ -127,18 +127,20 @@ export function Sidebar({
                     }
                 }}
                 className={cn(
-                    "group relative flex items-center transition-all duration-200 overflow-hidden",
+                    "relative flex items-center transition-all duration-200 overflow-hidden outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     isActive
-                        ? "text-primary bg-primary/10 shadow-sm"
-                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:shadow-sm",
+                        ? "text-primary bg-primary/10 shadow-sm font-medium"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                     !showLabel
                         ? "justify-center w-10 h-10 mx-auto rounded-full"
-                        : "w-full gap-3 px-3 py-2.5 rounded-xl"
+                        : "w-full gap-3 px-3 py-2.5 rounded-xl",
+                    // Mobile active state feedback
+                    "active:scale-95"
                 )}
             >
                 <Icon className={cn(
-                    "h-5 w-5 flex-shrink-0 transition-transform duration-200",
-                    isActive ? "text-primary" : "text-sidebar-foreground/70 group-hover:text-primary group-hover:scale-110"
+                    "h-5 w-5 flex-shrink-0 transition-colors duration-200",
+                    isActive ? "text-primary" : "text-muted-foreground"
                 )} />
 
                 {showLabel && (
