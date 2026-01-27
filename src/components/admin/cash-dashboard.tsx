@@ -171,83 +171,82 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
             </div>
 
             {/* Calendar */}
-            <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-                <div className="p-4 border-b bg-muted/40 flex items-center justify-between">
+            <div className="rounded-xl border bg-card shadow-sm overflow-hidden flex flex-col">
+                <div className="p-4 border-b bg-muted/40 flex items-center justify-between shrink-0">
                     <h3 className="font-semibold flex items-center gap-2">
                         <span className="capitalize">{format(currentDate, "MMMM", { locale: es })}</span>
                     </h3>
                 </div>
 
-                <div className="grid grid-cols-7 border-b bg-muted/20">
-                    {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map(day => (
-                        <div key={day} className="py-2 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                            {day}
+                <div className="overflow-x-auto pb-2">
+                    <div className="min-w-[800px]">
+                        <div className="grid grid-cols-7 border-b bg-muted/20">
+                            {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map(day => (
+                                <div key={day} className="py-2 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                    {day}
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
 
-                <div className="grid grid-cols-7 min-h-[400px] sm:min-h-[500px]">
-                    {Array.from({ length: startDayOfWeek }).map((_, i) => (
-                        <div key={`empty-${i}`} className="bg-muted/5 border-r border-b min-h-[100px]" />
-                    ))}
+                        <div className="grid grid-cols-7 min-h-[400px] sm:min-h-[500px]">
+                            {Array.from({ length: startDayOfWeek }).map((_, i) => (
+                                <div key={`empty-${i}`} className="bg-muted/5 border-r border-b min-h-[100px]" />
+                            ))}
 
-                    {daysInMonth.map((date) => {
-                        const daily = getDailyStats(date);
-                        const isToday = isSameDay(date, new Date());
-                        const hasData = daily.shifts > 0;
+                            {daysInMonth.map((date) => {
+                                const daily = getDailyStats(date);
+                                const isToday = isSameDay(date, new Date());
+                                const hasData = daily.shifts > 0;
 
-                        return (
-                            <div
-                                key={date.toString()}
-                                className={cn(
-                                    "flex flex-col p-2 border-r border-b min-h-[120px] transition-colors relative group hover:bg-muted/50 cursor-pointer",
-                                    isToday && "bg-blue-50/50 dark:bg-blue-950/20"
-                                )}
-                                onClick={() => {
-                                    if (hasData || isToday) setSelectedDay(date);
-                                }}
-                            >
-                                <span className={cn(
-                                    "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-2",
-                                    isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                                )}>
-                                    {format(date, "d")}
-                                </span>
+                                return (
+                                    <div
+                                        key={date.toString()}
+                                        className={cn(
+                                            "flex flex-col p-2 border-r border-b min-h-[120px] transition-colors relative group hover:bg-muted/50 cursor-pointer",
+                                            isToday && "bg-blue-50/50 dark:bg-blue-950/20"
+                                        )}
+                                        onClick={() => {
+                                            if (hasData || isToday) setSelectedDay(date);
+                                        }}
+                                    >
+                                        <span className={cn(
+                                            "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-2",
+                                            isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                                        )}>
+                                            {format(date, "d")}
+                                        </span>
 
-                                {hasData && (
-                                    <div className="mt-auto space-y-1 sm:space-y-1.5">
-                                        <div className="text-[10px] sm:text-sm font-black truncate text-foreground leading-none">
-                                            {formatCurrency(daily.total).split(',')[0]}
-                                        </div>
-                                        <div className="hidden sm:grid sm:grid-cols-2 gap-x-1 gap-y-0.5 text-[9px] font-bold uppercase tracking-tighter">
-                                            <div className="text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
-                                                <Store className="w-2 h-2" /> {daily.shifts}
-                                            </div>
-                                            <div className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                                                <ShoppingCart className="w-2 h-2" /> {daily.sales}
-                                            </div>
-                                            {daily.expenses > 0 && (
-                                                <div className="text-red-500 flex items-center gap-0.5 col-span-2">
-                                                    <CreditCard className="w-2 h-2" /> -{formatCurrency(daily.expenses)}
+                                        {hasData && (
+                                            <div className="mt-auto space-y-1 sm:space-y-1.5">
+                                                <div className="text-xs sm:text-sm font-black truncate text-foreground leading-none">
+                                                    {formatCurrency(daily.total).split(',')[0]}
                                                 </div>
-                                            )}
-                                        </div>
-                                        {/* Mobile simple view */}
-                                        <div className="flex sm:hidden items-center gap-1 text-[8px] font-black">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                            {daily.shifts}
-                                        </div>
-                                    </div>
-                                )}
+                                                <div className="grid grid-cols-2 gap-x-1 gap-y-0.5 text-[10px] sm:text-[9px] font-bold uppercase tracking-tighter">
+                                                    <div className="text-blue-600 dark:text-blue-400 flex items-center gap-0.5 whitespace-nowrap">
+                                                        <Store className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> {daily.shifts} turnos
+                                                    </div>
+                                                    <div className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 whitespace-nowrap">
+                                                        <ShoppingCart className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> {daily.sales} vtas
+                                                    </div>
+                                                    {daily.expenses > 0 && (
+                                                        <div className="text-red-500 flex items-center gap-0.5 col-span-2 whitespace-nowrap">
+                                                            <CreditCard className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> -{formatCurrency(daily.expenses).split(',')[0]}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
 
-                                {!hasData && isToday && (
-                                    <div className="mt-auto text-[10px] text-center text-muted-foreground italic">
-                                        Hoy
+                                        {!hasData && isToday && (
+                                            <div className="mt-auto text-[10px] text-center text-muted-foreground italic">
+                                                Hoy
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
             </div>
 
