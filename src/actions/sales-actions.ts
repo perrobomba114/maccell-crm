@@ -218,7 +218,7 @@ export async function getAdminSales(filters?: {
                 payments: true,
             },
             orderBy: { createdAt: "desc" },
-            take: 100, // Reasonable limit
+            take: 2000, // Increased limit to ensure full daily totals
         });
 
         return sales.map(s => ({
