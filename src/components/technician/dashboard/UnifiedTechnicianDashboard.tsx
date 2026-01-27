@@ -86,7 +86,7 @@ function JobRow({ job, isActive }: { job: any, isActive?: boolean }) {
                 </div>
             </div>
 
-            <Link href={`/technician/repairs/${job.id}`} className={cn(
+            <Link href={isActive ? "/technician/repairs" : "/technician/tickets"} className={cn(
                 "p-2 rounded-lg transition-colors",
                 isActive ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
             )}>
