@@ -22,7 +22,7 @@ export type BackupFile = {
 
 export async function listBackups(): Promise<{ success: boolean; backups?: BackupFile[]; error?: string }> {
     try {
-        const backups = await db.backup.findMany({
+        const backups = await (db as any).backup.findMany({
             select: {
                 id: true,
                 name: true,
@@ -63,7 +63,7 @@ export async function createBackup(): Promise<{ success: boolean; filename?: str
         const stats = fs.statSync(filepath);
 
         // 3. Save to DB
-        await db.backup.create({
+        await (db as any).backup.create({
             data: {
                 name: filename,
                 size: stats.size,
@@ -86,7 +86,7 @@ export async function restoreBackup(filename: string): Promise<{ success: boolea
     try {
         // Find by name since UI sends filename currently (or id if we updated it)
         // Let's support both if possible or stick to name as unique
-        const backup = await db.backup.findUnique({
+        const backup = await (db as any).backup.findUnique({
             where: { name: filename }
         });
 
@@ -123,7 +123,7 @@ export async function restoreBackup(filename: string): Promise<{ success: boolea
 
 export async function deleteBackup(filename: string): Promise<{ success: boolean; error?: string }> {
     try {
-        await db.backup.delete({
+        await (db as any).backup.delete({
             where: { name: filename }
         });
 
@@ -146,7 +146,7 @@ export async function uploadBackup(formData: FormData): Promise<{ success: boole
 
         const buffer = Buffer.from(await file.arrayBuffer());
 
-        await db.backup.create({
+        await (db as any).backup.create({
             data: {
                 name: file.name,
                 size: file.size,
