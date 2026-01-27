@@ -77,7 +77,8 @@ export async function GET(request: Request) {
             diagnosis: repair.diagnosis,
             statusId: repair.statusId,
             branch: repair.branch,
-            isWet: (repair as any).isWet // Cast to any until prisma client regenerates fully or just rely on JS runtime if type isn't updated? Prisma client SHOULD be updated by db push.
+            isWet: (repair as any).isWet,
+            deviceImages: (repair as any).deviceImages || [] // Cast to any until prisma client regenerates fully or just rely on JS runtime if type isn't updated? Prisma client SHOULD be updated by db push.
         });
 
         console.timeEnd("API_TOTAL_DURATION");

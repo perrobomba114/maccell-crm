@@ -15,7 +15,8 @@ import {
     MapPin,
     Phone,
     Info,
-    Loader2
+    Loader2,
+    Camera
 } from "lucide-react";
 import { RepairStatusBadge } from "@/components/repairs/status-badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -40,6 +41,7 @@ interface RepairData {
         imageUrl: string | null;
     };
     isWet?: boolean;
+    deviceImages?: string[];
 }
 
 interface RepairStatusViewProps {
@@ -257,6 +259,41 @@ export function RepairStatusView({ repair }: RepairStatusViewProps) {
                                     </motion.div>
                                 )}
                             </div>
+
+                            {/* PHOTOS SECTION */}
+                            {repair.deviceImages && repair.deviceImages.length > 0 && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-center md:justify-start gap-4">
+                                        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10 hidden md:block" />
+                                        <div className="flex items-center gap-2 text-[10px] font-black tracking-[0.3em] text-white/30 uppercase bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
+                                            <Camera className="w-3 h-3 text-primary" /> Fotos del Equipo
+                                        </div>
+                                        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {repair.deviceImages.map((img, index) => (
+                                            <motion.div
+                                                key={index}
+                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                transition={{ delay: index * 0.1 }}
+                                                className="relative aspect-square rounded-2xl overflow-hidden border border-white/10 group shadow-lg"
+                                            >
+                                                <Image
+                                                    src={getImgUrl(img)}
+                                                    alt={`Foto ${index + 1}`}
+                                                    fill
+                                                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-4">
+                                                    <span className="text-white text-xs font-bold tracking-widest uppercase">Ver Foto</span>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* DONE MESSAGE - PREMIUM POD */}
                             {(repair.statusId === 5 || repair.statusId === 6) && (
