@@ -454,12 +454,4 @@ enum ReturnStatus {
   REJECTED
 }
 
-model Backup {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  size      Int
-  content   Bytes
-  createdAt DateTime @default(now())
 
-  @@map("backups")
-}
