@@ -3,7 +3,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { getUserData } from "@/actions/get-user";
 
@@ -131,21 +131,9 @@ export function VendorLayoutClient({
                     profileHref="/vendor/profile"
                     onMenuClick={() => setIsSidebarOpen(true)}
                 />
-                <AnimatePresence mode="wait">
-                    <motion.main
-                        key={pathname}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{
-                            duration: 0.3,
-                            ease: [0.4, 0, 0.2, 1],
-                        }}
-                        className="p-6 pt-[5.5rem] md:pt-6"
-                    >
-                        {children}
-                    </motion.main>
-                </AnimatePresence>
+                <div className="p-6 pt-[5.5rem] md:pt-6">
+                    {children}
+                </div>
             </motion.div>
         </div>
     );
