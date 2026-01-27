@@ -28,7 +28,6 @@ const finishStatuses = [
     { id: 8, name: "Esperando Confirmación" },
     { id: 9, name: "Esperando Repuestos" },
 ];
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const statusColors: Record<number, string> = {
     4: "from-orange-500 to-orange-600",
@@ -49,10 +48,19 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const [viewerIndex, setViewerIndex] = useState(0);
     const [newImages, setNewImages] = useState<File[]>([]); // New state for tech images
     const images = (repair.deviceImages || []).filter(isValidImg);
-    const [showReturnAlert, setShowReturnAlert] = useState(false);
+    const [partsToReturn, setPartsToReturn] = useState<Set<string>>(new Set());
 
     // Initialize with existing value, allows tech to toggle ON if they find it wet
     const [isWet, setIsWet] = useState<boolean>(!!repair.isWet);
+
+    const togglePartReturn = (partId: string) => {
+        setPartsToReturn(prev => {
+            const next = new Set(prev);
+            if (next.has(partId)) next.delete(partId);
+            else next.add(partId);
+            return next;
+        });
+    };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -71,9 +79,17 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
         setNewImages(prev => prev.filter((_, i) => i !== index));
     };
 
-    const submitRepair = async (createReturnRequest: boolean) => {
+    const submitRepair = async () => {
+        if (!statusId) {
+            toast.error("Debes seleccionar un estado.");
+            return;
+        }
+        if (!diagnosis.trim()) {
+            toast.error("El diagnóstico es obligatorio.");
+            return;
+        }
+
         setIsLoading(true);
-        setShowReturnAlert(false); // Close alert if open
 
         try {
             // New FormData approach
@@ -82,8 +98,10 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             formData.append("technicianId", currentUserId);
             formData.append("statusId", statusId);
             formData.append("diagnosis", diagnosis);
-            formData.append("createReturnRequest", createReturnRequest.toString());
             formData.append("isWet", isWet.toString());
+
+            // Pass the IDs of parts to return as a JSON string
+            formData.append("returnPartIds", JSON.stringify(Array.from(partsToReturn)));
 
             newImages.forEach((file) => {
                 formData.append("images", file);
@@ -92,7 +110,11 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             const result = await finishRepairAction(formData);
 
             if (result.success) {
-                toast.success(createReturnRequest ? "Reparación finalizada y solicitud de devolución creada." : "Reparación actualizada correctamente.");
+                const returnCount = partsToReturn.size;
+                const msg = returnCount > 0
+                    ? `Reparación finalizada. Se generó solicitud de devolución para ${returnCount} repuesto(s).`
+                    : "Reparación actualizada correctamente.";
+                toast.success(msg);
                 onClose();
             } else {
                 toast.error(result.error || "Error al actualizar la reparación.");
@@ -103,31 +125,6 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleFinish = async () => {
-        if (!statusId) {
-            toast.error("Debes seleccionar un estado.");
-            return;
-        }
-        if (!diagnosis.trim()) {
-            toast.error("El diagnóstico es obligatorio.");
-            return;
-        }
-
-        // Logic check for Returns
-        const targetStatusIds = [4, 6, 7, 8, 9];
-        // Check if repair has parts. We need to respect the data structure passed.
-        // Usually repair.parts is an array.
-        const hasParts = repair.parts && Array.isArray(repair.parts) && repair.parts.length > 0;
-
-        if (targetStatusIds.includes(parseInt(statusId)) && hasParts) {
-            setShowReturnAlert(true);
-            return;
-        }
-
-        // Normal flow
-        await submitRepair(false);
     };
 
     return (
@@ -210,7 +207,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                             </div>
                         </div>
 
-                        {/* 2.5 Wet Equipment Flag (New) */}
+                        {/* 2.5 Wet Equipment Flag */}
                         <div className="flex items-center space-x-2 bg-blue-50/50 dark:bg-blue-900/10 p-2.5 rounded-lg border border-blue-100 dark:border-blue-800">
                             <Checkbox
                                 id="is_wet_finish"
@@ -231,6 +228,41 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                 </p>
                             </div>
                         </div>
+
+                        {/* 2.8 Parts Management (New) */}
+                        {repair.parts && repair.parts.length > 0 && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Repuestos Utilizados</Label>
+                                <div className="bg-muted/5 rounded-lg border border-border/50 divide-y divide-border/50">
+                                    {repair.parts.map((part: any, idx: number) => {
+                                        if (!part.sparePart) return null;
+                                        const isReturned = partsToReturn.has(part.id);
+                                        return (
+                                            <div key={part.id} className="p-3 flex items-center justify-between gap-3 bg-card/50">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-medium">{part.sparePart.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground font-mono">{part.sparePart.sku} - Qty: {part.quantity}</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <label htmlFor={`return-${part.id}`} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all cursor-pointer select-none ${isReturned ? 'bg-red-500/10 border-red-500/50 text-red-600' : 'bg-background border-border text-muted-foreground hover:bg-muted'}`}>
+                                                        <Checkbox
+                                                            id={`return-${part.id}`}
+                                                            checked={isReturned}
+                                                            onCheckedChange={() => togglePartReturn(part.id)}
+                                                            className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                                                        />
+                                                        <span className="text-xs font-medium">Devolver (Falla/Error)</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground px-1">
+                                    * Los repuestos NO marcados se considerarán consumidos exitosamente.
+                                </p>
+                            </div>
+                        )}
 
                         {/* 3. Evidence */}
                         <div className="space-y-2">
@@ -300,7 +332,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                             Cancelar
                         </Button>
                         <Button
-                            onClick={handleFinish}
+                            onClick={submitRepair}
                             disabled={isLoading}
                             className={`
                                 flex-1 sm:min-w-[140px] shadow-lg transition-all h-11 sm:h-10
@@ -323,32 +355,6 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                 currentIndex={viewerIndex}
                 onIndexChange={setViewerIndex}
             />
-
-            <AlertDialog open={showReturnAlert} onOpenChange={setShowReturnAlert}>
-                <AlertDialogContent className="border-l-4 border-l-blue-500">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <div className="p-2 bg-blue-100 rounded-full text-blue-600">
-                                <AlertCircle className="w-5 h-5" />
-                            </div>
-                            ¿Devolver Repuestos?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="text-muted-foreground">
-                            Esta reparación tiene repuestos asignados. Al seleccionar este estado, puedes generar automáticamente una solicitud para devolver <strong>TODOS</strong> los repuestos al inventario.
-                            <br /><br />
-                            Si confirmas, se creará una solicitud de devolución pendiente de aprobación.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-4">
-                        <AlertDialogCancel onClick={() => submitRepair(false)} className="border-0 hover:bg-muted font-medium">
-                            No, conservarlos
-                        </AlertDialogCancel>
-                        <AlertDialogAction onClick={() => submitRepair(true)} className="bg-blue-600 text-white hover:bg-blue-700 px-6 font-bold shadow-blue-200 shadow-md">
-                            Sí, Devolver al Stock
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </>
     );
 }

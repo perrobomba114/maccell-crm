@@ -182,7 +182,14 @@ export async function startRepairAction(repairId: string, technicianId: string, 
         // Logic: Promise = Now + Remaining Estimated Time (Business Hours)
         // If repair was paused, estimatedTime holds remaining minutes.
         const newPromisedAt = businessHoursService.addBusinessMinutes(now, estimatedMinutes);
-        dataToUpdate.promisedAt = newPromisedAt;
+
+        // CONDITIONAL UPDATE: Only extend if new date > current promised date
+        // This preserves the original promise if the technician is faster/earlier.
+        let dateUpdated = false;
+        if (!repair.promisedAt || newPromisedAt > repair.promisedAt) {
+            dataToUpdate.promisedAt = newPromisedAt;
+            dateUpdated = true;
+        }
 
         await db.repair.update({
             where: { id: repairId },
@@ -192,13 +199,19 @@ export async function startRepairAction(repairId: string, technicianId: string, 
         // Notify Vendor/Creator
         const technician = await db.user.findUnique({ where: { id: technicianId } });
         if (technician) {
-            const dateStr = newPromisedAt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
-            const timeStr = newPromisedAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            // Determine which date to show in notification
+            const finalPromisedAt = dateUpdated ? newPromisedAt : repair.promisedAt;
+            const dateStr = finalPromisedAt!.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+            const timeStr = finalPromisedAt!.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
+            const msgBody = dateUpdated
+                ? `Nueva fecha prometida: ${dateStr} a las ${timeStr}.`
+                : `Se mantiene fecha prometida: ${dateStr} a las ${timeStr}.`;
 
             await createNotificationAction({
                 userId: repair.userId,
-                title: "Reparación Iniciada / Fecha Actualizada",
-                message: `El téc. ${technician.name} inició la reparación #${repair.ticketNumber}. Nueva fecha prometida: ${dateStr} a las ${timeStr}.`,
+                title: "Reparación Iniciada",
+                message: `El téc. ${technician.name} inició la reparación #${repair.ticketNumber}. ${msgBody}`,
                 type: "INFO",
                 link: `/vendor/repairs/active`
             });
@@ -367,56 +380,71 @@ export async function finishRepairAction(formData: FormData) {
             console.error("Error sending notification:", notifError);
         }
 
-        // Handle Return Request
-        if (createReturnRequest) {
+        // Handle Return Request (Selective)
+        const returnPartIdsStr = formData.get("returnPartIds") as string;
+        let returnPartIds: string[] = [];
+        try {
+            if (returnPartIdsStr) {
+                returnPartIds = JSON.parse(returnPartIdsStr);
+            }
+        } catch (e) {
+            console.error("Error parsing returnPartIds", e);
+        }
+
+        if (returnPartIds.length > 0) {
             let partsSnapshot: any[] = [];
 
             if (repair.parts && Array.isArray(repair.parts)) {
                 try {
-                    partsSnapshot = repair.parts.map((p: any) => {
-                        if (!p.sparePart) return null;
-                        return {
-                            id: p.id,
-                            sparePartId: p.sparePartId,
-                            quantity: p.quantity,
-                            name: p.sparePart.name,
-                            sku: p.sparePart.sku
-                        };
-                    }).filter((p: any) => p !== null);
+                    // Filter parts that match the return IDs
+                    // And format them for the snapshot
+                    partsSnapshot = repair.parts
+                        .filter((p: any) => returnPartIds.includes(p.id))
+                        .map((p: any) => {
+                            if (!p.sparePart) return null;
+                            return {
+                                id: p.id,
+                                sparePartId: p.sparePartId,
+                                quantity: p.quantity,
+                                name: p.sparePart.name,
+                                sku: p.sparePart.sku
+                            };
+                        })
+                        .filter((p: any) => p !== null);
                 } catch (snapError) {
                     console.error("Error creating parts snapshot:", snapError);
-                    // Continue without snapshot or partial
                 }
             }
 
-            await db.returnRequest.create({
-                data: {
-                    repairId,
-                    technicianId,
-                    technicianNote: diagnosis,
-                    status: "PENDING",
-                    partsSnapshot: partsSnapshot
-                } as any
-            });
+            if (partsSnapshot.length > 0) {
+                await db.returnRequest.create({
+                    data: {
+                        repairId,
+                        technicianId,
+                        technicianNote: `${diagnosis} (Devolución parcial de repuestos)`,
+                        status: "PENDING",
+                        partsSnapshot: partsSnapshot
+                    } as any
+                });
 
-            // Notify Admins
-            const admins = await db.user.findMany({
-                where: { role: "ADMIN" },
-                select: { id: true }
-            });
+                // Notify Admins
+                const admins = await db.user.findMany({
+                    where: { role: "ADMIN" },
+                    select: { id: true }
+                });
 
-            const techName = (await db.user.findUnique({ where: { id: technicianId }, select: { name: true } }))?.name || "Técnico";
+                const techName = (await db.user.findUnique({ where: { id: technicianId }, select: { name: true } }))?.name || "Técnico";
 
-            await Promise.all(admins.map((admin: any) =>
-                createNotificationAction({
-                    userId: admin.id,
-                    title: "Nueva Solicitud de Devolución",
-                    message: `${techName} ha solicitado devolver repuestos de la reparación #${repair.ticketNumber}.`,
-                    type: "INFO",
-                    link: "/admin/returns"
-                })
-            ));
-
+                await Promise.all(admins.map((admin: any) =>
+                    createNotificationAction({
+                        userId: admin.id,
+                        title: "Nueva Devolución de Repuestos",
+                        message: `${techName} ha solicitado devolver ${partsSnapshot.length} repuestos de la reparación #${repair.ticketNumber}.`,
+                        type: "INFO",
+                        link: "/admin/returns"
+                    })
+                ));
+            }
         }
 
 

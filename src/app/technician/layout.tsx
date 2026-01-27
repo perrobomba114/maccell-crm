@@ -9,11 +9,14 @@ import { getUserData } from "@/actions/get-user";
 
 import { technicianGroups } from "@/components/layout/nav-config";
 
+import { TechnicianDeadlineMonitor } from "@/components/repairs/technician-deadline-monitor";
+
 export default function TechnicianLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    // ... state ...
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [userName, setUserName] = useState<string | undefined>("Usuario");
     const [userEmail, setUserEmail] = useState<string | undefined>("");
@@ -90,12 +93,15 @@ export default function TechnicianLayout({
 
     return (
         <div className="flex min-h-screen" suppressHydrationWarning>
+            <TechnicianDeadlineMonitor userId={userId} />
+
             <Sidebar
                 groups={technicianGroups}
                 onCollapseChange={setIsCollapsed}
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
             />
+            {/* ... rest of layout ... */}
             <motion.div
                 animate={{
                     paddingLeft: isMobile ? "0px" : (isCollapsed ? "4.5rem" : "17rem"),
