@@ -239,7 +239,9 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
     };
 
     const confirmRegisterAction = async () => {
-        const val = parseFloat(amountInput) || 0;
+        // Parse formatted input (1.000,50 -> 1000.50)
+        const cleanValue = amountInput.replace(/\./g, '').replace(',', '.');
+        const val = parseFloat(cleanValue) || 0;
 
         if (modalAction === "OPEN") {
             const res = await openRegister(vendorId, branchId, val);
@@ -1518,11 +1520,30 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-lg">$</span>
                                         <Input
-                                            type="number"
-                                            placeholder="0.00"
+                                            type="text"
+                                            inputMode="decimal"
+                                            placeholder="0,00"
                                             className="pl-8 text-2xl h-14 font-bold tracking-tight bg-secondary/20"
                                             value={amountInput}
-                                            onChange={(e) => setAmountInput(e.target.value)}
+                                            onChange={(e) => {
+                                                // Remove non-numeric chars except comma
+                                                let val = e.target.value.replace(/[^0-9,]/g, '');
+
+                                                // Ensure only one comma
+                                                const parts = val.split(',');
+                                                if (parts.length > 2) {
+                                                    val = parts[0] + ',' + parts.slice(1).join('');
+                                                }
+
+                                                // Format integer part with dots
+                                                if (parts[0]) {
+                                                    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                                                }
+
+                                                // Reassemble
+                                                const formatted = parts.join(',');
+                                                setAmountInput(formatted);
+                                            }}
                                             autoFocus
                                         />
                                     </div>
