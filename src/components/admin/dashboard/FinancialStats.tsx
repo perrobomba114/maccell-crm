@@ -16,36 +16,29 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, hre
     };
 
     const styles = colorMap[accentColor] || colorMap.blue;
-    const valueStr = String(value);
-    const isLong = valueStr.length > 10;
-    const isVeryLong = valueStr.length > 14;
 
     const Content = () => (
         <>
             {/* Background Glow */}
             <div className={cn("absolute -right-6 -top-6 w-24 h-24 rounded-full blur-3xl opacity-20 bg-gradient-to-br", styles)}></div>
 
-            <div className="flex justify-between items-start z-10 relative">
-                <div className="flex-1 w-full overflow-hidden">
-                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-2 group-hover:text-zinc-400 transition-colors">{title}</p>
-                    <div className="flex items-baseline gap-1 w-full">
-                        <h3 className={cn(
-                            "font-bold text-white tracking-tight truncate leading-none",
-                            isVeryLong ? "text-xl" : isLong ? "text-2xl" : "text-3xl"
-                        )} title={valueStr}>
-                            {value}
-                        </h3>
-                    </div>
-                </div>
-                <div className={cn("p-2.5 rounded-xl ml-3 flex-shrink-0 bg-zinc-900/50 border border-current opacity-80", styles.split(" ")[2], styles.split(" ")[3])}>
-                    <Icon size={20} strokeWidth={2} />
+            <div className="flex justify-between items-start z-10 relative mb-4">
+                <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider group-hover:text-zinc-400 transition-colors mt-1">{title}</p>
+                <div className={cn("p-2 rounded-lg flex-shrink-0 bg-zinc-900/50 border border-current opacity-80", styles.split(" ")[2], styles.split(" ")[3])}>
+                    <Icon size={18} strokeWidth={2} />
                 </div>
             </div>
 
-            <div className="flex items-center gap-3 mt-4 z-10 relative">
+            <div className="z-10 relative mb-4 flex-grow">
+                <h3 className="text-2xl lg:text-3xl font-bold text-white tracking-tight truncate" title={String(value)}>
+                    {value}
+                </h3>
+            </div>
+
+            <div className="flex items-center gap-2 z-10 relative mt-auto">
                 {trend && (
                     <span className={cn(
-                        "text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0 flex items-center gap-1",
+                        "text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0 flex items-center gap-1",
                         trend.positive ? "bg-emerald-500/10 text-emerald-500" : (accentColor === 'orange' ? "bg-zinc-800 text-zinc-400" : "bg-red-500/10 text-red-500")
                     )}>
                         {trend.positive ? "↑" : (accentColor === 'orange' ? "•" : "↓")} {trend.value}
@@ -59,7 +52,7 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, hre
     if (href) {
         return (
             <Link href={href} className={cn(
-                "relative overflow-hidden rounded-2xl p-6 border border-zinc-800/50 bg-[#18181b] flex flex-col justify-between h-full min-h-[140px] hover:border-zinc-700 hover:bg-zinc-900/50 transition-all shadow-sm group cursor-pointer"
+                "relative overflow-hidden rounded-2xl p-5 border border-zinc-800/50 bg-[#18181b] flex flex-col h-full hover:border-zinc-700 hover:bg-zinc-900/50 transition-all shadow-sm group cursor-pointer"
             )}>
                 <Content />
             </Link>
@@ -68,7 +61,7 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, hre
 
     return (
         <div className={cn(
-            "relative overflow-hidden rounded-2xl p-6 border border-zinc-800/50 bg-[#18181b] flex flex-col justify-between h-full min-h-[140px] hover:border-zinc-700 transition-all shadow-sm group"
+            "relative overflow-hidden rounded-2xl p-5 border border-zinc-800/50 bg-[#18181b] flex flex-col h-full hover:border-zinc-700 transition-all shadow-sm group"
         )}>
             <Content />
         </div>
