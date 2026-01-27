@@ -54,7 +54,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
             <StatisticsHeader branches={branches} currentBranchId={branchId} />
 
             {/* KPI Cards (Streaming) */}
-            <Suspense fallback={<div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10"><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /></div>}>
+            <Suspense key={`financials-${reportDate.toISOString()}`} fallback={<div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10"><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /></div>}>
                 <FinancialsRowWidget
                     globalStatsPromise={globalStatsPromise}
                     repairStatsPromise={repairStatsPromise}
@@ -64,12 +64,12 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
             {/* Main Visuals Grid (Streaming) */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
                 {/* Revenue Chart */}
-                <Suspense fallback={<SectionSkeleton />}>
+                <Suspense key={`revenue-${reportDate.toISOString()}`} fallback={<SectionSkeleton />}>
                     <BranchProfitWidget branchStatsPromise={branchStatsPromise} />
                 </Suspense>
 
                 {/* Top Products Chart */}
-                <Suspense fallback={<SectionSkeleton />}>
+                <Suspense key={`products-${reportDate.toISOString()}`} fallback={<SectionSkeleton />}>
                     <MainChartsWidget
                         branchStatsPromise={branchStatsPromise}
                         productStatsPromise={productStatsPromise}
@@ -79,7 +79,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
             </div>
 
             {/* Operational Tables (Streaming) - Includes Unified Tech Leaderboard */}
-            <Suspense fallback={<SectionSkeleton height="h-[350px]" />}>
+            <Suspense key={`operational-${reportDate.toISOString()}`} fallback={<SectionSkeleton height="h-[350px]" />}>
                 <OperationalRowWidget
                     repairStatsPromise={repairStatsPromise}
                     productStatsPromise={productStatsPromise}
