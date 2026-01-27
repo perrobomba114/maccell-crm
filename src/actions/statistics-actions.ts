@@ -15,18 +15,23 @@ export async function getBranchesList() {
     }
 }
 
-export async function getGlobalStats(branchId?: string) {
+export async function getGlobalStats(branchId?: string, date?: Date) {
     try {
-        const today = new Date();
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const firstDayOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastDayOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        const referenceDate = date || new Date();
+        const year = referenceDate.getFullYear();
+        const month = referenceDate.getMonth();
+
+        const firstDayOfMonth = new Date(year, month, 1);
+        const firstDayOfLastMonth = new Date(year, month - 1, 1);
+        const lastDayOfLastMonth = new Date(year, month, 0);
+        const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
         const whereClause = branchId ? { branchId } : {};
-        const whereClauseMonth = { ...whereClause, createdAt: { gte: firstDayOfMonth } };
+        const whereClauseMonth = { ...whereClause, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } };
         const whereClauseLastMonth = { ...whereClause, createdAt: { gte: firstDayOfLastMonth, lte: lastDayOfLastMonth } };
 
         // 1. Total Sales Volume (All Time)
+        // Keeping as All Time metadata
         const totalSales = await prisma.sale.aggregate({
             where: whereClause,
             _sum: { total: true }
@@ -68,32 +73,20 @@ export async function getGlobalStats(branchId?: string) {
         // --- EXTENDED METRICS CALCULATION ---
 
         // 1. Equipos Entregados (Status ID 10)
-        const deliveredCount = await prisma.repair.count({
-            where: {
-                ...whereClause,
-                statusId: 10,
-                updatedAt: { gte: firstDayOfMonth, lte: lastDayOfLastMonth } // Actually "del mes" usuall means current month? The user asked for "Estadisticas", usually implying current month dashboard.
-                // Re-reading: "ticket promedio... del total del mes".
-                // I'll use current month (firstDayOfMonth to now).
-            }
-        });
-
-        // Adjust date range to be Current Month for all metrics to be consistent
+        // Adjust date range to be Current Selected Month
         const deliveredCountCurrent = await prisma.repair.count({
             where: {
                 ...whereClause,
                 statusId: 10,
-                updatedAt: { gte: firstDayOfMonth }
+                updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
             }
         });
 
         // 2. Gasto en Repuestos (Spare Parts Cost)
-        // Logic: Find all parts assigned to repairs that were COMPLETED or UPDATED this month?
-        // User: "gasto en repuesto esto se calcula de los repuestos asignados a las reparaciones... del total del mes"
-        // It implies parts used in THIS month.
+        // Logic: Find all parts assigned to repairs that were COMPLETED or UPDATED this month
         const partsUsed = await prisma.repairPart.findMany({
             where: {
-                assignedAt: { gte: firstDayOfMonth }, // Use assignedAt if available, else repair.updatedAt
+                assignedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
                 repair: whereClause
             },
             include: { sparePart: true }
@@ -104,11 +97,9 @@ export async function getGlobalStats(branchId?: string) {
         }, 0);
 
         // 3. Ganancia de Reparaciones (Repair Profit)
-        // "se saca cuanto se cobra el ticket menos el repuesto"
-        // We need Sales of Repairs this month.
         const repairSalesItems = await prisma.saleItem.findMany({
             where: {
-                sale: { ...whereClause, createdAt: { gte: firstDayOfMonth } },
+                sale: whereClauseMonth,
                 repairId: { not: null }
             },
             include: {
@@ -137,11 +128,10 @@ export async function getGlobalStats(branchId?: string) {
         const repairProfit = totalRepairRevenue - totalRepairPartsCost;
 
         // 4. Premios Pagados (Bonuses)
-        // Sum bonusTotal from CashShifts this month
         const shifts = await prisma.cashShift.aggregate({
             where: {
                 ...whereClause,
-                startTime: { gte: firstDayOfMonth }
+                startTime: { gte: firstDayOfMonth, lte: lastDayOfMonth }
             },
             _sum: { bonusTotal: true }
         });
@@ -179,10 +169,14 @@ export async function getGlobalStats(branchId?: string) {
     }
 }
 
-export async function getProductStats(branchId?: string) {
+export async function getProductStats(branchId?: string, date?: Date) {
     try {
-        const today = new Date();
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const referenceDate = date || new Date();
+        const year = referenceDate.getFullYear();
+        const month = referenceDate.getMonth();
+
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
         const whereSale = branchId ? { branchId } : {};
         const whereStock = branchId ? { branchId } : {};
@@ -192,7 +186,7 @@ export async function getProductStats(branchId?: string) {
         // We'll filter SaleItems where Sale.branchId = X
         const topSellingRaw = await prisma.saleItem.findMany({
             where: {
-                sale: { ...whereSale, createdAt: { gte: firstDayOfMonth } },
+                sale: { ...whereSale, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
                 productId: { not: null }
             },
             select: {
@@ -236,7 +230,7 @@ export async function getProductStats(branchId?: string) {
         const items = await prisma.saleItem.findMany({
             where: {
                 productId: { not: null },
-                sale: { ...whereSale, createdAt: { gte: firstDayOfMonth } }
+                sale: { ...whereSale, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } }
             },
             include: { product: true }
         });
@@ -272,19 +266,16 @@ export async function getProductStats(branchId?: string) {
     }
 }
 
-export async function getBranchStats(branchId?: string) {
+export async function getBranchStats(branchId?: string, date?: Date) {
     try {
-        // If a specific branch is selected, this chart "Branch Comparison" might be less useful, 
-        // BUT user might still want to see how THIS branch compares or just see its own stats.
-        // If branchId is present, we could just return that one branch, OR return all but highlight logic is frontend.
-        // Usually filters imply "Show me data for this scope". 
-        // Showing "Branch Comparison" when filtering by "Branch A" results in a single bar.
-        // Let's return ONLY relevance if branchId is set.
+        const referenceDate = date || new Date();
+        const year = referenceDate.getFullYear();
+        const month = referenceDate.getMonth();
 
-        const today = new Date();
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const firstDayOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastDayOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        const firstDayOfMonth = new Date(year, month, 1);
+        const firstDayOfLastMonth = new Date(year, month - 1, 1);
+        const lastDayOfLastMonth = new Date(year, month, 0);
+        const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
         const whereBranch = branchId ? { id: branchId } : {};
 
@@ -294,7 +285,7 @@ export async function getBranchStats(branchId?: string) {
             where: whereBranch,
             include: {
                 sales: {
-                    where: { createdAt: { gte: firstDayOfMonth } },
+                    where: { createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
                     include: { items: { include: { product: true } } }
                 }
             }
@@ -426,10 +417,14 @@ export async function getBranchStats(branchId?: string) {
     }
 }
 
-export async function getRepairStats(branchId?: string) {
+export async function getRepairStats(branchId?: string, date?: Date) {
     try {
-        const today = new Date();
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const referenceDate = date || new Date();
+        const year = referenceDate.getFullYear();
+        const month = referenceDate.getMonth();
+
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
         const whereRepair = branchId ? { branchId } : {};
 
@@ -440,7 +435,8 @@ export async function getRepairStats(branchId?: string) {
         const topPartsRaw = await prisma.repairPart.groupBy({
             by: ['sparePartId'],
             where: {
-                repair: whereRepair
+                repair: whereRepair,
+                assignedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
             },
             _sum: { quantity: true },
             orderBy: { _sum: { quantity: 'desc' } },
@@ -457,10 +453,7 @@ export async function getRepairStats(branchId?: string) {
             return {
                 name: info?.name || 'Unknown',
                 count: t._sum.quantity || 0,
-                stockLocal: info?.stockLocal, // Note: This stock is global in schema, wait. 
-                // Schema: SparePart has 'stockLocal', 'stockDepot'. It doesn't seem per-branch in SparePart model. 
-                // Ah, SparePart is generic. 'ProductStock' is per branch. 'SparePart' has 'stockLocal'.
-                // If it's single 'stockLocal', it's total.
+                stockLocal: info?.stockLocal,
                 toReponish: info ? (info.maxStockLocal - info.stockLocal) : 0
             };
         });
@@ -470,7 +463,7 @@ export async function getRepairStats(branchId?: string) {
             by: ['assignedUserId'],
             where: {
                 statusId: { in: [5, 6, 7, 10] }, // Completed
-                updatedAt: { gte: firstDayOfMonth },
+                updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
                 assignedUserId: { not: null },
                 ...whereRepair
             },
@@ -500,7 +493,7 @@ export async function getRepairStats(branchId?: string) {
         const repairCount = await prisma.repair.count({
             where: {
                 statusId: { in: [5, 6, 7, 10] },
-                updatedAt: { gte: firstDayOfMonth },
+                updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
                 ...whereRepair
             }
         });

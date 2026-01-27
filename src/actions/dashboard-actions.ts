@@ -133,13 +133,17 @@ export async function getSalesAnalytics(branchId?: string) {
     }
 }
 
-export async function getRepairAnalytics(branchId?: string) {
+export async function getRepairAnalytics(branchId?: string, date?: Date) {
     try {
         const branchFilter = branchId ? { branchId } : {};
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const tomorrow = new Date(today);
+        const referenceDate = date || new Date();
+        const year = referenceDate.getFullYear();
+        const month = referenceDate.getMonth();
+
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+        const tomorrow = new Date(referenceDate);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
         // 1. Active & Priority
@@ -160,7 +164,7 @@ export async function getRepairAnalytics(branchId?: string) {
                 assignedUserId: { in: techUsers.map(u => u.id) },
                 OR: [
                     { statusId: { in: [3, 4] } },
-                    { statusId: { in: [5, 6, 7, 10] }, updatedAt: { gte: firstDayOfMonth } }
+                    { statusId: { in: [5, 6, 7, 10] }, updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } }
                 ],
                 ...branchFilter
             },
@@ -177,7 +181,11 @@ export async function getRepairAnalytics(branchId?: string) {
                 else if (r.statusId === 3) {
                     if (r.startedAt && r.estimatedTime) {
                         const elapsedMs = now.getTime() - new Date(r.startedAt).getTime();
-                        remainingLoad += Math.max(0, r.estimatedTime - Math.floor(elapsedMs / 60000));
+                        if (elapsedMs > 0) {
+                            remainingLoad += Math.max(0, r.estimatedTime - Math.floor(elapsedMs / 60000));
+                        } else {
+                            remainingLoad += (r.estimatedTime || 0);
+                        }
                     } else remainingLoad += (r.estimatedTime || 0);
                 }
             });
@@ -207,7 +215,7 @@ export async function getRepairAnalytics(branchId?: string) {
         // 4. Monthly Distribution
         const repairsByStatusRaw = await prisma.repair.groupBy({
             by: ['statusId'],
-            where: { ...branchFilter, createdAt: { gte: firstDayOfMonth } },
+            where: { ...branchFilter, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
             _count: { _all: true }
         });
         const allStatuses = await prisma.repairStatus.findMany();

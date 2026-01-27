@@ -9,6 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MonthNavigator } from "./MonthNavigator";
 
 interface StatisticsHeaderProps {
     branches: any[];
@@ -25,9 +26,9 @@ export function StatisticsHeader({ branches, currentBranchId }: StatisticsHeader
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 border-b border-zinc-900/80 pb-8 px-1">
             <div>
                 <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Centro de Estadísticas</h1>
-                <p className="text-zinc-500 text-sm max-w-md">
-                    Análisis financiero, operativo y de inventario en tiempo real.
-                </p>
+                <div className="mt-4">
+                    <MonthNavigator />
+                </div>
             </div>
 
             {/* Unified Filter */}
