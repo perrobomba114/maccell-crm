@@ -18,9 +18,10 @@ export function MonthNavigator() {
     const date = new Date(currentYear, currentMonth, 1);
 
     const createQueryString = useCallback(
-        (name: string, value: string) => {
+        (newMonth: number, newYear: number) => {
             const params = new URLSearchParams(searchParams.toString());
-            params.set(name, value);
+            params.set("month", newMonth.toString());
+            params.set("year", newYear.toString());
             return params.toString();
         },
         [searchParams]
@@ -28,12 +29,12 @@ export function MonthNavigator() {
 
     const handlePrevMonth = () => {
         const newDate = subMonths(date, 1);
-        router.push(`?${createQueryString("month", newDate.getMonth().toString())}&year=${newDate.getFullYear()}`);
+        router.push(`?${createQueryString(newDate.getMonth(), newDate.getFullYear())}`);
     };
 
     const handleNextMonth = () => {
         const newDate = addMonths(date, 1);
-        router.push(`?${createQueryString("month", newDate.getMonth().toString())}&year=${newDate.getFullYear()}`);
+        router.push(`?${createQueryString(newDate.getMonth(), newDate.getFullYear())}`);
     };
 
     return (

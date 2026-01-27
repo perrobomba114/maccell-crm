@@ -27,8 +27,10 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
     const branchId = resolvedParams.branchId;
 
     // Parse Date Navigation
-    const month = resolvedParams.month ? parseInt(resolvedParams.month) : new Date().getMonth();
-    const year = resolvedParams.year ? parseInt(resolvedParams.year) : new Date().getFullYear();
+    // Parse Date Navigation
+    const now = new Date();
+    const month = resolvedParams.month !== undefined ? parseInt(resolvedParams.month) : now.getMonth();
+    const year = resolvedParams.year !== undefined ? parseInt(resolvedParams.year) : now.getFullYear();
     const reportDate = new Date(year, month, 1);
 
     // 1. Fast Data (Shell)
@@ -36,19 +38,14 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
 
     // 2. Parallel Promises with Date Filtering
     const globalStatsPromise = getGlobalStats(branchId, reportDate);
-    const branchStatsPromise = getBranchStats(branchId, reportDate); // Add date support to branch stats action if needed
-    const productStatsPromise = getProductStats(branchId, reportDate); // Add date support if needed
+    const branchStatsPromise = getBranchStats(branchId, reportDate);
+    const productStatsPromise = getProductStats(branchId, reportDate);
 
     // Legacy repair stats (parts, etc)
     const repairStatsPromise = getRepairStats(branchId, reportDate);
 
     // NEW: Unified Technician Logic from Dashboard Actions
-    // Note: getRepairAnalytics might not support date yet. If user filters by month, this might be inconsistent.
-    // For now, I'll keep it as is or update it if user requested fully consistent filtering.
-    // The user asked "nos deja navegar por los meses". It implies ALL data.
-    // I should check getRepairAnalytics signature.
-    // For this task, I'll pass reportDate to the actions I modified.
-    const repairsAnalyticsPromise = getRepairAnalytics(branchId);
+    const repairsAnalyticsPromise = getRepairAnalytics(branchId, reportDate);
 
     return (
         <div className="min-h-screen bg-[#09090b] text-zinc-50 font-sans p-6 lg:p-8">

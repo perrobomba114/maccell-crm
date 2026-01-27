@@ -30,21 +30,81 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
         const whereClauseMonth = { ...whereClause, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } };
         const whereClauseLastMonth = { ...whereClause, createdAt: { gte: firstDayOfLastMonth, lte: lastDayOfLastMonth } };
 
-        // 1. Total Sales Volume (All Time)
-        // Keeping as All Time metadata
-        const totalSales = await prisma.sale.aggregate({
-            where: whereClause,
-            _sum: { total: true }
-        });
+        // Execute all independent queries in parallel
+        const [
+            totalSales,
+            saleItemsThisMonth,
+            salesCurrentMonth,
+            salesLastMonth,
+            deliveredCountCurrent, // We only use the current month count now
+            partsUsed,
+            repairSalesItems,
+            shifts
+        ] = await Promise.all([
+            // 1. Total Sales Volume (All Time Metadata)
+            prisma.sale.aggregate({
+                where: whereClause,
+                _sum: { total: true }
+            }),
+            // 2. Sales Profit Data
+            prisma.saleItem.findMany({
+                where: { sale: whereClauseMonth },
+                include: { product: { select: { costPrice: true } } }
+            }),
+            // 3. Sales Growth Data (Current)
+            prisma.sale.aggregate({
+                where: whereClauseMonth,
+                _sum: { total: true },
+                _count: { _all: true }
+            }),
+            // 4. Sales Growth Data (Last Month)
+            prisma.sale.aggregate({
+                where: whereClauseLastMonth,
+                _sum: { total: true }
+            }),
+            // 5. Extended: Delivered Count
+            prisma.repair.count({
+                where: {
+                    ...whereClause,
+                    statusId: 10,
+                    updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+                }
+            }),
+            // 6. Extended: Spare Parts Cost
+            prisma.repairPart.findMany({
+                where: {
+                    assignedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                    repair: whereClause
+                },
+                include: { sparePart: true }
+            }),
+            // 7. Extended: Repair Profit
+            prisma.saleItem.findMany({
+                where: {
+                    sale: whereClauseMonth,
+                    repairId: { not: null }
+                },
+                include: {
+                    repair: {
+                        include: {
+                            parts: { include: { sparePart: true } }
+                        }
+                    }
+                }
+            }),
+            // 8. Extended: Bonuses
+            prisma.cashShift.aggregate({
+                where: {
+                    ...whereClause,
+                    startTime: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+                },
+                _sum: { bonusTotal: true }
+            })
+        ]);
 
-        // 2. Sales Profit (This Month)
-        const saleItemsThisMonth = await prisma.saleItem.findMany({
-            where: {
-                sale: whereClauseMonth
-            },
-            include: { product: { select: { costPrice: true } } }
-        });
+        // Process Results
 
+        // Sales Profit Calc
         let profitThisMonth = 0;
         saleItemsThisMonth.forEach(item => {
             const cost = item.product?.costPrice || 0;
@@ -53,64 +113,17 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
             profitThisMonth += (revenue - totalCost);
         });
 
-        // 3. Sales Growth (Current Month vs Last Month)
-        const salesCurrentMonth = await prisma.sale.aggregate({
-            where: whereClauseMonth,
-            _sum: { total: true },
-            _count: { _all: true }
-        });
-        const salesLastMonth = await prisma.sale.aggregate({
-            where: whereClauseLastMonth,
-            _sum: { total: true }
-        });
-
+        // Growth Calc
         const currentTotal = salesCurrentMonth._sum.total || 0;
         const lastTotal = salesLastMonth._sum.total || 0;
         const growthPercent = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal) * 100 : 100;
 
-
-
-        // --- EXTENDED METRICS CALCULATION ---
-
-        // 1. Equipos Entregados (Status ID 10)
-        // Adjust date range to be Current Selected Month
-        const deliveredCountCurrent = await prisma.repair.count({
-            where: {
-                ...whereClause,
-                statusId: 10,
-                updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
-            }
-        });
-
-        // 2. Gasto en Repuestos (Spare Parts Cost)
-        // Logic: Find all parts assigned to repairs that were COMPLETED or UPDATED this month
-        const partsUsed = await prisma.repairPart.findMany({
-            where: {
-                assignedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
-                repair: whereClause
-            },
-            include: { sparePart: true }
-        });
-
+        // Spare Parts Cost Calc
         const sparePartsCost = partsUsed.reduce((acc, rp) => {
             return acc + (rp.sparePart.priceArg * rp.quantity);
         }, 0);
 
-        // 3. Ganancia de Reparaciones (Repair Profit)
-        const repairSalesItems = await prisma.saleItem.findMany({
-            where: {
-                sale: whereClauseMonth,
-                repairId: { not: null }
-            },
-            include: {
-                repair: {
-                    include: {
-                        parts: { include: { sparePart: true } }
-                    }
-                }
-            }
-        });
-
+        // Repair Profit Calc
         let totalRepairRevenue = 0;
         let totalRepairPartsCost = 0;
 
@@ -124,17 +137,9 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
                 });
             }
         });
-
         const repairProfit = totalRepairRevenue - totalRepairPartsCost;
 
-        // 4. Premios Pagados (Bonuses)
-        const shifts = await prisma.cashShift.aggregate({
-            where: {
-                ...whereClause,
-                startTime: { gte: firstDayOfMonth, lte: lastDayOfMonth }
-            },
-            _sum: { bonusTotal: true }
-        });
+        // Bonuses
         const bonusesPaid = shifts._sum.bonusTotal || 0;
 
 

@@ -19,27 +19,30 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon }: a
     const isPositive = trend?.value >= 0;
 
     return (
-        <div className="relative overflow-hidden rounded-2xl p-6 border border-zinc-800/50 bg-[#18181b] flex flex-col justify-between h-full min-h-[140px] hover:border-zinc-700 transition-all shadow-sm group">
+        <div className="relative overflow-hidden rounded-2xl p-5 border border-zinc-800/50 bg-[#18181b] flex flex-col h-full hover:border-zinc-700 transition-all shadow-sm group">
             {/* Background Glow */}
             <div className={cn("absolute -right-6 -top-6 w-24 h-24 rounded-full blur-3xl opacity-20 bg-gradient-to-br", styles)}></div>
 
-            <div className="flex justify-between items-start z-10 relative">
-                <div>
-                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-2 group-hover:text-zinc-400 transition-colors">{title}</p>
-                    <h3 className="text-3xl font-bold text-white tracking-tight">{value}</h3>
-                </div>
-                <div className={cn("p-2.5 rounded-xl flex-shrink-0 bg-zinc-900/50 border border-current opacity-80", styles.split(" ")[2], styles.split(" ")[3])}>
-                    <Icon size={20} strokeWidth={2} />
+            <div className="flex justify-between items-start z-10 relative mb-4">
+                <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider group-hover:text-zinc-400 transition-colors mt-1">{title}</p>
+                <div className={cn("p-2 rounded-lg flex-shrink-0 bg-zinc-900/50 border border-current opacity-80", styles.split(" ")[2], styles.split(" ")[3])}>
+                    <Icon size={18} strokeWidth={2} />
                 </div>
             </div>
 
-            <div className="flex items-center gap-3 mt-4 z-10 relative">
+            <div className="z-10 relative mb-4 flex-grow">
+                <h3 className="text-2xl lg:text-3xl font-bold text-white tracking-tight truncate" title={String(value)}>
+                    {value}
+                </h3>
+            </div>
+
+            <div className="flex items-center gap-2 z-10 relative mt-auto">
                 {trend && (
                     <div className={cn(
-                        "flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md",
+                        "flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md",
                         isPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
                     )}>
-                        {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                        {isPositive ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
                         <span>{Math.abs(trend.value)}%</span>
                     </div>
                 )}
