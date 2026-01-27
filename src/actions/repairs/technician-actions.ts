@@ -593,3 +593,51 @@ export async function createSinglePartReturnAction(repairPartId: string, technic
         return { success: false, error: "Error al procesar la devolución." };
     }
 }
+
+export async function addPartToRepairAction(repairId: string, technicianId: string, parts: { id: string, name: string }[]) {
+    try {
+        if (!parts || parts.length === 0) {
+            return { success: false, error: "No se seleccionaron repuestos." };
+        }
+
+        const repair = await db.repair.findUnique({
+            where: { id: repairId },
+            include: { customer: true }
+        });
+
+        if (!repair) return { success: false, error: "Reparación no encontrada" };
+
+        if (repair.assignedUserId !== technicianId) {
+            return { success: false, error: "No tienes asignada esta reparación" };
+        }
+
+        await db.$transaction(async (tx) => {
+            for (const part of parts) {
+                // Create RepairPart
+                await tx.repairPart.create({
+                    data: {
+                        repairId,
+                        sparePartId: part.id,
+                        quantity: 1
+                    }
+                });
+
+                // Decrement stock
+                await tx.sparePart.update({
+                    where: { id: part.id },
+                    data: {
+                        stockLocal: { decrement: 1 }
+                    }
+                });
+            }
+        });
+
+        revalidatePath("/technician/repairs");
+        revalidatePath("/technician/dashboard");
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error adding parts:", error);
+        return { success: false, error: "Error al agregar repuestos." };
+    }
+}

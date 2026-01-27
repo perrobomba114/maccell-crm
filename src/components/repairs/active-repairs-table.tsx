@@ -18,6 +18,7 @@ import { RepairDetailsDialog } from "./repair-details-dialog"; // Import Dialog
 import { TransferRepairDialog } from "./transfer-repair-dialog";
 import { printRepairTicket, printWarrantyTicket, printWetReport } from "@/lib/print-utils";
 import { Share2 } from "lucide-react";
+import { AddPartDialog } from "./add-part-dialog";
 
 interface ActiveRepairsTableProps {
     repairs: any[];
@@ -53,8 +54,9 @@ export function ActiveRepairsTable({
     const [takeoverRepair, setTakeoverRepair] = useState<any | null>(null);
     const [assignmentRepair, setAssignmentRepair] = useState<any | null>(null);
     const [imageUploadRepair, setImageUploadRepair] = useState<any | null>(null);
-    const [viewDetailsRepair, setViewDetailsRepair] = useState<any | null>(null); // State for Details Dialog
+    const [viewDetailsRepair, setViewDetailsRepair] = useState<any | null>(null);
     const [transferRepair, setTransferRepair] = useState<any | null>(null);
+    const [addPartRepair, setAddPartRepair] = useState<any | null>(null);
 
     const router = useRouter();
 
@@ -337,17 +339,8 @@ export function ActiveRepairsTable({
                     repair={viewDetailsRepair}
                     currentUserId={currentUserId}
                     onAddPart={() => {
-                        // Close details and open assignment
-                        // Or keep details underneath? Better to close details or layer them?
-                        // AssignmentModal is a Dialog, simpler to switch.
-                        setAssignmentRepair(viewDetailsRepair);
-                        // Optional: setViewDetailsRepair(null); // Keep active if we want to return to it?
-                        // Let's close details to avoid stacking issues unless AssignmentModal handles it well.
-                        // Actually, user flow: Details -> Add Part -> AssignmentModal -> Close -> Details?
-                        // Simpler: Details -> Add Part (AssignmentModal opens on top)
-                        // If AssignmentModal is z-indexed higher, it's fine.
-                        // But let's close details for clarity, or just let them coexist.
-                        // Let's close details to avoid confusion.
+                        // Switch to the dedicated Add Part dialog
+                        setAddPartRepair(viewDetailsRepair);
                         setViewDetailsRepair(null);
                     }}
                 />
@@ -358,6 +351,15 @@ export function ActiveRepairsTable({
                     isOpen={!!transferRepair}
                     onClose={() => setTransferRepair(null)}
                     repair={transferRepair}
+                    currentUserId={currentUserId}
+                />
+            )}
+
+            {addPartRepair && (
+                <AddPartDialog
+                    isOpen={!!addPartRepair}
+                    onClose={() => setAddPartRepair(null)}
+                    repair={addPartRepair}
                     currentUserId={currentUserId}
                 />
             )}
