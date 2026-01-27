@@ -23,33 +23,66 @@ import { WeeklyOutputChart, MyStatusPieChart } from "./TechnicianCharts";
 
 // --- Standard Metrics Component ---
 function TechMetric({ title, value, icon: Icon, color, subtext, href }: any) {
-    const colors: any = {
-        violet: "bg-violet-500/10 text-violet-500 border-violet-500/20",
-        blue: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-        emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-        orange: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+    const strategies: any = {
+        violet: {
+            bg: "bg-gradient-to-br from-violet-600 to-fuchsia-600",
+            icon: "bg-white/20 text-white",
+            border: "border-violet-500/50"
+        },
+        blue: {
+            bg: "bg-gradient-to-br from-blue-600 to-cyan-500",
+            icon: "bg-white/20 text-white",
+            border: "border-blue-500/50"
+        },
+        emerald: {
+            bg: "bg-gradient-to-br from-emerald-500 to-teal-500",
+            icon: "bg-white/20 text-white",
+            border: "border-emerald-500/50"
+        },
+        orange: {
+            bg: "bg-gradient-to-br from-orange-500 to-red-500",
+            icon: "bg-white/20 text-white",
+            border: "border-orange-500/50"
+        },
     };
 
+    const style = strategies[color] || strategies.blue;
+
     return (
-        <Link href={href || "#"} className="group relative p-6 rounded-2xl bg-[#18181b] border border-zinc-800/50 hover:border-zinc-700 hover:bg-zinc-900/50 transition-all flex flex-col justify-between overflow-hidden">
-            <div className={cn("absolute top-0 right-0 p-3 opacity-20 -mr-2 -mt-2 rounded-bl-3xl transition-transform group-hover:scale-110 duration-500", colors[color])}>
-                <Icon size={40} />
+        <Link href={href || "#"} className={cn(
+            "group relative p-6 rounded-3xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/50 flex flex-col justify-between overflow-hidden border",
+            style.bg,
+            style.border
+        )}>
+            {/* Glass Shine Effect */}
+            <div className="absolute top-0 left-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Floating Icon Background */}
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-all duration-500 transform group-hover:scale-110 group-hover:-rotate-12">
+                <Icon size={80} className="text-white" />
             </div>
 
             <div className="relative z-10">
-                <div className="flex justify-between items-start mb-4">
-                    <div className={cn("p-2 rounded-lg inline-flex", colors[color])}>
-                        <Icon size={20} />
+                <div className="flex justify-between items-start mb-6">
+                    <div className={cn("p-3 rounded-2xl backdrop-blur-md shadow-lg", style.icon)}>
+                        <Icon size={24} />
                     </div>
                 </div>
                 <div>
-                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-1 group-hover:text-zinc-400 transition-colors">{title}</p>
-                    <h3 className="text-3xl font-bold text-white tracking-tight">{value}</h3>
+                    <h3 className="text-4xl font-black text-white tracking-tight mb-1 drop-shadow-sm">{value}</h3>
+                    <p className="text-white/80 text-sm font-semibold uppercase tracking-wider">{title}</p>
                 </div>
             </div>
-            {subtext && <div className="mt-4 pt-3 border-t border-zinc-800/50">
-                <p className="text-xs text-zinc-500 font-medium group-hover:text-zinc-400 transition-colors">{subtext}</p>
-            </div>}
+
+            {subtext && (
+                <div className="mt-4 pt-3 border-t border-white/20">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        <p className="text-xs text-white/90 font-medium">{subtext}</p>
+                    </div>
+                </div>
+            )}
         </Link>
     );
 }
