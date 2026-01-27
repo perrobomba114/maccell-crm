@@ -594,12 +594,26 @@ export async function getTechnicianStats(technicianId: string) {
         sevenDaysAgo.setHours(0, 0, 0, 0);
 
         // 1. Fetch Key Counts and Distributions
-        const [pendingRepairsCount, activeRepairsCount, completedToday, completedMonth, statusDist] = await Promise.all([
+        const [pendingRepairsCount, activeRepairsCount, completedToday, completedMonth, statusDist, finishedLast30] = await Promise.all([
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [1, 2, 4] } } }), // Pending, Assigned, Diagnosing
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: 3 } }), // In Progress
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, updatedAt: { gte: today } } }),
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, updatedAt: { gte: firstDayOfMonth } } }),
-            prisma.repair.groupBy({ by: ['statusId'], where: { assignedUserId: technicianId }, _count: { _all: true } })
+            prisma.repair.groupBy({ by: ['statusId'], where: { assignedUserId: technicianId }, _count: { _all: true } }),
+            // Performance Metrics Fetching (Last 30 Days)
+            prisma.repair.findMany({
+                where: {
+                    assignedUserId: technicianId,
+                    statusId: { in: [5, 6, 7, 10] },
+                    finishedAt: { gte: new Date(new Date().setDate(new Date().getDate() - 30)) }
+                },
+                select: {
+                    id: true,
+                    finishedAt: true,
+                    promisedAt: true,
+                    warrantyRepairs: { select: { id: true } } // Check if it generated warranties
+                }
+            })
         ]);
 
         const statusNames = await prisma.repairStatus.findMany();
@@ -611,6 +625,53 @@ export async function getTechnicianStats(technicianId: string) {
                 color: status?.color || '#888'
             };
         });
+
+        // --- Performance Metrics Calculation ---
+        const totalFinished30 = finishedLast30.length;
+
+        // 1. Quality Score (Repairs without warranty returns)
+        // If has warrantyRepairs > 0, it failed quality.
+        const warrantyReturns = finishedLast30.filter(r => r.warrantyRepairs.length > 0).length;
+        const qualityScore = totalFinished30 > 0
+            ? Math.round(((totalFinished30 - warrantyReturns) / totalFinished30) * 100)
+            : 100; // Default to 100 if no repairs yet
+
+        // 2. On-Time Rate (Finished <= Promised)
+        const onTimeRepairs = finishedLast30.filter(r => {
+            if (!r.finishedAt || !r.promisedAt) return true; // Assume ok if missing data
+            return new Date(r.finishedAt) <= new Date(r.promisedAt);
+        }).length;
+        const onTimeRate = totalFinished30 > 0
+            ? Math.round((onTimeRepairs / totalFinished30) * 100)
+            : 100;
+
+        // 3. Stagnation Radar (Active repairs inactive > 48h)
+        const stagnationThreshold = new Date();
+        stagnationThreshold.setHours(stagnationThreshold.getHours() - 48);
+
+        const stagnatedRepairsRaw = await prisma.repair.findMany({
+            where: {
+                assignedUserId: technicianId,
+                statusId: { notIn: [5, 6, 7, 8, 9, 10] }, // Not finished/cancelled
+                updatedAt: { lte: stagnationThreshold }
+            },
+            select: {
+                id: true,
+                ticketNumber: true,
+                deviceModel: true,
+                statusId: true,
+                updatedAt: true
+            },
+            take: 5
+        });
+
+        const stagnatedRepairs = stagnatedRepairsRaw.map(r => ({
+            id: r.id,
+            ticketNumber: r.ticketNumber,
+            device: r.deviceModel,
+            daysInactive: Math.floor((new Date().getTime() - new Date(r.updatedAt).getTime()) / (1000 * 60 * 60 * 24)),
+            statusName: statusNames.find(s => s.id === r.statusId)?.name || "?"
+        }));
 
         // 2. Active Workspace (Detailed)
         // Fetch items strictly In Progress (3) OR Paused/Planned (4)
@@ -731,6 +792,10 @@ export async function getTechnicianStats(technicianId: string) {
             completedToday,
             completedMonth,
             avgRepairTime,
+
+            qualityScore,
+            onTimeRate,
+            stagnatedRepairs,
             statusDistribution,
             activeWorkspace,
             queue,
@@ -740,7 +805,8 @@ export async function getTechnicianStats(technicianId: string) {
         console.error("Error fetching technician stats:", error);
         return {
             pendingTickets: 0, activeRepairs: 0, completedToday: 0, completedMonth: 0,
-            avgRepairTime: "0 min", statusDistribution: [], activeWorkspace: [], queue: [], weeklyOutput: []
+            avgRepairTime: "0 min", statusDistribution: [], activeWorkspace: [], queue: [], weeklyOutput: [],
+            qualityScore: 0, onTimeRate: 0, stagnatedRepairs: []
         };
     }
 }

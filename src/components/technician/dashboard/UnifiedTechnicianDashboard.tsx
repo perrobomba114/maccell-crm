@@ -12,7 +12,10 @@ import {
     Clock,
     AlertCircle,
     ArrowRight,
-    ArrowUpRight
+    ArrowUpRight,
+    ShieldCheck,
+    CalendarCheck,
+    AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -123,8 +126,35 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                 </div>
             </div>
 
-            {/* Metrics Grid - 4 Equal Columns */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Stagnation Radar - Conditional Alert */}
+            {stats.stagnatedRepairs && stats.stagnatedRepairs.length > 0 && (
+                <div className="mb-8 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 animate-in fade-in slide-in-from-top-4">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-red-500/20 rounded-lg text-red-500 animate-pulse">
+                            <AlertTriangle size={20} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-red-400">Radar de Demoras</h3>
+                            <p className="text-xs text-red-300">Hay {stats.stagnatedRepairs.length} equipos sin movimiento hace +48hs.</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                        {stats.stagnatedRepairs.map((r: any) => (
+                            <Link key={r.id} href="/technician/repairs" className="flex-shrink-0 min-w-[200px] p-3 rounded-xl bg-red-950/30 border border-red-500/10 hover:border-red-500/30 transition-colors group">
+                                <div className="flex justify-between items-start mb-1">
+                                    <span className="text-xs font-mono font-bold text-red-300">#{r.ticketNumber}</span>
+                                    <span className="text-[10px] bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded">{r.daysInactive}d inact.</span>
+                                </div>
+                                <p className="text-sm font-medium text-white truncate mb-0.5">{r.device}</p>
+                                <p className="text-xs text-zinc-500 group-hover:text-zinc-400">{r.statusName}</p>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Metrics Grid - 2 Rows of 3 for better balance */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
                 <TechMetric
                     title="En Mesa"
                     value={stats.activeRepairs}
@@ -155,6 +185,22 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                     subtext="Tiempo prom."
                     icon={Timer}
                     color="violet"
+                    href="/technician/profile"
+                />
+                <TechMetric
+                    title="Calidad"
+                    value={`${stats.qualityScore || 100}%`}
+                    subtext="Sin Garantías"
+                    icon={ShieldCheck}
+                    color="emerald" // Green for Quality
+                    href="/technician/profile"
+                />
+                <TechMetric
+                    title="Puntualidad"
+                    value={`${stats.onTimeRate || 100}%`}
+                    subtext="A tiempo"
+                    icon={CalendarCheck}
+                    color="blue"
                     href="/technician/profile"
                 />
             </div>
