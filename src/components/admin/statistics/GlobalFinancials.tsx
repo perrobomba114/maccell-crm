@@ -61,37 +61,73 @@ export function GlobalFinancials({ globalStats, repairStats }: GlobalFinancialsP
     const fmtMoney = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <MetricCard
-                title="Facturación Total"
-                value={fmtMoney(globalStats.salesThisMonth)}
-                subtext="Ingresos del mes"
-                trend={{ value: globalStats.growthPercent }}
-                accentColor="blue"
-                icon={DollarSign}
-            />
-            <MetricCard
-                title="Ganancia Estimada"
-                value={fmtMoney(globalStats.profitThisMonth)}
-                subtext="Margen operativo"
-                trend={{ value: 0 }} // Assuming profit growth isn't calc'd separately here yet
-                accentColor="emerald"
-                icon={Wallet}
-            />
-            <MetricCard
-                title="Equipos en Taller"
-                value={repairStats?.phonesInShop || 0}
-                subtext="En proceso de reparación"
-                accentColor="violet"
-                icon={Wrench}
-            />
-            <MetricCard
-                title="Ticket Promedio"
-                value={fmtMoney(globalStats.averageTicket || 0)}
-                subtext="Valor medio por venta"
-                accentColor="pink"
-                icon={TrendingUp}
-            />
+        <div className="space-y-6 mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* ROW 1: General Business Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <MetricCard
+                    title="Facturación Total"
+                    value={fmtMoney(globalStats.salesThisMonth)}
+                    subtext="Ingresos del mes"
+                    trend={{ value: globalStats.growthPercent }}
+                    accentColor="blue"
+                    icon={DollarSign}
+                />
+                <MetricCard
+                    title="Ganancia Estimada"
+                    value={fmtMoney(globalStats.profitThisMonth)}
+                    subtext="Margen operativo"
+                    trend={{ value: 0 }} // Assuming profit growth isn't calc'd separately here yet
+                    accentColor="emerald"
+                    icon={Wallet}
+                />
+                <MetricCard
+                    title="Equipos en Taller"
+                    value={repairStats?.phonesInShop || 0}
+                    subtext="En proceso de reparación"
+                    accentColor="violet"
+                    icon={Wrench}
+                />
+                <MetricCard
+                    title="Ticket Promedio"
+                    value={fmtMoney(globalStats.averageTicket || 0)}
+                    subtext="Valor medio por venta"
+                    accentColor="pink"
+                    icon={TrendingUp}
+                />
+            </div>
+
+            {/* ROW 2: Specific Operational Stats (Requested) */}
+            <h3 className="text-zinc-400 text-sm font-semibold uppercase tracking-wider pl-1">Métricas Operativas (Mensual)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <MetricCard
+                    title="Gasto en Repuestos"
+                    value={fmtMoney(globalStats.sparePartsCost || 0)}
+                    subtext="Costo de repuestos usados"
+                    accentColor="orange"
+                    icon={Wrench}
+                />
+                <MetricCard
+                    title="Ganancia Reparaciones"
+                    value={fmtMoney(globalStats.repairProfit || 0)}
+                    subtext="Cobrado - Costo Repuesto"
+                    accentColor="emerald"
+                    icon={TrendingUp}
+                />
+                <MetricCard
+                    title="Equipos Entregados"
+                    value={globalStats.deliveredCount || 0}
+                    subtext="Finalizados y Entregados"
+                    accentColor="blue"
+                    icon={Wallet}
+                />
+                <MetricCard
+                    title="Premios Pagados"
+                    value={fmtMoney(globalStats.bonusesPaid || 0)}
+                    subtext="Comisiones a vendedores"
+                    accentColor="pink"
+                    icon={DollarSign}
+                />
+            </div>
         </div>
     );
 }

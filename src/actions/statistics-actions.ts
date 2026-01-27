@@ -63,17 +63,119 @@ export async function getGlobalStats(branchId?: string) {
         const lastTotal = salesLastMonth._sum.total || 0;
         const growthPercent = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal) * 100 : 100;
 
+
+
+        // --- EXTENDED METRICS CALCULATION ---
+
+        // 1. Equipos Entregados (Status ID 10)
+        const deliveredCount = await prisma.repair.count({
+            where: {
+                ...whereClause,
+                statusId: 10,
+                updatedAt: { gte: firstDayOfMonth, lte: lastDayOfLastMonth } // Actually "del mes" usuall means current month? The user asked for "Estadisticas", usually implying current month dashboard.
+                // Re-reading: "ticket promedio... del total del mes".
+                // I'll use current month (firstDayOfMonth to now).
+            }
+        });
+
+        // Adjust date range to be Current Month for all metrics to be consistent
+        const deliveredCountCurrent = await prisma.repair.count({
+            where: {
+                ...whereClause,
+                statusId: 10,
+                updatedAt: { gte: firstDayOfMonth }
+            }
+        });
+
+        // 2. Gasto en Repuestos (Spare Parts Cost)
+        // Logic: Find all parts assigned to repairs that were COMPLETED or UPDATED this month?
+        // User: "gasto en repuesto esto se calcula de los repuestos asignados a las reparaciones... del total del mes"
+        // It implies parts used in THIS month.
+        const partsUsed = await prisma.repairPart.findMany({
+            where: {
+                assignedAt: { gte: firstDayOfMonth }, // Use assignedAt if available, else repair.updatedAt
+                repair: whereClause
+            },
+            include: { sparePart: true }
+        });
+
+        const sparePartsCost = partsUsed.reduce((acc, rp) => {
+            return acc + (rp.sparePart.priceArg * rp.quantity);
+        }, 0);
+
+        // 3. Ganancia de Reparaciones (Repair Profit)
+        // "se saca cuanto se cobra el ticket menos el repuesto"
+        // We need Sales of Repairs this month.
+        const repairSalesItems = await prisma.saleItem.findMany({
+            where: {
+                sale: { ...whereClause, createdAt: { gte: firstDayOfMonth } },
+                repairId: { not: null }
+            },
+            include: {
+                repair: {
+                    include: {
+                        parts: { include: { sparePart: true } }
+                    }
+                }
+            }
+        });
+
+        let totalRepairRevenue = 0;
+        let totalRepairPartsCost = 0;
+
+        repairSalesItems.forEach(item => {
+            totalRepairRevenue += (item.price * item.quantity);
+
+            // Subtract parts cost FOR THIS SPECIFIC REPAIR
+            if (item.repair && item.repair.parts) {
+                item.repair.parts.forEach(part => {
+                    totalRepairPartsCost += (part.sparePart.priceArg * part.quantity);
+                });
+            }
+        });
+
+        const repairProfit = totalRepairRevenue - totalRepairPartsCost;
+
+        // 4. Premios Pagados (Bonuses)
+        // Sum bonusTotal from CashShifts this month
+        const shifts = await prisma.cashShift.aggregate({
+            where: {
+                ...whereClause,
+                startTime: { gte: firstDayOfMonth }
+            },
+            _sum: { bonusTotal: true }
+        });
+        const bonusesPaid = shifts._sum.bonusTotal || 0;
+
+
         return {
             totalSalesMetadata: totalSales._sum.total || 0,
             profitThisMonth,
             growthPercent: Math.round(growthPercent * 10) / 10,
             salesThisMonth: currentTotal,
             averageTicket: salesCurrentMonth._count._all > 0 ? Math.round(currentTotal / salesCurrentMonth._count._all) : 0,
-            totalSalesCount: salesCurrentMonth._count._all
+            totalSalesCount: salesCurrentMonth._count._all,
+
+            // New Fields
+            sparePartsCost,
+            repairProfit,
+            deliveredCount: deliveredCountCurrent,
+            bonusesPaid
         };
     } catch (error) {
         console.error("Error in getGlobalStats:", error);
-        return { totalSalesMetadata: 0, profitThisMonth: 0, growthPercent: 0, salesThisMonth: 0 };
+        return {
+            totalSalesMetadata: 0,
+            profitThisMonth: 0,
+            growthPercent: 0,
+            salesThisMonth: 0,
+            averageTicket: 0,
+            totalSalesCount: 0,
+            sparePartsCost: 0,
+            repairProfit: 0,
+            deliveredCount: 0,
+            bonusesPaid: 0
+        };
     }
 }
 
