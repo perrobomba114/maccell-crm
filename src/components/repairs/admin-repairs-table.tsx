@@ -64,10 +64,11 @@ export function AdminRepairsTable({ repairs, branches = [] }: AdminRepairsTableP
     // Local state for debounced input
     const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
 
-    // Sync local state when URL params change (e.g. navigation)
-    useEffect(() => {
-        setLocalSearchTerm(searchTerm);
-    }, [searchTerm]);
+    // Sync local state when URL params change (e.g. navigation) - REMOVED to prevent input fighting/lag
+    // The Input should be the source of truth for the local user session.
+    // useEffect(() => {
+    //     setLocalSearchTerm(searchTerm);
+    // }, [searchTerm]);
 
     // Helper to update URL params - Memoized to use in effects
     const updateParams = useMemo(() => (updates: Record<string, string | null>) => {
@@ -82,26 +83,25 @@ export function AdminRepairsTable({ repairs, branches = [] }: AdminRepairsTableP
             });
             // Always reset to page 1 on filter change unless explicitly setting page
             if (!updates.page) params.delete("page");
-            router.push(`${pathname}?${params.toString()}`, { scroll: false });
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
         });
     }, [searchParams, pathname, router]);
 
-    // Debounce effect
+    // Debounce effect just for URL persistence (does not block UI)
     useEffect(() => {
         const timer = setTimeout(() => {
             if (localSearchTerm !== searchTerm) {
                 updateParams({ q: localSearchTerm });
             }
-        }, 300);
+        }, 500); // Increased debounce to 500ms to reduce router thrashing
 
         return () => clearTimeout(timer);
     }, [localSearchTerm, searchTerm, updateParams]);
 
+    // Filter using LOCAL state for instant feedback
     const filteredRepairs = useMemo(() => {
         return repairs.filter(repair => {
-            // Use localSearchTerm for immediate feedback if desired, or searchTerm for consistent URL state.
-            // Using searchTerm (URL) ensures filtering happens only after debounce, which is the goal for performance.
-            const term = searchTerm.toLowerCase();
+            const term = localSearchTerm.toLowerCase();
             const matchesSearch = (
                 repair.ticketNumber.toLowerCase().includes(term) ||
                 repair.customer.name.toLowerCase().includes(term) ||
@@ -115,7 +115,7 @@ export function AdminRepairsTable({ repairs, branches = [] }: AdminRepairsTableP
 
             return matchesSearch && matchesBranch;
         });
-    }, [repairs, searchTerm, selectedBranchId]); // Depend on searchTerm (debounced via URL), not localSearchTerm
+    }, [repairs, localSearchTerm, selectedBranchId]); // Depend on localSearchTerm
 
     const totalPages = Math.ceil(filteredRepairs.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;

@@ -302,6 +302,7 @@ export async function finishRepairAction(formData: FormData) {
                 userId: true,
                 deviceImages: true,
                 startedAt: true,
+                finishedAt: true,
                 estimatedTime: true,
                 parts: {
                     include: {
@@ -350,7 +351,10 @@ export async function finishRepairAction(formData: FormData) {
             // Do NOT set finishedAt
         } else {
             // Finalizing states (5, 6, 7...)
-            dataToUpdate.finishedAt = new Date();
+            // Only set finishedAt if not already finished (preserve original repair date)
+            if (!repair.finishedAt) {
+                dataToUpdate.finishedAt = new Date();
+            }
         }
 
         dataToUpdate.isWet = isWet; // Always update isWet based on technician input

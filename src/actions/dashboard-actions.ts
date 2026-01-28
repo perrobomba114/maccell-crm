@@ -594,11 +594,11 @@ export async function getTechnicianStats(technicianId: string) {
         sevenDaysAgo.setHours(0, 0, 0, 0);
 
         // 1. Fetch Key Counts and Distributions
-        const [pendingRepairsCount, activeRepairsCount, completedToday, completedMonth, statusDist, finishedLast30] = await Promise.all([
+        const [pendingRepairsCount, activeRepairsCount, completedToday, completedMonth, statusDist, finishedLast30, completedLastMonth] = await Promise.all([
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [1, 2, 4] } } }), // Pending, Assigned, Diagnosing
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: 3 } }), // In Progress
-            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, updatedAt: { gte: today } } }),
-            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, updatedAt: { gte: firstDayOfMonth } } }),
+            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: today } } }),
+            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: firstDayOfMonth } } }),
             prisma.repair.groupBy({ by: ['statusId'], where: { assignedUserId: technicianId }, _count: { _all: true } }),
             // Performance Metrics Fetching (Last 30 Days)
             prisma.repair.findMany({
@@ -612,6 +612,17 @@ export async function getTechnicianStats(technicianId: string) {
                     finishedAt: true,
                     promisedAt: true,
                     warrantyRepairs: { select: { id: true } } // Check if it generated warranties
+                }
+            }),
+            // NEW: Completed Last Month for comparison
+            prisma.repair.count({
+                where: {
+                    assignedUserId: technicianId,
+                    statusId: { in: [5, 6, 7, 10] },
+                    finishedAt: {
+                        gte: new Date(today.getFullYear(), today.getMonth() - 1, 1),
+                        lt: firstDayOfMonth
+                    }
                 }
             })
         ]);
@@ -730,9 +741,9 @@ export async function getTechnicianStats(technicianId: string) {
             where: {
                 assignedUserId: technicianId,
                 statusId: { in: [5, 6, 7, 10] }, // Done
-                updatedAt: { gte: sevenDaysAgo }
+                finishedAt: { gte: sevenDaysAgo }
             },
-            select: { updatedAt: true }
+            select: { finishedAt: true }
         });
 
         const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -749,7 +760,8 @@ export async function getTechnicianStats(technicianId: string) {
         }
 
         weeklyCompleted.forEach((r: any) => {
-            const dayName = days[new Date(r.updatedAt).getDay()];
+            if (!r.finishedAt) return;
+            const dayName = days[new Date(r.finishedAt).getDay()];
             weeklyOutputMap.set(dayName, (weeklyOutputMap.get(dayName) || 0) + 1);
         });
 
@@ -796,6 +808,7 @@ export async function getTechnicianStats(technicianId: string) {
             qualityScore,
             onTimeRate,
             stagnatedRepairs,
+            completedLastMonth,
             statusDistribution,
             activeWorkspace,
             queue,

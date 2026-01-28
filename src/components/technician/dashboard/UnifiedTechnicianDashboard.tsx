@@ -186,8 +186,8 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                 </div>
             )}
 
-            {/* Metrics Grid - 2 Rows of 3 for better balance */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+            {/* Metrics Grid - 2 Rows of 4 for better balance */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <TechMetric
                     title="En Mesa"
                     value={stats.activeRepairs}
@@ -213,6 +213,16 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                     href="/technician/history"
                 />
                 <TechMetric
+                    title="Total Mes"
+                    value={stats.completedMonth}
+                    subtext="Equipos reparados"
+                    icon={Calendar}
+                    color="violet"
+                    href="/technician/history"
+                />
+
+                {/* Row 2 */}
+                <TechMetric
                     title="Eficiencia"
                     value={stats.avgRepairTime}
                     subtext="Tiempo prom."
@@ -236,6 +246,30 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                     color="blue"
                     href="/technician/profile"
                 />
+
+                {/* Growth Card */}
+                {(() => {
+                    const current = stats.completedMonth || 0;
+                    const last = stats.completedLastMonth || 0;
+                    let growth = 0;
+                    if (last > 0) {
+                        growth = Math.round(((current - last) / last) * 100);
+                    } else if (current > 0) {
+                        growth = 100; // Minimal positive interpretation
+                    }
+                    const sign = growth > 0 ? "+" : "";
+
+                    return (
+                        <TechMetric
+                            title="Crecimiento"
+                            value={`${sign}${growth}%`}
+                            subtext={`vs ${last} (Mes Ant.)`}
+                            icon={ArrowUpRight} // Using ArrowUpRight as existing import
+                            color={growth >= 0 ? "emerald" : "orange"}
+                            href="/technician/profile"
+                        />
+                    );
+                })()}
             </div>
 
             {/* Main Balanced Grid: 2 Columns (2/3 vs 1/3) */}
