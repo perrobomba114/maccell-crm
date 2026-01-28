@@ -25,6 +25,33 @@ export async function getNotificationsAction(userId: string) {
     }
 }
 
+export async function getAllNotificationsAction(userId: string, filters?: { status?: string, type?: string }) {
+    if (!userId) return [];
+
+    try {
+        const whereClause: any = { userId };
+
+        if (filters?.status && filters.status !== 'ALL') {
+            whereClause.status = filters.status;
+        }
+        if (filters?.type && filters.type !== 'ALL') {
+            whereClause.type = filters.type;
+        }
+
+        const notifications = await db.notification.findMany({
+            where: whereClause,
+            take: 100, // Reasonable limit
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+        return notifications;
+    } catch (error) {
+        console.error("Error fetching all notifications:", error);
+        return [];
+    }
+}
+
 export async function markNotificationReadAction(notificationId: string) {
     if (!notificationId) return { success: false };
 
