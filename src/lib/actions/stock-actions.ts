@@ -241,17 +241,45 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
 
             // Let's use a transaction.
             return await db.$transaction(async (tx) => {
-                // 1. ATOMIC LOCK & UPDATE: Try to update all related notifications first.
-                // We use Prisma's native updateMany for type safety and to avoid SQL syntax errors.
+                // 1. Fetch potential sibling notifications (safer than raw JSON query)
+                // We fetch all pending ACTION_REQUESTs and filter in memory. 
+                // Since this list shouldn't be huge, this is safe.
+                const pendingNotifications = await tx.notification.findMany({
+                    where: {
+                        status: 'PENDING',
+                        type: 'ACTION_REQUEST'
+                    },
+                    select: { id: true, actionData: true }
+                });
+
+                // Filter for matching discrepancyId
+                const siblingIds = pendingNotifications
+                    .filter(n => {
+                        const d = n.actionData as any;
+                        return d?.discrepancyId === data.discrepancyId;
+                    })
+                    .map(n => n.id);
+
+                if (siblingIds.length === 0) {
+                    // If we are here, it means they are already resolved or don't exist
+                    // But wait, the current notification exists and brought us here.
+                    // So this case implies someone else JUST resolved it between our read and now?
+                    // Or we are just processing 'this' one.
+                    // Actually, if we are here, at least 'notificationId' should be in the list? 
+                    // Not necessarily if we fetched from DB and it was just updated.
+                    // Let's proceed only if we find siblings.
+                }
+
+                // Double check if they are already resolved
+                // If the list is empty, it means they were resolved.
+                if (siblingIds.length === 0) {
+                    return { success: false, error: "Esta solicitud ya fue procesada por otro administrador." };
+                }
+
+                // 2. ATOMIC UPDATE: Update all found siblings
                 const result = await tx.notification.updateMany({
                     where: {
-                        // We can filter inside the JSON field using Prisma 6 syntax or simplified path
-                        // Note: Prisma's JSON filtering syntax might vary by DB, but for Postgres:
-                        actionData: {
-                            path: ['discrepancyId'],
-                            equals: data.discrepancyId
-                        },
-                        status: 'PENDING'
+                        id: { in: siblingIds }
                     },
                     data: {
                         status: approved ? 'ACCEPTED' : 'REJECTED',
@@ -259,12 +287,7 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
                     }
                 });
 
-                // If no rows were updated, it means another admin already resolved it just now.
-                if (result.count === 0) {
-                    return { success: false, error: "Esta solicitud ya fue procesada por otro administrador." };
-                }
-
-                // 2. Perform Stock Update (Only if approved AND we won the race)
+                // 3. Perform Stock Update (Only if approved)
                 if (approved) {
                     await tx.productStock.update({
                         where: { id: data.stockId },
@@ -310,7 +333,7 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
         if (error instanceof Error && error.message.includes("ya fue procesada")) {
             return { success: false, error: error.message };
         }
-        return { success: false, error: "Error resolving discrepancy" };
+        return { success: false, error: error instanceof Error ? error.message : "Error resolving discrepancy" };
     }
 }
 
