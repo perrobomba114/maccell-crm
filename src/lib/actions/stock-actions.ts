@@ -289,14 +289,26 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
 
                 // 3. Perform Stock Update (Only if approved)
                 if (approved) {
-                    await tx.productStock.update({
-                        where: { id: data.stockId },
-                        data: {
-                            quantity: { increment: data.adjustment },
-                            // @ts-ignore
-                            lastCheckedAt: new Date()
-                        }
+                    // Check if stock still exists to prevent "Record not found" error
+                    const stockExists = await tx.productStock.findUnique({
+                        where: { id: data.stockId }
                     });
+
+                    if (stockExists) {
+                        await tx.productStock.update({
+                            where: { id: data.stockId },
+                            data: {
+                                quantity: { increment: data.adjustment },
+                                // @ts-ignore
+                                lastCheckedAt: new Date()
+                            }
+                        });
+                    } else {
+                        // Stock record deleted? We should maybe warn the user but still complete the notification
+                        // to unblock the list.
+                        console.warn(`Stock ID ${data.stockId} not found. Skipping update.`);
+                        return { success: true, message: "Solicitud procesada, pero el producto ya no existe (no se actualizó el stock)." };
+                    }
                 }
 
                 return { success: true };
