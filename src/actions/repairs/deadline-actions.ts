@@ -58,10 +58,13 @@ export async function extendRepairTime(repairId: string, technicianId: string, m
         const oldPromisedAt = repair.promisedAt;
         const newPromisedAt = new Date(oldPromisedAt.getTime() + minutes * 60000);
 
+        const currentEstimatedTime = repair.estimatedTime || 0;
+
         await db.repair.update({
             where: { id: repairId },
             data: {
-                promisedAt: newPromisedAt
+                promisedAt: newPromisedAt,
+                estimatedTime: currentEstimatedTime + minutes
             }
         });
 
