@@ -25,8 +25,13 @@ export async function getNotificationsAction(userId: string) {
     }
 }
 
-export async function getAllNotificationsAction(userId: string, filters?: { status?: string, type?: string }) {
-    if (!userId) return [];
+export async function getAllNotificationsAction(
+    userId: string,
+    filters?: { status?: string, type?: string },
+    page: number = 1,
+    limit: number = 25
+) {
+    if (!userId) return { notifications: [], total: 0, totalPages: 0 };
 
     try {
         const whereClause: any = { userId };
@@ -38,17 +43,28 @@ export async function getAllNotificationsAction(userId: string, filters?: { stat
             whereClause.type = filters.type;
         }
 
-        const notifications = await db.notification.findMany({
-            where: whereClause,
-            take: 100, // Reasonable limit
-            orderBy: {
-                createdAt: 'desc'
-            }
-        });
-        return notifications;
+        const skip = (page - 1) * limit;
+
+        const [notifications, total] = await Promise.all([
+            db.notification.findMany({
+                where: whereClause,
+                take: limit,
+                skip: skip,
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            }),
+            db.notification.count({ where: whereClause })
+        ]);
+
+        return {
+            notifications,
+            total,
+            totalPages: Math.ceil(total / limit)
+        };
     } catch (error) {
         console.error("Error fetching all notifications:", error);
-        return [];
+        return { notifications: [], total: 0, totalPages: 0 };
     }
 }
 
