@@ -51,50 +51,19 @@ export async function getVendorStockAction({ page = 1, limit = 25, query = "" }:
                     name: true,
                     brand: true,
                     stockLocal: true,
-                    // pricePos: true, // REMOVED to prevent crash on stale client
+                    pricePos: true,
                     category: {
                         select: {
                             name: true
                         }
                     }
-                } as any, // Cast to any to bypass stale type definition for pricePos
+                },
                 skip,
                 take: limit,
                 orderBy: { name: 'asc' }
             }),
             db.sparePart.count({ where: whereClause })
         ]);
-
-        // Always fetch pricePos manually to be safe against stale client
-        // We do this if we have data.
-        if (data.length > 0) {
-            try {
-                // Optimization: Only fetch for the IDs we displayed
-                const ids = data.map(d => d.id);
-                // Create a parameter string like $1, $2, $3...
-                // Prisma raw query with IN clause is tricky with arrays.
-                // Safest way is to iterate or fetch all (if simple).
-                // Let's try JOINING logical ORs or just using Prisma.sql helper if available?
-                // Actually, for 25 items, we can just construct the string carefully or use a different approach.
-                // Let's just fetch ALL for now to be 100% sure we don't break SQL syntax, 
-                // OR use Promise.all with single lookups (25 queries is fine).
-                // OR use a raw query with a big OR.
-                // Simplest and safest given previous issues: Fetch ALL (it's what worked before).
-                // But let's verify if we can do WHERE id IN (...).
-                // string matching in raw query is annoying with UUIDs.
-                // We will stick to the global fetch for simplicity and robustness as verified in export action.
-
-                const rawPrices = await db.$queryRaw`SELECT id, "pricePos" FROM "spare_parts" WHERE "deletedAt" IS NULL`;
-
-                const priceMap = new Map();
-                if (Array.isArray(rawPrices)) {
-                    rawPrices.forEach((p: any) => priceMap.set(p.id, p.pricePos));
-                }
-                data.forEach((part: any) => {
-                    (part as any).pricePos = priceMap.get(part.id) || 0;
-                });
-            } catch (e) { console.error("Vendor stock fallback error", e); }
-        }
 
         // Deduplicate data (Safety net for potential Prisma/Join behavior on complex OR queries)
         const uniqueData = Array.from(new Map(data.map(item => [item.id, item])).values());

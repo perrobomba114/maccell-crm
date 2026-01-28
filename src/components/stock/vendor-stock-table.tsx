@@ -31,8 +31,6 @@ interface VendorStockTableProps {
 
 export function VendorStockTable({ data, totalPages, currentPage, totalItems, userBranchName }: VendorStockTableProps) {
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const [searchTerm, setSearchTerm] = useState(searchParams.get("query") || "");
     const [itemToRemove, setItemToRemove] = useState<any>(null);
     const [isRemoving, setIsRemoving] = useState(false);
 
@@ -59,43 +57,15 @@ export function VendorStockTable({ data, totalPages, currentPage, totalItems, us
         }
     };
 
-    // Debounce Logic
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            const currentQuery = searchParams.get("query") || "";
-            if (searchTerm === currentQuery) return; // Skip if no change in query
-
-            const params = new URLSearchParams(searchParams);
-            if (searchTerm) {
-                params.set("query", searchTerm);
-            } else {
-                params.delete("query");
-            }
-            params.set("page", "1"); // Reset to page 1 only when query changes
-            router.replace(`?${params.toString()}`);
-        }, 500);
-
-        return () => clearTimeout(timer);
-    }, [searchTerm, router, searchParams]);
-
     const handlePageChange = (newPage: number) => {
-        const params = new URLSearchParams(searchParams);
+        // We use window.location.search to preserve existing query params (like search query)
+        const params = new URLSearchParams(window.location.search);
         params.set("page", newPage.toString());
         router.push(`?${params.toString()}`);
     };
 
     return (
         <div className="space-y-4">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar por SKU, Nombre, Marca o Categoría..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 h-12 text-lg"
-                />
-            </div>
-
             <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
                 <Table>
                     <TableHeader className="bg-muted/50">
