@@ -57,14 +57,20 @@ function SalesMetricCard({ title, value, icon: Icon, color }: any) {
     };
 
     return (
-        <Card className="border-zinc-800 bg-[#18181b]">
-            <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                    <p className="text-sm font-medium text-zinc-500 uppercase tracking-wider">{title}</p>
-                    <h3 className="text-2xl font-bold text-white mt-1">{value}</h3>
+        <Card className="border-zinc-800 bg-[#18181b] h-full flex flex-col transition-all hover:bg-zinc-900/50">
+            <CardContent className="p-6 flex flex-col justify-between flex-1 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                    <Icon size={100} />
                 </div>
-                <div className={cn("p-3 rounded-xl", colorStyles[color] || colorStyles.blue)}>
-                    <Icon size={24} strokeWidth={2} />
+
+                <div className="flex justify-between items-start z-10">
+                    <div>
+                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">{title}</p>
+                        <h3 className="text-3xl font-black text-white tracking-tight">{value}</h3>
+                    </div>
+                    <div className={cn("p-2.5 rounded-xl backdrop-blur-md", colorStyles[color] || colorStyles.blue)}>
+                        <Icon size={20} strokeWidth={2.5} />
+                    </div>
                 </div>
             </CardContent>
         </Card>
@@ -208,7 +214,7 @@ export default function AdminSalesClient() {
     };
 
     return (
-        <div className="p-4 md:p-6 w-full max-w-7xl mx-auto space-y-6">
+        <div className="p-4 md:p-6 w-full mx-auto space-y-6">
             <div className="flex flex-col gap-6">
                 {/* Header Title */}
                 <div>
@@ -307,7 +313,7 @@ export default function AdminSalesClient() {
                 </div>
 
                 {/* KPI Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <SalesMetricCard
                         title="Total Vendido (Selección)"
                         value={new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(totalRevenue)}
@@ -320,6 +326,67 @@ export default function AdminSalesClient() {
                         icon={ShoppingBag}
                         color="blue"
                     />
+
+                    {/* Branch Ranking Card */}
+                    <Card className="border-zinc-800 bg-[#18181b] h-full flex flex-col transition-all hover:bg-zinc-900/50">
+                        <CardHeader className="p-6 pb-2">
+                            <CardTitle className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                <Building2 size={14} /> Ranking de Ventas
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 pt-2 flex-1 flex flex-col justify-center">
+                            <div className="space-y-4">
+                                {(() => {
+                                    // Calculate Ranking
+                                    const rankingMap = new Map<string, { name: string; total: number }>();
+                                    sales.forEach(sale => {
+                                        if (!sale.branch) return;
+                                        const current = rankingMap.get(sale.branch.id) || { name: sale.branch.name, total: 0 };
+                                        current.total += Number(sale.total) || 0;
+                                        rankingMap.set(sale.branch.id, current);
+                                    });
+
+                                    const ranking = Array.from(rankingMap.values())
+                                        .sort((a, b) => b.total - a.total)
+                                        .slice(0, 3); // Top 3 only
+
+                                    if (ranking.length === 0) {
+                                        return <p className="text-xs text-zinc-500 italic">No hay datos suficientes.</p>;
+                                    }
+
+                                    const maxTotal = ranking[0].total;
+
+                                    return ranking.map((item, index) => (
+                                        <div key={item.name} className="relative group">
+                                            <div className="flex justify-between items-center mb-1.5 z-10 relative">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={cn(
+                                                        "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm",
+                                                        index === 0 ? "bg-amber-500 text-black shadow-amber-500/20" :
+                                                            index === 1 ? "bg-zinc-700 text-white" :
+                                                                "bg-zinc-800 text-zinc-500"
+                                                    )}>
+                                                        {index + 1}
+                                                    </div>
+                                                    <span className="text-xs font-bold text-zinc-300 truncate max-w-[100px]">{item.name}</span>
+                                                </div>
+                                                <span className="text-xs font-mono font-medium text-emerald-500">
+                                                    {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(item.total)}
+                                                </span>
+                                            </div>
+                                            {/* Progress Bar Background */}
+                                            <div className="h-1.5 w-full bg-zinc-800/50 rounded-full overflow-hidden">
+                                                <div
+                                                    className={cn("h-full rounded-full transition-all duration-500", index === 0 ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]" : "bg-zinc-600")}
+                                                    style={{ width: `${(item.total / maxTotal) * 100}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
 
