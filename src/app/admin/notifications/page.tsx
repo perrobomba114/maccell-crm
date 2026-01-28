@@ -1,7 +1,7 @@
 import { getUserData } from "@/actions/get-user";
 import { getAllNotificationsAction } from "@/lib/actions/notifications";
 import { redirect } from "next/navigation";
-import { AdminNotificationsClient } from "@/components/admin/notifications-client";
+import { AdminNotificationsClient } from "../../../components/admin/notifications-client";
 
 export default async function AdminNotificationsPage({
     searchParams
