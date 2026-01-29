@@ -55,7 +55,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                             <TableHead className="text-center">Sucursal</TableHead>
                             <TableHead className="text-center">Descripción</TableHead>
                             <TableHead className="text-center">Monto</TableHead>
-                            <TableHead className="w-[50px]"></TableHead>
+                            <TableHead className="text-center">Acción</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -96,29 +96,27 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                                     <TableCell className="text-center font-medium text-red-600 dark:text-red-400">
                                         - ${expense.amount.toLocaleString()}
                                     </TableCell>
-                                    <TableCell>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                                    <span className="sr-only">Open menu</span>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => setEditingExpense(expense)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Editar
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    onClick={() => handleDelete(expense.id)}
-                                                    className="text-red-600 focus:text-red-600"
-                                                >
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Eliminar
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                    <TableCell className="text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                                onClick={() => setEditingExpense(expense)}
+                                                title="Editar"
+                                            >
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                onClick={() => handleDelete(expense.id)}
+                                                title="Eliminar"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))
