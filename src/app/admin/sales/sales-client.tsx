@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { getAdminSales } from "@/actions/sales-actions";
+import { getAdminSales, getBranchRanking, deleteSale, updateSalePaymentMethod } from "@/actions/sales-actions";
 import { printSaleTicket } from "@/lib/print-utils";
 import { getAllBranches } from "@/actions/branch-actions";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,6 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { updateSalePaymentMethod, deleteSale } from "@/actions/sales-actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -46,7 +45,6 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { TableSkeleton } from "@/components/ui/table-skeleton";
 
 // Simplified Metric Card for Sales
 function SalesMetricCard({ title, value, icon: Icon, color }: any) {
@@ -84,6 +82,7 @@ export default function AdminSalesClient() {
     const initialQuery = searchParams.get("search") || "";
 
     const [sales, setSales] = useState<any[]>([]);
+    const [rankingData, setRankingData] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -162,13 +161,21 @@ export default function AdminSalesClient() {
             const endStr = date ? new Date(date) : undefined;
             if (endStr) endStr.setHours(23, 59, 59, 999);
 
-            const data = await getAdminSales({
-                startDate: startStr,
-                endDate: endStr,
-                term: searchTerm,
-                branchId: selectedBranch
-            });
-            setSales(data);
+            const [salesData, rankingRes] = await Promise.all([
+                getAdminSales({
+                    startDate: startStr,
+                    endDate: endStr,
+                    term: searchTerm,
+                    branchId: selectedBranch
+                }),
+                getBranchRanking({
+                    startDate: startStr,
+                    endDate: endStr
+                })
+            ]);
+
+            setSales(salesData);
+            setRankingData(rankingRes);
         } catch (error) {
             console.error("Error loading sales", error);
             toast.error("Error al cargar ventas");
@@ -313,7 +320,7 @@ export default function AdminSalesClient() {
                 </div>
 
                 {/* KPI Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <SalesMetricCard
                         title="Total Vendido (Selección)"
                         value={new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(totalRevenue)}
@@ -337,18 +344,9 @@ export default function AdminSalesClient() {
                         <CardContent className="p-6 pt-2 flex-1 flex flex-col justify-center">
                             <div className="space-y-4">
                                 {(() => {
-                                    // Calculate Ranking
-                                    const rankingMap = new Map<string, { name: string; total: number }>();
-                                    sales.forEach(sale => {
-                                        if (!sale.branch) return;
-                                        const current = rankingMap.get(sale.branch.id) || { name: sale.branch.name, total: 0 };
-                                        current.total += Number(sale.total) || 0;
-                                        rankingMap.set(sale.branch.id, current);
-                                    });
-
-                                    const ranking = Array.from(rankingMap.values())
-                                        .sort((a, b) => b.total - a.total)
-                                        .slice(0, 3); // Top 3 only
+                                    // Use rankingData directly. 
+                                    // Slice set to 4 as requested.
+                                    const ranking = rankingData.slice(0, 4);
 
                                     if (ranking.length === 0) {
                                         return <p className="text-xs text-zinc-500 italic">No hay datos suficientes.</p>;
@@ -356,8 +354,8 @@ export default function AdminSalesClient() {
 
                                     const maxTotal = ranking[0].total;
 
-                                    return ranking.map((item, index) => (
-                                        <div key={item.name} className="relative group">
+                                    return ranking.map((item: any, index: number) => (
+                                        <div key={item.branchName} className="relative group">
                                             <div className="flex justify-between items-center mb-1.5 z-10 relative">
                                                 <div className="flex items-center gap-2">
                                                     <div className={cn(
@@ -368,7 +366,7 @@ export default function AdminSalesClient() {
                                                     )}>
                                                         {index + 1}
                                                     </div>
-                                                    <span className="text-xs font-bold text-zinc-300 truncate max-w-[100px]">{item.name}</span>
+                                                    <span className="text-xs font-bold text-zinc-300 truncate max-w-[100px]">{item.branchName}</span>
                                                 </div>
                                                 <span className="text-xs font-mono font-medium text-emerald-500">
                                                     {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(item.total)}

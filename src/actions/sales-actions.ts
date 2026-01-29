@@ -304,3 +304,59 @@ export async function deleteSale(saleId: string) {
         return { success: false, error: "Error al eliminar la venta" };
     }
 }
+
+export async function getBranchRanking(filters?: {
+    startDate?: Date;
+    endDate?: Date;
+}) {
+    const user = await getCurrentUser();
+    if (!user || user.role !== "ADMIN") {
+        return [];
+    }
+
+    try {
+        const where: any = {};
+
+        if (filters?.startDate && filters?.endDate) {
+            where.createdAt = {
+                gte: filters.startDate,
+                lte: filters.endDate,
+            };
+        }
+
+        // 1. Group by branch and sum totals
+        const groupedSales = await db.sale.groupBy({
+            by: ['branchId'],
+            _sum: {
+                total: true,
+            },
+            where,
+        });
+
+        // 2. Fetch branch names
+        // We could cache this or assume branches dont change often, but a quick query is fine.
+        const branches = await db.branch.findMany({
+            where: {
+                id: { in: groupedSales.map(g => g.branchId).filter((id): id is string => id !== null) }
+            },
+            select: { id: true, name: true }
+        });
+
+        // 3. Merge data
+        const ranking = groupedSales.map(g => {
+            const branch = branches.find(b => b.id === g.branchId);
+            return {
+                branchId: g.branchId,
+                branchName: branch ? branch.name : "Desconocida",
+                total: g._sum.total || 0
+            };
+        });
+
+        // 4. Sort by total desc
+        return ranking.sort((a, b) => b.total - a.total);
+
+    } catch (error) {
+        console.error("Error fetching branch ranking:", error);
+        return [];
+    }
+}
