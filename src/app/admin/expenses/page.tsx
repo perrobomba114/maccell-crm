@@ -5,6 +5,7 @@ import { getExpensesAction } from "@/actions/admin-expenses";
 import { ExpensesTable } from "@/components/expenses/expenses-table";
 import { ExpensesFilter } from "@/components/expenses/expenses-filter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { DollarSign, Receipt } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -12,18 +13,25 @@ export const dynamic = "force-dynamic";
 export default async function AdminExpensesPage({
     searchParams
 }: {
-    searchParams: { date?: string; page?: string }
+    searchParams: { date?: string; page?: string; view?: string }
 }) {
     const user = await getUserData();
     if (user?.role !== "ADMIN") redirect("/");
 
-    const date = searchParams.date || new Date().toISOString();
+    // Default to Today if no date AND not explicitly viewing all
+    const isViewAll = searchParams.view === "all";
+    if (!searchParams.date && !isViewAll) {
+        const today = new Date().toISOString().split('T')[0];
+        redirect(`/admin/expenses?date=${today}`);
+    }
+
+    const date = isViewAll ? undefined : (searchParams.date || undefined);
     const page = parseInt(searchParams.page || "1");
 
-    const { expenses, totalAmount, totalCount, totalPages, currentPage } = await getExpensesAction({
+    const { expenses, totalAmount, monthlyTotal, totalCount, totalPages, currentPage } = await getExpensesAction({
         date,
         page,
-        limit: 50 // Higher limit for expenses usually
+        limit: 25
     });
 
     return (
@@ -41,7 +49,7 @@ export default async function AdminExpensesPage({
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Gastos (Día)</CardTitle>
+                        <CardTitle className="text-sm font-medium">Total Gastos {date ? "(Día)" : "(Filtro)"}</CardTitle>
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -49,7 +57,22 @@ export default async function AdminExpensesPage({
                             - ${totalAmount.toLocaleString()}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            {totalCount} registros encontrados
+                            {totalCount} registros
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Mes Actual</CardTitle>
+                        <Receipt className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                            - ${monthlyTotal.toLocaleString()}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Acumulado mensual
                         </p>
                     </CardContent>
                 </Card>
@@ -65,12 +88,29 @@ export default async function AdminExpensesPage({
                 <CardContent>
                     <ExpensesTable expenses={expenses} />
 
-                    {/* Pagination could be added here if needed, sticking to simple list for now as per req "list all expenses" */}
                     {totalPages > 1 && (
-                        <div className="flex justify-center mt-4">
-                            <p className="text-sm text-muted-foreground">
+                        <div className="flex justify-center mt-4 gap-2">
+                            <Button
+                                variant="outline"
+                                disabled={currentPage <= 1}
+                                asChild={currentPage > 1}
+                            >
+                                {currentPage > 1 ? (
+                                    <a href={`/admin/expenses?${new URLSearchParams({ ...searchParams, page: String(currentPage - 1) }).toString()}`}>Anterior</a>
+                                ) : "Anterior"}
+                            </Button>
+                            <div className="flex items-center px-4 text-sm font-medium">
                                 Página {currentPage} de {totalPages}
-                            </p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                disabled={currentPage >= totalPages}
+                                asChild={currentPage < totalPages}
+                            >
+                                {currentPage < totalPages ? (
+                                    <a href={`/admin/expenses?${new URLSearchParams({ ...searchParams, page: String(currentPage + 1) }).toString()}`}>Siguiente</a>
+                                ) : "Siguiente"}
+                            </Button>
                         </div>
                     )}
                 </CardContent>

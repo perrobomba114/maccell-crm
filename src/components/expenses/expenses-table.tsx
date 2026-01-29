@@ -50,11 +50,11 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Fecha</TableHead>
-                            <TableHead>Usuario</TableHead>
-                            <TableHead>Sucursal</TableHead>
-                            <TableHead>Descripción</TableHead>
-                            <TableHead className="text-right">Monto</TableHead>
+                            <TableHead className="text-center">Fecha</TableHead>
+                            <TableHead className="text-center">Usuario</TableHead>
+                            <TableHead className="text-center">Sucursal</TableHead>
+                            <TableHead className="text-center">Descripción</TableHead>
+                            <TableHead className="text-center">Monto</TableHead>
                             <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -68,8 +68,8 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                         ) : (
                             expenses.map((expense) => (
                                 <TableRow key={expense.id}>
-                                    <TableCell>
-                                        <div className="flex flex-col">
+                                    <TableCell className="text-center">
+                                        <div className="flex flex-col items-center">
                                             <span className="font-medium">
                                                 {format(new Date(expense.createdAt), "dd MMM yyyy", { locale: es })}
                                             </span>
@@ -79,7 +79,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 justify-center">
                                             <Avatar className="h-8 w-8">
                                                 <AvatarImage src={getImgUrl(expense.user.imageUrl)} />
                                                 <AvatarFallback>{expense.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -87,13 +87,13 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                                             <span className="text-sm font-medium">{expense.user.name}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-center">
                                         <span className="text-sm text-muted-foreground">{expense.branch.name}</span>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-center">
                                         <span className="text-sm">{expense.description}</span>
                                     </TableCell>
-                                    <TableCell className="text-right font-medium text-red-600 dark:text-red-400">
+                                    <TableCell className="text-center font-medium text-red-600 dark:text-red-400">
                                         - ${expense.amount.toLocaleString()}
                                     </TableCell>
                                     <TableCell>

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 export async function getExpensesAction({
     date,
     page = 1,
-    limit = 20
+    limit = 25
 }: {
     date?: string;
     page?: number;
@@ -15,6 +15,7 @@ export async function getExpensesAction({
     try {
         const where: any = {};
 
+        // Date Filter Logic
         if (date) {
             const startDate = new Date(date);
             startDate.setHours(0, 0, 0, 0);
@@ -49,19 +50,36 @@ export async function getExpensesAction({
 
         const totalPages = Math.ceil(totalCount / limit);
 
-        // Calculate total amount for the filtered period
+        // Daily/Filtered Total
         const aggregations = await db.expense.aggregate({
             where,
             _sum: { amount: true }
         });
         const totalAmount = aggregations._sum.amount || 0;
 
+        // Monthly Total Calculation (Independent of current filter, based on requested date or today)
+        const referenceDate = date ? new Date(date) : new Date();
+        const startOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
+        const endOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        const monthlyAggregations = await db.expense.aggregate({
+            where: {
+                createdAt: {
+                    gte: startOfMonth,
+                    lte: endOfMonth
+                }
+            },
+            _sum: { amount: true }
+        });
+        const monthlyTotal = monthlyAggregations._sum.amount || 0;
+
         return {
             expenses,
             totalCount,
             totalPages,
             currentPage: page,
-            totalAmount
+            totalAmount,
+            monthlyTotal // New Field
         };
 
     } catch (error) {
@@ -71,7 +89,8 @@ export async function getExpensesAction({
             totalCount: 0,
             totalPages: 0,
             currentPage: 1,
-            totalAmount: 0
+            totalAmount: 0,
+            monthlyTotal: 0
         };
     }
 }

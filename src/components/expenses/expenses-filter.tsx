@@ -28,19 +28,20 @@ export function ExpensesFilter() {
     const handleSelect = (selectedDate: Date | undefined) => {
         const params = new URLSearchParams(searchParams);
         if (selectedDate) {
-            params.set("date", selectedDate.toISOString());
+            params.set("date", selectedDate.toISOString().split('T')[0]); // Use simple date format
+            params.delete("view");
             params.set("page", "1");
         } else {
             params.delete("date");
+            params.set("view", "all"); // Explicitly view all to avoid default redirect
+            params.set("page", "1");
         }
         router.push(`${pathname}?${params.toString()}`);
         setOpen(false);
     };
 
     const clearFilter = () => {
-        const params = new URLSearchParams(searchParams);
-        params.delete("date");
-        router.push(`${pathname}?${params.toString()}`);
+        handleSelect(undefined);
     };
 
     return (
