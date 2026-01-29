@@ -35,7 +35,7 @@ export async function getTechnicianPerformance(date: Date = new Date()) {
                 where: {
                     assignedUserId: tech.id,
                     statusId: { in: [5, 6, 7, 10] },
-                    updatedAt: { gte: start, lte: end }
+                    finishedAt: { gte: start, lte: end }
                 },
                 select: {
                     startedAt: true,

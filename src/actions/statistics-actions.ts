@@ -67,7 +67,21 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
                 where: {
                     ...whereClause,
                     statusId: 10,
-                    updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+                    updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } // Delivered (10) usually implies Finished.
+                    // Actually, "Delivered" state timestamp change is the "delivery" event.
+                    // But if we want unique count, maybe use finishedAt?
+                    // "Delivered Count" usually means "How many left the shop".
+                    // Delivery happens AFTER finish. So updatedAt is correct for "Delivered This Month".
+                    // But if the user says "reparacion cuente por ticket independientemente del estado",
+                    // they prefer consistency.
+                    // However, "Delivered" is a distinct event from "Finished".
+                    // Leaving Delivered logic alone if it specifically asks for "status: 10".
+                    // Wait, Delivered (10) is a SUBSET of Finished.
+                    // If we want "Total Completed", we use finishedAt.
+                    // If we want "Total Handed Over", we use updatedAt (Delivery Date).
+                    // The user complained about "Suma de reparaciones" (Total Repairs).
+                    // Let's assume "Delivered Count" is separate.
+                    // But let's check "getRepairStats" below.
                 }
             }),
             // 6. Extended: Spare Parts Cost
@@ -468,7 +482,7 @@ export async function getRepairStats(branchId?: string, date?: Date) {
             by: ['assignedUserId'],
             where: {
                 statusId: { in: [5, 6, 7, 10] }, // Completed
-                updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
                 assignedUserId: { not: null },
                 ...whereRepair
             },
@@ -498,7 +512,7 @@ export async function getRepairStats(branchId?: string, date?: Date) {
         const repairCount = await prisma.repair.count({
             where: {
                 statusId: { in: [5, 6, 7, 10] },
-                updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
                 ...whereRepair
             }
         });

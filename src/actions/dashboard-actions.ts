@@ -164,11 +164,11 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
                 assignedUserId: { in: techUsers.map(u => u.id) },
                 OR: [
                     { statusId: { in: [3, 4] } },
-                    { statusId: { in: [5, 6, 7, 10] }, updatedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } }
+                    { statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } }
                 ],
                 ...branchFilter
             },
-            select: { assignedUserId: true, statusId: true, estimatedTime: true, startedAt: true }
+            select: { assignedUserId: true, statusId: true, estimatedTime: true, startedAt: true, finishedAt: true }
         });
 
         const topTechnicians = techUsers.map(user => {
