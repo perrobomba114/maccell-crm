@@ -1,15 +1,31 @@
-import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
-const ARG_TZ = "America/Argentina/Buenos_Aires";
+// Removed date-fns-tz dependency due to environment issues
+// import { toZonedTime, fromZonedTime } from "date-fns-tz";
+// const ARG_TZ = "America/Argentina/Buenos_Aires";
 
 export class BusinessHoursService {
+    // Hardcoded offset for Argentina (UTC-3)
+    // We treat "Face Value" as a UTC date shifted by -3 hours.
+    // e.g. Real UTC 12:00 -> Arg Face Value 09:00 (represented as 09:00 UTC date object)
+
+    private toArgFaceValue(date: Date): Date {
+        // Shift REAL UTC to "Face Value" UTC
+        // allowed -3 hours = -180 minutes
+        return new Date(date.getTime() - (3 * 60 * 60 * 1000));
+    }
+
+    private fromArgFaceValue(faceValueDate: Date): Date {
+        // Shift "Face Value" UTC back to REAL UTC
+        // +3 hours
+        return new Date(faceValueDate.getTime() + (3 * 60 * 60 * 1000));
+    }
+
     // Schedule: Mon(1)-Sat(6): 09:00-13:00, 17:00-21:00
     // Sun(0): Closed
 
     addBusinessMinutes(startDate: Date, minutesToAdd: number): Date {
-        // "Proxy Date": A Date object where the UTC components match the Wall Time in ARG.
-        // We must use UTC getters/setters on this object to perform "Face Value" math.
-        let currentDate = toZonedTime(startDate, ARG_TZ);
+        // 1. Convert to proxy date (Face Value)
+        let currentDate = this.toArgFaceValue(startDate);
         let minutesRemaining = minutesToAdd;
 
         // Safety break
@@ -68,14 +84,11 @@ export class BusinessHoursService {
                 // We advance exactly to the end of the block
                 currentDate.setUTCMinutes(currentDate.getUTCMinutes() + minutesAvailableInBlock);
                 minutesRemaining -= minutesAvailableInBlock;
-
-                // Logic will loop. Next iteration `currentTime` will be equal to blockEnd.
-                // It will fall into "Outside working hours" -> "Siesta" or "Next Day".
             }
         }
 
         // Convert the final Proxy Date back to a real timestamp
-        return fromZonedTime(currentDate, ARG_TZ);
+        return this.fromArgFaceValue(currentDate);
     }
 
     private isSunday(date: Date): boolean {
@@ -90,15 +103,18 @@ export class BusinessHoursService {
     }
 
     getCurrentTime(): Date {
-        return toZonedTime(new Date(), ARG_TZ);
+        // Return simulated "Now" in Face Value? No, callers expect Real Date.
+        // Usually used for "Now" reference.
+        // We return new Date() (UTC/System) and let internals handle shifting.
+        return new Date();
     }
 
     calculateBusinessMinutes(from: Date, to: Date): number {
         if (from >= to) return 0;
 
         let minutes = 0;
-        let current = toZonedTime(from, ARG_TZ);
-        const targetTo = toZonedTime(to, ARG_TZ);
+        let current = this.toArgFaceValue(from);
+        const targetTo = this.toArgFaceValue(to);
 
         let iterations = 0;
         const MAX_ITERATIONS = 100000;
@@ -167,7 +183,7 @@ export class BusinessHoursService {
     }
 
     ensureBusinessHours(date: Date): Date {
-        let current = toZonedTime(date, ARG_TZ);
+        let current = this.toArgFaceValue(date);
 
         // Safety Break
         let iterations = 0;
@@ -216,7 +232,7 @@ export class BusinessHoursService {
             }
         }
 
-        return fromZonedTime(current, ARG_TZ);
+        return this.fromArgFaceValue(current);
     }
 }
 
