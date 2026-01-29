@@ -172,6 +172,7 @@ export async function getRepairForPos(ticketNumber: string, branchId: string): P
  */
 // ... imports
 import { createAfipInvoice, getLastVoucher } from "@/lib/afip";
+import { getIvaConditionId } from "@/lib/afip-utils";
 
 // Helper to format date YYYYMMDD
 const formatDateAFIP = (date: Date) => {
@@ -211,6 +212,7 @@ export async function processPosSale(data: {
         serviceDateFrom?: string;
         serviceDateTo?: string;
         paymentDueDate?: string;
+        ivaCondition?: string;
     };
 }) {
     console.log("[processPosSale] Starting sale processing...", {
@@ -312,7 +314,8 @@ export async function processPosSale(data: {
                 ivaItems: ivaItems, // NEW: Detailed VAT
                 serviceDateFrom: data.invoiceData.serviceDateFrom,
                 serviceDateTo: data.invoiceData.serviceDateTo,
-                paymentDueDate: data.invoiceData.paymentDueDate
+                paymentDueDate: data.invoiceData.paymentDueDate,
+                ivaConditionId: getIvaConditionId(data.invoiceData.ivaCondition || "")
             });
 
             if (!afipRes.success || !afipRes.data) {

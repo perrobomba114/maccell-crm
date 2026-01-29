@@ -23,6 +23,7 @@ export type InvoiceData = {
     serviceDateFrom?: string;
     serviceDateTo?: string;
     paymentDueDate?: string;
+    ivaCondition?: string;
 };
 
 interface InvoiceModalProps {
@@ -138,7 +139,8 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount }: Inv
             concept,
             serviceDateFrom: concept === 2 ? serviceDateFrom : undefined,
             serviceDateTo: concept === 2 ? serviceDateTo : undefined,
-            paymentDueDate: concept === 2 ? paymentDueDate : undefined
+            paymentDueDate: concept === 2 ? paymentDueDate : undefined,
+            ivaCondition: ivaCondition
         });
     };
 

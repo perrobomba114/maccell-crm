@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { createAfipInvoice, getTaxpayerDetails } from "@/lib/afip";
+import { getIvaConditionId } from "@/lib/afip-utils";
 
 // Helper for formatting doubles
 function formatAmount(num: number) {
@@ -137,7 +138,12 @@ export async function generateAdminInvoice(data: {
         };
 
         // 3. Call AFIP
-        const afipRes = await createAfipInvoice(afipData);
+        const ivaConditionId = getIvaConditionId(data.customer.ivaCondition || "");
+
+        const afipRes = await createAfipInvoice({
+            ...afipData,
+            ivaConditionId
+        });
 
         if (!afipRes.success) {
             return { success: false, error: "AFIP Error: " + afipRes.error };

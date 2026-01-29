@@ -133,6 +133,7 @@ export async function createAfipInvoice(data: {
     serviceDateTo?: string;
     paymentDueDate?: string;
     ivaItems?: { id: number, base: number, amount: number }[]; // Explicit IVA blocks
+    ivaConditionId?: number; // New Field for IVA Receptor (Mandatory April 2026)
 }) {
     try {
         const arca = await getAfipClient();
@@ -201,6 +202,16 @@ export async function createAfipInvoice(data: {
             payload['FchServHasta'] = data.serviceDateTo.replace(/-/g, '');
             payload['FchVtoPago'] = data.paymentDueDate.replace(/-/g, '');
         }
+
+        // --- IVA RECEPTOR CONDITION (Future Mandatory) ---
+        // Map incoming condition text or ID to AFIP Code
+        let condicionIvaId = 5; // Default: Consumidor Final
+        if (data.ivaConditionId) {
+            condicionIvaId = data.ivaConditionId;
+        }
+
+        payload['CondicionIVAReceptorId'] = condicionIvaId;
+        console.log(`[AFIP] Invoicing with CondicionIVAReceptorId: ${condicionIvaId}`);
 
         const res = await arca.electronicBillingService.createNextVoucher(payload) as any;
         console.log("AFIP SDK Result:", JSON.stringify(res, null, 2));
