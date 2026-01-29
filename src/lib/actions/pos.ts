@@ -239,6 +239,8 @@ export async function processPosSale(data: {
     let afipResult: any = null;
     let caeExpiresAt: Date | null = null;
     let voucherNumberString = "";
+    let totalNet = 0;
+    let totalVat = 0;
 
     if (data.invoiceData && data.invoiceData.generate) {
         try {
@@ -282,8 +284,8 @@ export async function processPosSale(data: {
             const finalNet105 = formatAmount(totalNet105);
             const finalVat105 = formatAmount(totalVat105);
 
-            const totalNet = finalNet21 + finalNet105;
-            const totalVat = finalVat21 + finalVat105;
+            totalNet = finalNet21 + finalNet105;
+            totalVat = finalVat21 + finalVat105;
 
             // Prepare detailed IVA items for AFIP
             const ivaItems = [];
@@ -388,10 +390,10 @@ export async function processPosSale(data: {
                         customerName: data.invoiceData.customerName,
                         customerAddress: data.invoiceData.customerAddress,
                         // Store totals
-                        netAmount: formatAmount(data.total / 1.21), // Approximated if aggregated, OR recalculate precisely? 
-                        // For exact storage we should reuse the calculated variables above.
-                        // BUT those are local. For now, strict 'Total' matters most.
-                        vatAmount: formatAmount(data.total - (data.total / 1.21)),
+                        // Store totals
+                        // Use the exact calculated values sent to AFIP
+                        netAmount: formatAmount(totalNet),
+                        vatAmount: formatAmount(totalVat),
                         totalAmount: data.total
                     }
                 });

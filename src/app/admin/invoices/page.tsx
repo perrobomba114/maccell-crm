@@ -45,11 +45,26 @@ export default async function InvoicesPage({
     const branches = await db.branch.findMany({ select: { id: true, name: true } });
 
     // Fetch Invoices via Server Action
-    const { invoices, totalPages, currentPage, totalAmount, totalCount } = await getInvoices({
+    // @ts-ignore - Updated return type in server action
+    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalNet, totalVat } = await getInvoices({
         page,
         limit: 25,
         date
     });
+
+    // Calculate VAT Split (Mathematical Derivation)
+    // N21 = (TotalVAT - 0.105 * TotalNet) / 0.105
+    // This assumes only 21% and 10.5% rates exist.
+    let vat21 = 0;
+    let vat105 = 0;
+
+    if (totalVat > 0 && totalNet > 0) {
+        const net21 = (totalVat - (0.105 * totalNet)) / 0.105;
+        // Clamp for safety (floating point issues)
+        const safeNet21 = Math.max(0, net21);
+        vat21 = safeNet21 * 0.21;
+        vat105 = Math.max(0, totalVat - vat21);
+    }
 
     return (
         <div className="p-8 space-y-6 bg-black min-h-screen text-white">
@@ -58,32 +73,24 @@ export default async function InvoicesPage({
                     <h1 className="text-3xl font-bold tracking-tight mb-2">Facturas Electrónicas</h1>
                     <p className="text-zinc-400">Historial de comprobantes emitidos vía ARCA/AFIP.</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col md:flex-row items-end md:items-center gap-4 w-full md:w-auto">
+                    {/* Date Filter Toolbar */}
+                    <div className="flex items-center gap-2 bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800">
+                        <CalendarIcon className="w-4 h-4 text-zinc-400 ml-2" />
+                        <InvoiceDateFilter />
+                    </div>
                     <CreateInvoiceModal branches={branches} userId={adminUserId} />
                 </div>
             </div>
 
-            {/* Filters & Summary */}
+            {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Date Filter Card */}
-                <Card className="bg-zinc-900 border-zinc-800 md:col-span-1">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
-                            <CalendarIcon className="w-4 h-4" />
-                            Filtrar por Fecha
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <InvoiceDateFilter />
-                    </CardContent>
-                </Card>
-
-                {/* Total Amount Card */}
-                <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                {/* Total Invoice Card */}
+                <Card className="bg-zinc-900 border-zinc-800">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
                             <DollarSign className="w-4 h-4 text-green-500" />
-                            {date ? "Total Facturado del Día" : "Total Facturado (Mes Actual)"}
+                            {date ? "Total Facturado del Día" : "Total Facturado (Mes)"}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -91,10 +98,43 @@ export default async function InvoicesPage({
                             ${totalAmount.toLocaleString()}
                         </div>
                         <p className="text-xs text-zinc-500 mt-1">
-                            {date
-                                ? `Correspondiente al ${format(new Date(date + 'T00:00:00'), "dd 'de' MMMM, yyyy", { locale: es })}`
-                                : `Suma total de facturación en el mes en curso`
-                            }
+                            {date ? "Suma total del día seleccionado" : "Suma total del mes en curso"}
+                        </p>
+                    </CardContent>
+                </Card>
+
+                {/* IVA 21% Card */}
+                <Card className="bg-zinc-900 border-zinc-800">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
+                            <span className="text-blue-500 font-bold">%</span>
+                            IVA 21%
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-blue-400">
+                            ${vat21.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-1">
+                            Impuesto calculado (Estimado)
+                        </p>
+                    </CardContent>
+                </Card>
+
+                {/* IVA 10.5% Card */}
+                <Card className="bg-zinc-900 border-zinc-800">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
+                            <span className="text-orange-500 font-bold">%</span>
+                            IVA 10.5%
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-orange-400">
+                            ${vat105.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-1">
+                            Impuesto calculado (Estimado)
                         </p>
                     </CardContent>
                 </Card>

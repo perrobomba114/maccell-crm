@@ -342,7 +342,7 @@ export default function AdminSalesClient() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-4 pt-2 flex-1 flex flex-col justify-center">
-                            <div className="space-y-2 md:space-y-4">
+                            <div className="space-y-2 md:space-y-4 max-w-md mx-auto w-full">
                                 {(() => {
                                     // Use rankingData directly. 
                                     // Slice set to 4 as requested.

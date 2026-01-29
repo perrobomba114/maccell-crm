@@ -74,17 +74,23 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
     const aggregations = await db.saleInvoice.aggregate({
         where: sumWhere,
         _sum: {
-            totalAmount: true
+            totalAmount: true,
+            netAmount: true,
+            vatAmount: true
         }
     });
 
     const totalAmount = aggregations._sum.totalAmount || 0;
+    const totalNet = aggregations._sum.netAmount || 0;
+    const totalVat = aggregations._sum.vatAmount || 0;
 
     return {
         invoices,
         totalCount,
         totalPages,
         currentPage: page,
-        totalAmount
+        totalAmount,
+        totalNet,
+        totalVat
     };
 }

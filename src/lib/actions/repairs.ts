@@ -776,3 +776,38 @@ export async function addRepairImagesAction(formData: FormData) {
         return { success: false, error: "Error al subir imágenes" };
     }
 }
+
+export async function removeRepairImageAction(repairId: string, imageUrl: string) {
+    try {
+        if (!repairId || !imageUrl) return { success: false, error: "Datos incompletos" };
+
+        const repair = await db.repair.findUnique({
+            where: { id: repairId },
+            select: { deviceImages: true }
+        });
+
+        if (!repair) return { success: false, error: "Reparación no encontrada" };
+
+        const currentImages = repair.deviceImages || [];
+        const updatedImages = currentImages.filter(img => img !== imageUrl);
+
+        if (currentImages.length === updatedImages.length) {
+            return { success: false, error: "La imagen no existe en esta reparación" };
+        }
+
+        await db.repair.update({
+            where: { id: repairId },
+            data: {
+                deviceImages: updatedImages
+            }
+        });
+
+        revalidatePath("/technician/repairs");
+        revalidatePath(`/admin/repairs`);
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error removing image:", error);
+        return { success: false, error: "Error de servidor al eliminar imagen" };
+    }
+}

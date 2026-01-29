@@ -64,13 +64,59 @@ export function AddImagesDialog({ isOpen, onClose, repair }: AddImagesDialogProp
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="p-4 border rounded-md bg-muted/10">
-                        {/* Show existing count */}
+                        {/* Show existing images and allow deletion */}
                         {(() => {
-                            const validCount = (repair.deviceImages || []).filter(isValidImg).length;
+                            const validImages = (repair.deviceImages || []).filter(isValidImg);
                             return (
-                                <p className="text-sm text-muted-foreground mb-4">
-                                    Imágenes actuales: <span className="font-semibold text-foreground">{validCount}</span>
-                                </p>
+                                <div className="mb-4">
+                                    <p className="text-sm text-muted-foreground mb-2">
+                                        Imágenes actuales: <span className="font-semibold text-foreground">{validImages.length}</span> / 3
+                                    </p>
+
+                                    {validImages.length > 0 && (
+                                        <div className="grid grid-cols-3 gap-2 mb-4">
+                                            {validImages.map((url: string, idx: number) => (
+                                                <div key={idx} className="relative aspect-square rounded-md overflow-hidden border group">
+                                                    <img src={getImgUrl(url)} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        size="icon"
+                                                        className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={async () => {
+                                                            if (confirm("¿Eliminar esta imagen?")) {
+                                                                const res = await import("@/lib/actions/repairs").then(mod => mod.removeRepairImageAction(repair.id, url));
+                                                                if (res.success) {
+                                                                    toast.success("Imagen eliminada");
+                                                                    onClose(); // Close to refresh status of parent or just to reset
+                                                                } else {
+                                                                    toast.error(res.error || "Error al eliminar");
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        <span className="sr-only">Eliminar</span>
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            width="12"
+                                                            height="12"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                        >
+                                                            <path d="M3 6h18" />
+                                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                                        </svg>
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             );
                         })()}
 

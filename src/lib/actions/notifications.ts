@@ -127,10 +127,70 @@ export async function createNotificationAction({
                 link
             }
         });
+
+        // Trigger Cleanup asynchronously (fire and forget)
+        enforceNotificationLimit(userId).catch(err =>
+            console.error("Error enforcing notification limit:", err)
+        );
+
         return { success: true };
     } catch (error) {
         console.error("Error creating notification:", error);
         return { success: false };
+    }
+}
+
+async function enforceNotificationLimit(userId: string) {
+    const MAX_NOTIFICATIONS = 300;
+
+    try {
+        const count = await db.notification.count({ where: { userId } });
+
+        if (count > MAX_NOTIFICATIONS) {
+            // Find the ID of the 300th most recent notification
+            const notifications = await db.notification.findMany({
+                where: { userId },
+                orderBy: { createdAt: 'desc' },
+                take: MAX_NOTIFICATIONS,
+                select: { id: true }
+            });
+
+            if (notifications.length === MAX_NOTIFICATIONS) {
+                const lastId = notifications[notifications.length - 1].id;
+                const lastDateNotification = await db.notification.findUnique({
+                    where: { id: lastId },
+                    select: { createdAt: true }
+                });
+
+                if (lastDateNotification) {
+                    // Delete everything older than the 300th item
+                    await db.notification.deleteMany({
+                        where: {
+                            userId,
+                            createdAt: {
+                                lt: lastDateNotification.createdAt
+                            }
+                            // Edge case: if exact same createdAt, we might keep duplicates, but good enough.
+                            // Better yet: delete using NOT IN if DB supports it efficiently, 
+                            // but deleteMany with NOT IN array of 300 IDs might be heavy.
+                            // Alternative: Delete where id NOT IN (ids).
+                            // Let's use the NOT IN approach for exactness, 300 IDs is small.
+                        }
+                    });
+
+                    // Re-implementing correctly with ID exclusion for safety
+                    const keepIds = notifications.map(n => n.id);
+                    await db.notification.deleteMany({
+                        where: {
+                            userId,
+                            id: { notIn: keepIds }
+                        }
+                    });
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error in enforceNotificationLimit:", error);
     }
 }
 
