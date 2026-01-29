@@ -73,6 +73,7 @@ export const adminGroups = [
             { href: "/admin/sales", label: "Ventas", icon: "ShoppingCart" },
             { href: "/admin/invoices", label: "Facturas", icon: "FileText" },
             { href: "/admin/cash-shifts", label: "Cierre de Caja", icon: "Banknote" },
+            { href: "/admin/expenses", label: "Gastos", icon: "Receipt" },
         ]
     },
     {
