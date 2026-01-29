@@ -165,6 +165,59 @@ export class BusinessHoursService {
 
         return minutes;
     }
+
+    ensureBusinessHours(date: Date): Date {
+        let current = toZonedTime(date, ARG_TZ);
+
+        // Safety Break
+        let iterations = 0;
+        const MAX_ITERATIONS = 10; // Should find slot quickly
+
+        while (iterations < MAX_ITERATIONS) {
+            iterations++;
+
+            // 1. Is Sunday? -> Jump to Monday 09:00
+            if (this.isSunday(current)) {
+                current = this.jumpToNextDayStart(current);
+                continue;
+            }
+
+            // 2. Check blocks
+            const currentHour = current.getUTCHours();
+            const currentMinute = current.getUTCMinutes();
+            const currentTime = currentHour * 60 + currentMinute;
+
+            const block1Start = 9 * 60;        // 09:00 -> 540
+            const block1End = 13 * 60;         // 13:00 -> 780
+            const block2Start = 17 * 60;       // 17:00 -> 1020
+            const block2End = 21 * 60;         // 21:00 -> 1260
+
+            // If inside strict block (inclusive start, exclusive end for logic)
+            // But for "Deadline", exact 13:00 is technically closed for promise pickup? 
+            // Usually we promise for open hours. 13:00 is edge.
+            // Let's assume valid is [09:00, 13:00) and [17:00, 21:00)
+
+            if ((currentTime >= block1Start && currentTime < block1End) ||
+                (currentTime >= block2Start && currentTime < block2End)) {
+                // It is valid open time
+                break;
+            }
+
+            // If outside
+            if (currentTime < block1Start) {
+                // Before 9 -> Jump to 9
+                current.setUTCHours(9, 0, 0, 0);
+            } else if (currentTime >= block1End && currentTime < block2Start) {
+                // Siesta (13:00 - 17:00) -> Jump to 17
+                current.setUTCHours(17, 0, 0, 0);
+            } else {
+                // After 21 -> Jump to next day 9
+                current = this.jumpToNextDayStart(current);
+            }
+        }
+
+        return fromZonedTime(current, ARG_TZ);
+    }
 }
 
 export const businessHoursService = new BusinessHoursService();

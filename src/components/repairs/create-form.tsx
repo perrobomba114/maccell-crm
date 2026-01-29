@@ -100,9 +100,8 @@ export function CreateRepairForm({ branchId, userId, redirectPath = "/admin/repa
         let target = businessHoursService.addBusinessMinutes(now, 60);
         // 2. Round up to next 15m slot
         target = roundUpTo15(target);
-        // 3. Ensure ensuring rounding didn't push us into a closed slot (e.g. 13:05)
-        // Adding 0 business minutes will force a jump if invalid
-        target = businessHoursService.addBusinessMinutes(target, 0);
+        // 3. Ensure we didn't push into a closed slot (or if roundUp pushed it there)
+        target = businessHoursService.ensureBusinessHours(target);
 
         return target;
     });
