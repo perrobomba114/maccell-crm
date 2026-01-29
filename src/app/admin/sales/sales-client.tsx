@@ -56,15 +56,15 @@ function SalesMetricCard({ title, value, icon: Icon, color }: any) {
 
     return (
         <Card className="border-zinc-800 bg-[#18181b] h-full flex flex-col transition-all hover:bg-zinc-900/50">
-            <CardContent className="p-6 flex flex-col justify-between flex-1 relative overflow-hidden">
+            <CardContent className="p-4 flex flex-col justify-between flex-1 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                    <Icon size={100} />
+                    <Icon size={80} />
                 </div>
 
                 <div className="flex justify-between items-start z-10">
                     <div>
                         <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">{title}</p>
-                        <h3 className="text-3xl font-black text-white tracking-tight">{value}</h3>
+                        <h3 className="text-2xl font-black text-white tracking-tight">{value}</h3>
                     </div>
                     <div className={cn("p-2.5 rounded-xl backdrop-blur-md", colorStyles[color] || colorStyles.blue)}>
                         <Icon size={20} strokeWidth={2.5} />
@@ -336,13 +336,13 @@ export default function AdminSalesClient() {
 
                     {/* Branch Ranking Card */}
                     <Card className="border-zinc-800 bg-[#18181b] h-full flex flex-col transition-all hover:bg-zinc-900/50">
-                        <CardHeader className="p-6 pb-2">
+                        <CardHeader className="p-4 pb-2">
                             <CardTitle className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                                 <Building2 size={14} /> Ranking de Ventas
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-6 pt-2 flex-1 flex flex-col justify-center">
-                            <div className="space-y-4">
+                        <CardContent className="p-4 pt-2 flex-1 flex flex-col justify-center">
+                            <div className="space-y-2 md:space-y-4">
                                 {(() => {
                                     // Use rankingData directly. 
                                     // Slice set to 4 as requested.
@@ -357,7 +357,7 @@ export default function AdminSalesClient() {
                                     return ranking.map((item: any, index: number) => (
                                         <div key={item.branchName} className="relative group">
                                             <div className="flex justify-between items-center mb-1.5 z-10 relative">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 flex-1 min-w-0">
                                                     <div className={cn(
                                                         "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm",
                                                         index === 0 ? "bg-amber-500 text-black shadow-amber-500/20" :
@@ -366,14 +366,14 @@ export default function AdminSalesClient() {
                                                     )}>
                                                         {index + 1}
                                                     </div>
-                                                    <span className="text-xs font-bold text-zinc-300 truncate max-w-[100px]">{item.branchName}</span>
+                                                    <span className="text-xs font-bold text-zinc-300 truncate">{item.branchName}</span>
                                                 </div>
-                                                <span className="text-xs font-mono font-medium text-emerald-500">
+                                                <span className="text-xs font-mono font-medium text-emerald-500 shrink-0 ml-2">
                                                     {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(item.total)}
                                                 </span>
                                             </div>
                                             {/* Progress Bar Background */}
-                                            <div className="h-1.5 w-full bg-zinc-800/50 rounded-full overflow-hidden">
+                                            <div className="h-1 md:h-1.5 w-full bg-zinc-800/50 rounded-full overflow-hidden">
                                                 <div
                                                     className={cn("h-full rounded-full transition-all duration-500", index === 0 ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]" : "bg-zinc-600")}
                                                     style={{ width: `${(item.total / maxTotal) * 100}%` }}
@@ -394,144 +394,146 @@ export default function AdminSalesClient() {
                     <CardDescription>Registro completo de transacciones de todas las sucursales.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="text-center">Fecha</TableHead>
-                                <TableHead className="text-center">Sucursal</TableHead>
-                                <TableHead className="text-center">Ticket</TableHead>
-                                <TableHead className="text-center">Items</TableHead>
-                                <TableHead className="text-right">Total</TableHead>
-                                <TableHead className="text-center">Método</TableHead>
-                                <TableHead className="text-right min-w-[120px]">Acciones</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell><Skeleton className="h-4 w-24 mx-auto" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-20 mx-auto" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-32 mx-auto" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
-                                        <TableCell><Skeleton className="h-6 w-24 rounded-full mx-auto" /></TableCell>
-                                        <TableCell><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
-                                    </TableRow>
-                                ))
-                            ) : sales.length === 0 ? (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                                        No se encontraron ventas con los filtros seleccionados.
-                                    </TableCell>
+                                    <TableHead className="text-center">Fecha</TableHead>
+                                    <TableHead className="text-center">Sucursal</TableHead>
+                                    <TableHead className="text-center">Ticket</TableHead>
+                                    <TableHead className="text-center">Items</TableHead>
+                                    <TableHead className="text-right">Total</TableHead>
+                                    <TableHead className="text-center">Método</TableHead>
+                                    <TableHead className="text-right min-w-[120px]">Acciones</TableHead>
                                 </TableRow>
-                            ) : (
-                                sales.map((sale) => (
-                                    <TableRow key={sale.id}>
-                                        <TableCell className="font-medium text-center">
-                                            {format(new Date(sale.createdAt), "dd/MM/yyyy HH:mm")}
-                                        </TableCell>
-                                        <TableCell className="text-sm text-center">
-                                            <Badge variant="outline">{sale.branch?.name || "N/A"}</Badge>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground font-mono text-xs text-center">
-                                            {sale.saleNumber.split('SALE-').pop()?.split('-')[0] || sale.saleNumber}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="text-sm flex justify-center" title={sale.items.map((i: any) => `${i.quantity}x ${i.name}`).join(', ')}>
-                                                {sale.items.length === 1
-                                                    ? <span className="text-muted-foreground">{sale.items[0].quantity}x {sale.items[0].name}</span>
-                                                    : <span className="font-medium text-muted-foreground">{sale.items.length} items</span>
-                                                }
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right font-bold">
-                                            ${sale.total.toLocaleString()}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            {(() => {
-                                                const payments = (sale as any).payments || [];
-                                                let method = sale.paymentMethod;
-                                                let label = "MercadoPago";
-                                                let color = "bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400";
-
-                                                if (payments.length > 1) {
-                                                    method = "MIXTO";
-                                                    label = "Mixto";
-                                                    color = "bg-orange-100 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400";
-                                                } else if (payments.length === 1) {
-                                                    method = payments[0].method;
-                                                }
-
-                                                if (method === "CASH") {
-                                                    label = "Efectivo";
-                                                    color = "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400";
-                                                } else if (method === "CARD") {
-                                                    label = "Tarjeta";
-                                                    color = "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400";
-                                                } else if (method === "TRANSFER") {
-                                                    label = "Transferencia";
-                                                    color = "bg-sky-100 text-sky-700 hover:bg-sky-100 dark:bg-sky-900/30 dark:text-sky-400";
-                                                } else if (method === "MERCADOPAGO") {
-                                                    label = "MercadoPago";
-                                                    color = "bg-indigo-100 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400";
-                                                }
-
-                                                return (
-                                                    <Badge variant="secondary" className={cn("font-normal mx-auto", color)}>
-                                                        {label}
-                                                    </Badge>
-                                                );
-                                            })()}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                    onClick={() => setViewingSale(sale)}
-                                                    title="Ver Detalle"
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                    onClick={() => {
-                                                        setNewPaymentMethod(sale.paymentMethod);
-                                                        setEditingSale(sale);
-                                                    }}
-                                                    title="Cambiar método de pago"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="h-8 w-8 px-0"
-                                                    onClick={() => handlePrint(sale)}
-                                                    title="Imprimir Ticket"
-                                                >
-                                                    <Printer className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                                                    onClick={() => setSaleToDelete(sale)}
-                                                    title="Eliminar Venta"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell><Skeleton className="h-4 w-24 mx-auto" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-20 mx-auto" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-32 mx-auto" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                                            <TableCell><Skeleton className="h-6 w-24 rounded-full mx-auto" /></TableCell>
+                                            <TableCell><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : sales.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                            No se encontraron ventas con los filtros seleccionados.
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : (
+                                    sales.map((sale) => (
+                                        <TableRow key={sale.id}>
+                                            <TableCell className="font-medium text-center">
+                                                {format(new Date(sale.createdAt), "dd/MM/yyyy HH:mm")}
+                                            </TableCell>
+                                            <TableCell className="text-sm text-center">
+                                                <Badge variant="outline">{sale.branch?.name || "N/A"}</Badge>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground font-mono text-xs text-center">
+                                                {sale.saleNumber.split('SALE-').pop()?.split('-')[0] || sale.saleNumber}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <div className="text-sm flex justify-center" title={sale.items.map((i: any) => `${i.quantity}x ${i.name}`).join(', ')}>
+                                                    {sale.items.length === 1
+                                                        ? <span className="text-muted-foreground">{sale.items[0].quantity}x {sale.items[0].name}</span>
+                                                        : <span className="font-medium text-muted-foreground">{sale.items.length} items</span>
+                                                    }
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold">
+                                                ${sale.total.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {(() => {
+                                                    const payments = (sale as any).payments || [];
+                                                    let method = sale.paymentMethod;
+                                                    let label = "MercadoPago";
+                                                    let color = "bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400";
+
+                                                    if (payments.length > 1) {
+                                                        method = "MIXTO";
+                                                        label = "Mixto";
+                                                        color = "bg-orange-100 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400";
+                                                    } else if (payments.length === 1) {
+                                                        method = payments[0].method;
+                                                    }
+
+                                                    if (method === "CASH") {
+                                                        label = "Efectivo";
+                                                        color = "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400";
+                                                    } else if (method === "CARD") {
+                                                        label = "Tarjeta";
+                                                        color = "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400";
+                                                    } else if (method === "TRANSFER") {
+                                                        label = "Transferencia";
+                                                        color = "bg-sky-100 text-sky-700 hover:bg-sky-100 dark:bg-sky-900/30 dark:text-sky-400";
+                                                    } else if (method === "MERCADOPAGO") {
+                                                        label = "MercadoPago";
+                                                        color = "bg-indigo-100 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400";
+                                                    }
+
+                                                    return (
+                                                        <Badge variant="secondary" className={cn("font-normal mx-auto", color)}>
+                                                            {label}
+                                                        </Badge>
+                                                    );
+                                                })()}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                        onClick={() => setViewingSale(sale)}
+                                                        title="Ver Detalle"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                        onClick={() => {
+                                                            setNewPaymentMethod(sale.paymentMethod);
+                                                            setEditingSale(sale);
+                                                        }}
+                                                        title="Cambiar método de pago"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-8 w-8 px-0"
+                                                        onClick={() => handlePrint(sale)}
+                                                        title="Imprimir Ticket"
+                                                    >
+                                                        <Printer className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                                        onClick={() => setSaleToDelete(sale)}
+                                                        title="Eliminar Venta"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
 
