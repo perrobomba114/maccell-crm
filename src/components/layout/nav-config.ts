@@ -5,7 +5,7 @@ export const vendorGroups = [
             { href: "/vendor/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
             { href: "/vendor/pos", label: "Punto de Venta", icon: "ShoppingCart" },
             { href: "/vendor/sales", label: "Mis Ventas", icon: "Receipt" },
-            { href: "/vendor/expenses", label: "Gastos", icon: "Banknote" },
+            { href: "/vendor/expenses", label: "Mis Gastos", icon: "Banknote" },
         ]
     },
     {

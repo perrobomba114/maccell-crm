@@ -73,7 +73,10 @@ export async function getExpensesAction({
                 createdAt: {
                     gte: startOfMonth,
                     lte: endOfMonth
-                }
+                },
+                userId: userId // Add userId filter here if it exists (undefined is ignored by Prisma usually, but let's be safe)
+                    ? userId
+                    : undefined
             },
             _sum: { amount: true }
         });
