@@ -86,54 +86,54 @@ export default async function InvoicesPage({
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Total Invoice Card */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-emerald-600 border-emerald-500 shadow-md">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
-                            <DollarSign className="w-4 h-4 text-green-500" />
+                        <CardTitle className="text-sm font-medium text-white/80 flex items-center gap-2">
+                            <DollarSign className="w-4 h-4 text-emerald-200" />
                             {date ? "Total Facturado del Día" : "Total Facturado (Mes)"}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-400">
+                        <div className="text-2xl font-bold text-white">
                             ${totalAmount.toLocaleString()}
                         </div>
-                        <p className="text-xs text-zinc-500 mt-1">
+                        <p className="text-xs text-emerald-100 mt-1">
                             {date ? "Suma total del día seleccionado" : "Suma total del mes en curso"}
                         </p>
                     </CardContent>
                 </Card>
 
                 {/* IVA 21% Card */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-blue-600 border-blue-500 shadow-md">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
-                            <span className="text-blue-500 font-bold">%</span>
+                        <CardTitle className="text-sm font-medium text-white/80 flex items-center gap-2">
+                            <span className="text-blue-200 font-bold">%</span>
                             IVA 21%
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-blue-400">
+                        <div className="text-2xl font-bold text-white">
                             ${vat21.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </div>
-                        <p className="text-xs text-zinc-500 mt-1">
+                        <p className="text-xs text-blue-100 mt-1">
                             Impuesto calculado (Estimado)
                         </p>
                     </CardContent>
                 </Card>
 
                 {/* IVA 10.5% Card */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-orange-600 border-orange-500 shadow-md">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
-                            <span className="text-orange-500 font-bold">%</span>
+                        <CardTitle className="text-sm font-medium text-white/80 flex items-center gap-2">
+                            <span className="text-orange-200 font-bold">%</span>
                             IVA 10.5%
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-orange-400">
+                        <div className="text-2xl font-bold text-white">
                             ${vat105.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </div>
-                        <p className="text-xs text-zinc-500 mt-1">
+                        <p className="text-xs text-orange-100 mt-1">
                             Impuesto calculado (Estimado)
                         </p>
                     </CardContent>

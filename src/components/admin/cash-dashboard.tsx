@@ -138,8 +138,8 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
                     icon={DollarSign}
                     trend={stats?.kpi.growthPercentage}
                     loading={isLoading}
-                    className="bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400"
-                    iconClass="text-emerald-600"
+                    className="bg-emerald-600 border-emerald-500 text-white"
+                    iconClass="text-emerald-200"
                 />
                 <KpiCard
                     title="Ventas Totales"
@@ -147,8 +147,8 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
                     icon={ShoppingCart}
                     subValue="Transacciones"
                     loading={isLoading}
-                    className="bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400"
-                    iconClass="text-blue-600"
+                    className="bg-blue-600 border-blue-500 text-white"
+                    iconClass="text-blue-200"
                 />
                 <KpiCard
                     title="Ticket Promedio"
@@ -156,8 +156,8 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
                     icon={TrendingUp}
                     subValue="Por venta"
                     loading={isLoading}
-                    className="bg-violet-500/10 border-violet-500/20 text-violet-700 dark:text-violet-400"
-                    iconClass="text-violet-600"
+                    className="bg-violet-600 border-violet-500 text-white"
+                    iconClass="text-violet-200"
                 />
                 <KpiCard
                     title="Gastos Totales"
@@ -165,8 +165,8 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
                     icon={CreditCard}
                     subValue="Salidas de caja"
                     loading={isLoading}
-                    className="bg-orange-500/10 border-orange-500/20 text-orange-700 dark:text-orange-400"
-                    iconClass="text-orange-600"
+                    className="bg-orange-600 border-orange-500 text-white"
+                    iconClass="text-orange-200"
                 />
             </div>
 
@@ -279,24 +279,24 @@ function KpiCard({ title, value, icon: Icon, trend, subValue, loading, className
     return (
         <Card className={cn("overflow-hidden border-l-4 shadow-sm", className)}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardTitle className="text-sm font-medium text-white/80">
                     {title}
                 </CardTitle>
                 <Icon className={cn("h-4 w-4", iconClass)} />
             </CardHeader>
             <CardContent>
                 {loading ? (
-                    <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+                    <div className="h-8 w-24 bg-white/20 animate-pulse rounded" />
                 ) : (
                     <>
-                        <div className="text-2xl font-bold tracking-tight">{value}</div>
+                        <div className="text-2xl font-bold tracking-tight text-white">{value}</div>
                         {(trend !== undefined || subValue) && (
-                            <div className="flex items-center text-xs text-muted-foreground mt-1">
+                            <div className="flex items-center text-xs text-white/70 mt-1">
                                 {trend !== undefined && (
-                                    <span className={cn("flex items-center font-medium", trend > 0 ? "text-emerald-600" : trend < 0 ? "text-red-500" : "text-muted-foreground")}>
+                                    <span className={cn("flex items-center font-medium", trend > 0 ? "text-emerald-200" : trend < 0 ? "text-red-200" : "text-white/70")}>
                                         {trend > 0 && "+"}
                                         {trend.toFixed(1)}%
-                                        <span className="ml-1 text-muted-foreground font-normal">vs mes anterior</span>
+                                        <span className="ml-1 text-white/50 font-normal">vs mes anterior</span>
                                     </span>
                                 )}
                                 {subValue && !trend && <span>{subValue}</span>}

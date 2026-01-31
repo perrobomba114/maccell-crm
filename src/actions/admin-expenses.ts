@@ -6,11 +6,13 @@ import { revalidatePath } from "next/cache";
 export async function getExpensesAction({
     date,
     page = 1,
-    limit = 25
+    limit = 25,
+    userId
 }: {
     date?: string;
     page?: number;
     limit?: number;
+    userId?: string;
 }) {
     try {
         const where: any = {};
@@ -26,6 +28,10 @@ export async function getExpensesAction({
                 gte: startDate,
                 lte: endDate
             };
+        }
+
+        if (userId) {
+            where.userId = userId;
         }
 
         const skip = (page - 1) * limit;

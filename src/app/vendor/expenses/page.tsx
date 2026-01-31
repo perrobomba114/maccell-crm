@@ -6,43 +6,48 @@ import { ExpensesTable } from "@/components/expenses/expenses-table";
 import { ExpensesFilter } from "@/components/expenses/expenses-filter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Receipt } from "lucide-react";
+import { DollarSign, Receipt, Banknote, Calendar } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminExpensesPage({
+export default async function VendorExpensesPage({
     searchParams
 }: {
     searchParams: { date?: string; page?: string; view?: string }
 }) {
     const user = await getUserData();
-    if (user?.role !== "ADMIN") redirect("/");
+    if (!user) redirect("/");
 
     // Default to Today if no date AND not explicitly viewing all
+    // Vendors should primarily see their daily activity
     const isViewAll = searchParams.view === "all";
     if (!searchParams.date && !isViewAll) {
         const today = new Date().toISOString().split('T')[0];
-        redirect(`/admin/expenses?date=${today}`);
+        redirect(`/vendor/expenses?date=${today}`);
     }
 
     const date = isViewAll ? undefined : (searchParams.date || undefined);
     const page = parseInt(searchParams.page || "1");
 
+    // Fetch expenses filtered by the current user's ID
     const { expenses, totalAmount, monthlyTotal, totalCount, totalPages, currentPage } = await getExpensesAction({
         date,
         page,
-        limit: 25
+        limit: 25,
+        userId: user.id // Strictly filter by current user
     });
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Gastos</h2>
+                    <h2 className="text-3xl font-bold tracking-tight">Mis Gastos</h2>
                     <p className="text-muted-foreground">
-                        Administra los gastos registrados por los vendedores.
+                        Historial de tus gastos registrados.
                     </p>
                 </div>
+                {/* Reusing ExpensesFilter - ensure it works or adapt if needed. 
+                    Ideally it just sets URL params which this page respects. */}
                 <ExpensesFilter />
             </div>
 
@@ -50,7 +55,7 @@ export default async function AdminExpensesPage({
                 <Card className="bg-red-600 border-red-500 shadow-md">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-white/80">Total Gastos {date ? "(Día)" : "(Filtro)"}</CardTitle>
-                        <DollarSign className="h-4 w-4 text-red-200" />
+                        <Banknote className="h-4 w-4 text-red-200" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-white">
@@ -64,15 +69,15 @@ export default async function AdminExpensesPage({
 
                 <Card className="bg-red-700 border-red-600 shadow-md">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-white/80">Total Mes Actual</CardTitle>
-                        <Receipt className="h-4 w-4 text-red-200" />
+                        <CardTitle className="text-sm font-medium text-white/80">Mi Acumulado Mensual</CardTitle>
+                        <Calendar className="h-4 w-4 text-red-200" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-white">
                             - ${monthlyTotal.toLocaleString()}
                         </div>
                         <p className="text-xs text-red-100">
-                            Acumulado mensual
+                            Este mes
                         </p>
                     </CardContent>
                 </Card>
@@ -96,7 +101,7 @@ export default async function AdminExpensesPage({
                                 asChild={currentPage > 1}
                             >
                                 {currentPage > 1 ? (
-                                    <a href={`/admin/expenses?${new URLSearchParams({ ...searchParams, page: String(currentPage - 1) }).toString()}`}>Anterior</a>
+                                    <a href={`/vendor/expenses?${new URLSearchParams({ ...searchParams, page: String(currentPage - 1) }).toString()}`}>Anterior</a>
                                 ) : "Anterior"}
                             </Button>
                             <div className="flex items-center px-4 text-sm font-medium">
@@ -108,7 +113,7 @@ export default async function AdminExpensesPage({
                                 asChild={currentPage < totalPages}
                             >
                                 {currentPage < totalPages ? (
-                                    <a href={`/admin/expenses?${new URLSearchParams({ ...searchParams, page: String(currentPage + 1) }).toString()}`}>Siguiente</a>
+                                    <a href={`/vendor/expenses?${new URLSearchParams({ ...searchParams, page: String(currentPage + 1) }).toString()}`}>Siguiente</a>
                                 ) : "Siguiente"}
                             </Button>
                         </div>

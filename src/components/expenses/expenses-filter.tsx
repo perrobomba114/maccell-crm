@@ -21,7 +21,13 @@ export function ExpensesFilter() {
 
     // Default to today if no date params
     const dateParam = searchParams.get("date");
-    const date = dateParam ? new Date(dateParam) : undefined;
+    let date: Date | undefined;
+
+    if (dateParam) {
+        // Parse "YYYY-MM-DD" as local time to avoid UTC shifts
+        const [year, month, day] = dateParam.split('-').map(Number);
+        date = new Date(year, month - 1, day);
+    }
 
     const [open, setOpen] = useState(false);
 

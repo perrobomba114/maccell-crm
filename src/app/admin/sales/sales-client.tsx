@@ -49,24 +49,30 @@ import {
 // Simplified Metric Card for Sales
 function SalesMetricCard({ title, value, icon: Icon, color }: any) {
     const colorStyles: any = {
-        emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-        blue: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-        violet: "bg-violet-500/10 text-violet-500 border-violet-500/20",
+        emerald: "bg-emerald-600 border-emerald-500 text-white",
+        blue: "bg-blue-600 border-blue-500 text-white",
+        violet: "bg-violet-600 border-violet-500 text-white",
     };
 
+    const containerStyle = colorStyles[color] || colorStyles.blue;
+    // Icon background (lighter/darker for contrast)
+    const iconStyle = color === "emerald" ? "bg-emerald-500/30 text-emerald-100" :
+        color === "blue" ? "bg-blue-500/30 text-blue-100" :
+            "bg-violet-500/30 text-violet-100";
+
     return (
-        <Card className="border-zinc-800 bg-[#18181b] h-full flex flex-col transition-all hover:bg-zinc-900/50">
+        <Card className={cn("border-l-4 shadow-md transition-all", containerStyle)}>
             <CardContent className="p-4 flex flex-col justify-between flex-1 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                    <Icon size={80} />
+                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                    <Icon size={80} className="text-white" />
                 </div>
 
                 <div className="flex justify-between items-start z-10">
                     <div>
-                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">{title}</p>
+                        <p className="text-xs font-bold text-white/80 uppercase tracking-widest mb-1">{title}</p>
                         <h3 className="text-2xl font-black text-white tracking-tight">{value}</h3>
                     </div>
-                    <div className={cn("p-2.5 rounded-xl backdrop-blur-md", colorStyles[color] || colorStyles.blue)}>
+                    <div className={cn("p-2.5 rounded-xl backdrop-blur-md", iconStyle)}>
                         <Icon size={20} strokeWidth={2.5} />
                     </div>
                 </div>
