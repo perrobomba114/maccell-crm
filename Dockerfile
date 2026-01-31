@@ -1,15 +1,9 @@
-FROM node:20-slim AS base
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-# Install necessary dependencies for node-gyp/native modules if needed
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libc6 \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat tzdata
 ENV TZ="America/Argentina/Buenos_Aires"
 WORKDIR /app
 
@@ -45,12 +39,7 @@ ENV NODE_ENV=production
 # Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    tzdata \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
-    
+RUN apk add --no-cache tzdata postgresql-client
 ENV TZ="America/Argentina/Buenos_Aires"
 
 RUN addgroup --system --gid 1001 nodejs
