@@ -100,7 +100,7 @@ export function StockAlertsList({ productStats }: { productStats: any }) {
                         Todo en orden
                     </div>
                 ) : productStats.lowStock.map((item: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10 hover:bg-red-500/10 transition-colors" title={item.name}>
                         <div>
                             <h4 className="text-xs font-bold text-white max-w-[150px] truncate">{item.name}</h4>
                             <p className="text-[10px] text-zinc-500">{item.branch}</p>

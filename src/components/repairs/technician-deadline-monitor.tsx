@@ -42,23 +42,22 @@ export function TechnicianDeadlineMonitor({ userId }: TechnicianDeadlineMonitorP
         if (!userId) return;
 
         const checkDeadlines = async () => {
-            const repairs = await checkUpcomingDeadlines(userId);
+            try {
+                const repairs = await checkUpcomingDeadlines(userId);
 
-            repairs.forEach(repair => {
-                const isNew = !notifiedIds.has(repair.id);
-                // If we already alerted but it's still active (user hasn't dismissed loop), we don't re-toast but loop continues.
-                // If user dismissed loop (removeAlert), activeAlerts won't have it.
-                // notifiedIds prevents RE-TOASTING.
+                if (!repairs) return; // Safety check
 
-                if (isNew) {
-                    // Trigger Alert
-                    triggerAlert(repair);
-
-                    // Add to tracking sets
-                    setNotifiedIds(prev => new Set(prev).add(repair.id));
-                    setActiveAlerts(prev => new Set(prev).add(repair.id));
-                }
-            });
+                repairs.forEach(repair => {
+                    const isNew = !notifiedIds.has(repair.id);
+                    if (isNew) {
+                        triggerAlert(repair);
+                        setNotifiedIds(prev => new Set(prev).add(repair.id));
+                        setActiveAlerts(prev => new Set(prev).add(repair.id));
+                    }
+                });
+            } catch (error) {
+                console.error("Error/Mismatch in Deadline Monitor. Likely Deployment Mismatch. Ignoring.", error);
+            }
         };
 
         // Initial check

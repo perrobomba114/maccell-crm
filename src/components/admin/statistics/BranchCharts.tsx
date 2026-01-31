@@ -32,10 +32,11 @@ function BranchProfitChart({ data }: { data: any[] }) {
                     tickLine={false}
                     axisLine={false}
                     stroke="#71717a"
-                    tickFormatter={(value) => `$${value / 1000}k`}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
                     cursor={{ fill: '#27272a', opacity: 0.4 }}
+                    formatter={(value: any) => [`$${new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(value)}`, ""]}
                     contentStyle={{
                         backgroundColor: '#18181b',
                         borderColor: '#27272a',

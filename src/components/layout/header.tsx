@@ -11,7 +11,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { LogOut, User, Menu, Users } from "lucide-react";
 import { logout } from "@/actions/auth-actions";
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -19,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { TechnicianTimerWidget } from "../dashboard/technician-timer-widget";
 import { DollarWidget } from "../admin/dollar-widget";
 import { NotificationBell } from "@/components/ui/notification-bell";
-import { getImgUrl } from "@/lib/utils";
+import { getImgUrl, cn } from "@/lib/utils";
 
 interface HeaderProps {
     userName?: string;
@@ -50,8 +51,6 @@ export function Header({
 }: HeaderProps) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
-
-
 
     const handleLogout = () => {
         startTransition(async () => {
@@ -94,8 +93,8 @@ export function Header({
                 </div>
 
                 {/* Right side: Theme toggle + User menu */}
-                <div className="flex items-center gap-4">
-                    {/* Tech Widgets - Hidden on mobile to avoid overcrowding */}
+                <div className="flex items-center gap-2 sm:gap-4">
+                    {/* Tech Widgets - Large Screens */}
                     <div className="hidden lg:flex items-center gap-2 mr-2">
                         {techniciansWorkload.map((tech) => (
                             <TechnicianTimerWidget
@@ -108,12 +107,56 @@ export function Header({
                         ))}
                     </div>
 
+                    {/* Tech Widgets - Mobile Trigger */}
+                    <div className="lg:hidden">
+                        <Sheet>
+                            <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                                    <Users className="h-5 w-5" />
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="top" className="w-full">
+                                <SheetHeader className="mb-4">
+                                    <SheetTitle>Estado del Equipo Técnico</SheetTitle>
+                                </SheetHeader>
+                                <div className="grid gap-4 py-4">
+                                    {techniciansWorkload.length === 0 ? (
+                                        <p className="text-center text-muted-foreground text-sm">No hay técnicos disponibles</p>
+                                    ) : (
+                                        techniciansWorkload.map((tech) => (
+                                            <div key={tech.id} className="flex items-center justify-between border p-3 rounded-lg bg-card">
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{tech.name}</span>
+                                                    <span className={cn("text-xs flex items-center gap-1.5", tech.isOnline ? "text-emerald-500" : "text-zinc-500")}>
+                                                        <span className={cn("h-1.5 w-1.5 rounded-full", tech.isOnline ? "bg-emerald-500" : "bg-zinc-500")} />
+                                                        {tech.isOnline ? "En Línea" : "Desconectado"}
+                                                    </span>
+                                                </div>
+                                                <div className="scale-90 origin-right">
+                                                    <TechnicianTimerWidget
+                                                        technicianId={tech.id}
+                                                        name={tech.name}
+                                                        isOnline={tech.isOnline}
+                                                        workload={tech.workload}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </SheetContent>
+                        </Sheet>
+                    </div>
+
                     <div className="hidden sm:block">
                         <DollarWidget />
                     </div>
 
                     <NotificationBell userId={userId || ""} />
-                    <ModeToggle />
+                    {/* ModeToggle hidden on very small screens if needed, keeping it for now */}
+                    <div className="hidden xs:block">
+                        <ModeToggle />
+                    </div>
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>

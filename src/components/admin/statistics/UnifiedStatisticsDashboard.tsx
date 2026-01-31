@@ -1,5 +1,8 @@
-"use client";
+// FILE DEPRECATED / UNUSED
+// Please use StatisticsWidgets.tsx, GlobalFinancials.tsx, BranchCharts.tsx etc instead.
+// This file was confusingly named and edited by mistake.
 
+"use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
@@ -51,27 +54,33 @@ interface UnifiedStatisticsProps {
 
 function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon }: any) {
     const colorMap: any = {
-        emerald: "from-emerald-600/20 to-emerald-600/5 text-emerald-500 border-emerald-600/20",
-        blue: "from-blue-600/20 to-blue-600/5 text-blue-500 border-blue-600/20",
-        violet: "from-violet-600/20 to-violet-600/5 text-violet-500 border-violet-600/20",
-        orange: "from-orange-600/20 to-orange-600/5 text-orange-500 border-orange-600/20",
-        pink: "from-pink-600/20 to-pink-600/5 text-pink-500 border-pink-600/20",
+        emerald: "bg-gradient-to-br from-emerald-500/10 to-emerald-900/5 border-emerald-500/20 text-emerald-400",
+        blue: "bg-gradient-to-br from-blue-500/10 to-blue-900/5 border-blue-500/20 text-blue-400",
+        violet: "bg-gradient-to-br from-violet-500/10 to-violet-900/5 border-violet-500/20 text-violet-400",
+        orange: "bg-gradient-to-br from-orange-500/10 to-orange-900/5 border-orange-500/20 text-orange-400",
+        pink: "bg-gradient-to-br from-pink-500/10 to-pink-900/5 border-pink-500/20 text-pink-400",
     };
 
-    const styles = colorMap[accentColor] || colorMap.blue;
+    const containerStyle = colorMap[accentColor] || colorMap.blue;
+    // Extract icon bg color roughly
+    const iconStyle = accentColor === "emerald" ? "bg-emerald-500/20 text-emerald-400" :
+        accentColor === "blue" ? "bg-blue-500/20 text-blue-400" :
+            accentColor === "violet" ? "bg-violet-500/20 text-violet-400" :
+                accentColor === "orange" ? "bg-orange-500/20 text-orange-400" :
+                    "bg-pink-500/20 text-pink-400";
+
     const isPositive = trend?.value >= 0;
 
     return (
-        <div className="relative overflow-hidden rounded-2xl p-6 border border-zinc-800/50 bg-[#18181b] flex flex-col justify-between h-full min-h-[140px] hover:border-zinc-700 transition-all shadow-sm group">
-            {/* Background Glow */}
-            <div className={cn("absolute -right-6 -top-6 w-24 h-24 rounded-full blur-3xl opacity-20 bg-gradient-to-br", styles)}></div>
+        <div className={cn("relative overflow-hidden rounded-2xl p-6 border flex flex-col justify-between h-full min-h-[140px] transition-all shadow-sm hover:shadow-md", containerStyle)}>
+            {/* Background Glow removed/replaced by gradient above */}
 
             <div className="flex justify-between items-start z-10 relative">
                 <div>
                     <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-2 group-hover:text-zinc-400 transition-colors">{title}</p>
                     <h3 className="text-3xl font-bold text-white tracking-tight">{value}</h3>
                 </div>
-                <div className={cn("p-2.5 rounded-xl flex-shrink-0 bg-zinc-900/50 border border-current opacity-80", styles.split(" ")[2], styles.split(" ")[3])}>
+                <div className={cn("p-2.5 rounded-xl flex-shrink-0 flex items-center justify-center backdrop-blur-sm", iconStyle)}>
                     <Icon size={20} strokeWidth={2} />
                 </div>
             </div>
@@ -112,10 +121,11 @@ function BranchProfitChart({ data }: { data: any[] }) {
                     tickLine={false}
                     axisLine={false}
                     stroke="#71717a"
-                    tickFormatter={(value) => `$${value / 1000}k`}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
                     cursor={{ fill: '#27272a', opacity: 0.4 }}
+                    formatter={(value: any) => [`$${new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(value)}`, ""]}
                     contentStyle={{
                         backgroundColor: '#18181b',
                         borderColor: '#27272a',

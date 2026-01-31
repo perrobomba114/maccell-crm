@@ -8,45 +8,46 @@ import { cn } from "@/lib/utils";
 
 function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon }: any) {
     const colorMap: any = {
-        emerald: "from-emerald-600/20 to-emerald-600/5 text-emerald-500 border-emerald-600/20",
-        blue: "from-blue-600/20 to-blue-600/5 text-blue-500 border-blue-600/20",
-        violet: "from-violet-600/20 to-violet-600/5 text-violet-500 border-violet-600/20",
-        orange: "from-orange-600/20 to-orange-600/5 text-orange-500 border-orange-600/20",
-        pink: "from-pink-600/20 to-pink-600/5 text-pink-500 border-pink-600/20",
+        emerald: "bg-emerald-600 border-emerald-500 text-white",
+        blue: "bg-blue-600 border-blue-500 text-white",
+        violet: "bg-violet-600 border-violet-500 text-white",
+        orange: "bg-orange-600 border-orange-500 text-white",
+        pink: "bg-pink-600 border-pink-500 text-white",
     };
 
-    const styles = colorMap[accentColor] || colorMap.blue;
+    const containerStyle = colorMap[accentColor] || colorMap.blue;
+    // Extract icon bg color roughly
+    const iconStyle = accentColor === "emerald" ? "bg-emerald-500 text-white" :
+        accentColor === "blue" ? "bg-blue-500 text-white" :
+            accentColor === "violet" ? "bg-violet-500 text-white" :
+                accentColor === "orange" ? "bg-orange-500 text-white" :
+                    "bg-pink-500 text-white";
+
     const isPositive = trend?.value >= 0;
 
     return (
-        <div className="relative overflow-hidden rounded-2xl p-5 border border-zinc-800/50 bg-[#18181b] flex flex-col h-full hover:border-zinc-700 transition-all shadow-sm group">
-            {/* Background Glow */}
-            <div className={cn("absolute -right-6 -top-6 w-24 h-24 rounded-full blur-3xl opacity-20 bg-gradient-to-br", styles)}></div>
-
-            <div className="flex justify-between items-start z-10 relative mb-4">
-                <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider group-hover:text-zinc-400 transition-colors mt-1">{title}</p>
-                <div className={cn("p-2 rounded-lg flex-shrink-0 bg-zinc-900/50 border border-current opacity-80", styles.split(" ")[2], styles.split(" ")[3])}>
-                    <Icon size={18} strokeWidth={2} />
+        <div className={cn("relative overflow-hidden rounded-2xl p-6 border flex flex-col justify-between h-full min-h-[140px] transition-all shadow-sm hover:shadow-md", containerStyle)}>
+            <div className="flex justify-between items-start z-10 relative">
+                <div>
+                    <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-2 group-hover:text-white transition-colors">{title}</p>
+                    <h3 className="text-3xl font-bold text-white tracking-tight">{value}</h3>
+                </div>
+                <div className={cn("p-2.5 rounded-xl flex-shrink-0 flex items-center justify-center backdrop-blur-sm", iconStyle)}>
+                    <Icon size={20} strokeWidth={2} />
                 </div>
             </div>
 
-            <div className="z-10 relative mb-4 flex-grow">
-                <h3 className="text-2xl lg:text-3xl font-bold text-white tracking-tight truncate" title={String(value)}>
-                    {value}
-                </h3>
-            </div>
-
-            <div className="flex items-center gap-2 z-10 relative mt-auto">
+            <div className="flex items-center gap-3 mt-4 z-10 relative">
                 {trend && (
                     <div className={cn(
-                        "flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md",
-                        isPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
+                        "flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md",
+                        isPositive ? "bg-emerald-500/20 text-white" : "bg-red-500/20 text-white"
                     )}>
-                        {isPositive ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                        {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                         <span>{Math.abs(trend.value)}%</span>
                     </div>
                 )}
-                <span className="text-xs text-zinc-500 font-medium truncate">{subtext}</span>
+                <span className="text-xs text-white/70 font-medium truncate">{subtext}</span>
             </div>
         </div>
     );

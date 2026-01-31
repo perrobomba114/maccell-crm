@@ -200,25 +200,39 @@ export async function getProductStats(branchId?: string, date?: Date) {
         const whereSale = branchId ? { branchId } : {};
         const whereStock = branchId ? { branchId } : {};
 
-        // 1. Best Selling Products (Quantity) - Filter by Branch's Sales
-        // Prisma groupBy on connected relation? No.
-        // We'll filter SaleItems where Sale.branchId = X
-        const topSellingRaw = await prisma.saleItem.findMany({
-            where: {
-                sale: { ...whereSale, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
-                productId: { not: null }
-            },
-            select: {
-                name: true,
-                quantity: true,
-                productId: true
-            }
-        });
-
-        // Aggregate inside JS because Prisma groupBy with relation filter is tricky (groupBy on SaleItem doesn't allow `where: { sale: ... }` directly in older versions, but check latest).
-        // Actually for latest Prisma features:
-        // const topSelling = await prisma.saleItem.groupBy({ by: ['productId'], where: { sale: { branchId } } ... }) -> This works in newer Prisma.
-        // Let's assume standard support.
+        // 1. Parallel Fetching
+        const [topSellingRaw, lowStock, items] = await Promise.all([
+            // Best Selling Products (Quantity)
+            prisma.saleItem.findMany({
+                where: {
+                    sale: { ...whereSale, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
+                    productId: { not: null }
+                },
+                select: {
+                    name: true,
+                    quantity: true,
+                    productId: true
+                }
+            }),
+            // Replenishment Needs (Stock < 3)
+            prisma.productStock.findMany({
+                where: {
+                    quantity: { lte: 3 },
+                    ...whereStock
+                },
+                include: { product: true, branch: true },
+                orderBy: { quantity: 'asc' },
+                take: 20
+            }),
+            // Most "Gained" (Profit) Products
+            prisma.saleItem.findMany({
+                where: {
+                    productId: { not: null },
+                    sale: { ...whereSale, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } }
+                },
+                include: { product: true }
+            })
+        ]);
 
         const salesMap = new Map<string, { name: string, quantity: number, productId: string }>();
         topSellingRaw.forEach(item => {
@@ -231,28 +245,6 @@ export async function getProductStats(branchId?: string, date?: Date) {
         const topSelling = Array.from(salesMap.values())
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
-
-
-        // 2. Replenishment Needs (Stock < 3) - Filter by Branch Stock
-        const lowStock = await prisma.productStock.findMany({
-            where: {
-                quantity: { lte: 3 },
-                ...whereStock
-            },
-            include: { product: true, branch: true },
-            orderBy: { quantity: 'asc' },
-            take: 20
-        });
-
-        // 3. Most "Gained" (Profit) Products
-        // Need cost.
-        const items = await prisma.saleItem.findMany({
-            where: {
-                productId: { not: null },
-                sale: { ...whereSale, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } }
-            },
-            include: { product: true }
-        });
 
         const profitMap = new Map<string, { name: string, profit: number }>();
         items.forEach(item => {
@@ -298,17 +290,33 @@ export async function getBranchStats(branchId?: string, date?: Date) {
 
         const whereBranch = branchId ? { id: branchId } : {};
 
-        // 1. Profit by Branch (Cost vs Sale)
-        // We iterate branches and sum up sales items profit + repair profit (estimated)
-        const branches = await prisma.branch.findMany({
-            where: whereBranch,
-            include: {
-                sales: {
-                    where: { createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
-                    include: { items: { include: { product: true } } }
+        // 1. Parallel Fetching
+        const [branches, lastMonthSales, undeliveredStats, allStatuses] = await Promise.all([
+            // Profit by Branch
+            prisma.branch.findMany({
+                where: whereBranch,
+                include: {
+                    sales: {
+                        where: { createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
+                        include: { items: { include: { product: true } } }
+                    }
                 }
-            }
-        });
+            }),
+            // Growth by Branch
+            prisma.sale.groupBy({
+                by: ['branchId'],
+                where: { createdAt: { gte: firstDayOfLastMonth, lte: lastDayOfLastMonth } },
+                _sum: { total: true }
+            }),
+            // Undelivered Repairs
+            prisma.repair.groupBy({
+                by: ['branchId', 'statusId'],
+                where: { statusId: { not: 10 } },
+                _count: { _all: true }
+            }),
+            // Statuses
+            prisma.repairStatus.findMany()
+        ]);
 
         const branchProfits = branches.map(b => {
             let totalRevenue = 0;
@@ -330,22 +338,6 @@ export async function getBranchStats(branchId?: string, date?: Date) {
                 margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0
             };
         });
-
-        // 2. Growth by Branch (This month vs Last month Sales Total)
-        const lastMonthSales = await prisma.sale.groupBy({
-            by: ['branchId'],
-            where: { createdAt: { gte: firstDayOfLastMonth, lte: lastDayOfLastMonth } },
-            _sum: { total: true }
-        });
-
-        // 3. Undelivered Repairs by Branch (Stacked Data)
-        const undeliveredStats = await prisma.repair.groupBy({
-            by: ['branchId', 'statusId'],
-            where: { statusId: { not: 10 } },
-            _count: { _all: true }
-        });
-
-        const allStatuses = await prisma.repairStatus.findMany();
 
         // Identify which statuses are actually present in the undelivered set to keys
         const presentStatusIds = Array.from(new Set(undeliveredStats.map(u => u.statusId)));
@@ -447,25 +439,55 @@ export async function getRepairStats(branchId?: string, date?: Date) {
 
         const whereRepair = branchId ? { branchId } : {};
 
-        // 1. Most Used Spare Parts
-        // Need to join through repairs to check branch?
-        // RepairPart -> Repair -> Branch.
-        // Prisma: findMany RepairPart where repair: { branchId: ... }
-        const topPartsRaw = await prisma.repairPart.groupBy({
-            by: ['sparePartId'],
-            where: {
-                repair: whereRepair,
-                assignedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
-            },
-            _sum: { quantity: true },
-            orderBy: { _sum: { quantity: 'desc' } },
-            take: 10
-        });
+        // 1. Parallel Fetching (Independent Queries)
+        const [topPartsRaw, techStats, phonesInStock, repairCount] = await Promise.all([
+            // Most Used Spare Parts
+            prisma.repairPart.groupBy({
+                by: ['sparePartId'],
+                where: {
+                    repair: whereRepair,
+                    assignedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+                },
+                _sum: { quantity: true },
+                orderBy: { _sum: { quantity: 'desc' } },
+                take: 10
+            }),
+            // Technician Stats
+            prisma.repair.groupBy({
+                by: ['assignedUserId'],
+                where: {
+                    statusId: { in: [5, 6, 7, 10] }, // Completed
+                    finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                    assignedUserId: { not: null },
+                    ...whereRepair
+                },
+                _count: { _all: true }
+            }),
+            // Stock of "Phones"
+            prisma.repair.count({
+                where: {
+                    statusId: { not: 10 },
+                    ...whereRepair
+                }
+            }),
+            // Repair Volume
+            prisma.repair.count({
+                where: {
+                    statusId: { in: [5, 6, 7, 10] },
+                    finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                    ...whereRepair
+                }
+            })
+        ]);
 
+        // 2. Dependent Fetching
         const partIds = topPartsRaw.map(p => p.sparePartId);
-        const partsInfo = await prisma.sparePart.findMany({
-            where: { id: { in: partIds } }
-        });
+        const userIds = techStats.map(t => t.assignedUserId!).filter(Boolean);
+
+        const [partsInfo, users] = await Promise.all([
+            prisma.sparePart.findMany({ where: { id: { in: partIds } } }),
+            prisma.user.findMany({ where: { id: { in: userIds } } })
+        ]);
 
         const mostUsedParts = topPartsRaw.map(t => {
             const info = partsInfo.find(p => p.id === t.sparePartId);
@@ -477,45 +499,10 @@ export async function getRepairStats(branchId?: string, date?: Date) {
             };
         });
 
-        // 2. Technician Stats (Repairs Completed)
-        const techStats = await prisma.repair.groupBy({
-            by: ['assignedUserId'],
-            where: {
-                statusId: { in: [5, 6, 7, 10] }, // Completed
-                finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
-                assignedUserId: { not: null },
-                ...whereRepair
-            },
-            _count: { _all: true }
-        });
-
-        const userIds = techStats.map(t => t.assignedUserId!).filter(Boolean);
-        const users = await prisma.user.findMany({
-            where: { id: { in: userIds } }
-        });
-
         const bestTechnicians = techStats.map(t => ({
             name: users.find(u => u.id === t.assignedUserId)?.name || 'Unknown',
             repairs: t._count._all
         })).sort((a, b) => b.repairs - a.repairs);
-
-
-        // 3. Stock of "Phones" not in ID 10
-        const phonesInStock = await prisma.repair.count({
-            where: {
-                statusId: { not: 10 },
-                ...whereRepair
-            }
-        });
-
-        // Repair Volume
-        const repairCount = await prisma.repair.count({
-            where: {
-                statusId: { in: [5, 6, 7, 10] },
-                finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
-                ...whereRepair
-            }
-        });
 
 
         return {

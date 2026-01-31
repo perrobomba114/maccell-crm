@@ -9,23 +9,28 @@ const fmtMoney = (n: number) => new Intl.NumberFormat("es-AR", { style: "currenc
 
 function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, href }: any) {
     const colorMap: any = {
-        blue: "from-blue-600/20 to-blue-600/5 text-blue-500 border-blue-600/20",
-        emerald: "from-emerald-600/20 to-emerald-600/5 text-emerald-500 border-emerald-600/20",
-        violet: "from-violet-600/20 to-violet-600/5 text-violet-500 border-violet-600/20",
-        orange: "from-orange-600/20 to-orange-600/5 text-orange-500 border-orange-600/20"
+        emerald: "bg-emerald-600 border-emerald-500 text-white",
+        blue: "bg-blue-600 border-blue-500 text-white",
+        violet: "bg-violet-600 border-violet-500 text-white",
+        orange: "bg-orange-600 border-orange-500 text-white",
+        pink: "bg-pink-600 border-pink-500 text-white",
     };
 
     const styles = colorMap[accentColor] || colorMap.blue;
 
     const Content = () => (
         <>
-            {/* Background Glow */}
-            <div className={cn("absolute -right-6 -top-6 w-24 h-24 rounded-full blur-3xl opacity-20 bg-gradient-to-br", styles)}></div>
+            {/* Background Glow removed for solid style */}
 
             <div className="flex justify-between items-start z-10 relative mb-4">
-                <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider group-hover:text-zinc-400 transition-colors mt-1">{title}</p>
-                <div className={cn("p-2 rounded-lg flex-shrink-0 bg-zinc-900/50 border border-current opacity-80", styles.split(" ")[2], styles.split(" ")[3])}>
-                    <Icon size={18} strokeWidth={2} />
+                <p className="text-white/80 text-xs font-bold uppercase tracking-wider group-hover:text-white transition-colors mt-1">{title}</p>
+                <div className={cn("p-2 rounded-lg flex-shrink-0 flex items-center justify-center backdrop-blur-sm",
+                    accentColor === 'emerald' ? "bg-emerald-500" :
+                        accentColor === 'blue' ? "bg-blue-500" :
+                            accentColor === 'violet' ? "bg-violet-500" :
+                                accentColor === 'orange' ? "bg-orange-500" : "bg-zinc-700"
+                )}>
+                    <Icon size={18} strokeWidth={2} className="text-white" />
                 </div>
             </div>
 
@@ -39,12 +44,12 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, hre
                 {trend && (
                     <span className={cn(
                         "text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0 flex items-center gap-1",
-                        trend.positive ? "bg-emerald-500/10 text-emerald-500" : (accentColor === 'orange' ? "bg-zinc-800 text-zinc-400" : "bg-red-500/10 text-red-500")
+                        trend.positive ? "bg-emerald-500/20 text-white" : (accentColor === 'orange' ? "bg-white/20 text-white" : "bg-red-500/20 text-white")
                     )}>
                         {trend.positive ? "↑" : (accentColor === 'orange' ? "•" : "↓")} {trend.value}
                     </span>
                 )}
-                <span className="text-xs text-zinc-500 font-medium truncate group-hover:text-zinc-400 transition-colors">{subtext}</span>
+                <span className="text-xs text-white/70 font-medium truncate group-hover:text-white transition-colors">{subtext}</span>
             </div>
         </>
     );
@@ -52,7 +57,8 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, hre
     if (href) {
         return (
             <Link href={href} className={cn(
-                "relative overflow-hidden rounded-2xl p-5 border border-zinc-800/50 bg-[#18181b] flex flex-col h-full hover:border-zinc-700 hover:bg-zinc-900/50 transition-all shadow-sm group cursor-pointer"
+                "relative overflow-hidden rounded-2xl p-5 border flex flex-col h-full transition-all shadow-sm group cursor-pointer hover:shadow-md hover:brightness-110",
+                styles
             )}>
                 <Content />
             </Link>
@@ -61,7 +67,8 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, hre
 
     return (
         <div className={cn(
-            "relative overflow-hidden rounded-2xl p-5 border border-zinc-800/50 bg-[#18181b] flex flex-col h-full hover:border-zinc-700 transition-all shadow-sm group"
+            "relative overflow-hidden rounded-2xl p-5 border flex flex-col h-full transition-all shadow-sm group hover:shadow-md",
+            styles
         )}>
             <Content />
         </div>
