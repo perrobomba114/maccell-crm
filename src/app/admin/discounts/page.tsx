@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getPriceOverrides } from "@/actions/discount-actions";
+import { getBranchesList } from "@/actions/statistics-actions";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -14,6 +15,7 @@ import {
     Search,
     Package,
     Clock,
+    X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -39,6 +41,13 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
     Pagination,
     PaginationContent,
     PaginationItem,
@@ -55,9 +64,11 @@ export default function AdminDiscountsPage() {
 
     const [overrides, setOverrides] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [branches, setBranches] = useState<any[]>([]);
 
     // Filters
     const [date, setDate] = useState<Date | undefined>(new Date()); // Default to Today
+    const [branchId, setBranchId] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
@@ -65,8 +76,19 @@ export default function AdminDiscountsPage() {
     const [searchTerm, setSearchTerm] = useState(searchParams.get("query") || "");
 
     useEffect(() => {
+        loadBranches();
+    }, []);
+
+    useEffect(() => {
         loadData();
-    }, [page, date]);
+    }, [page, date, branchId]);
+
+    const loadBranches = async () => {
+        const branchesData = await getBranchesList();
+        if (branchesData && Array.isArray(branchesData)) {
+            setBranches(branchesData);
+        }
+    };
 
     // Sync URL changes to state for search
     useEffect(() => {
@@ -81,7 +103,8 @@ export default function AdminDiscountsPage() {
         const res = await getPriceOverrides({
             page,
             limit: 25,
-            date: date || null
+            date: date || null,
+            branchId: branchId || null
         });
 
         if (res.success && res.overrides) {
@@ -126,6 +149,25 @@ export default function AdminDiscountsPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                    {/* Branch Filter */}
+                    <Select value={branchId || "all"} onValueChange={(val) => {
+                        setBranchId(val === "all" ? null : val);
+                        setPage(1);
+                    }}>
+                        <SelectTrigger className="w-full sm:w-[200px]">
+                            <Store className="mr-2 h-4 w-4" />
+                            <SelectValue placeholder="Todas las sucursales" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todas las sucursales</SelectItem>
+                            {branches.map((branch) => (
+                                <SelectItem key={branch.id} value={branch.id}>
+                                    {branch.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
                     {/* Date Picker */}
                     <Popover>
                         <PopoverTrigger asChild>

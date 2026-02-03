@@ -8,9 +8,10 @@ interface GetPriceOverridesParams {
     page?: number;
     limit?: number;
     date?: Date | null;
+    branchId?: string | null;
 }
 
-export async function getPriceOverrides({ page = 1, limit = 25, date }: GetPriceOverridesParams = {}) {
+export async function getPriceOverrides({ page = 1, limit = 25, date, branchId }: GetPriceOverridesParams = {}) {
     try {
         const whereClause: any = {
             originalPrice: {
@@ -18,13 +19,21 @@ export async function getPriceOverrides({ page = 1, limit = 25, date }: GetPrice
             }
         };
 
+        const saleConditions: any = {};
+
         if (date) {
-            whereClause.sale = {
-                createdAt: {
-                    gte: startOfDay(date),
-                    lte: endOfDay(date)
-                }
+            saleConditions.createdAt = {
+                gte: startOfDay(date),
+                lte: endOfDay(date)
             };
+        }
+
+        if (branchId) {
+            saleConditions.branchId = branchId;
+        }
+
+        if (Object.keys(saleConditions).length > 0) {
+            whereClause.sale = saleConditions;
         }
 
         const total = await db.saleItem.count({

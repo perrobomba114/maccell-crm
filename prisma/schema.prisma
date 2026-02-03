@@ -296,7 +296,6 @@ model Repair {
   estimatedPrice     Float?
   promisedAt         DateTime
   isWarranty         Boolean             @default(false)
-  isWet              Boolean             @default(false)
   originalRepairId   String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
@@ -304,6 +303,7 @@ model Repair {
   estimatedTime      Int?
   finishedAt         DateTime?
   startedAt          DateTime?
+  isWet              Boolean             @default(false)
   observations       RepairObservation[]
   parts              RepairPart[]
   assignedTo         User?               @relation("AssignedRepairs", fields: [assignedUserId], references: [id])
@@ -424,6 +424,14 @@ model ReturnRequest {
   @@map("return_requests")
 }
 
+model backups {
+  id        String   @id
+  name      String   @unique
+  size      Int
+  content   Bytes
+  createdAt DateTime @default(now())
+}
+
 enum Role {
   ADMIN
   VENDOR
@@ -453,5 +461,3 @@ enum ReturnStatus {
   ACCEPTED
   REJECTED
 }
-
-

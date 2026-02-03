@@ -278,15 +278,42 @@ export async function deleteSale(saleId: string) {
                 }
 
                 if (item.repairId) {
-                    // Revert to "Ready for Pickup" / "Reparado" (ID 6)
-                    // If it was ID 10 (Delivered/Paid), we assume it goes back to 6.
+                    // CRITICAL FIX: Restore spare parts stock
+                    // Get all parts used in this repair
+                    const repairParts = await tx.repairPart.findMany({
+                        where: { repairId: item.repairId },
+                        include: { sparePart: true }
+                    });
+
+                    // Restore stock for each part
+                    for (const part of repairParts) {
+                        await tx.sparePart.update({
+                            where: { id: part.sparePartId },
+                            data: {
+                                stockLocal: { increment: part.quantity }
+                            }
+                        });
+                    }
+
+                    // Delete RepairPart entries to avoid confusion
+                    await tx.repairPart.deleteMany({
+                        where: { repairId: item.repairId }
+                    });
+
+                    // Revert to "Finalizado OK" (ID 5)
                     await tx.repair.update({
                         where: { id: item.repairId },
                         data: {
-                            statusId: 6,
-                            // Clear finishedAt/deliveredAt if we were tracking them? 
-                            // Usually "finishedAt" is when tech finishes, "deliveredAt" (if exists) is when customer picks up.
-                            // Repair model has finishedAt. It likely stays finished. Just status changes.
+                            statusId: 5,
+                        }
+                    });
+
+                    // Log the restoration for audit trail
+                    await tx.repairObservation.create({
+                        data: {
+                            repairId: item.repairId,
+                            userId: user.id,
+                            content: `Venta #${sale.saleNumber} eliminada. Repuestos devueltos al stock: ${repairParts.map(p => `${p.sparePart.name} (${p.quantity})`).join(', ')}`
                         }
                     });
                 }

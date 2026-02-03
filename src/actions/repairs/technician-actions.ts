@@ -395,6 +395,14 @@ export async function finishRepairAction(formData: FormData) {
             console.error("Error parsing returnPartIds", e);
         }
 
+        // AUTO-RETURN LOGIC for Status 6 (No Reparado)
+        // If status is 6, we MUST return all parts.
+        if (statusId === 6 && repair.parts && repair.parts.length > 0) {
+            const allPartIds = repair.parts.map((p: any) => p.id);
+            // Merge with existing returnPartIds (to avoid duplicates)
+            returnPartIds = Array.from(new Set([...returnPartIds, ...allPartIds]));
+        }
+
         if (returnPartIds.length > 0) {
             let partsSnapshot: any[] = [];
 

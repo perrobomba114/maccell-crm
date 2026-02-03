@@ -89,6 +89,24 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             return;
         }
 
+        // WARNING: If status is not 5 (OK), and there are parts not returned
+        const isFinishedOk = statusId === "5";
+        const hasAssignedParts = repair.parts && repair.parts.length > 0;
+        const allPartsMarkedForReturn = hasAssignedParts && repair.parts.every((p: any) => partsToReturn.has(p.id));
+
+        // Status 6 is handled automatically (forced return)
+        // Status 4, 7, 8, 9 should WARN the technician
+        const shouldWarnAboutParts = ["4", "7", "8", "9"].includes(statusId);
+
+        if (!isFinishedOk && hasAssignedParts && !allPartsMarkedForReturn && shouldWarnAboutParts) {
+            const confirm = window.confirm("La reparación no salió OK. ¿Quiere devolver los repuestos?\n\n(Si no los devuelve ahora, quedarán descontados del stock)");
+            if (!confirm) {
+                // User chose not to return, but we warned them.
+            } else {
+                return; // Let user check the boxes
+            }
+        }
+
         setIsLoading(true);
 
         try {
@@ -233,22 +251,31 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                         {repair.parts && repair.parts.length > 0 && (
                             <div className="space-y-2">
                                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Repuestos Utilizados</Label>
+                                {statusId === "6" && (
+                                    <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded border border-red-200 dark:border-red-900 mb-2">
+                                        <p className="text-[10px] text-red-600 dark:text-red-400 font-bold uppercase">
+                                            Equipos No Reparados: Los repuestos se devuelven automáticamente.
+                                        </p>
+                                    </div>
+                                )}
                                 <div className="bg-muted/5 rounded-lg border border-border/50 divide-y divide-border/50">
                                     {repair.parts.map((part: any, idx: number) => {
                                         if (!part.sparePart) return null;
-                                        const isReturned = partsToReturn.has(part.id);
+                                        const isIrreparable = statusId === "6";
+                                        const isReturned = partsToReturn.has(part.id) || isIrreparable;
                                         return (
-                                            <div key={part.id} className="p-3 flex items-center justify-between gap-3 bg-card/50">
+                                            <div key={part.id} className={`p-3 flex items-center justify-between gap-3 ${isIrreparable ? 'bg-red-500/5' : 'bg-card/50'}`}>
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-medium">{part.sparePart.name}</span>
                                                     <span className="text-[10px] text-muted-foreground font-mono">{part.sparePart.sku} - Qty: {part.quantity}</span>
                                                 </div>
                                                 <div className="flex items-center">
-                                                    <label htmlFor={`return-${part.id}`} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all cursor-pointer select-none ${isReturned ? 'bg-red-500/10 border-red-500/50 text-red-600' : 'bg-background border-border text-muted-foreground hover:bg-muted'}`}>
+                                                    <label htmlFor={`return-${part.id}`} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all cursor-pointer select-none ${isReturned ? 'bg-red-500/10 border-red-500/50 text-red-600' : 'bg-background border-border text-muted-foreground hover:bg-muted'} ${isIrreparable ? 'cursor-not-allowed opacity-80' : ''}`}>
                                                         <Checkbox
                                                             id={`return-${part.id}`}
                                                             checked={isReturned}
-                                                            onCheckedChange={() => togglePartReturn(part.id)}
+                                                            onCheckedChange={() => !isIrreparable && togglePartReturn(part.id)}
+                                                            disabled={isIrreparable}
                                                             className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
                                                         />
                                                         <span className="text-xs font-medium">Devolver (Falla/Error)</span>
@@ -259,7 +286,10 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                     })}
                                 </div>
                                 <p className="text-[10px] text-muted-foreground px-1">
-                                    * Los repuestos NO marcados se considerarán consumidos exitosamente.
+                                    {statusId === "6"
+                                        ? "* Al ser Irreparable, todos los repuestos se cargarán para devolución."
+                                        : "* Los repuestos NO marcados se considerarán consumidos exitosamente."
+                                    }
                                 </p>
                             </div>
                         )}
