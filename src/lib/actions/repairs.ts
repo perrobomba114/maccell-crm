@@ -72,20 +72,66 @@ export async function calculatePromisedDateAction(startDateIso: string, minutesT
 }
 
 export async function searchSparePartsAction(term: string) {
-    console.log("Searching parts for:", term);
-    if (!term || term.length < 2) return [];
+    // Clean search term (remove leading/trailing whitespace and line breaks)
+    const cleanTerm = term?.trim();
+
+    // Enhanced logging for production debugging
+    console.log("=== SPARE PART SEARCH ===");
+    console.log("Original term:", JSON.stringify(term), `(length: ${term?.length || 0})`);
+    console.log("Cleaned term:", JSON.stringify(cleanTerm), `(length: ${cleanTerm?.length || 0})`);
+    console.log("Had whitespace:", term !== cleanTerm);
+
+    if (!cleanTerm || cleanTerm.length < 2) {
+        console.log("Search term too short, returning empty");
+        return [];
+    }
 
     try {
         console.log("DB Query Starting...");
+
+        // Special handling for barcode format: Always 8 digits starting with 9988
+        // Last 4 digits are unique (e.g., 99880711 -> 0711)
+        let last4Digits: string | null = null;
+        if (/^9988\d{4}$/.test(cleanTerm)) {
+            last4Digits = cleanTerm.slice(-4);
+            console.log("Detected barcode format 9988XXXX, last 4 digits:", last4Digits);
+        }
+
+        const searchConditions = [
+            // Search in name
+            { name: { contains: cleanTerm, mode: 'insensitive' } },
+
+            // Multiple SKU search strategies
+            { sku: { equals: cleanTerm, mode: 'insensitive' } },      // Exact match full code
+            { sku: { contains: cleanTerm, mode: 'insensitive' } },    // Contains full code
+            { sku: { endsWith: cleanTerm, mode: 'insensitive' } },    // For prefixed SKUs
+            { sku: { startsWith: cleanTerm, mode: 'insensitive' } }   // For suffixed SKUs
+        ] as any[];
+
+        // If it's a barcode format (9988XXXX), also search by last 4 digits
+        if (last4Digits) {
+            searchConditions.push(
+                { sku: { equals: last4Digits, mode: 'insensitive' } },      // Exact match last 4
+                { sku: { endsWith: last4Digits, mode: 'insensitive' } },    // Ends with last 4
+                { sku: { contains: last4Digits, mode: 'insensitive' } }     // Contains last 4
+            );
+        }
+
         const parts = await db.sparePart.findMany({
             where: {
-                OR: [
-                    { name: { contains: term, mode: 'insensitive' } },
-                    { sku: { contains: term, mode: 'insensitive' } }
-                ],
+                OR: searchConditions,
             },
             take: 20
         });
+
+        // Log results for debugging
+        console.log("DB Query Result:", parts.length, "parts found");
+        if (parts.length > 0) {
+            console.log("First match - SKU:", JSON.stringify(parts[0].sku), "| Name:", parts[0].name, "| Stock:", parts[0].stockLocal);
+        } else {
+            console.log("No matches found for term:", JSON.stringify(cleanTerm), last4Digits ? `(also tried: ${last4Digits})` : "");
+        }
+
         // Check for stale client (missing pricePos in result)
         // Note: checking first item is enough
         if (parts.length > 0 && (parts[0] as any).pricePos === undefined) {
@@ -100,8 +146,6 @@ export async function searchSparePartsAction(term: string) {
                 });
             } catch (e) { console.error("Search fallback error", e); }
         }
-
-        console.log("DB Query Result:", parts.length, "found.");
 
         return parts.map((p: any) => ({
             id: p.id,

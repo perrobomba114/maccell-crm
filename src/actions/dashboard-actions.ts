@@ -168,10 +168,15 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
                 orderBy: { _count: { sparePartId: 'desc' } },
                 take: 10
             }),
-            // Monthly Distribution
+            // Monthly Distribution (Finalized Repairs Only)
+            // Match logic from repair cards: only count completed repairs (5,6,7,10) using finishedAt
             prisma.repair.groupBy({
                 by: ['statusId'],
-                where: { ...branchFilter, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
+                where: {
+                    ...branchFilter,
+                    statusId: { in: [5, 6, 7, 10] },  // Only finalized repairs
+                    finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }  // Use finishedAt not createdAt
+                },
                 _count: { _all: true }
             }),
             // Status Names
@@ -312,6 +317,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
         today.setHours(0, 0, 0, 0);
 
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
         const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
 
         const branchFilter = branchId ? { branchId } : {};
@@ -363,7 +369,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
         const repairsIntakeMonth = await prisma.repair.count({
             where: {
                 userId: vendorId,
-                createdAt: { gte: firstDayOfMonth }
+                createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
             }
         });
 
@@ -602,6 +608,7 @@ export async function getTechnicianStats(technicianId: string) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(today.getDate() - 6);
         sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -611,7 +618,7 @@ export async function getTechnicianStats(technicianId: string) {
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [1, 2, 4] } } }), // Pending, Assigned, Diagnosing
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: 3 } }), // In Progress
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: today } } }),
-            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: firstDayOfMonth } } }),
+            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } } }),
             prisma.repair.groupBy({ by: ['statusId'], where: { assignedUserId: technicianId }, _count: { _all: true } }),
             // Performance Metrics Fetching (Last 30 Days)
             prisma.repair.findMany({

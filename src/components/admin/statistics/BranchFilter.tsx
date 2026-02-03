@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { Loader2 } from "lucide-react";
 
 interface Branch {
     id: string;
@@ -16,13 +18,16 @@ interface FilterProps {
 
 export function BranchFilter({ branches, currentBranchId }: FilterProps) {
     const router = useRouter();
+    const [isPending, startTransition] = useTransition();
 
     const handleSelect = (id?: string) => {
-        if (id) {
-            router.push(`?branchId=${id}`);
-        } else {
-            router.push(`?`);
-        }
+        startTransition(() => {
+            if (id) {
+                router.push(`?branchId=${id}`, { scroll: false });
+            } else {
+                router.push(`?`, { scroll: false });
+            }
+        });
     };
 
     const allBranchItem = { id: undefined, name: "Todas las Sucursales" };
@@ -40,6 +45,12 @@ export function BranchFilter({ branches, currentBranchId }: FilterProps) {
 
     return (
         <div className="flex flex-wrap gap-3 items-center">
+            {isPending && (
+                <div className="flex items-center gap-2 text-zinc-400 text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Cargando...</span>
+                </div>
+            )}
             {items.map((item, index) => {
                 const isAll = item.id === undefined;
                 const isActive = isAll ? !currentBranchId : currentBranchId === item.id;
@@ -49,20 +60,19 @@ export function BranchFilter({ branches, currentBranchId }: FilterProps) {
                     <button
                         key={item.id || "all"}
                         onClick={() => handleSelect(item.id)}
+                        disabled={isPending}
                         className={cn(
                             "relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide transition-all duration-200 border",
                             isActive
                                 ? "bg-white text-black border-white shadow-lg shadow-white/10"
-                                : "bg-[#18181b] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-white"
+                                : "bg-[#18181b] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-white",
+                            isPending && "opacity-50 cursor-not-allowed"
                         )}
                     >
                         {/* Dot */}
                         <span className={cn(
                             "w-2 h-2 rounded-full",
-                            isActive ? colorClass : colorClass // Keep color dot always visible? Or specific color when active? Mockup shows Active = White Button with colored text or just plain. 
-                            // Wait, Mockup shows: "Todas las Sucursales" (White Pill, Black Text). 
-                            // "8 BIT ACCESORIOS" (Dark pill, blue dot).
-                            // So: Active = White Background. Inactive = Dark Background + Colored Dot.
+                            isActive ? colorClass : colorClass
                         )} />
 
                         <span>{item.name}</span>
