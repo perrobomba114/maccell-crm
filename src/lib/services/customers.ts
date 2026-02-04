@@ -11,55 +11,50 @@ interface CreateCustomerData {
 
 export class CustomerService {
     async findOrCreate(data: CreateCustomerData) {
-        // 1. Try to find by phone (Unique identifier logic)
-        // Note: Schema says @@unique([phone, branchId]) but user SQL said phone unique globally.
-        // We will search by phone globally first to avoid creating duplicates across branches if not desired, 
-        // OR strict branch scope. 
-        // Given 'Maccell 1' 'Maccell 2', customers might go to both.
-        // If schema is scoped to branch, we search by phone AND branchId.
+        // List of placeholder/dummy numbers/names that should NOT trigger a merge
+        const DUMMY_PHONES = ["0", "00", "000", "0000", "00000", "000000", "0000000", "00000000", "000000000", "0000000000", "1111111111", "SIN TELEFONO", "SIN PROVEEDOR"];
+        const normalizedPhone = data.phone.replace(/[\s-]/g, '');
+        const isDummy = DUMMY_PHONES.includes(normalizedPhone) || normalizedPhone.length < 5;
 
-        let customer = await db.customer.findFirst({
-            where: {
-                phone: data.phone,
-                // branchId: data.branchId // Do we scope? If checked globally, we reuse. If scoped, we create new for this branch.
-                // Let's scope to branch as per schema unique constraint usually implying separation.
-            }
-        });
+        // 1. If it's a REAL phone, try to find existing customer
+        if (!isDummy) {
+            let customer = await db.customer.findFirst({
+                where: {
+                    phone: data.phone,
+                }
+            });
 
-        // 2. If valid global customer exists maybe reuse? 
-        // Implementation Plan said: "Find by Phone or Create".
-        // Let's strictly follow the schema constraint: unique per branch+phone.
-        // But wait, if I visit Branch 1 then Branch 2, do I get a new Customer record?
-        // Usually yes in simple multi-tenant.
+            if (customer) {
+                let needsUpdate = false;
+                if (customer.name !== data.name) needsUpdate = true;
+                if (data.email && customer.email !== data.email) needsUpdate = true;
 
-        if (customer) {
-            // Check if updates needed
-            let needsUpdate = false;
-            if (customer.name !== data.name) {
-                // Update name if changed
-                needsUpdate = true;
+                if (needsUpdate) {
+                    customer = await db.customer.update({
+                        where: { id: customer.id },
+                        data: {
+                            name: data.name,
+                            email: data.email ?? customer.email
+                        }
+                    });
+                }
+                return customer;
             }
-            if (data.email && customer.email !== data.email) {
-                needsUpdate = true;
-            }
+        }
 
-            if (needsUpdate) {
-                customer = await db.customer.update({
-                    where: { id: customer.id },
-                    data: {
-                        name: data.name,
-                        email: data.email ?? customer.email // Don't wipe email if not provided? Or update?
-                    }
-                });
-            }
-            return customer;
+        // 2. Prepare Phone for creation (Force Unique if Dummy)
+        let finalPhone = data.phone;
+        if (isDummy) {
+            // Append random suffix to satisfy Unique Constraint
+            // Format: 0000000000_1701234567890
+            finalPhone = `${data.phone}_${Date.now()}${Math.floor(Math.random() * 100)}`;
         }
 
         // 3. Create new
         return await db.customer.create({
             data: {
                 name: data.name,
-                phone: data.phone,
+                phone: finalPhone,
                 email: data.email,
                 branchId: data.branchId,
                 userId: data.userId,

@@ -92,15 +92,23 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
             certContent = selectedCertEnv;
             keyContent = selectedKeyEnv;
         }
-        // 2. Fallback to Files (only for default usually, or if configured)
+        // 2. Fallback to Files
         else {
-            const certPath = path.join(certDir, process.env.AFIP_CERT || 'cert.pem');
-            const keyPath = path.join(certDir, process.env.AFIP_KEY || 'key.pem');
+            // For 8BIT, we look for specific files if ENV is missing
+            const certFilename = shouldUse8Bit ? 'cert_8bit.crt' : (process.env.AFIP_CERT || 'cert.pem');
+            const keyFilename = shouldUse8Bit ? 'key_8bit.key' : (process.env.AFIP_KEY || 'key.pem');
+
+            const certPath = path.join(certDir, certFilename);
+            const keyPath = path.join(certDir, keyFilename);
 
             if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
                 certContent = fs.readFileSync(certPath, 'utf8');
                 keyContent = fs.readFileSync(keyPath, 'utf8');
             } else {
+                // Critical Error if 8BIT credentials are missing
+                if (shouldUse8Bit) {
+                    throw new Error(`CRÍTICO: No se encontraron credenciales para 8 BIT. Revise variables AFIP_CERT_8BIT / AFIP_KEY_8BIT o archivos ${certFilename}.`);
+                }
                 throw new Error(`Certificates not found in ENV or at ${certPath}`);
             }
         }
