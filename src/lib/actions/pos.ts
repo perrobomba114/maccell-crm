@@ -315,7 +315,8 @@ export async function processPosSale(data: {
                 serviceDateFrom: data.invoiceData.serviceDateFrom,
                 serviceDateTo: data.invoiceData.serviceDateTo,
                 paymentDueDate: data.invoiceData.paymentDueDate,
-                ivaConditionId: getIvaConditionId(data.invoiceData.ivaCondition || "")
+                ivaConditionId: getIvaConditionId(data.invoiceData.ivaCondition || ""),
+                branchId: data.branchId // Pass Branch ID for multi-cert support
             });
 
             if (!afipRes.success || !afipRes.data) {

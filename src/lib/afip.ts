@@ -4,6 +4,7 @@ import path from 'path';
 import https from 'https';
 import { constants } from 'crypto';
 import tls from 'tls';
+import { db } from "@/lib/db";
 
 // --- NUCLEAR FIX FOR AFIP SSL ERROR (DH KEY TOO SMALL) ---
 // Monkey-patch tls.createSecureContext to force legacy settings globally.
@@ -37,34 +38,76 @@ const CUIT = parseInt(process.env.AFIP_CUIT || '0');
 
 console.log(`[AFIP] Initializing Client. Production: ${PRODUCTION} (Env: ${process.env.AFIP_PRODUCTION})`);
 
-export async function getAfipClient() {
-    // Resolve certificate paths
-    const certDir = path.resolve(process.cwd(), 'afip-certs');
-    const certPath = path.join(certDir, process.env.AFIP_CERT || 'cert.pem');
-    const keyPath = path.join(certDir, process.env.AFIP_KEY || 'key.pem');
+export async function getAfipClient(branchId?: string) {
+    let shouldUse8Bit = false;
 
-    // Read certificate contents (REQUIRED for @arcasdk/core)
+    // Determine if we need specialized credentials
+    if (branchId) {
+        try {
+            const branch = await db.branch.findUnique({
+                where: { id: branchId },
+                select: { code: true }
+            });
+            if (branch && branch.code === '8BIT') {
+                shouldUse8Bit = true;
+            }
+        } catch (error) {
+            console.error("Error fetching branch for AFIP context:", error);
+            // Fallback to default
+        }
+    }
+
+    // Select Credentials based on context
+    let selectedCuit = CUIT;
+    let selectedCertEnv = process.env.AFIP_CERT;
+    let selectedKeyEnv = process.env.AFIP_KEY;
+
+    if (shouldUse8Bit) {
+        console.log("[AFIP] Using credentials for **8 BIT ACCESORIOS**");
+        const cuit8bit = process.env.AFIP_CUIT_8BIT;
+        if (cuit8bit) selectedCuit = parseInt(cuit8bit);
+
+        selectedCertEnv = process.env.AFIP_CERT_8BIT;
+        selectedKeyEnv = process.env.AFIP_KEY_8BIT;
+    } else {
+        console.log("[AFIP] Using default credentials (MACCELL)");
+    }
+
+
+    // Resolve certificate paths (Legacy file fallback mostly for default)
+    const certDir = path.resolve(process.cwd(), 'afip-certs');
+    // We only use file paths as fallback if ENV is missing and we are in default mode.
+    // For 8BIT, we expect ENV vars mainly, but could support files if needed.
+    // Simplifying logic: Prioritize ENV content.
+
     let certContent = '';
     let keyContent = '';
 
     try {
-        if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-            certContent = fs.readFileSync(certPath, 'utf8');
-            keyContent = fs.readFileSync(keyPath, 'utf8');
-        } else if (process.env.AFIP_CERT && process.env.AFIP_KEY) {
-            // Fallback to ENV vars
-            certContent = process.env.AFIP_CERT;
-            keyContent = process.env.AFIP_KEY;
+        // 1. Try ENV Content directly
+        if (selectedCertEnv && selectedKeyEnv) {
+            certContent = selectedCertEnv;
+            keyContent = selectedKeyEnv;
+        }
+        // 2. Fallback to Files (only for default usually, or if configured)
+        else {
+            const certPath = path.join(certDir, process.env.AFIP_CERT || 'cert.pem');
+            const keyPath = path.join(certDir, process.env.AFIP_KEY || 'key.pem');
 
-            // Handle Base64 from ENV if needed
-            if (!certContent.includes('-----BEGIN')) {
-                certContent = Buffer.from(certContent, 'base64').toString('utf-8');
+            if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+                certContent = fs.readFileSync(certPath, 'utf8');
+                keyContent = fs.readFileSync(keyPath, 'utf8');
+            } else {
+                throw new Error(`Certificates not found in ENV or at ${certPath}`);
             }
-            if (!keyContent.includes('-----BEGIN')) {
-                keyContent = Buffer.from(keyContent, 'base64').toString('utf-8');
-            }
-        } else {
-            throw new Error(`Certificates not found at ${certPath} and not in ENV.`);
+        }
+
+        // Handle Base64 from ENV if needed
+        if (!certContent.includes('-----BEGIN')) {
+            certContent = Buffer.from(certContent, 'base64').toString('utf-8');
+        }
+        if (!keyContent.includes('-----BEGIN')) {
+            keyContent = Buffer.from(keyContent, 'base64').toString('utf-8');
         }
 
     } catch (error) {
@@ -74,7 +117,7 @@ export async function getAfipClient() {
 
     // Initialize ARCA Client
     const arca = new Arca({
-        cuit: CUIT,
+        cuit: selectedCuit, // Use the selected CUIT
         cert: certContent,
         key: keyContent,
         production: PRODUCTION,
@@ -134,9 +177,11 @@ export async function createAfipInvoice(data: {
     paymentDueDate?: string;
     ivaItems?: { id: number, base: number, amount: number }[]; // Explicit IVA blocks
     ivaConditionId?: number; // New Field for IVA Receptor (Mandatory April 2026)
+    branchId?: string; // Optional: To support multi-branch credentials
 }) {
     try {
-        const arca = await getAfipClient();
+        // Pass branchId to client factory to select correct CUIT/Cert
+        const arca = await getAfipClient(data.branchId);
 
         // Construct payload for createNextVoucher (INextVoucher)
         const date = new Date(Date.now() - ((new Date()).getTimezoneOffset() * 60000)).toISOString().split('T')[0].replace(/-/g, '');

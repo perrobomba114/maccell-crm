@@ -365,7 +365,7 @@ export const printCashShiftClosureTicket = (data: {
 }) => {
     const { branch, user, shift, summary, billCounts, finalCount, employeeCount } = data;
     const logoUrl = branch?.imageUrl || "/logo.jpg";
-    const bonusPerEmp = summary ? Math.round((summary.totalSales * (summary.totalSales > 1200000 ? 0.02 : 0.01)) / 500) * 500 : 0;
+    const bonusPerEmp = summary ? Math.round((summary.totalSales * (summary.totalSales >= 1200000 ? 0.02 : 0.01)) / 500) * 500 : 0;
     const totalBonus = bonusPerEmp * employeeCount;
     const expectedNet = (summary?.expectedCash || 0) - totalBonus;
     const diff = finalCount - expectedNet;
@@ -417,7 +417,7 @@ export const printCashShiftClosureTicket = (data: {
             <span>$${bonusPerEmp.toLocaleString()}</span>
         </div>
         <div class="row">
-            <span>TOTAL PREMIOS (${summary.totalSales > 1200000 ? "2%" : "1%"}):</span>
+            <span>TOTAL PREMIOS (${summary.totalSales >= 1200000 ? "2%" : "1%"}):</span>
             <span>-$${totalBonus.toLocaleString()}</span>
         </div>
 
