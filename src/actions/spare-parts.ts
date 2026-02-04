@@ -3,6 +3,7 @@
 import { db as prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { SparePartCreateInput, SparePartUpdateInput } from "@/types/spare-parts";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function getSpareParts(options?: { sort?: string; order?: 'asc' | 'desc' }) {
     try {
@@ -412,6 +413,9 @@ export async function replenishSparePart(id: string, quantity: number) {
 
 export async function decrementStockLocal(id: string) {
     try {
+        const user = await getCurrentUser();
+        if (!user) return { success: false, error: "No autorizado" };
+
         const sparePart = await prisma.sparePart.findUnique({
             where: { id }
         });
@@ -424,17 +428,149 @@ export async function decrementStockLocal(id: string) {
             return { success: false, error: "No hay stock local para descontar" };
         }
 
-        await prisma.sparePart.update({
-            where: { id },
-            data: {
-                stockLocal: { decrement: 1 }
+        // Use transaction to ensure consistency
+        await prisma.$transaction(async (tx) => {
+            await tx.sparePart.update({
+                where: { id },
+                data: {
+                    stockLocal: { decrement: 1 }
+                }
+            });
+
+            // Log history
+            if (user.branch?.id) {
+                await tx.sparePartHistory.create({
+                    data: {
+                        sparePartId: id,
+                        userId: user.id,
+                        branchId: user.branch.id,
+                        quantity: -1,
+                        reason: "Baja manual (stock local)",
+                        isChecked: false
+                    }
+                });
+            } else {
+                console.warn("User has no branch, skipping history branch link or failing?");
+                // If branch is required we must provide one.
+                // Assuming admin might operate without branch?
+                // But schema requires branchId.
+                // Let's try to fetch a default or fail.
+                // The prompt implies multiple branches exist.
+                // If user is ADMIN, maybe they are associated with a main branch?
+                // Let's assume user.branch is populated. If not, we might fail.
+                // For safety, if no branch, we can't log 'branchId'.
+                // But DB requires it.
+                // Implementation detail: we will error if no branch, as a 'Sale' needs a branch.
+                // A 'baja' physically happens somewhere.
+                throw new Error("El usuario no tiene sucursal asignada para registrar la baja.");
             }
         });
 
         revalidatePath("/admin/repuestos");
         return { success: true };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Decrement error:", error);
-        return { success: false, error: "Error al descontar stock" };
+        return { success: false, error: error.message || "Error al descontar stock" };
+    }
+}
+
+export async function getSparePartsHistory({
+    page = 1,
+    limit = 25,
+    date
+}: {
+    page?: number,
+    limit?: number,
+    date?: string // YYYY-MM-DD
+}) {
+    try {
+        const where: any = {};
+
+        if (date) {
+            // Adjust for timezone if needed, or just match the day in general
+            // Date string comes as YYYY-MM-DD
+            const start = new Date(date);
+            // Fix timezone offset issues by treating it as local or UTC?
+            // "date" usually implies local date selected in picker.
+            // Let's assume start of day 00:00 to 23:59 local time (server time).
+            // But server is UTC-3 likely.
+            // If date is "2024-02-03", new Date("2024-02-03") is UTC 00:00.
+            // If we want Argentina time, we need to be careful.
+            // Simplified: Filter by >= date T00:00 and <= date T23:59
+
+            // To ensure we cover the full day regardless of timezone shifts:
+            const startDate = new Date(date);
+            // set to 00:00 UTC?
+            startDate.setUTCHours(0, 0, 0, 0);
+            // Actually, Prisma stores DateTime as UTC. 
+            // If user selects "Today" in Argentina, it matches a range in UTC.
+            // For simplicity, we'll try to match the date string part logic if possible?
+            // No, Prisma doesn't support generic string matching easily on DateTime.
+
+            // Better approach:
+            // Input date "2024-02-03". 
+            // Start: 2024-02-03T00:00:00.000 (Local/UTC?)
+            // We'll construct ranges.
+
+            // If we assume the input is YYYY-MM-DD
+            const startOfDay = new Date(`${date}T00:00:00`);
+            const endOfDay = new Date(`${date}T23:59:59.999`);
+
+            where.createdAt = {
+                gte: startOfDay,
+                lte: endOfDay
+            };
+        }
+
+        const skip = (page - 1) * limit;
+
+        const [history, total] = await Promise.all([
+            prisma.sparePartHistory.findMany({
+                where,
+                include: {
+                    user: { select: { name: true, email: true } },
+                    branch: { select: { name: true, code: true } },
+                    sparePart: { select: { name: true, sku: true } }
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit
+            }),
+            prisma.sparePartHistory.count({ where })
+        ]);
+
+        return {
+            success: true,
+            history,
+            pagination: {
+                total,
+                limit,
+                page,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
+
+    } catch (error) {
+        console.error("Get history error:", error);
+        return { success: false, error: "Error al obtener historial" };
+    }
+}
+
+export async function toggleHistoryChecked(id: string) {
+    try {
+        const item = await prisma.sparePartHistory.findUnique({ where: { id } });
+        if (!item) return { success: false, error: "Registro no encontrado" };
+
+        await prisma.sparePartHistory.update({
+            where: { id },
+            data: { isChecked: !item.isChecked }
+        });
+
+        // Loophole: revalidatePath might not work dynamic if the path is dynamic.
+        // But the page is /admin/repuestos/historial (static).
+        revalidatePath("/admin/repuestos/historial");
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: "Error al actualizar" };
     }
 }

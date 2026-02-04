@@ -82,7 +82,8 @@ export const adminGroups = [
         items: [
             { href: "/admin/products", label: "Productos", icon: "Package" },
             { href: "/admin/categories", label: "Categorías", icon: "ClipboardList" },
-            { href: "/admin/repuestos", label: "Repuestos", icon: "Settings" }, // Using Settings icon for parts as placeholder or Wrench
+            { href: "/admin/repuestos", label: "Repuestos", icon: "Settings" },
+            { href: "/admin/repuestos/historial", label: "Historial Repuestos", icon: "History" },
             { href: "/admin/transfers", label: "Transferencias", icon: "History" },
             { href: "/admin/discounts", label: "Descuentos", icon: "Percent" },
         ]

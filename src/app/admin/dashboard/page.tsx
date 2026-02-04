@@ -9,7 +9,7 @@ import {
 import { getBranchStats, getProductStats } from "@/actions/statistics-actions";
 import { db as prisma } from "@/lib/db";
 import { DashboardHeader } from "@/components/admin/dashboard/DashboardHeader";
-import { BranchFilter } from "@/components/admin/dashboard/BranchFilter";
+import { BranchFilter } from "@/components/admin/shared/BranchFilter";
 import {
     FinancialsWidget,
     InteractiveWidget,

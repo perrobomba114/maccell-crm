@@ -28,6 +28,7 @@ model Branch {
   stockTransfersTarget StockTransfer[] @relation("TargetBranch")
   tickets              Ticket[]
   users                User[]
+  sparePartHistory     SparePartHistory[]
 
   @@map("branches")
 }
@@ -55,6 +56,7 @@ model User {
   technicianReturns     ReturnRequest[]     @relation("TechnicianReturns")
   sales                 Sale[]
   stockTransfersCreated StockTransfer[]
+  sparePartHistory      SparePartHistory[]
   branch                Branch?             @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([email])
@@ -242,6 +244,7 @@ model SparePart {
   deletedAt     DateTime?
   pricePos      Float        @default(0)
   repairParts   RepairPart[]
+  history       SparePartHistory[]
   category      Category?    @relation(fields: [categoryId], references: [id])
 
   @@index([sku])
@@ -460,4 +463,24 @@ enum ReturnStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+model SparePartHistory {
+  id          String    @id @default(cuid())
+  sparePartId String
+  userId      String
+  branchId    String
+  quantity    Int
+  reason      String?
+  isChecked   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  sparePart   SparePart @relation(fields: [sparePartId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([sparePartId])
+  @@index([userId])
+  @@index([branchId])
+  @@map("spare_part_history")
 }

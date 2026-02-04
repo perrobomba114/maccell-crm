@@ -1,14 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { BranchFilter } from "@/components/admin/shared/BranchFilter";
 import { MonthNavigator } from "./MonthNavigator";
 
 interface StatisticsHeaderProps {
@@ -34,28 +27,7 @@ export function StatisticsHeader({ branches, currentBranchId }: StatisticsHeader
             {/* Unified Filter */}
             <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-zinc-600 uppercase tracking-wider hidden md:block">Filtrar por:</span>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="bg-[#18181b] border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 min-w-[180px] justify-between">
-                            <span className="flex items-center gap-2">
-                                <Filter size={14} className="text-violet-500" />
-                                {currentBranchName}
-                            </span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-[#18181b] border-zinc-800 text-zinc-300 w-[200px]">
-                        <DropdownMenuItem asChild className="focus:bg-zinc-800 focus:text-white cursor-pointer">
-                            <Link href="/admin/statistics">Todas las Sucursales</Link>
-                        </DropdownMenuItem>
-                        {branches.map((branch) => (
-                            <DropdownMenuItem key={branch.id} asChild className="focus:bg-zinc-800 focus:text-white cursor-pointer">
-                                <Link href={`/admin/statistics?branchId=${branch.id}`}>
-                                    {branch.name}
-                                </Link>
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <BranchFilter branches={branches} currentBranchId={currentBranchId} />
             </div>
         </div>
     );
