@@ -157,14 +157,14 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Fecha / Hora</TableHead>
-                                <TableHead>Repuesto</TableHead>
-                                <TableHead>SKU</TableHead>
-                                <TableHead>Cant.</TableHead>
-                                <TableHead>Usuario</TableHead>
-                                <TableHead>Sucursal</TableHead>
-                                <TableHead>Motivo</TableHead>
-                                <TableHead className="text-center">Controlado</TableHead>
+                                <TableHead className="w-[100px]">Fecha / Hora</TableHead>
+                                <TableHead className="w-[180px]">Repuesto</TableHead>
+                                <TableHead className="w-[100px]">SKU</TableHead>
+                                <TableHead className="w-[60px] text-center">Cant.</TableHead>
+                                <TableHead className="w-[140px]">Usuario</TableHead>
+                                <TableHead className="w-[120px]">Sucursal</TableHead>
+                                <TableHead className="min-w-[250px]">Motivo</TableHead>
+                                <TableHead className="w-[80px] text-center">Controlado</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -183,7 +183,11 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
                                                 {format(new Date(item.createdAt), "dd/MM/yyyy")}
                                             </span>
                                         </TableCell>
-                                        <TableCell>{item.sparePart.name}</TableCell>
+                                        <TableCell>
+                                            <div className="max-w-[180px] truncate" title={item.sparePart.name}>
+                                                {item.sparePart.name}
+                                            </div>
+                                        </TableCell>
                                         <TableCell>{item.sparePart.sku}</TableCell>
                                         <TableCell className={cn("font-bold text-center", item.quantity < 0 ? "text-red-500" : "text-green-500")}>
                                             {item.quantity}
@@ -200,7 +204,7 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
                                                 <span className="text-[10px] text-muted-foreground">{item.branch.code}</span>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="max-w-[150px] truncate" title={item.reason || ""}>
+                                        <TableCell className="whitespace-normal">
                                             {item.reason || "-"}
                                         </TableCell>
                                         <TableCell className="text-center">
