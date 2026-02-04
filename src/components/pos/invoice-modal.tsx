@@ -31,9 +31,10 @@ interface InvoiceModalProps {
     onOpenChange: (open: boolean) => void;
     onConfirm: (data: InvoiceData) => void;
     totalAmount: number;
+    defaultSalesPoint?: string;
 }
 
-export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount }: InvoiceModalProps) {
+export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount, defaultSalesPoint = "10" }: InvoiceModalProps) {
     const [isLoadingCuit, setIsLoadingCuit] = useState(false);
 
     // Form State
@@ -42,7 +43,7 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount }: Inv
     const [docNumber, setDocNumber] = useState("");
     const [name, setName] = useState("");
     const [address, setAddress] = useState("");
-    const [salesPoint, setSalesPoint] = useState("10"); // Default POS sales point (Matched with AFIP registration)
+    const [salesPoint, setSalesPoint] = useState(defaultSalesPoint); // Default POS sales point (Matched with AFIP registration)
     const [ivaCondition, setIvaCondition] = useState("");
 
     // Concept & Dates
