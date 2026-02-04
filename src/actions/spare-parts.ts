@@ -439,7 +439,7 @@ export async function decrementStockLocal(id: string) {
 
             // Log history
             if (user.branch?.id) {
-                await tx.sparePartHistory.create({
+                await (tx as any).sparePartHistory.create({
                     data: {
                         sparePartId: id,
                         userId: user.id,
@@ -525,7 +525,7 @@ export async function getSparePartsHistory({
         const skip = (page - 1) * limit;
 
         const [history, total] = await Promise.all([
-            prisma.sparePartHistory.findMany({
+            (prisma as any).sparePartHistory.findMany({
                 where,
                 include: {
                     user: { select: { name: true, email: true } },
@@ -536,7 +536,7 @@ export async function getSparePartsHistory({
                 skip,
                 take: limit
             }),
-            prisma.sparePartHistory.count({ where })
+            (prisma as any).sparePartHistory.count({ where })
         ]);
 
         return {
@@ -558,10 +558,10 @@ export async function getSparePartsHistory({
 
 export async function toggleHistoryChecked(id: string) {
     try {
-        const item = await prisma.sparePartHistory.findUnique({ where: { id } });
+        const item = await (prisma as any).sparePartHistory.findUnique({ where: { id } });
         if (!item) return { success: false, error: "Registro no encontrado" };
 
-        await prisma.sparePartHistory.update({
+        await (prisma as any).sparePartHistory.update({
             where: { id },
             data: { isChecked: !item.isChecked }
         });
@@ -612,7 +612,7 @@ export async function syncRepairHistoryAction() {
             const ticketPattern = `Reparación #${rp.repair.ticketNumber}`;
 
             // Check if exists
-            const existing = await prisma.sparePartHistory.findFirst({
+            const existing = await (prisma as any).sparePartHistory.findFirst({
                 where: {
                     sparePartId: rp.sparePartId,
                     // Fuzzy match on reason to avoid duplicates
@@ -632,7 +632,7 @@ export async function syncRepairHistoryAction() {
                 // Determine Branch (Repair Branch)
                 const branchId = rp.repair.branchId;
 
-                await prisma.sparePartHistory.create({
+                await (prisma as any).sparePartHistory.create({
                     data: {
                         sparePartId: rp.sparePartId,
                         userId: userId,
