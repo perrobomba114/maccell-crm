@@ -141,7 +141,16 @@ export async function removeStockUnitAction(productId: string) {
 
         await Promise.all(notifyPromises);
 
+        await Promise.all(notifyPromises);
+
+        // 3. Robust Revalidation
+        // Revalidate specific vendor stock page
         revalidatePath("/vendor/stock");
+        // Also revalidate admin page so admins see the update immediately too
+        revalidatePath("/admin/repuestos");
+        // Revalidate root just in case
+        revalidatePath("/", "layout");
+
         return { success: true };
     } catch (error) {
         console.error("Error removing stock unit:", error);

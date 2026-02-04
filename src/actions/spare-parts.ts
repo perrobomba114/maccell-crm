@@ -449,22 +449,33 @@ export async function decrementStockLocal(id: string) {
                         isChecked: false
                     }
                 });
-            } else {
-                console.warn("User has no branch, skipping history branch link or failing?");
-                // If branch is required we must provide one.
-                // Assuming admin might operate without branch?
-                // But schema requires branchId.
-                // Let's try to fetch a default or fail.
-                // The prompt implies multiple branches exist.
-                // If user is ADMIN, maybe they are associated with a main branch?
-                // Let's assume user.branch is populated. If not, we might fail.
-                // For safety, if no branch, we can't log 'branchId'.
-                // But DB requires it.
-                // Implementation detail: we will error if no branch, as a 'Sale' needs a branch.
-                // A 'baja' physically happens somewhere.
-                throw new Error("El usuario no tiene sucursal asignada para registrar la baja.");
+
+                // FALLBACK for Admins without Branch
+                // We need *some* branch ID to satisfy the DB constraint.
+                // We fetch the first available branch (usually Maccell 1).
+                const defaultBranch = await prisma.branch.findFirst({
+                    orderBy: { createdAt: 'asc' }, // usually the "main" branch is first
+                    select: { id: true, name: true }
+                });
+
+                if (defaultBranch) {
+                    await (tx as any).sparePartHistory.create({
+                        data: {
+                            sparePartId: id,
+                            userId: user.id,
+                            branchId: defaultBranch.id,
+                            quantity: -1,
+                            reason: `Baja manual (Admin sin sucursal - asignado a ${defaultBranch.name})`,
+                            isChecked: false
+                        }
+                    });
+                } else {
+                    // Extremely unlikely: No branches exist at all?
+                    throw new Error("No existen sucursales en el sistema para registrar la baja.");
+                }
             }
-        });
+        }
+        );
 
         revalidatePath("/admin/repuestos");
         return { success: true };
