@@ -89,6 +89,7 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
     try {
         // 1. Try ENV Content directly
         if (selectedCertEnv && selectedKeyEnv) {
+            console.log(`[AFIP] Loaded credentials from ENV for ${shouldUse8Bit ? '8BIT' : 'DEFAULT'}`);
             certContent = selectedCertEnv;
             keyContent = selectedKeyEnv;
         }
@@ -101,6 +102,8 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
             const certPath = path.join(certDir, certFilename);
             const keyPath = path.join(certDir, keyFilename);
 
+            console.log(`[AFIP] Looking for credentials at: ${certPath}`);
+
             if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
                 certContent = fs.readFileSync(certPath, 'utf8');
                 keyContent = fs.readFileSync(keyPath, 'utf8');
@@ -112,6 +115,12 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
                 throw new Error(`Certificates not found in ENV or at ${certPath}`);
             }
         }
+
+        // DEBUG: Print credential details (Partial)
+        console.log(`[AFIP] CUIT: ${selectedCuit}`);
+        console.log(`[AFIP] Cert Start: ${certContent.substring(0, 30)}...`);
+        console.log(`[AFIP] Cert End: ...${certContent.substring(certContent.length - 30)}`);
+        console.log(`[AFIP] Key Length: ${keyContent.length}`);
 
         // Handle Base64 from ENV if needed
         if (!certContent.includes('-----BEGIN')) {
