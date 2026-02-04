@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { createNotificationAction } from "./notifications";
 import { getImgUrl, isValidImg } from "@/lib/utils";
+import { getCurrentUser } from "@/actions/auth-actions"; // Import getCurrentUser
 
 export async function searchWarrantyRepairs(term: string, branchId: string) {
     if (!branchId || term.length < 2) return [];
@@ -455,6 +456,21 @@ export async function takeRepairAction(
                             stockLocal: { decrement: 1 }
                         }
                     });
+
+                    // Log History
+                    const currentUser = await getCurrentUser();
+                    if (currentUser && currentUser.branch) {
+                        await (tx as any).sparePartHistory.create({
+                            data: {
+                                sparePartId: part.id,
+                                userId: userId, // The tech taking the repair
+                                branchId: currentUser.branch.id,
+                                quantity: -1,
+                                reason: `Reparación #${ticketNumberValue} (Tomado por técnico)`,
+                                isChecked: false
+                            }
+                        });
+                    }
                 }
             }
 
@@ -721,6 +737,21 @@ export async function updateRepairAction(formData: FormData) {
                         where: { id: p.sparePartId },
                         data: { stockLocal: { increment: p.quantity } }
                     });
+
+                    // Log History (Increment/Return)
+                    const currentUser = await getCurrentUser();
+                    if (currentUser && currentUser.branch) {
+                        await (tx as any).sparePartHistory.create({
+                            data: {
+                                sparePartId: p.sparePartId,
+                                userId: currentUser.id,
+                                branchId: currentUser.branch.id,
+                                quantity: p.quantity,
+                                reason: `Reparación #${existingRepair.ticketNumber} (Devolución/Remoción)`,
+                                isChecked: false
+                            }
+                        });
+                    }
                 }
 
                 // B. Add Parts -> Decrement Stock
@@ -736,6 +767,21 @@ export async function updateRepairAction(formData: FormData) {
                         where: { id: p.id },
                         data: { stockLocal: { decrement: 1 } }
                     });
+
+                    // Log History (Decrement/Usage)
+                    const currentUser = await getCurrentUser();
+                    if (currentUser && currentUser.branch) {
+                        await (tx as any).sparePartHistory.create({
+                            data: {
+                                sparePartId: p.id,
+                                userId: currentUser.id,
+                                branchId: currentUser.branch.id,
+                                quantity: -1,
+                                reason: `Reparación #${existingRepair.ticketNumber} (Agregado en edición)`,
+                                isChecked: false
+                            }
+                        });
+                    }
                 }
             });
         }

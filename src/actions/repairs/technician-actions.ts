@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { businessHoursService } from "@/lib/services/business-hours";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/actions/auth-actions"; // Import getCurrentUser
 
 // Status IDs:
 // 2: Tomado por Técnico (Claimed)
@@ -121,6 +122,21 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
                             stockLocal: { decrement: 1 }
                         }
                     });
+
+                    // Log History
+                    const currentUser = await getCurrentUser();
+                    if (currentUser && currentUser.branch) {
+                        await (tx as any).sparePartHistory.create({
+                            data: {
+                                sparePartId: part.id,
+                                userId: technicianId,
+                                branchId: currentUser.branch.id,
+                                quantity: -1,
+                                reason: `Reparación #${repair.ticketNumber} (Asignación de tiempo/repuestos)`,
+                                isChecked: false
+                            }
+                        });
+                    }
                 }
             }
         });
@@ -641,6 +657,21 @@ export async function addPartToRepairAction(repairId: string, technicianId: stri
                         stockLocal: { decrement: 1 }
                     }
                 });
+
+                // Log History
+                const currentUser = await getCurrentUser();
+                if (currentUser && currentUser.branch) {
+                    await (tx as any).sparePartHistory.create({
+                        data: {
+                            sparePartId: part.id,
+                            userId: technicianId,
+                            branchId: currentUser.branch.id,
+                            quantity: -1,
+                            reason: `Reparación #${repair.ticketNumber} (Agregado manual)`,
+                            isChecked: false
+                        }
+                    });
+                }
             }
         });
 

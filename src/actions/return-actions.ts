@@ -72,23 +72,24 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
             // 2. If ACCEPTED, restore stock and remove parts from Repair
             if (status === "ACCEPTED") {
                 // Prepare parts list: Use snapshot if available, otherwise fallback to current parts
-                // The Type must be handled carefully.
                 const snapshot = (returnRequest as any).partsSnapshot as any[];
 
+                // Determine which parts are being restored for logging purposes
+                let restoredParts: any[] = [];
+
                 if (snapshot && Array.isArray(snapshot) && snapshot.length > 0) {
+                    restoredParts = snapshot;
                     // Restore from SNAPSHOT
                     for (const part of snapshot) {
                         // Restore Stock
                         await tx.sparePart.update({
-                            where: { id: part.sparePartId }, // we saved this in snapshot
+                            where: { id: part.sparePartId },
                             data: {
                                 stockLocal: { increment: part.quantity }
                             }
                         });
 
-                        // Remove from Repair (we attempt to delete the RepairPart relation)
-                        // Note: If multiple similar parts exist, this deletes by ID if we captured it.
-                        // Ideally we captured 'id' of the RepairPart in snapshot.
+                        // Remove from Repair
                         if (part.id) {
                             try {
                                 await tx.repairPart.delete({
@@ -100,8 +101,9 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
                         }
                     }
                 } else {
-                    // FALLBACK: Use live relation (Old behavior)
+                    // FALLBACK: Use live relation
                     const parts = returnRequest.repair.parts;
+                    restoredParts = parts;
                     for (const part of parts) {
                         // Restore Stock
                         await tx.sparePart.update({
@@ -114,6 +116,23 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
                         // Remove from Repair
                         await tx.repairPart.delete({
                             where: { id: part.id }
+                        });
+                    }
+                }
+
+                // Log History
+                for (const part of restoredParts) {
+                    // Ensure we have a valid sparePartId and quantity
+                    if (part.sparePartId && part.quantity) {
+                        await (tx as any).sparePartHistory.create({
+                            data: {
+                                sparePartId: part.sparePartId,
+                                userId: adminId, // Admin resolving the return
+                                branchId: returnRequest.repair.branchId, // Branch where stock returns
+                                quantity: part.quantity, // Positive = Return
+                                reason: `Devolución Aceptada (Reparación #${returnRequest.repair.ticketNumber})`,
+                                isChecked: false
+                            }
                         });
                     }
                 }
