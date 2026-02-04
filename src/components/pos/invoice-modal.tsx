@@ -250,7 +250,6 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount }: Inv
 
                         <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-6 flex-1">
                             <div className="space-y-3">
-                                <Label className="text-zinc-400 font-medium">Tipo de Comprobante</Label>
                                 <div className="grid grid-cols-2 gap-4">
                                     <button onClick={() => setInvoiceType("A")} className={cn("flex flex-col items-center justify-center p-4 rounded-xl border transition-all gap-1", invoiceType === "A" ? "bg-blue-600/20 border-blue-500 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.15)]" : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-900")}>
                                         <span className="text-3xl font-bold">A</span>
@@ -261,6 +260,18 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount }: Inv
                                         <span className="text-xs font-medium">Cons. Final</span>
                                     </button>
                                 </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <Label className="text-zinc-400 font-medium">Punto de Venta (AFIP)</Label>
+                                <Input
+                                    type="number"
+                                    value={salesPoint}
+                                    onChange={(e) => setSalesPoint(e.target.value)}
+                                    className="bg-zinc-950 border-zinc-700 font-mono"
+                                    placeholder="Ej: 10"
+                                />
+                                <p className="text-[10px] text-zinc-500">Asegúrese que este punto exista en AFIP para la empresa seleccionada.</p>
                             </div>
 
                             <div className="space-y-3">
