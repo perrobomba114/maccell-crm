@@ -1832,6 +1832,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                         onOpenChange={setIsInvoiceModalOpen}
                         onConfirm={handleInvoiceConfirm}
                         totalAmount={parseFloat(editableTotal) || 0}
+                        defaultSalesPoint={branchData.name.toUpperCase().includes("8 BIT") ? "3" : "10"}
                     />
                 </DialogContent>
             </Dialog >
