@@ -33,6 +33,8 @@ export const viewport = {
   viewportFit: "cover",
 };
 
+import { VersionUpdater } from "@/components/layout/version-updater";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -44,6 +46,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
+        <VersionUpdater />
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
