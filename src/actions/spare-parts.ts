@@ -650,8 +650,8 @@ export async function syncRepairHistoryAction() {
         revalidatePath("/admin/repuestos/historial");
         return { success: true, count: addedCount };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error syncing history:", error);
-        return { success: false, error: "Error al sincronizar historial" };
+        return { success: false, error: `Error: ${error.message || "Desconocido"}` };
     }
 }
