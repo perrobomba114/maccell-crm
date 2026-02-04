@@ -574,3 +574,84 @@ export async function toggleHistoryChecked(id: string) {
         return { success: false, error: "Error al actualizar" };
     }
 }
+
+/**
+ * Backfill/Sync History from RepairParts
+ * Scans RepairParts from the last X days and creates History entries if missing.
+ */
+export async function syncRepairHistoryAction() {
+    try {
+        const user = await getCurrentUser();
+        if (!user || user.role !== "ADMIN") {
+            return { success: false, error: "No autorizado" };
+        }
+
+        // 1. Fetch RepairParts from last 60 days
+        const limitDate = new Date();
+        limitDate.setDate(limitDate.getDate() - 60);
+
+        const repairParts = await prisma.repairPart.findMany({
+            where: {
+                assignedAt: {
+                    gte: limitDate
+                }
+            },
+            include: {
+                repair: true,
+                sparePart: true
+            }
+        });
+
+        console.log(`[syncHistory] Found ${repairParts.length} repair parts since ${limitDate.toISOString()}`);
+
+        let addedCount = 0;
+
+        for (const rp of repairParts) {
+            // Determine Reason String (Must match pattern used in other actions)
+            // Pattern: "Reparación #1234..."
+            const ticketPattern = `Reparación #${rp.repair.ticketNumber}`;
+
+            // Check if exists
+            const existing = await prisma.sparePartHistory.findFirst({
+                where: {
+                    sparePartId: rp.sparePartId,
+                    // Fuzzy match on reason to avoid duplicates
+                    reason: {
+                        contains: ticketPattern
+                    },
+                    // Optional: check date proximity?
+                    // createdAt: { gte: rp.assignedAt, lte: ... } 
+                    // Let's rely on Reason + Part ID for now.
+                }
+            });
+
+            if (!existing) {
+                // Determine User ID (Technician or Creator)
+                const userId = rp.repair.assignedUserId || rp.repair.userId;
+
+                // Determine Branch (Repair Branch)
+                const branchId = rp.repair.branchId;
+
+                await prisma.sparePartHistory.create({
+                    data: {
+                        sparePartId: rp.sparePartId,
+                        userId: userId,
+                        branchId: branchId,
+                        quantity: -rp.quantity, // Usage = Negative
+                        reason: `${ticketPattern} (Sincronizado)`,
+                        isChecked: true, // Auto-check synced items?
+                        createdAt: rp.assignedAt // Backdate!
+                    }
+                });
+                addedCount++;
+            }
+        }
+
+        revalidatePath("/admin/repuestos/historial");
+        return { success: true, count: addedCount };
+
+    } catch (error) {
+        console.error("Error syncing history:", error);
+        return { success: false, error: "Error al sincronizar historial" };
+    }
+}

@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarIcon, Check } from "lucide-react";
+import { CalendarIcon, Check, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { getSparePartsHistory, toggleHistoryChecked, syncRepairHistoryAction } from "@/actions/spare-parts";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Popover,
     PopoverContent,
@@ -18,6 +21,7 @@ import {
     TableCell,
     TableHead,
     TableHeader,
+    TableHeader as TableHeaderAlias,
     TableRow,
 } from "@/components/ui/table";
 import {
@@ -30,9 +34,6 @@ import {
 } from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter, useSearchParams } from "next/navigation";
-import { toggleHistoryChecked } from "@/actions/spare-parts";
-import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface HistoryItem {
     id: string;
@@ -61,6 +62,7 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
     const [date, setDate] = useState<Date | undefined>(
         urlDate ? new Date(urlDate) : new Date()
     );
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const handleDateSelect = (newDate: Date | undefined) => {
         setDate(newDate);
@@ -78,6 +80,23 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
         const params = new URLSearchParams(searchParams.toString());
         params.set("page", page.toString());
         router.push(`?${params.toString()}`);
+    };
+
+    const handleSync = async () => {
+        try {
+            setIsSyncing(true);
+            const res = await syncRepairHistoryAction();
+            if (res.success) {
+                toast.success(`Sincronización completada. Se añadieron ${res.count} registros.`);
+                router.refresh();
+            } else {
+                toast.error(res.error || "Error al sincronizar");
+            }
+        } catch (error) {
+            toast.error("Error de conexión");
+        } finally {
+            setIsSyncing(false);
+        }
     };
 
     const handleToggleCheck = async (id: string, currentStatus: boolean) => {
@@ -99,7 +118,16 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
         <Card className="w-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                 <CardTitle className="text-xl font-bold">Movimientos de Stock (Bajas)</CardTitle>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2 space-x-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                    >
+                        <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
+                        {isSyncing ? "Sincronizando..." : "Sincronizar Reparaciones"}
+                    </Button>
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button
