@@ -40,6 +40,7 @@ export async function generateAdminInvoice(data: {
     serviceDateFrom?: string; // YYYY-MM-DD
     serviceDateTo?: string; // YYYY-MM-DD
     paymentDueDate?: string; // YYYY-MM-DD
+    billingEntity?: 'MACCELL' | '8BIT';
 }) {
     console.log("Generating Admin Invoice...", data);
 
@@ -142,7 +143,8 @@ export async function generateAdminInvoice(data: {
 
         const afipRes = await createAfipInvoice({
             ...afipData,
-            ivaConditionId
+            ivaConditionId,
+            billingEntity: data.billingEntity
         });
 
         if (!afipRes.success) {
@@ -228,7 +230,8 @@ export async function generateAdminInvoice(data: {
                     customerAddress: data.customer.address,
                     netAmount: totalNet,
                     vatAmount: totalVat,
-                    totalAmount: totalAmount
+                    totalAmount: totalAmount,
+                    billingEntity: data.billingEntity || "MACCELL"
                 }
             });
         });

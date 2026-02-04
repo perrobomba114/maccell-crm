@@ -190,6 +190,7 @@ model SaleInvoice {
   netAmount       Float
   vatAmount       Float
   totalAmount     Float
+  billingEntity   String? // "MACCELL" | "8BIT"
   createdAt       DateTime @default(now())
   sale            Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
 

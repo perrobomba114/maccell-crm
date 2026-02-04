@@ -477,9 +477,20 @@ export const printInvoiceTicket = (data: {
     };
     vendorName?: string;
     date: Date;
+    billingEntity?: 'MACCELL' | '8BIT'; // New Param
 }) => {
-    const { branch, items, total, paymentMethod, invoice, vendorName, date } = data;
+    const { branch, items, total, paymentMethod, invoice, vendorName, date, billingEntity } = data;
     const logoUrl = branch?.imageUrl || "/logo.jpg";
+
+    // Determine Issuer Details
+    const is8Bit = billingEntity === '8BIT';
+    // Macell: 30717390314, 8Bit: 30719022274 (from env)
+    const issuerCuit = is8Bit ? 30719022274 : 30717390314;
+    const issuerName = is8Bit ? "8 BIT ACCESORIOS" : "MACCELL";
+    const issuerAddress = is8Bit ? "Av. 14 4568, Berazategui" : (branch?.address || "Av. 14 4780, Berazategui");
+    const issuerIibb = is8Bit ? 30719022274 : 30717390314;
+    const issuerStartDate = is8Bit ? "01/05/2024" : "01/01/2024";
+    const issuerCondition = "IVA RESP. INSCRIPTO"; // Both are RI
 
     // Parse Voucher Number Details Safely
     const vNumberStr = invoice.number.toString();
@@ -492,12 +503,11 @@ export const printInvoiceTicket = (data: {
 
     // AFIP QR Data
     const formattedDate = format(date, "yyyy-MM-dd");
-    const ISSUER_CUIT = 30717390314;
 
     const qrData = {
         ver: 1,
         fecha: formattedDate,
-        cuit: ISSUER_CUIT,
+        cuit: issuerCuit,
         ptoVta: parseInt(displayPtoVta),
         tipoCmp: invoice.type === "A" ? 1 : 6,
         nroCmp: parseInt(displayNroVal),
@@ -517,15 +527,15 @@ export const printInvoiceTicket = (data: {
 
     const content = `
         <div class="header" style="text-align: center;">
-            <div style="font-size: 24px; font-weight: 900; margin-bottom: 2px; text-transform: uppercase;">${branch?.name || "MACCELL"}</div>
-            <div style="font-size: 11px; margin-bottom: 8px;">${branch?.address || ""}</div>
+            <div style="font-size: 24px; font-weight: 900; margin-bottom: 2px; text-transform: uppercase;">${issuerName}</div>
+            <div style="font-size: 11px; margin-bottom: 8px;">${issuerAddress}</div>
             
             <div style="display: flex; border: 1px solid black; margin: 10px 0; min-height: 60px;">
                 <div style="flex: 1.2; font-size: 10px; text-align: left; padding: 5px; border-right: 1px solid black; display: flex; flex-direction: column; justify-content: center;">
-                    <b>CUIT:</b> 30-71739031-4<br/>
-                    <b>IIBB:</b> 30717390314<br/>
-                    <b>Inicio:</b> 01/01/2024<br/>
-                    <b>IVA RESP. INSCRIPTO</b>
+                    <b>CUIT:</b> ${issuerCuit}<br/>
+                    <b>IIBB:</b> ${issuerIibb}<br/>
+                    <b>Inicio:</b> ${issuerStartDate}<br/>
+                    <b>${issuerCondition}</b>
                 </div>
                 
                 <div style="width: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; margin: -1px;">

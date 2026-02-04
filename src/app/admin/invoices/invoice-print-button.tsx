@@ -31,7 +31,8 @@ export function InvoicePrintButton({ invoice }: InvoicePrintButtonProps) {
                 customerAddress: invoice.customerAddress || "",
                 salesPoint: parseInt(invoice.invoiceNumber.split('-')[0]) || 1
             },
-            date: new Date(invoice.createdAt)
+            date: new Date(invoice.createdAt),
+            billingEntity: invoice.billingEntity as "MACCELL" | "8BIT" | undefined
         };
 
         printInvoiceTicket(printData);

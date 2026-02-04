@@ -19,7 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Search, Loader2, FileText, ShoppingCart, CircleCheck } from "lucide-react";
+import { Plus, Trash2, Search, Loader2, FileText, ShoppingCart, CircleCheck, Building2 } from "lucide-react";
 import { toast } from "sonner"; // Changed from use-toast
 import { generateAdminInvoice, searchCuit } from "@/lib/actions/admin-invoice";
 
@@ -33,6 +33,9 @@ export function CreateInvoiceModal({ branches, userId }: { branches: any[], user
     const [branchId, setBranchId] = useState(branches[0]?.id || "");
     const [salesPoint, setSalesPoint] = useState("10"); // Default (Matched with AFIP registration)
     const [invoiceType, setInvoiceType] = useState<"A" | "B">("B");
+
+    // Billing Entity
+    const [billingEntity, setBillingEntity] = useState<"MACCELL" | "8BIT">("MACCELL");
 
     // Authorization Concept (1: Products, 2: Services, 3: Mixed)
     const [concept, setConcept] = useState<1 | 2 | 3>(1);
@@ -160,7 +163,8 @@ export function CreateInvoiceModal({ branches, userId }: { branches: any[], user
                     unitPrice: i.unitPrice,
                     vatCondition: i.vatCondition
                 })),
-                paymentMethod: "CASH" // Default
+                paymentMethod: "CASH", // Default
+                billingEntity // Pass explicitly
             });
 
             if (res.success) {
@@ -301,6 +305,38 @@ export function CreateInvoiceModal({ branches, userId }: { branches: any[], user
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                <div className="space-y-3">
+                                    <Label className="text-zinc-400 font-medium">Facturar como</Label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => setBillingEntity("MACCELL")}
+                                            className={`
+                                                flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all
+                                                ${billingEntity === "MACCELL"
+                                                    ? "bg-blue-600/20 border-blue-500 text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.15)]"
+                                                    : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:bg-zinc-900"}
+                                            `}
+                                        >
+                                            <Building2 className="w-5 h-5 mb-1" />
+                                            <span className="text-sm font-bold">Maccell</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setBillingEntity("8BIT")}
+                                            className={`
+                                                flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all
+                                                ${billingEntity === "8BIT"
+                                                    ? "bg-purple-600/20 border-purple-500 text-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.15)]"
+                                                    : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:bg-zinc-900"}
+                                            `}
+                                        >
+                                            <Building2 className="w-5 h-5 mb-1" />
+                                            <span className="text-sm font-bold">8 Bit</span>
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div className="space-y-3">
                                     <Label className="text-zinc-400 font-medium">Tipo de Comprobante</Label>
                                     <div className="grid grid-cols-2 gap-3">

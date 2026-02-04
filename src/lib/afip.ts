@@ -38,11 +38,14 @@ const CUIT = parseInt(process.env.AFIP_CUIT || '0');
 
 console.log(`[AFIP] Initializing Client. Production: ${PRODUCTION} (Env: ${process.env.AFIP_PRODUCTION})`);
 
-export async function getAfipClient(branchId?: string) {
+export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' | '8BIT') {
     let shouldUse8Bit = false;
 
-    // Determine if we need specialized credentials
-    if (branchId) {
+    // Determine credentials: Force Entity takes precedence, then Branch
+    if (forceEntity) {
+        shouldUse8Bit = forceEntity === '8BIT';
+        console.log(`[AFIP] Forcing entity to: ${forceEntity}`);
+    } else if (branchId) {
         try {
             const branch = await db.branch.findUnique({
                 where: { id: branchId },
@@ -178,10 +181,11 @@ export async function createAfipInvoice(data: {
     ivaItems?: { id: number, base: number, amount: number }[]; // Explicit IVA blocks
     ivaConditionId?: number; // New Field for IVA Receptor (Mandatory April 2026)
     branchId?: string; // Optional: To support multi-branch credentials
+    billingEntity?: 'MACCELL' | '8BIT'; // Optional: Explicit override
 }) {
     try {
-        // Pass branchId to client factory to select correct CUIT/Cert
-        const arca = await getAfipClient(data.branchId);
+        // Pass branchId and billingEntity to client factory to select correct CUIT/Cert
+        const arca = await getAfipClient(data.branchId, data.billingEntity);
 
         // Construct payload for createNextVoucher (INextVoucher)
         const date = new Date(Date.now() - ((new Date()).getTimezoneOffset() * 60000)).toISOString().split('T')[0].replace(/-/g, '');

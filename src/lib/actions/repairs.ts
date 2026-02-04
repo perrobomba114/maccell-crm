@@ -406,12 +406,15 @@ export async function takeRepairAction(
         // Pre-fetch repair to get creator and ticket number for notification
         const repair = await db.repair.findUnique({
             where: { id: repairId },
-            select: { userId: true, ticketNumber: true, promisedAt: true }
+            select: { userId: true, ticketNumber: true, promisedAt: true, branchId: true }
         });
 
         if (!repair) return { success: false, error: "Reparación no encontrada" };
         creatorUserId = repair.userId;
         ticketNumberValue = repair.ticketNumber;
+
+        const currentUser = await getCurrentUser();
+        const branchIdToLog = currentUser?.branch?.id || repair.branchId;
 
         await db.$transaction(async (tx) => {
             const updateData: any = {
@@ -458,13 +461,12 @@ export async function takeRepairAction(
                     });
 
                     // Log History
-                    const currentUser = await getCurrentUser();
-                    if (currentUser && currentUser.branch) {
+                    if (currentUser && branchIdToLog) {
                         await (tx as any).sparePartHistory.create({
                             data: {
                                 sparePartId: part.id,
-                                userId: userId, // The tech taking the repair
-                                branchId: currentUser.branch.id,
+                                userId: userId, // The tech taking the repair (from params)
+                                branchId: branchIdToLog,
                                 quantity: -1,
                                 reason: `Reparación #${ticketNumberValue} (Tomado por técnico)`,
                                 isChecked: false
@@ -740,12 +742,14 @@ export async function updateRepairAction(formData: FormData) {
 
                     // Log History (Increment/Return)
                     const currentUser = await getCurrentUser();
-                    if (currentUser && currentUser.branch) {
+                    const branchIdToLog = currentUser?.branch?.id || existingRepair.branchId;
+
+                    if (currentUser && branchIdToLog) {
                         await (tx as any).sparePartHistory.create({
                             data: {
                                 sparePartId: p.sparePartId,
                                 userId: currentUser.id,
-                                branchId: currentUser.branch.id,
+                                branchId: branchIdToLog,
                                 quantity: p.quantity,
                                 reason: `Reparación #${existingRepair.ticketNumber} (Devolución/Remoción)`,
                                 isChecked: false
@@ -770,12 +774,14 @@ export async function updateRepairAction(formData: FormData) {
 
                     // Log History (Decrement/Usage)
                     const currentUser = await getCurrentUser();
-                    if (currentUser && currentUser.branch) {
+                    const branchIdToLog = currentUser?.branch?.id || existingRepair.branchId;
+
+                    if (currentUser && branchIdToLog) {
                         await (tx as any).sparePartHistory.create({
                             data: {
                                 sparePartId: p.id,
                                 userId: currentUser.id,
-                                branchId: currentUser.branch.id,
+                                branchId: branchIdToLog,
                                 quantity: -1,
                                 reason: `Reparación #${existingRepair.ticketNumber} (Agregado en edición)`,
                                 isChecked: false

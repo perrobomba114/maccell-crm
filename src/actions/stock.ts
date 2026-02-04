@@ -109,6 +109,20 @@ export async function removeStockUnitAction(productId: string) {
             }
         });
 
+        // 1.5 Log History
+        if (user.branch?.id) {
+            await db.sparePartHistory.create({
+                data: {
+                    sparePartId: productId,
+                    userId: user.id,
+                    branchId: user.branch.id,
+                    quantity: -1,
+                    reason: "Baja manual desde Consulta de Stock (Vendor)",
+                    isChecked: false
+                }
+            });
+        }
+
         // 2. Notify Admins
         const admins = await db.user.findMany({
             where: { role: "ADMIN" },

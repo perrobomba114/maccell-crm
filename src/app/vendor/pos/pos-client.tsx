@@ -744,6 +744,10 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                             // Determine method string for invoice
                             const methodStr = partialPayments.length === 1 ? partialPayments[0].method : "SPLIT";
 
+                            // Determine Entity for Print
+                            const is8BitBranch = branchData.name.toUpperCase().includes("8 BIT"); // Client-side check
+                            const billingEntity = is8BitBranch ? "8BIT" : "MACCELL";
+
                             printInvoiceTicket({
                                 branch: branchData,
                                 items: cart,
@@ -761,7 +765,8 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                                     salesPoint: invoiceData?.salesPoint || 1
                                 },
                                 vendorName: vendorName,
-                                date: new Date()
+                                date: new Date(),
+                                billingEntity: billingEntity
                             });
                         } else {
                             // Only print common ticket if NOT invoicing

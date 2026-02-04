@@ -382,6 +382,12 @@ export async function processPosSale(data: {
 
             // 1.5 Save Invoice if applicable
             if (afipResult && data.invoiceData) {
+                // Determine Billing Entity based on Branch
+                // Logic mirrors afip.ts prioritization
+                const branch = await tx.branch.findUnique({ where: { id: data.branchId } });
+                const is8Bit = branch?.code === '8BIT' || branch?.name?.toUpperCase().includes('8 BIT');
+                const billingEntity = is8Bit ? '8BIT' : 'MACCELL';
+
                 await tx.saleInvoice.create({
                     data: {
                         saleId: sale.id,
@@ -398,8 +404,9 @@ export async function processPosSale(data: {
                         // Use the exact calculated values sent to AFIP
                         netAmount: formatAmount(totalNet),
                         vatAmount: formatAmount(totalVat),
-                        totalAmount: data.total
-                    }
+                        totalAmount: data.total,
+                        billingEntity: billingEntity
+                    } as any
                 });
             }
 
