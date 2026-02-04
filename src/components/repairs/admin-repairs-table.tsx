@@ -23,12 +23,12 @@ import { Button } from "@/components/ui/button";
 const ITEMS_PER_PAGE = 20;
 
 const statusColorMap: Record<string, string> = {
-    "red": "bg-red-100 text-red-800 border-red-200",
-    "yellow": "bg-yellow-100 text-yellow-800 border-yellow-200",
-    "green": "bg-green-100 text-green-800 border-green-200",
-    "blue": "bg-blue-100 text-blue-800 border-blue-200",
-    "gray": "bg-gray-100 text-gray-800 border-gray-200",
-    "purple": "bg-purple-100 text-purple-800 border-purple-200",
+    "red": "bg-red-600 text-white border-red-700 shadow-red-500/20",
+    "yellow": "bg-amber-500 text-black border-amber-600 shadow-amber-500/20", // Amber is better visibility than Yellow
+    "green": "bg-green-600 text-white border-green-700 shadow-green-500/20",
+    "blue": "bg-blue-600 text-white border-blue-700 shadow-blue-500/20",
+    "gray": "bg-zinc-600 text-white border-zinc-700 shadow-zinc-500/20",
+    "purple": "bg-purple-600 text-white border-purple-700 shadow-purple-500/20",
 };
 
 export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branches: any[] }) {
