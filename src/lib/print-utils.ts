@@ -365,8 +365,12 @@ export const printCashShiftClosureTicket = (data: {
 }) => {
     const { branch, user, shift, summary, billCounts, finalCount, employeeCount } = data;
     const logoUrl = branch?.imageUrl || "/logo.jpg";
-    const bonusPerEmp = summary ? Math.round((summary.totalSales * (summary.totalSales >= 1200000 ? 0.02 : 0.01)) / 500) * 500 : 0;
+    // Prefer the server-calculated bonus to ensure consistency. Fallback to local calc rounding UP to 1000.
+    const bonusPerEmp = summary?.calculatedBonus ?? (summary ? Math.ceil((summary.totalSales * (summary.totalSales >= 1200000 ? 0.02 : 0.01)) / 1000) * 1000 : 0);
     const totalBonus = bonusPerEmp * employeeCount;
+    // Note: expectedCash in summary might already account for expenses but not bonus dynamically?
+    // In getShiftSummary, expectedCash = start + sales - expenses.
+    // So Net Expected = expectedCash - totalBonus.
     const expectedNet = (summary?.expectedCash || 0) - totalBonus;
     const diff = finalCount - expectedNet;
 

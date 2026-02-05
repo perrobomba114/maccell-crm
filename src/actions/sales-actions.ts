@@ -83,10 +83,8 @@ import { createNotificationAction } from "@/lib/actions/notifications";
 
 export async function updateSalePaymentMethod(saleId: string, newMethod: "CASH" | "CARD" | "MERCADOPAGO") {
     const user = await getCurrentUser();
-    const isSystemAction = (user as any)?.isSystem === true; // Allow system bypass
+    const isSystemAction = (user as any)?.isSystem === true;
 
-    // Allow Admin or the specific Vendor who made the sale (if needed, but user said Admin role context)
-    // For safety, let's allow Admin and Vendor.
     if (!isSystemAction && (!user || !user.branch)) {
         return { success: false, error: "No autorizado" };
     }
@@ -100,26 +98,40 @@ export async function updateSalePaymentMethod(saleId: string, newMethod: "CASH" 
             return { success: false, error: "Venta no encontrada" };
         }
 
-        // Optional: Check if user has right to edit
         if (!isSystemAction && user && (user.role !== "ADMIN" && sale.vendorId !== user.id)) {
             return { success: false, error: "No tienes permiso para editar esta venta" };
         }
 
-        // Logic to preserve original method if it's the first edit
-        const dataToUpdate: any = {
-            paymentMethod: newMethod,
-            wasPaymentModified: true,
-        };
+        await db.$transaction(async (tx) => {
+            const dataToUpdate: any = {
+                paymentMethod: newMethod,
+                wasPaymentModified: true,
+            };
 
-        if ((sale as any).originalPaymentMethod === null) {
-            dataToUpdate.originalPaymentMethod = sale.paymentMethod;
-        } else {
-            // If already modified, we don't overwrite the *original* original.
-        }
+            if ((sale as any).originalPaymentMethod === null) {
+                dataToUpdate.originalPaymentMethod = sale.paymentMethod;
+            }
 
-        await db.sale.update({
-            where: { id: saleId },
-            data: dataToUpdate,
+            // 1. Update Sale Header
+            await tx.sale.update({
+                where: { id: saleId },
+                data: dataToUpdate,
+            });
+
+            // 2. Fix Payments Array consistency
+            // Delete all existing payments for this sale
+            await tx.salePayment.deleteMany({
+                where: { saleId: saleId }
+            });
+
+            // Create new single payment with the full amount and new method
+            await tx.salePayment.create({
+                data: {
+                    saleId: saleId,
+                    amount: sale.total,
+                    method: newMethod
+                }
+            });
         });
 
         return { success: true };

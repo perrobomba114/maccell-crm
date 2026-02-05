@@ -225,7 +225,13 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
             if (result.success && result.summary) {
                 setShiftSummary(result.summary);
                 setModalAction("CLOSE");
-                setAmountInput("");
+
+                // Recalculate total from existing billCounts (to avoid 0 total with visible bills)
+                const currentTotal = Object.entries(billCounts).reduce((acc, [denom, count]) => {
+                    return acc + (Number(denom) * count);
+                }, 0);
+                setAmountInput(currentTotal > 0 ? currentTotal.toString() : "");
+
                 setIsRegisterModalOpen(true);
             } else {
                 toast.error("Error obteniendo resumen de caja");
@@ -234,6 +240,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
             // Prepare to open
             setModalAction("OPEN");
             setAmountInput("");
+            setBillCounts({}); // Reset counts for new shift
             setIsRegisterModalOpen(true);
         }
     };
@@ -272,6 +279,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 });
 
                 toast.success("Caja cerrada correctamente.");
+                setBillCounts({}); // Clear counts after success
                 checkRegister();
                 setIsRegisterModalOpen(false);
             } else {

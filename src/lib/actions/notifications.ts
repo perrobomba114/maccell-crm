@@ -218,21 +218,43 @@ export async function respondToNotificationAction(notificationId: string, respon
         // Special handling for Payment Method Change
         if (notification.actionData && (notification.actionData as any).type === "CHANGE_PAYMENT" && response === "ACCEPTED") {
             const { saleId, newMethod } = notification.actionData as any;
-            // Direct DB update to avoid circular dependency with sales-actions.ts
-            const sale = await db.sale.findUnique({ where: { id: saleId } });
-            if (sale) {
-                const dataToUpdate: any = {
-                    paymentMethod: newMethod,
-                    wasPaymentModified: true,
-                };
-                if ((sale as any).originalPaymentMethod === null) {
-                    dataToUpdate.originalPaymentMethod = sale.paymentMethod;
+
+            // Transactional update to ensure consistency
+            await db.$transaction(async (tx) => {
+                const sale = await tx.sale.findUnique({ where: { id: saleId } });
+
+                if (sale) {
+                    const dataToUpdate: any = {
+                        paymentMethod: newMethod,
+                        wasPaymentModified: true,
+                    };
+
+                    if ((sale as any).originalPaymentMethod === null) {
+                        dataToUpdate.originalPaymentMethod = sale.paymentMethod;
+                    }
+
+                    // 1. Update Sale Header
+                    await tx.sale.update({
+                        where: { id: saleId },
+                        data: dataToUpdate
+                    });
+
+                    // 2. Fix Payments Array consistency
+                    // Delete all existing payments for this sale
+                    await tx.salePayment.deleteMany({
+                        where: { saleId: saleId }
+                    });
+
+                    // Create new single payment with the full amount and new method
+                    await tx.salePayment.create({
+                        data: {
+                            saleId: saleId,
+                            amount: sale.total,
+                            method: newMethod
+                        }
+                    });
                 }
-                await db.sale.update({
-                    where: { id: saleId },
-                    data: dataToUpdate
-                });
-            }
+            });
         }
 
         // Update status
