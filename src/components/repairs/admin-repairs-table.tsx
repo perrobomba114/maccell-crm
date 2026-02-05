@@ -24,11 +24,15 @@ const ITEMS_PER_PAGE = 20;
 
 const statusColorMap: Record<string, string> = {
     "red": "bg-red-600 text-white border-red-700 shadow-red-500/20",
-    "yellow": "bg-amber-500 text-black border-amber-600 shadow-amber-500/20", // Amber is better visibility than Yellow
+    "yellow": "bg-amber-500 text-black border-amber-600 shadow-amber-500/20",
     "green": "bg-green-600 text-white border-green-700 shadow-green-500/20",
     "blue": "bg-blue-600 text-white border-blue-700 shadow-blue-500/20",
     "gray": "bg-zinc-600 text-white border-zinc-700 shadow-zinc-500/20",
     "purple": "bg-purple-600 text-white border-purple-700 shadow-purple-500/20",
+    "indigo": "bg-indigo-600 text-white border-indigo-700 shadow-indigo-500/20", // Tomado por Técnico
+    "slate": "bg-slate-800 text-white border-slate-900 shadow-slate-500/20",     // Entregado
+    "orange": "bg-orange-600 text-white border-orange-700 shadow-orange-500/20",
+    "amber": "bg-amber-600 text-white border-amber-700 shadow-amber-500/20",
 };
 
 export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branches: any[] }) {
