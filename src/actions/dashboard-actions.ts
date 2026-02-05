@@ -11,6 +11,7 @@ export async function getSalesAnalytics(branchId?: string) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
         const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
@@ -57,6 +58,15 @@ export async function getSalesAnalytics(branchId?: string) {
                 orderBy: { quantity: 'asc' }
             })
         ]);
+
+        // Fetch Warranties Count (New Requirement)
+        const warrantiesCount = await prisma.repair.count({
+            where: {
+                ...branchFilter,
+                isWarranty: true,
+                createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+            }
+        });
 
         // 2. Process Revenue Logic
         const revenue = revenueAgg._sum.total || 0;
@@ -123,7 +133,7 @@ export async function getSalesAnalytics(branchId?: string) {
             categoryShare: { total: profit, segments: categoryShare },
             stock: {
                 health: totalRepairPartsCost,
-                criticalCount: 0,
+                criticalCount: warrantiesCount, // Repurposing criticalCount for Warranties Count
                 alerts: stockAlerts,
                 topSold: topProducts
             }

@@ -118,13 +118,13 @@ export function FinancialStats({ stats }: { stats: any }) {
                     href="/admin/repairs"
                 />
                 <MetricCard
-                    title="Gasto en Repuestos"
-                    value={fmtMoney(stock.health)}
+                    title="Garantías del Mes"
+                    value={stock.criticalCount} // Using recycled field
                     accentColor="orange"
-                    icon={Package}
-                    trend={{ value: "Costo Mes", positive: false }}
-                    subtext="Costo de repuestos usados"
-                    href="/admin/repuestos"
+                    icon={Wrench} // Or RotateCcw/ShieldAlert if imported
+                    trend={{ value: "Reingresos", positive: false }}
+                    subtext="Equipos reingresados por garantía"
+                    href="/admin/repairs"
                 />
             </div>
         </div>
