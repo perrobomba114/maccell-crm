@@ -9,8 +9,6 @@ export default async function TechnicianRepairsPage() {
     const user = await getUserData();
     if (!user || user.role !== "TECHNICIAN") redirect("/");
 
-    console.log("TechnicianRepairsPage loading for:", user.email, "Branch:", user.branch?.id);
-
     // Filter by statuses: 2, 3, 4, 7, 8, 9
     // And ensure assigned to current user!
     const allRepairs = await getActiveRepairsAction(user.branch?.id || "", [2, 3, 4, 7, 8, 9]);

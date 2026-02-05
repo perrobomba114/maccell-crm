@@ -337,7 +337,7 @@ export async function getActiveRepairsAction(branchId: string, statusIds?: numbe
             }
         });
 
-        console.log(`getActiveRepairsAction found ${repairs.length} repairs (Branch: ${branchId || "ALL"})`);
+
         // Force serialization to safely pass Prisma Decimals/Dates to Client
         return JSON.parse(JSON.stringify(repairs));
     } catch (error) {

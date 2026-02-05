@@ -67,7 +67,7 @@ export default function TechnicianLayout({
                 intervalId = setInterval(async () => {
                     const updatedWorkload = await getTechniciansWorkload(user.branch?.id);
                     setTechniciansWorkload(updatedWorkload);
-                }, 10000);
+                }, 60000);
             }
         };
 

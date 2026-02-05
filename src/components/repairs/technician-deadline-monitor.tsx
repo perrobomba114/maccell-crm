@@ -64,7 +64,7 @@ export function TechnicianDeadlineMonitor({ userId }: TechnicianDeadlineMonitorP
         checkDeadlines();
 
         // Poll every 30 seconds
-        const intervalId = setInterval(checkDeadlines, 30000);
+        const intervalId = setInterval(checkDeadlines, 60000);
 
         return () => clearInterval(intervalId);
     }, [userId, notifiedIds]);
