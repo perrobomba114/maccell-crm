@@ -819,7 +819,12 @@ export async function getTechnicianStats(technicianId: string) {
         if (repairsWithTime.length > 0) {
             const totalMinutes = repairsWithTime.reduce((acc, r) => {
                 const diff = new Date(r.finishedAt!).getTime() - new Date(r.startedAt!).getTime();
-                return acc + (diff / 1000 / 60);
+                const minutes = diff / 1000 / 60;
+
+                // Si la reparación es 0 minutos o menos, tratarla como 15 minutos
+                const effectiveMinutes = minutes <= 0 ? 15 : minutes;
+
+                return acc + effectiveMinutes;
             }, 0);
             avgTimeMinutes = Math.round(totalMinutes / repairsWithTime.length);
         }
