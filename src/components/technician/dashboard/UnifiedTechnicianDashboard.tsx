@@ -228,7 +228,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                     subtext="Tiempo prom."
                     icon={Timer}
                     color="violet"
-                    href="/technician/profile"
+                    href="/technician/history"
                 />
                 <TechMetric
                     title="Calidad"

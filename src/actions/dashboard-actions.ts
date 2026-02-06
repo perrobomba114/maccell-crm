@@ -812,6 +812,7 @@ export async function getTechnicianStats(technicianId: string) {
                 finishedAt: { not: null }
             },
             select: { startedAt: true, finishedAt: true },
+            orderBy: { finishedAt: 'desc' }, // CRITICAL: Get MOST RECENT repairs to reflect current performance
             take: 50 // Limit sample size for performance
         });
 
