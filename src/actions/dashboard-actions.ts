@@ -826,8 +826,8 @@ export async function getTechnicianStats(technicianId: string) {
                     minutes = diff / 1000 / 60;
                 }
 
-                // Si la reparación es 0 minutos o menos (o sin startedAt), tratarla como 15 minutos
-                const effectiveMinutes = minutes <= 0 ? 15 : minutes;
+                // Si la reparación es menor a 1 minuto (error de tracking o muy rápida), tratarla como 15 minutos
+                const effectiveMinutes = (!minutes || minutes < 1) ? 15 : minutes;
 
                 return acc + effectiveMinutes;
             }, 0);
