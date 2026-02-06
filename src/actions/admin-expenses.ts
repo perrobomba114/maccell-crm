@@ -3,6 +3,10 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
+import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
+
+const TIMEZONE = "America/Argentina/Buenos_Aires";
+
 export async function getExpensesAction({
     date,
     page = 1,
@@ -17,12 +21,15 @@ export async function getExpensesAction({
     try {
         const where: any = {};
 
-        // Date Filter Logic
+        // Determine Reference Date (Argentina Time)
+        // If date is provided, use it. If not, get today in AR.
+        const referenceDateStr = date || formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
+
+        // 1. Daily Query Range (AR Time -> UTC)
+        // Explicitly parse 00:00:00 AR and 23:59:59 AR
         if (date) {
-            const startDate = new Date(date);
-            startDate.setHours(0, 0, 0, 0);
-            const endDate = new Date(date);
-            endDate.setHours(23, 59, 59, 999);
+            const startDate = fromZonedTime(`${referenceDateStr} 00:00:00`, TIMEZONE);
+            const endDate = fromZonedTime(`${referenceDateStr} 23:59:59.999`, TIMEZONE);
 
             where.createdAt = {
                 gte: startDate,
@@ -63,10 +70,17 @@ export async function getExpensesAction({
         });
         const totalAmount = aggregations._sum.amount || 0;
 
-        // Monthly Total Calculation (Independent of current filter, based on requested date or today)
-        const referenceDate = date ? new Date(date) : new Date();
-        const startOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
-        const endOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0, 23, 59, 59, 999);
+        // 2. Monthly Query Range (AR Time -> UTC)
+        // Calculate the first and last day of the month based on referenceDateStr
+        const [year, month] = referenceDateStr.split('-').map(Number);
+
+        // Start: 1st of month 00:00:00
+        const startOfMonth = fromZonedTime(`${year}-${String(month).padStart(2, '0')}-01 00:00:00`, TIMEZONE);
+
+        // End: Last day of month 23:59:59
+        // Trick: Day 0 of next month gives last day of current month
+        const lastDay = new Date(year, month, 0).getDate();
+        const endOfMonth = fromZonedTime(`${year}-${String(month).padStart(2, '0')}-${lastDay} 23:59:59.999`, TIMEZONE);
 
         const monthlyAggregations = await db.expense.aggregate({
             where: {
@@ -74,7 +88,7 @@ export async function getExpensesAction({
                     gte: startOfMonth,
                     lte: endOfMonth
                 },
-                userId: userId // Add userId filter here if it exists (undefined is ignored by Prisma usually, but let's be safe)
+                userId: userId // Maintain same user context for monthly total if present
                     ? userId
                     : undefined
             },
@@ -88,7 +102,7 @@ export async function getExpensesAction({
             totalPages,
             currentPage: page,
             totalAmount,
-            monthlyTotal // New Field
+            monthlyTotal
         };
 
     } catch (error) {

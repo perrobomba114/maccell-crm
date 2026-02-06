@@ -8,6 +8,8 @@ import { revalidatePath } from "next/cache";
 import path from "path";
 import fs from "fs/promises";
 import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { TIMEZONE } from "@/lib/date-utils";
 import { es } from "date-fns/locale";
 import { createNotificationAction } from "./notifications";
 import { getImgUrl, isValidImg } from "@/lib/utils";
@@ -273,8 +275,8 @@ export async function createRepairAction(formData: FormData) {
                 }
             });
 
-            const formattedDate = format(promisedAt, "dd/MM/yyyy", { locale: es });
-            const formattedTime = format(promisedAt, "HH:mm", { locale: es });
+            const formattedDate = formatInTimeZone(promisedAt, TIMEZONE, "dd/MM/yyyy", { locale: es });
+            const formattedTime = formatInTimeZone(promisedAt, TIMEZONE, "HH:mm", { locale: es });
 
             for (const tech of technicians) {
                 await createNotificationAction({
@@ -479,7 +481,7 @@ export async function takeRepairAction(
             // 3. Add system observation
             let obsContent = `Reparación tomada por técnico.`;
             if (extendMinutes && newPromisedAt) {
-                obsContent += ` Fecha prometida actualizada a ${format(newPromisedAt, "dd/MM HH:mm", { locale: es })}.`;
+                obsContent += ` Fecha prometida actualizada a ${formatInTimeZone(newPromisedAt, TIMEZONE, "dd/MM HH:mm", { locale: es })}.`;
             }
             if (parts.length > 0) {
                 obsContent += ` Repuestos: ${parts.map(p => p.name).join(", ")}`;
@@ -496,7 +498,7 @@ export async function takeRepairAction(
 
         // Notify Creator if date changed
         if (newPromisedAt && creatorUserId) {
-            const formattedDate = format(newPromisedAt, "dd/MM HH:mm", { locale: es });
+            const formattedDate = formatInTimeZone(newPromisedAt, TIMEZONE, "dd/MM HH:mm", { locale: es });
             await createNotificationAction({
                 userId: creatorUserId,
                 title: `Cambio en Ticket #${ticketNumberValue}`,

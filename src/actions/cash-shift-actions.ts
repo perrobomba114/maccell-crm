@@ -3,6 +3,7 @@
 import { db as prisma } from "@/lib/db";
 import { CashShift } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { getDailyRange, getMonthlyRange, getArgentinaDate } from "@/lib/date-utils";
 
 export type CashShiftWithDetails = CashShift & {
     branch: { name: string };
@@ -40,14 +41,13 @@ export async function getCashShifts(
         }
 
         if (date) {
-            const startOfDay = new Date(date);
-            startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(date);
-            endOfDay.setHours(23, 59, 59, 999);
+            // Use timezone-aware daily range
+            const dateStr = date.toISOString().split('T')[0]; // Safe if date passed is nominal
+            const { start, end } = getDailyRange(dateStr);
 
             whereClause.startTime = {
-                gte: startOfDay,
-                lte: endOfDay
+                gte: start,
+                lte: end
             };
         }
 
@@ -108,10 +108,8 @@ export async function getDeepCashShiftsForDate(
     date: Date,
     branchId?: string
 ): Promise<CashShiftWithDetails[]> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    const dateStr = date.toISOString().split('T')[0];
+    const { start: startOfDay, end: endOfDay } = getDailyRange(dateStr);
 
     const shifts = await getCashShiftsInRangeOptimized(startOfDay, endOfDay, branchId);
 
@@ -125,11 +123,17 @@ export async function getCashDashboardStats(
     branchId?: string
 ): Promise<CashDashboardStats> {
     try {
-        const startOfMonth = new Date(year, month, 1);
-        const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        // Correct Monthly Range Construction
+        // Month is 0-indexed in JS, but 1-12 in our utils strings usually/or we construct YYYY-MM
+        const monthIndex = month + 1; // 1-12
+        const currentMonthStr = `${year}-${String(monthIndex).padStart(2, '0')}-01`;
 
-        const startOfPrevMonth = new Date(year, month - 1, 1);
-        const endOfPrevMonth = new Date(year, month, 0, 23, 59, 59, 999);
+        const { start: startOfMonth, end: endOfMonth } = getMonthlyRange(currentMonthStr);
+
+        // Previous Month
+        const prevMonthDate = new Date(year, month - 1, 1);
+        const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
+        const { start: startOfPrevMonth, end: endOfPrevMonth } = getMonthlyRange(prevMonthStr);
 
         // FAST PATH: Optimized current month fetch
         const currentShifts = await getCashShiftsInRangeOptimized(startOfMonth, endOfMonth, branchId);

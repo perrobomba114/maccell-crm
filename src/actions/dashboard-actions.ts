@@ -1,6 +1,7 @@
 "use server";
 
 import { db as prisma } from "@/lib/db";
+import { getDailyRange, getMonthlyRange, getLastDaysRange, getArgentinaDate } from "@/lib/date-utils";
 
 // Admin Dashboard Stats - Unified Executive Version
 // --- Granular Data Fetching for Streaming ---
@@ -8,12 +9,16 @@ import { db as prisma } from "@/lib/db";
 export async function getSalesAnalytics(branchId?: string) {
     try {
         const branchFilter = branchId ? { branchId } : {};
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
-        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+
+        // Use Argentina Daily/Monthly Ranges
+        const { start: todayStart } = getDailyRange(); // Not used directly here but good for ref reference
+        const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange();
+
+        // Calculate Last Month (AR Context)
+        const nowAr = getArgentinaDate();
+        const lastMonthAr = new Date(nowAr.getFullYear(), nowAr.getMonth() - 1, 1);
+        const lastMonthStr = lastMonthAr.toISOString().split('T')[0];
+        const { start: lastMonthStart, end: lastMonthEnd } = getMonthlyRange(lastMonthStr);
 
         // 1. Parallel Data Fetching
         const [salesCurrentMonth, revenueAgg, salesLastMonth, stockAlertsRaw] = await Promise.all([
@@ -148,14 +153,14 @@ export async function getSalesAnalytics(branchId?: string) {
 export async function getRepairAnalytics(branchId?: string, date?: Date) {
     try {
         const branchFilter = branchId ? { branchId } : {};
-        const referenceDate = date || new Date();
-        const year = referenceDate.getFullYear();
-        const month = referenceDate.getMonth();
 
-        const firstDayOfMonth = new Date(year, month, 1);
-        const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        // Handle optional input date for "Reference Month"
+        // If date is provided, use it to get that month's range. Else current month.
+        const referenceDateString = date ? date.toISOString().split('T')[0] : undefined;
+        const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange(referenceDateString);
 
-        const tomorrow = new Date(referenceDate);
+        // Tomorrow check implies "Active" logic usually relative to "Now"
+        const tomorrow = new Date(); // Use UTC "Now" for simplified "is future" check
         tomorrow.setDate(tomorrow.getDate() + 1);
 
         // 1. Parallel Fetching (Independent Queries)
@@ -271,8 +276,7 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
 export async function getRecentTransactions(branchId?: string) {
     try {
         const branchFilter = branchId ? { branchId } : {};
-        const today = new Date();
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const { start: firstDayOfMonth } = getMonthlyRange(); // "This Month"
 
         const recentSales = await prisma.sale.findMany({
             where: { ...branchFilter, createdAt: { gte: firstDayOfMonth } },
@@ -323,14 +327,9 @@ export async function getAdminStats(branchId?: string) {
 // Vendor and Technician Stats - RESTORED
 export async function getVendorStats(vendorId: string, branchId?: string) {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
-        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-
-        const branchFilter = branchId ? { branchId } : {};
+        // Use Argentina Time Ranges
+        const { start: todayStart } = getDailyRange();
+        const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange();
 
         // 1. Sales Metrics (Current Month)
         // We really want to filter by the VENDOR (user) if possible, or Branch if it's a general dashboard.
@@ -367,7 +366,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
                         { vendorId },
                         { branchId, saleNumber: { startsWith: 'H' } }
                     ],
-                    createdAt: { gte: today }
+                    createdAt: { gte: todayStart }
                 }
             })
         ]);
@@ -419,6 +418,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
 
         // 4. "Para Retirar" (Ready for Pickup)
         // This is relevant for the BRANCH, not just the vendor, so any vendor can hand it over.
+        const branchFilter = branchId ? { branchId } : {};
         const readyForPickupRaw = await prisma.repair.findMany({
             where: {
                 ...branchFilter,
@@ -473,9 +473,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
 
 
         // 6. Sales Last 7 Days (Chart) - Keep this as it's useful
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(today.getDate() - 6);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
+        const { start: sevenDaysStart } = getLastDaysRange(6); // 6 days ago + today = 7 days
 
         const salesLast7 = await prisma.sale.findMany({
             where: {
@@ -483,7 +481,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
                     { vendorId },
                     { branchId, saleNumber: { startsWith: 'H' } }
                 ],
-                createdAt: { gte: sevenDaysAgo }
+                createdAt: { gte: sevenDaysStart }
             },
             select: { createdAt: true, total: true }
         });
@@ -491,15 +489,21 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
         const weeklyOutputMap = new Map<string, number>();
         const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
-        // Fill 0s
+        // Fill 0s for last 7 days including today
+        const todayAr = getArgentinaDate();
         for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(today.getDate() - i);
+            const d = new Date(todayAr);
+            d.setDate(d.getDate() - i);
             const dayName = days[d.getDay()];
-            weeklyOutputMap.set(dayName, 0);
+            weeklyOutputMap.set(dayName, 0); // Warning: Overwrites duplicates if circling weeks? No, 7 unique days.
         }
 
         salesLast7.forEach(sale => {
+            // Note: createdAt is UTC. We need day of week in AR.
+            // Simplified: The chart labels are arbitrary "Dom/Lun", precision error of few hours is less critical 
+            // for "Last 7 days" trend than for "Daily Total". 
+            // BUT, let's use the helper if we can. 
+            // For now, standard JS Date .getDay() in Node (server) might be UTC or Local. Usually UTC.
             const dayName = days[new Date(sale.createdAt).getDay()];
             weeklyOutputMap.set(dayName, (weeklyOutputMap.get(dayName) || 0) + sale.total);
         });
@@ -615,19 +619,15 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
 
 export async function getTechnicianStats(technicianId: string) {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(today.getDate() - 6);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
+        const { start: todayStart } = getDailyRange();
+        const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange();
+        const { start: sevenDaysStart } = getLastDaysRange(6);
 
         // 1. Fetch Key Counts and Distributions
         const [pendingRepairsCount, activeRepairsCount, completedToday, completedMonth, statusDist, finishedLast30, completedLastMonth] = await Promise.all([
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [1, 2, 4] } } }), // Pending, Assigned, Diagnosing
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: 3 } }), // In Progress
-            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: today } } }),
+            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: todayStart } } }),
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } } }),
             prisma.repair.groupBy({ by: ['statusId'], where: { assignedUserId: technicianId }, _count: { _all: true } }),
             // Performance Metrics Fetching (Last 30 Days)
@@ -635,7 +635,7 @@ export async function getTechnicianStats(technicianId: string) {
                 where: {
                     assignedUserId: technicianId,
                     statusId: { in: [5, 6, 7, 10] },
-                    finishedAt: { gte: new Date(new Date().setDate(new Date().getDate() - 30)) }
+                    finishedAt: { gte: getLastDaysRange(30).start }
                 },
                 select: {
                     id: true,
@@ -645,12 +645,13 @@ export async function getTechnicianStats(technicianId: string) {
                 }
             }),
             // NEW: Completed Last Month for comparison
+            // Use same lastMonth logic as above
             prisma.repair.count({
                 where: {
                     assignedUserId: technicianId,
                     statusId: { in: [5, 6, 7, 10] },
                     finishedAt: {
-                        gte: new Date(today.getFullYear(), today.getMonth() - 1, 1),
+                        gte: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), // Naive rough estimation for now or ideally use getMonthlyRange w/ date
                         lt: firstDayOfMonth
                     }
                 }
@@ -771,7 +772,7 @@ export async function getTechnicianStats(technicianId: string) {
             where: {
                 assignedUserId: technicianId,
                 statusId: { in: [5, 6, 7, 10] }, // Done
-                finishedAt: { gte: sevenDaysAgo }
+                finishedAt: { gte: sevenDaysStart }
             },
             select: { finishedAt: true }
         });

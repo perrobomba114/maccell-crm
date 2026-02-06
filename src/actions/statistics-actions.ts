@@ -1,6 +1,7 @@
 "use server";
 
 import { db as prisma } from "@/lib/db";
+import { getMonthlyRange } from "@/lib/date-utils";
 
 
 
@@ -17,14 +18,14 @@ export async function getBranchesList() {
 
 export async function getGlobalStats(branchId?: string, date?: Date) {
     try {
-        const referenceDate = date || new Date();
-        const year = referenceDate.getFullYear();
-        const month = referenceDate.getMonth();
+        const referenceDateStr = date ? date.toISOString().split('T')[0] : undefined;
+        const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange(referenceDateStr);
 
-        const firstDayOfMonth = new Date(year, month, 1);
-        const firstDayOfLastMonth = new Date(year, month - 1, 1);
-        const lastDayOfLastMonth = new Date(year, month, 0);
-        const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        // Last Month
+        const refDate = date || new Date();
+        const lastMonthDate = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
+        const lastMonthStr = lastMonthDate.toISOString().split('T')[0];
+        const { start: firstDayOfLastMonth, end: lastDayOfLastMonth } = getMonthlyRange(lastMonthStr);
 
         const whereClause = branchId ? { branchId } : {};
         const whereClauseMonth = { ...whereClause, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } };
@@ -190,12 +191,8 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
 
 export async function getProductStats(branchId?: string, date?: Date) {
     try {
-        const referenceDate = date || new Date();
-        const year = referenceDate.getFullYear();
-        const month = referenceDate.getMonth();
-
-        const firstDayOfMonth = new Date(year, month, 1);
-        const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        const referenceDateStr = date ? date.toISOString().split('T')[0] : undefined;
+        const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange(referenceDateStr);
 
         const whereSale = branchId ? { branchId } : {};
         const whereStock = branchId ? { branchId } : {};
@@ -279,14 +276,14 @@ export async function getProductStats(branchId?: string, date?: Date) {
 
 export async function getBranchStats(branchId?: string, date?: Date) {
     try {
-        const referenceDate = date || new Date();
-        const year = referenceDate.getFullYear();
-        const month = referenceDate.getMonth();
+        const referenceDateStr = date ? date.toISOString().split('T')[0] : undefined;
+        const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange(referenceDateStr);
 
-        const firstDayOfMonth = new Date(year, month, 1);
-        const firstDayOfLastMonth = new Date(year, month - 1, 1);
-        const lastDayOfLastMonth = new Date(year, month, 0);
-        const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        // Last Month
+        const refDate = date || new Date();
+        const lastMonthDate = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
+        const lastMonthStr = lastMonthDate.toISOString().split('T')[0];
+        const { start: firstDayOfLastMonth, end: lastDayOfLastMonth } = getMonthlyRange(lastMonthStr);
 
         const whereBranch = branchId ? { id: branchId } : {};
 
@@ -430,12 +427,8 @@ export async function getBranchStats(branchId?: string, date?: Date) {
 
 export async function getRepairStats(branchId?: string, date?: Date) {
     try {
-        const referenceDate = date || new Date();
-        const year = referenceDate.getFullYear();
-        const month = referenceDate.getMonth();
-
-        const firstDayOfMonth = new Date(year, month, 1);
-        const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        const referenceDateStr = date ? date.toISOString().split('T')[0] : undefined;
+        const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange(referenceDateStr);
 
         const whereRepair = branchId ? { branchId } : {};
 
