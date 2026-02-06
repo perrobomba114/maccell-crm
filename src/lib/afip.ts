@@ -385,7 +385,8 @@ export async function getTaxpayerDetails(cuit: number) {
 
         // Tax Codes Definitions
         const COD_MONOTRIBUTO = [20];
-        const COD_RESP_INSCRIPTO = [30, 31, 33, 34]; // 30=IVA, 31=IVA Exento (sometimes in regimen), 33/34 variants
+        const COD_RESP_INSCRIPTO = [30, 31, 33, 34, 308, 358]; // Added 308/358 (Autonomos) as indicators of RI if not Monotributo
+
         const COD_GANANCIAS = [10, 11];
         const COD_EXENTO = [32, 4, 15];
 

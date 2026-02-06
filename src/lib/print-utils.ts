@@ -482,9 +482,11 @@ export const printInvoiceTicket = (data: {
     vendorName?: string;
     date: Date;
     billingEntity?: 'MACCELL' | '8BIT'; // New Param
+    customerIvaCondition?: string; // New Param for Monotributo Legend
 }) => {
-    const { branch, items, total, paymentMethod, invoice, vendorName, date, billingEntity } = data;
+    const { branch, items, total, paymentMethod, invoice, vendorName, date, billingEntity, customerIvaCondition } = data;
     const logoUrl = branch?.imageUrl || "/logo.jpg";
+
 
     // Determine Issuer Details
     const is8Bit = billingEntity === '8BIT';
@@ -604,9 +606,17 @@ export const printInvoiceTicket = (data: {
             return methodMap[paymentMethod] || paymentMethod.toUpperCase();
         })()}
             </div>
+            </div>
         </div>
 
+        ${(invoice.type === "A" && customerIvaCondition?.toLowerCase().includes("monotributo")) ? `
+            <div style="margin: 10px 0; border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; background: #eee;">
+                El crédito fiscal discriminado en el presente comprobante, sólo podrá ser computado a efectos del Régimen de Sostenimiento e Inclusión Fiscal para Pequeños Contribuyentes de la Ley Nº 27.618
+            </div>
+        ` : ''}
+
         <div class="qr-container" style="display: flex; flex-direction: column; align-items: center; margin-top: 20px;">
+
             <img src="${qrImgUrl}" style="width: 130px; height: 130px;" onerror="this.style.display='none'" />
             <div style="margin-top: 8px; text-align: center;">
                 <img src="https://www.afip.gob.ar/images/logo_afip.png" style="width: 70px;" onerror="this.style.display='none'" />

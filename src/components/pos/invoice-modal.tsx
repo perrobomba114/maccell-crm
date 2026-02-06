@@ -90,13 +90,15 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount, defau
                 setAddress(address);
                 setIvaCondition(ivaCondition || "Desconocido");
 
-                if (ivaCondition === "Responsable Inscripto") {
+
+                if (ivaCondition === "Responsable Inscripto" || ivaCondition === "Monotributo") {
                     setInvoiceType("A");
-                    toast.success("Responsable Inscripto detectado. Factura A seleccionada.");
+                    toast.success(`${ivaCondition} detectado. Factura A seleccionada.`);
                 } else {
                     setInvoiceType("B");
                     toast.success("Cliente cargado: " + name);
                 }
+
             } else {
                 toast.error(res.error || "No se encontraron datos.");
             }

@@ -774,7 +774,8 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                                 },
                                 vendorName: vendorName,
                                 date: new Date(),
-                                billingEntity: billingEntity
+                                billingEntity: billingEntity,
+                                customerIvaCondition: invoiceData?.ivaCondition
                             });
                         } else {
                             // Only print common ticket if NOT invoicing
