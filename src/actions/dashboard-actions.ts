@@ -808,7 +808,7 @@ export async function getTechnicianStats(technicianId: string) {
             where: {
                 assignedUserId: technicianId,
                 statusId: { in: [5, 6, 7, 10] },
-                startedAt: { not: null },
+                // startedAt: { not: null }, // REMOVED to include null startedAt
                 finishedAt: { not: null }
             },
             select: { startedAt: true, finishedAt: true },
@@ -818,10 +818,14 @@ export async function getTechnicianStats(technicianId: string) {
         let avgTimeMinutes = 0;
         if (repairsWithTime.length > 0) {
             const totalMinutes = repairsWithTime.reduce((acc, r) => {
-                const diff = new Date(r.finishedAt!).getTime() - new Date(r.startedAt!).getTime();
-                const minutes = diff / 1000 / 60;
+                let minutes = 0;
 
-                // Si la reparación es 0 minutos o menos, tratarla como 15 minutos
+                if (r.startedAt && r.finishedAt) {
+                    const diff = new Date(r.finishedAt).getTime() - new Date(r.startedAt).getTime();
+                    minutes = diff / 1000 / 60;
+                }
+
+                // Si la reparación es 0 minutos o menos (o sin startedAt), tratarla como 15 minutos
                 const effectiveMinutes = minutes <= 0 ? 15 : minutes;
 
                 return acc + effectiveMinutes;
