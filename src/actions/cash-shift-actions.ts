@@ -283,7 +283,7 @@ async function getCashShiftsInRangeOptimized(start: Date, end: Date, branchId?: 
         if (finalBonus === 0 && totalSales > 0) {
             const bonusRate = totalSales >= 1200000 ? 0.02 : 0.01;
             const count = (shift as any).employeeCount || 1;
-            const perEmp = Math.round((totalSales * bonusRate) / 500) * 500;
+            const perEmp = (Math.ceil((totalSales * bonusRate) / 1000) * 1000);
             finalBonus = perEmp * count;
         }
 
@@ -389,7 +389,7 @@ async function enrichShifts(shifts: any[]): Promise<CashShiftWithDetails[]> {
         if (finalBonus === 0 && totalSales > 0) {
             const bonusRate = totalSales >= 1200000 ? 0.02 : 0.01;
             const count = (shift as any).employeeCount || 1;
-            const perEmp = Math.round((totalSales * bonusRate) / 500) * 500;
+            const perEmp = (Math.ceil((totalSales * bonusRate) / 1000) * 1000);
             finalBonus = perEmp * count;
         }
 
