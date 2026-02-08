@@ -47,16 +47,16 @@ export default async function AdminExpensesPage({
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card className="bg-red-600 border-red-500 shadow-md">
+                <Card className="bg-blue-600 border-blue-500 shadow-md">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-white/80">Total Gastos {date ? "(Día)" : "(Filtro)"}</CardTitle>
-                        <DollarSign className="h-4 w-4 text-red-200" />
+                        <DollarSign className="h-4 w-4 text-blue-200" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-white">
                             - ${totalAmount.toLocaleString()}
                         </div>
-                        <p className="text-xs text-red-100">
+                        <p className="text-xs text-blue-100">
                             {totalCount} registros
                         </p>
                     </CardContent>
