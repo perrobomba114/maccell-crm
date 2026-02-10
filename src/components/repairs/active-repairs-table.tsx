@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -88,16 +88,31 @@ export function ActiveRepairsTable({
         }
     };
 
-    const filteredRepairs = repairs.filter(repair => {
-        const term = searchTerm.toLowerCase();
-        return (
-            repair.ticketNumber.toLowerCase().includes(term) ||
-            repair.customer.name.toLowerCase().includes(term) ||
-            (repair.customer.phone && repair.customer.phone.includes(term)) ||
-            repair.deviceModel.toLowerCase().includes(term) ||
-            repair.deviceBrand.toLowerCase().includes(term)
-        );
-    });
+    // Sort repairs by promisedAt (earliest first) so technicians prioritize urgent deliveries
+    const sortedRepairs = useMemo(() => {
+        return [...repairs].sort((a, b) => {
+            const dateA = a.promisedAt ? new Date(a.promisedAt).getTime() : Infinity;
+            const dateB = b.promisedAt ? new Date(b.promisedAt).getTime() : Infinity;
+            return dateA - dateB;
+        });
+    }, [repairs]);
+
+    const filteredRepairs = useMemo(() => {
+        const searchWords = searchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
+        return sortedRepairs.filter(repair => {
+            const searchableFields = [
+                repair.ticketNumber,
+                repair.customer.name,
+                repair.customer.phone || "",
+                repair.deviceBrand,
+                repair.deviceModel,
+            ].map(f => f.toLowerCase());
+
+            return searchWords.length === 0 || searchWords.every(word =>
+                searchableFields.some(field => field.includes(word))
+            );
+        });
+    }, [sortedRepairs, searchTerm]);
 
     if (!repairs || repairs.length === 0) {
         return (
@@ -133,6 +148,7 @@ export function ActiveRepairsTable({
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow>
+                            <TableHead className="text-center w-[60px]">Pos.</TableHead>
                             <TableHead className="text-center w-[100px]">Ticket</TableHead>
                             <TableHead className="text-center w-[140px]">Entrega</TableHead>
                             <TableHead className="text-center w-[100px]">Tiempo Est.</TableHead>
@@ -147,15 +163,26 @@ export function ActiveRepairsTable({
                     <TableBody>
                         {filteredRepairs.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={(enableTakeover || enableManagement || enableImageUpload) ? 9 : 8} className="h-24 text-center">
+                                <TableCell colSpan={(enableTakeover || enableManagement || enableImageUpload) ? 10 : 9} className="h-24 text-center">
                                     No se encontraron resultados.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredRepairs.map((repair) => {
+                            filteredRepairs.map((repair, index) => {
                                 const colorClass = statusColorMap[repair.status.color] || "bg-gray-100 text-gray-800";
+                                const position = index + 1;
                                 return (
                                     <TableRow key={repair.id} className="hover:bg-muted/10">
+                                        <TableCell className="text-center">
+                                            <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full font-extrabold text-sm ${position <= 3
+                                                    ? "bg-red-100 text-red-700 border border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700"
+                                                    : position <= 6
+                                                        ? "bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700"
+                                                        : "bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600"
+                                                }`}>
+                                                {position}
+                                            </span>
+                                        </TableCell>
                                         <TableCell className={`text-center font-bold font-mono text-lg ${repair.isWet ? "text-blue-500 font-extrabold" : repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
                                             {repair.ticketNumber}
                                         </TableCell>

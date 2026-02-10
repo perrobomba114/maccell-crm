@@ -88,16 +88,24 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
     }, [localSearchTerm, searchTerm, updateParams]);
 
     // Filter using LOCAL state for instant feedback
+    // Split search into words so "iPhone 13" matches brand=iPhone + model=13
     const filteredRepairs = useMemo(() => {
         return repairs.filter(repair => {
-            const term = localSearchTerm.toLowerCase();
-            const matchesSearch = (
-                repair.ticketNumber.toLowerCase().includes(term) ||
-                repair.customer.name.toLowerCase().includes(term) ||
-                (repair.customer.phone && repair.customer.phone.includes(term)) ||
-                repair.deviceModel.toLowerCase().includes(term) ||
-                repair.deviceBrand.toLowerCase().includes(term) ||
-                (repair.branch?.name && repair.branch.name.toLowerCase().includes(term))
+            const searchWords = localSearchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
+
+            // Build a combined searchable string from all relevant fields
+            const searchableFields = [
+                repair.ticketNumber,
+                repair.customer.name,
+                repair.customer.phone || "",
+                repair.deviceBrand,
+                repair.deviceModel,
+                repair.branch?.name || "",
+            ].map(f => f.toLowerCase());
+
+            // Every word must be found in at least one field
+            const matchesSearch = searchWords.length === 0 || searchWords.every(word =>
+                searchableFields.some(field => field.includes(word))
             );
 
             const matchesBranch = selectedBranchId === "ALL" || repair.branchId === selectedBranchId;

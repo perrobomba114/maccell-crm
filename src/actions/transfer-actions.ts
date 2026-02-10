@@ -71,6 +71,31 @@ export async function createStockTransfer(data: {
                     }))
                 });
             }
+
+            // Notify all Admins about this transfer
+            const [admins, sourceBranch, targetBranch, transferUser] = await Promise.all([
+                tx.user.findMany({ where: { role: "ADMIN" }, select: { id: true } }),
+                tx.branch.findUnique({ where: { id: sourceBranchId }, select: { name: true } }),
+                tx.branch.findUnique({ where: { id: targetBranchId }, select: { name: true } }),
+                tx.user.findUnique({ where: { id: userId }, select: { name: true } }),
+            ]);
+
+            if (admins.length > 0) {
+                const vendorName = transferUser?.name || "Un vendedor";
+                const fromBranch = sourceBranch?.name || "sucursal origen";
+                const toBranch = targetBranch?.name || "sucursal destino";
+
+                await tx.notification.createMany({
+                    data: admins.map(admin => ({
+                        userId: admin.id,
+                        title: "Transferencia de Stock Realizada",
+                        message: `${vendorName} transfirió ${quantity}x ${sourceStock.product.name} de ${fromBranch} a ${toBranch}. Motivo: ${notes || "Sin motivo"}`,
+                        type: "INFO",
+                        link: "/admin/transfers",
+                        isRead: false
+                    }))
+                });
+            }
         });
 
         try {

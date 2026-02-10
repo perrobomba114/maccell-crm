@@ -360,13 +360,19 @@ export async function getRepairHistoryAction(branchId: string, query: string = "
         };
 
         if (query) {
-            whereClause.OR = [
-                { ticketNumber: { contains: query, mode: "insensitive" } },
-                { customer: { name: { contains: query, mode: "insensitive" } } },
-                { customer: { phone: { contains: query, mode: "insensitive" } } },
-                { deviceBrand: { contains: query, mode: "insensitive" } },
-                { deviceModel: { contains: query, mode: "insensitive" } },
-            ];
+            // Split query into words so "iPhone 13" matches brand=iPhone + model=13
+            const words = query.trim().split(/\s+/).filter(Boolean);
+            if (words.length > 0) {
+                whereClause.AND = words.map(word => ({
+                    OR: [
+                        { ticketNumber: { contains: word, mode: "insensitive" } },
+                        { customer: { name: { contains: word, mode: "insensitive" } } },
+                        { customer: { phone: { contains: word, mode: "insensitive" } } },
+                        { deviceBrand: { contains: word, mode: "insensitive" } },
+                        { deviceModel: { contains: word, mode: "insensitive" } },
+                    ],
+                }));
+            }
         }
 
         const repairs = await db.repair.findMany({
@@ -524,13 +530,19 @@ export async function getAllRepairsForAdminAction(query: string = "") {
         const whereClause: any = {};
 
         if (query) {
-            whereClause.OR = [
-                { ticketNumber: { contains: query, mode: "insensitive" } },
-                { customer: { name: { contains: query, mode: "insensitive" } } },
-                { customer: { phone: { contains: query, mode: "insensitive" } } },
-                { deviceBrand: { contains: query, mode: "insensitive" } },
-                { deviceModel: { contains: query, mode: "insensitive" } },
-            ];
+            // Split query into words so "iPhone 13" matches brand=iPhone + model=13
+            const words = query.trim().split(/\s+/).filter(Boolean);
+            if (words.length > 0) {
+                whereClause.AND = words.map(word => ({
+                    OR: [
+                        { ticketNumber: { contains: word, mode: "insensitive" } },
+                        { customer: { name: { contains: word, mode: "insensitive" } } },
+                        { customer: { phone: { contains: word, mode: "insensitive" } } },
+                        { deviceBrand: { contains: word, mode: "insensitive" } },
+                        { deviceModel: { contains: word, mode: "insensitive" } },
+                    ],
+                }));
+            }
         }
 
         const repairs = await db.repair.findMany({
