@@ -161,8 +161,12 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
             <div className="flex flex-col gap-5">
                 {/* Search Bar - Moved to Top & Constrained Width */}
                 <div className="relative group w-full max-w-md">
+                    <Label htmlFor="admin-repairs-search" className="sr-only">Buscar reparaciones</Label>
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-muted-foreground group-focus-within:text-primary transition-colors duration-200" />
                     <Input
+                        id="admin-repairs-search"
+                        name="admin-repairs-search"
+                        aria-label="Buscar por ticket, cliente, dispositivo"
                         placeholder="Buscar por ticket, cliente, dispositivo…"
                         value={localSearchTerm}
                         onChange={(e) => setLocalSearchTerm(e.target.value)}

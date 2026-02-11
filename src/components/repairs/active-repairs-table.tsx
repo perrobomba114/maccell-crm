@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -126,8 +127,12 @@ export function ActiveRepairsTable({
         <div className="space-y-4">
             <div className="flex gap-2">
                 <div className="relative flex-1">
+                    <Label htmlFor="active-repairs-search" className="sr-only">Buscar reparaciones activas</Label>
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
+                        id="active-repairs-search"
+                        name="active-repairs-search"
+                        aria-label="Buscar por Ticket, Cliente o Dispositivo"
                         placeholder="Buscar por Ticket, Cliente o Dispositivo..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}

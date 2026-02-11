@@ -9,6 +9,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { StockCheckButtons } from "./stock-check-buttons";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -169,8 +170,12 @@ export function StockTable({
             {/* Header / Filter Toolbar */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-background/50 backdrop-blur-sm p-1 rounded-lg">
                 <div className="relative w-full sm:max-w-md">
+                    <Label htmlFor="stock-table-search-input" className="sr-only">Buscar productos</Label>
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
+                        id="stock-table-search-input"
+                        name="stock-table-search"
+                        aria-label="Buscar por nombre, SKU o categoría"
                         placeholder="Buscar por nombre, SKU o categoría..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}

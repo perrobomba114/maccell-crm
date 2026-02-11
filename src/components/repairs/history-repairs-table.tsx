@@ -2,6 +2,7 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -116,8 +117,12 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
         <div className="space-y-4">
             <div className="flex items-center gap-2">
                 <div className="relative flex-1 max-w-sm">
+                    <Label htmlFor="history-repairs-search" className="sr-only">Buscar en historial</Label>
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
+                        id="history-repairs-search"
+                        name="history-repairs-search"
+                        aria-label="Buscar por ticket, cliente, dispositivo"
                         placeholder="Buscar por ticket, cliente, dispositivo…"
                         className="pl-9 bg-slate-900/50 border-slate-800 focus:ring-2 focus:ring-blue-500/50 transition-[border-color,box-shadow] duration-200"
                         value={searchTerm}

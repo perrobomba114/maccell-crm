@@ -56,6 +56,9 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                     <div className="flex gap-2 sm:gap-4 items-center bg-background border border-input rounded-xl px-2 sm:px-4 h-[84px] w-full">
                         <input
                             type="date"
+                            id="promised-date"
+                            name="promised-date"
+                            aria-label="Fecha de entrega"
                             value={date ? (() => {
                                 const year = date.getFullYear();
                                 const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -76,6 +79,9 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                         <div className="flex items-center gap-0 sm:gap-1 shrink-0">
                             <input
                                 type="number"
+                                id="promised-hour"
+                                name="promised-hour"
+                                aria-label="Hora de entrega"
                                 inputMode="numeric"
                                 min={0}
                                 max={23}
@@ -93,6 +99,9 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                             <span className="text-2xl sm:text-4xl font-bold text-green-600 dark:text-green-500 pb-1">:</span>
                             <input
                                 type="number"
+                                id="promised-minutes"
+                                name="promised-minutes"
+                                aria-label="Minutos de entrega"
                                 inputMode="numeric"
                                 min={0}
                                 max={45}

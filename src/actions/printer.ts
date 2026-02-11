@@ -8,61 +8,106 @@ export type PrinterDiscoveryResult = {
     hostname?: string;
 };
 
+import dgram from "dgram";
+
 /**
  * Scans the local network for devices with port 9100 open (common for printers).
- * IMPORTANT: This assumes a /24 subnet based on the server's local IP.
+ * Now scans ALL non-internal IPv4 subnets found on the host.
  */
 export async function scanForPrinters(): Promise<{ success: boolean; printers: PrinterDiscoveryResult[]; error?: string }> {
     try {
         const interfaces = os.networkInterfaces();
-        let subnetPrefix = "";
+        const subnetPrefixes: string[] = [];
 
-        // Find a suitable non-internal IPv4 address to guess the subnet
         for (const name of Object.keys(interfaces)) {
             const iface = interfaces[name];
             if (!iface) continue;
             for (const alias of iface) {
                 if (alias.family === "IPv4" && !alias.internal) {
-                    // Assuming /24 subnet, grab the first 3 octets
                     const parts = alias.address.split(".");
                     if (parts.length === 4) {
-                        subnetPrefix = `${parts[0]}.${parts[1]}.${parts[2]}`;
-                        break;
+                        const prefix = `${parts[0]}.${parts[1]}.${parts[2]}`;
+                        if (!subnetPrefixes.includes(prefix)) {
+                            subnetPrefixes.push(prefix);
+                        }
                     }
                 }
             }
-            if (subnetPrefix) break;
         }
 
-        if (!subnetPrefix) {
-            return { success: false, printers: [], error: "No se pudo determinar la subred local." };
+        if (subnetPrefixes.length === 0) {
+            return { success: false, printers: [], error: "No se pudo determinar ninguna subred local." };
         }
 
-        const foundPrinters: PrinterDiscoveryResult[] = [];
+        const foundPrinters = new Map<string, PrinterDiscoveryResult>();
+
+        // 1. Try UDP Discovery (Zebra specific)
+        const udpPrinters = await discoverZebraUDP();
+        udpPrinters.forEach(p => foundPrinters.set(p.ip, p));
+
+        // 2. TCP Port Scan (Fallback/Complement)
+        // If we already found some via UDP, we still scan to be thorough, 
+        // but maybe we can be more selective. For now, let's scan all prefixes.
         const port = 9100;
-        const timeout = 200; // Fast timeout for scanning
+        const timeout = 400; // Increased timeout slightly for reliability
 
-        // Generate promises for scanning 1-254
-        const scanPromises = [];
-        for (let i = 1; i < 255; i++) {
-            const ip = `${subnetPrefix}.${i}`;
-            scanPromises.push(checkPort(ip, port, timeout));
+        for (const prefix of subnetPrefixes) {
+            const scanPromises = [];
+            for (let i = 1; i < 255; i++) {
+                const ip = `${prefix}.${i}`;
+                scanPromises.push(checkPort(ip, port, timeout));
+            }
+
+            const results = await Promise.all(scanPromises);
+            results.forEach(res => {
+                if (res.open && !foundPrinters.has(res.ip)) {
+                    foundPrinters.set(res.ip, { ip: res.ip });
+                }
+            });
         }
 
-        const results = await Promise.all(scanPromises);
-
-        results.forEach(res => {
-            if (res.open) {
-                foundPrinters.push({ ip: res.ip });
-            }
-        });
-
-        return { success: true, printers: foundPrinters };
+        return { success: true, printers: Array.from(foundPrinters.values()) };
 
     } catch (error) {
         console.error("Error scanning printers:", error);
         return { success: false, printers: [], error: "Error interno al escanear la red." };
     }
+}
+
+/**
+ * Discovers Zebra printers using UDP broadcast on port 4201.
+ */
+async function discoverZebraUDP(): Promise<PrinterDiscoveryResult[]> {
+    return new Promise((resolve) => {
+        const printers: PrinterDiscoveryResult[] = [];
+        const client = dgram.createSocket("udp4");
+
+        // Discovery packet: magic bytes for Zebra
+        const message = Buffer.from([0x2e, 0x2c, 0x3a, 0x01, 0x00, 0x00]);
+
+        client.on("message", (msg, rinfo) => {
+            // Response starts with 0x3a2c2e
+            if (msg.length >= 3 && msg[0] === 0x3a && msg[1] === 0x2c && msg[2] === 0x2e) {
+                printers.push({ ip: rinfo.address });
+            }
+        });
+
+        client.on("error", (err) => {
+            console.error("UDP Discovery Error:", err);
+        });
+
+        client.bind(0, () => {
+            client.setBroadcast(true);
+            // Broadcast to 255.255.255.255
+            client.send(message, 0, message.length, 4201, "255.255.255.255");
+
+            // Wait 1.5 seconds for responses
+            setTimeout(() => {
+                client.close();
+                resolve(printers);
+            }, 1500);
+        });
+    });
 }
 
 function checkPort(ip: string, port: number, timeout: number): Promise<{ ip: string; open: boolean }> {

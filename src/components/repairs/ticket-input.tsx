@@ -69,6 +69,8 @@ export function TicketInput({ value, onChange, branchId, ticketPrefix, error: ex
             <div className="relative">
                 <Input
                     id="ticket-number"
+                    name="ticket-number"
+                    aria-label="Número de Ticket"
                     value={value}
                     onChange={(e) => {
                         onChange(e.target.value.toUpperCase());

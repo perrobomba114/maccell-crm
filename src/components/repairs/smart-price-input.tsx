@@ -100,6 +100,8 @@ export function SmartPriceInput({ value, onChange, error }: SmartPriceInputProps
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">$</span>
             <Input
                 id="estimated-price"
+                name="estimated-price"
+                aria-label="Precio estimado de reparación"
                 type="text"
                 value={inputValue}
                 onChange={handleInputChange}

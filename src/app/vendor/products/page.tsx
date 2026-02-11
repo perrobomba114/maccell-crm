@@ -6,11 +6,10 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, AlertTriangle, CheckCircle2 } from "lucide-react";
 
-export default async function VendorProductsPage({
-    searchParams,
-}: {
-    searchParams: { [key: string]: string | string[] | undefined };
+export default async function VendorProductsPage(props: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
+    const searchParams = await props.searchParams;
     const user = await getCurrentUser();
 
     if (!user) {

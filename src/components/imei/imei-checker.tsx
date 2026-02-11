@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Search, CheckCircle, XCircle, AlertTriangle, ShieldCheck, Smartphone } from "lucide-react";
 import { checkImei } from "@/actions/imei-action";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
 interface ImeiData {
@@ -77,10 +78,14 @@ export function ImeiChecker() {
                 <CardContent>
                     <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
                         <div className="relative flex-1">
+                            <Label htmlFor="imei-input" className="sr-only">Número de IMEI</Label>
                             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                                 <Smartphone className="h-4 w-4 text-muted-foreground" />
                             </div>
                             <Input
+                                id="imei-input"
+                                name="imei-number"
+                                aria-label="Número de IMEI"
                                 placeholder="Ingrese el número IMEI (15 dígitos)"
                                 value={imei}
                                 onChange={(e) => {

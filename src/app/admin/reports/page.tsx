@@ -21,7 +21,7 @@ export default async function InventoryReportPage() {
 
             <Suspense fallback={<div>Generando reporte...</div>}>
                 <InventoryReportClient
-                    products={products || []}
+                    products={(products as any) || []}
                     branches={branches || []}
                 />
             </Suspense>

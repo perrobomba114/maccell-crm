@@ -8,25 +8,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Receipt, Banknote, Calendar } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
-export default async function VendorExpensesPage({
-    searchParams
-}: {
-    searchParams: { date?: string; page?: string; view?: string }
+export default async function VendorExpensesPage(props: {
+    searchParams: Promise<{ date?: string; page?: string; view?: string }>
 }) {
+    const searchParams = await props.searchParams;
     const user = await getUserData();
     if (!user) redirect("/");
 
     // Default to Today if no date AND not explicitly viewing all
     // Vendors should primarily see their daily activity
     const isViewAll = searchParams.view === "all";
-    if (!searchParams.date && !isViewAll) {
-        const today = new Date().toISOString().split('T')[0];
-        redirect(`/vendor/expenses?date=${today}`);
-    }
 
-    const date = isViewAll ? undefined : (searchParams.date || undefined);
+    // If no date provided and not viewing all, use today's date for the query
+    // BUT DO NOT REDIRECT. This allows the page to load immediately.
+    const date = isViewAll
+        ? undefined
+        : (searchParams.date || new Date().toISOString().split('T')[0]);
+
     const page = parseInt(searchParams.page || "1");
 
     // Fetch expenses filtered by the current user's ID

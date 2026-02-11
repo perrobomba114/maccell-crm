@@ -83,7 +83,11 @@ export function WarrantySection({
                         </PopoverTrigger>
                         <PopoverContent className="w-[350px] p-0" align="start">
                             <Command shouldFilter={false}>
+                                <Label htmlFor="warranty-original-search" className="sr-only">Buscar reparación original</Label>
                                 <CommandInput
+                                    id="warranty-original-search"
+                                    name="warranty-original-search"
+                                    aria-label="Buscar por ticket o cliente"
                                     placeholder="Buscar ticket/cliente..."
                                     value={searchTerm}
                                     onValueChange={handleSearch}

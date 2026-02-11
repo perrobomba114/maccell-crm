@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { BranchFilter } from "@/components/admin/statistics/BranchFilter";
+import { BranchFilter } from "@/components/admin/shared/BranchFilter";
 import { KPIStats } from "@/components/admin/statistics/KPIStats";
 // Will create these next
 import { DashboardCharts } from "./DashboardCharts";

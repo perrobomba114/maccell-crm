@@ -38,9 +38,10 @@ export function DeviceDetails({
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Marca</Label>
+                    <Label htmlFor="device-brand" className="after:content-['*'] after:ml-0.5 after:text-red-500">Marca</Label>
                     <Input
                         id="device-brand"
+                        name="device-brand"
                         value={brand} onChange={(e) => onBrandChange(handleCapitalize(e.target.value))}
                         placeholder="Samsung"
                         className={cn(errors?.brand && "border-red-500")}
@@ -48,9 +49,10 @@ export function DeviceDetails({
                     {errors?.brand && <p className="text-xs text-red-500">{errors.brand}</p>}
                 </div>
                 <div className="space-y-2">
-                    <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Modelo</Label>
+                    <Label htmlFor="device-model" className="after:content-['*'] after:ml-0.5 after:text-red-500">Modelo</Label>
                     <Input
                         id="device-model"
+                        name="device-model"
                         value={model} onChange={(e) => onModelChange(e.target.value)}
                         placeholder="S21, iPhone 13..."
                         className={cn(errors?.model && "border-red-500")}
@@ -60,9 +62,10 @@ export function DeviceDetails({
             </div>
 
             <div className="space-y-2">
-                <Label className="after:content-['*'] after:ml-0.5 after:text-red-500">Problema / Falla</Label>
+                <Label htmlFor="device-problem" className="after:content-['*'] after:ml-0.5 after:text-red-500">Problema / Falla</Label>
                 <Textarea
                     id="device-problem"
+                    name="device-problem"
                     value={problem} onChange={(e) => onProblemChange(handleCapitalize(e.target.value))}
                     placeholder="Describe el problema..."
                     rows={3}

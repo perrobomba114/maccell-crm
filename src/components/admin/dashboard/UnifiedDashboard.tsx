@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { BranchFilter } from "@/components/admin/dashboard/BranchFilter";
+import { BranchFilter } from "@/components/admin/shared/BranchFilter";
 import { SmartInsights } from "@/components/admin/dashboard/SmartInsights";
 import { DashboardHeader } from "@/components/admin/dashboard/DashboardHeader";
 import { FinancialStats } from "@/components/admin/dashboard/FinancialStats";

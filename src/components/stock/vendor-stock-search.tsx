@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Search, Loader2 } from "lucide-react";
 // Removed unused import
 // import { useDebouncedCallback } from "use-debounce";
@@ -38,8 +39,12 @@ export function VendorStockSearch() {
 
     return (
         <div className="relative">
+            <Label htmlFor="stock-search-input" className="sr-only">Buscar en stock</Label>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+                id="stock-search-input"
+                name="stock-search"
+                aria-label="Buscar por SKU, Nombre, Marca o Categoría"
                 placeholder="Buscar por SKU, Nombre, Marca o Categoría..."
                 onChange={(e) => {
                     setInputValue(e.target.value);

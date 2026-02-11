@@ -22,6 +22,7 @@ export async function getSales(filters?: {
     startDate?: Date;
     endDate?: Date;
     term?: string;
+    paymentMethod?: string;
 }) {
     const user = await getCurrentUser();
     if (!user || user.role !== "VENDOR" || !user.branch) {
@@ -45,6 +46,18 @@ export async function getSales(filters?: {
                 contains: filters.term,
                 mode: "insensitive",
             };
+        }
+
+        if (filters?.paymentMethod && filters.paymentMethod !== "ALL") {
+            // Handle "MIXED" or specific methods if needed, but for now exact match or logic
+            if (filters.paymentMethod === "MIXTO") {
+                // Logic for mixed? Usually implicit if multiple payments. 
+                // For now let's assume strict paymentMethod column check or ignore if complex.
+                // The schema seems to store "paymentMethod" string on Sale.
+                where.paymentMethod = "MIXTO";
+            } else {
+                where.paymentMethod = filters.paymentMethod;
+            }
         }
 
         console.log("Fetching sales with where:", JSON.stringify(where, null, 2));

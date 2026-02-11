@@ -66,7 +66,7 @@ export default async function ProductsPage({
 
             <Suspense fallback={<div>Cargando productos...</div>}>
                 <ProductsClient
-                    initialProducts={products || []}
+                    initialProducts={(products as any) || []}
                     categories={categories || []}
                     branches={branches || []}
                     totalPages={totalPages || 1}

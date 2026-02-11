@@ -12,25 +12,23 @@ interface VendorChartsProps {
 
 export function SalesWeekChart({ data }: { data: { name: string; total: number }[] }) {
     const [isMounted, setIsMounted] = useState(false);
-    const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
         setIsMounted(true);
-        const timer = setTimeout(() => setIsReady(true), 500);
-        return () => clearTimeout(timer);
     }, []);
 
-    if (!isMounted || !isReady) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-[435px] animate-pulse" />;
+    if (!isMounted) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-[435px] animate-pulse bg-zinc-900/50" />;
+
     return (
-        <Card className="col-span-4 lg:col-span-2 border-none shadow-md">
+        <Card className="col-span-4 lg:col-span-2 border-none shadow-md bg-[#18181b] border-zinc-800">
             <CardHeader>
-                <CardTitle className="text-xl">Ventas de la Semana</CardTitle>
-                <CardDescription>Rendimiento últimos 7 días</CardDescription>
+                <CardTitle className="text-xl text-white">Ventas de la Semana</CardTitle>
+                <CardDescription className="text-zinc-500">Rendimiento últimos 7 días</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="h-[300px]">
-                    <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" debounce={50}>
-                        <BarChart data={data}>
+                <div className="overflow-x-auto pb-2">
+                    <div style={{ minWidth: '600px' }}>
+                        <BarChart width={600} height={300} data={data}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} stroke="currentColor" />
                             <XAxis
                                 dataKey="name"
@@ -62,7 +60,7 @@ export function SalesWeekChart({ data }: { data: { name: string; total: number }
                             />
                             <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} name="Total" />
                         </BarChart>
-                    </ResponsiveContainer>
+                    </div>
                 </div>
             </CardContent>
         </Card>

@@ -89,7 +89,11 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
                     </PopoverTrigger>
                     <PopoverContent className="w-[calc(100vw-3rem)] sm:w-[500px] p-0" align="start">
                         <Command shouldFilter={false}>
+                            <Label htmlFor="spare-part-search" className="sr-only">Buscar repuesto</Label>
                             <CommandInput
+                                id="spare-part-search"
+                                name="spare-part-search"
+                                aria-label="Buscar por nombre o SKU"
                                 placeholder="Buscar por nombre o SKU..."
                                 onValueChange={handleSearch}
                             />

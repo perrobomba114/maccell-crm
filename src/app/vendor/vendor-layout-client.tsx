@@ -75,11 +75,11 @@ export function VendorLayoutClient({
                 const workload = await getTechniciansWorkload(user.branch?.id);
                 setTechniciansWorkload(workload);
 
-                // Poll every 10 seconds
+                // Poll every 30 seconds
                 intervalId = setInterval(async () => {
                     const updatedWorkload = await getTechniciansWorkload(user.branch?.id);
                     setTechniciansWorkload(updatedWorkload);
-                }, 10000);
+                }, 30000);
             }
         };
 

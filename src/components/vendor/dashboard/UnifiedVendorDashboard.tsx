@@ -213,16 +213,14 @@ export function UnifiedVendorDashboard({ stats, user }: UnifiedVendorDashboardPr
             </div>
 
             {/* 3. Main Business Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8 items-start">
                 {/* Column 1 & 2: Sales Chart */}
-                <div className="xl:col-span-2">
-                    {/* Make sure SalesWeekChart fits this container, it usually wants full width */}
-                    <SalesWeekChart data={stats.salesLast7Days} />
+                <div className="xl:col-span-2 min-h-[400px]">
+                    <SalesWeekChart data={stats.salesLast7Days || []} />
                 </div>
 
                 {/* Column 3: Best Sellers (Pie) */}
-                <div className="xl:col-span-1 h-full min-h-[400px]">
-                    {/* Pie Chart Component */}
+                <div className="xl:col-span-1 min-h-[400px]">
                     <BestSellersChart data={pieData} />
                 </div>
             </div>
