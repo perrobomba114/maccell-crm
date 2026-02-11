@@ -117,17 +117,54 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
     }, [onResult]);
 
     return (
-        <div className="flex flex-col items-center gap-4 p-4 text-center">
-            <h3 className="font-semibold text-lg">Escanear Código de Barras</h3>
-            <p className="text-sm text-muted-foreground">Apunte la cámara al código del repuesto.</p>
+        <div className="flex flex-col items-center gap-6 p-6 text-center bg-slate-950 border-2 border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative">
+            <div className="absolute top-0 inset-x-0 h-1 bg-blue-600 animate-pulse z-20" />
 
-            <div id="reader" className="w-[300px] h-[300px] bg-black rounded-lg overflow-hidden relative">
-                {!isScanning && !error && <div className="absolute inset-0 flex items-center justify-center text-white"><Loader2 className="animate-spin h-8 w-8" /></div>}
+            <div className="space-y-1.5 pt-2">
+                <h3 className="font-black text-xl text-white uppercase italic tracking-tighter">Escanear Repuesto</h3>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Apunte al código de barras</p>
             </div>
 
-            {error && <p className="text-destructive text-sm font-medium">{error}</p>}
+            <div className="relative w-full max-w-[340px] sm:max-w-md aspect-square rounded-2xl overflow-hidden border-2 border-slate-800 bg-black group transition-all hover:border-blue-500/50">
+                <div id="reader" className="w-full h-full" />
 
-            <Button variant="secondary" onClick={onClose} className="w-full">
+                {/* Visual Guide Overlay */}
+                <div className="absolute inset-0 pointer-events-none z-10 flex flex-col items-center justify-center">
+                    {/* Scanner Lines */}
+                    <div className="w-[80%] h-[20%] border-2 border-blue-500/30 rounded-lg relative overflow-hidden">
+                        <div className="absolute top-0 inset-x-0 h-[2px] bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-[scan_2s_linear_infinite]" />
+                    </div>
+                </div>
+
+                {!isScanning && !error && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm z-20">
+                        <Loader2 className="animate-spin h-10 w-10 text-blue-500 mb-2" />
+                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Iniciando Cámara...</span>
+                    </div>
+                )}
+            </div>
+
+            <style jsx global>{`
+                @keyframes scan {
+                    0% { transform: translateY(0); }
+                    100% { transform: translateY(15vh); }
+                }
+                #reader video {
+                    object-fit: cover !important;
+                }
+            `}</style>
+
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl">
+                    <p className="text-red-400 text-xs font-black uppercase tracking-widest leading-relaxed">{error}</p>
+                </div>
+            )}
+
+            <Button
+                variant="outline"
+                onClick={onClose}
+                className="w-full h-12 border-2 border-slate-800 hover:bg-slate-900 text-slate-400 font-black uppercase tracking-widest rounded-2xl text-[11px] transition-all"
+            >
                 Cancelar
             </Button>
         </div>

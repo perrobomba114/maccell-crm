@@ -24,17 +24,17 @@ export function RepairTimer({ startedAt, estimatedMinutes, statusId, onAdd }: Re
     const [isOverdue, setIsOverdue] = useState(false);
 
     useEffect(() => {
-        if (!startedAt || !estimatedMinutes) {
-            setTimeLeft(estimatedMinutes ? `${estimatedMinutes} min` : "-");
-            return;
-        }
+        const updateText = () => {
+            if (!startedAt || !estimatedMinutes) {
+                setTimeLeft(estimatedMinutes ? `${estimatedMinutes} min` : "-");
+                return;
+            }
 
-        if (statusId !== 3) {
-            setTimeLeft(`${estimatedMinutes} min`);
-            return;
-        }
+            if (statusId !== 3) { // 3 is "In Process"
+                setTimeLeft(`${estimatedMinutes} min`);
+                return;
+            }
 
-        const calculateTime = () => {
             const start = new Date(startedAt).getTime();
             const durationMs = estimatedMinutes * 60 * 1000;
             const end = start + durationMs;
@@ -54,10 +54,12 @@ export function RepairTimer({ startedAt, estimatedMinutes, statusId, onAdd }: Re
             setIsOverdue(false);
         };
 
-        calculateTime();
-        const interval = setInterval(calculateTime, 1000);
+        updateText();
+        const interval = statusId === 3 ? setInterval(updateText, 1000) : null;
 
-        return () => clearInterval(interval);
+        return () => {
+            if (interval) clearInterval(interval);
+        };
     }, [startedAt, estimatedMinutes, statusId]);
 
     if (isOverdue && onAdd) {
@@ -75,9 +77,9 @@ export function RepairTimer({ startedAt, estimatedMinutes, statusId, onAdd }: Re
     }
 
     return (
-        <div className={`flex items-center justify-center font-bold text-lg ${isOverdue ? "text-red-500" : "text-yellow-600 dark:text-yellow-400"}`}>
-            <Clock className="w-5 h-5 mr-2" />
-            <span>{timeLeft}</span>
+        <div className={`flex items-center justify-center h-7 font-bold text-sm ${isOverdue ? "text-red-500" : "text-yellow-600 dark:text-yellow-400"}`}>
+            <Clock className="w-4 h-4 mr-1.5" />
+            <span className="tabular-nums">{timeLeft}</span>
         </div>
     );
 }

@@ -10,6 +10,19 @@ const execAsync = util.promisify(exec);
 
 const BACKUP_DIR = path.join(process.cwd(), "backups");
 
+function resolveBinaryPath(binary: string): string {
+    const commonPaths = [
+        `/Applications/Postgres.app/Contents/Versions/latest/bin/${binary}`,
+        `/opt/homebrew/bin/${binary}`,
+        `/usr/local/bin/${binary}`,
+    ];
+
+    for (const p of commonPaths) {
+        if (fs.existsSync(p)) return p;
+    }
+    return binary; // fallback to system path
+}
+
 function ensureBackupDir() {
     if (!fs.existsSync(BACKUP_DIR)) {
         try {
@@ -62,7 +75,8 @@ export async function createBackup(): Promise<{ success: boolean; filename?: str
         url.search = "";
         const cleanDbUrl = url.toString();
 
-        const command = `pg_dump "${cleanDbUrl}" --clean --if-exists --no-owner --no-acl -f "${filepath}"`;
+        const pgDumpPath = resolveBinaryPath("pg_dump");
+        const command = `"${pgDumpPath}" "${cleanDbUrl}" --clean --if-exists --no-owner --no-acl -f "${filepath}"`;
 
         await execAsync(command);
 
@@ -88,7 +102,8 @@ export async function restoreBackup(filename: string): Promise<{ success: boolea
         url.search = "";
         const cleanDbUrl = url.toString();
 
-        const command = `psql "${cleanDbUrl}" < "${filepath}"`;
+        const psqlPath = resolveBinaryPath("psql");
+        const command = `"${psqlPath}" "${cleanDbUrl}" < "${filepath}"`;
 
         await execAsync(command);
 

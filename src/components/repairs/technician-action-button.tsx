@@ -27,12 +27,12 @@ export function TechnicianActionButton({ repair, currentUserId }: TechnicianActi
         return (
             <>
                 <Button
-                    size="sm"
+                    size="xs"
                     onClick={() => setShowAssignModal(true)}
-                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
+                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold w-[85px] justify-center px-2"
                 >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Reactivar
+                    <RotateCcw className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Reactivar</span>
                 </Button>
                 <AssignmentModal
                     repair={repair}
@@ -49,12 +49,12 @@ export function TechnicianActionButton({ repair, currentUserId }: TechnicianActi
         return (
             <>
                 <Button
-                    size="sm"
+                    size="xs"
                     onClick={() => setShowAssignModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold w-[85px] justify-center px-2"
                 >
-                    <Clock className="mr-2 h-4 w-4" />
-                    Asignarme
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Asignarme</span>
                 </Button>
                 <AssignmentModal
                     repair={repair}
@@ -72,13 +72,13 @@ export function TechnicianActionButton({ repair, currentUserId }: TechnicianActi
         return (
             <>
                 <Button
-                    size="sm"
+                    size="xs"
                     onClick={() => setShowStartModal(true)}
                     disabled={isLoading}
-                    className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold"
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold w-[85px] justify-center px-2"
                 >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                    Iniciar
+                    {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /> : <Play className="h-3.5 w-3.5 shrink-0" />}
+                    <span className="truncate">Iniciar</span>
                 </Button>
                 <StartRepairModal
                     repair={repair}
@@ -95,12 +95,12 @@ export function TechnicianActionButton({ repair, currentUserId }: TechnicianActi
         return (
             <>
                 <Button
-                    size="sm"
+                    size="xs"
                     onClick={() => setShowFinishModal(true)}
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold"
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold w-[85px] justify-center px-2"
                 >
-                    <CheckSquare className="mr-2 h-4 w-4" />
-                    Terminar
+                    <CheckSquare className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Terminar</span>
                 </Button>
                 <FinishRepairModal
                     repair={repair}

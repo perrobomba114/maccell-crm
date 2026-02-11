@@ -22,16 +22,16 @@ interface RepairDetailsDialogProps {
 }
 
 const statusColorMap: Record<string, string> = {
-    blue: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
-    indigo: "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800",
-    yellow: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800",
-    gray: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/50 dark:text-gray-300 dark:border-gray-700",
-    green: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
-    red: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
-    purple: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
-    orange: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
-    amber: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
-    slate: "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700",
+    blue: "bg-blue-600 text-white border-blue-700",
+    indigo: "bg-indigo-600 text-white border-indigo-700",
+    yellow: "bg-amber-500 text-white border-amber-600",
+    gray: "bg-slate-600 text-white border-slate-700",
+    green: "bg-green-600 text-white border-green-700",
+    red: "bg-red-600 text-white border-red-700",
+    purple: "bg-purple-600 text-white border-purple-700",
+    orange: "bg-orange-600 text-white border-orange-700",
+    amber: "bg-amber-600 text-white border-amber-700",
+    slate: "bg-slate-800 text-white border-slate-900",
 };
 
 function RepairImage({ url, index, onClick }: { url: string; index: number; onClick: () => void }) {
@@ -112,21 +112,22 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
                 <DialogContent className="sm:max-w-4xl p-0 overflow-hidden flex flex-col h-[95dvh] sm:h-auto">
-                    {/* Header Sticky */}
-                    <DialogHeader className="p-4 sm:p-6 border-b bg-background shrink-0">
-                        <div className="flex items-center justify-between gap-2 w-full">
-                            <div className="space-y-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <DialogTitle className={`text-lg sm:text-2xl font-bold tracking-tight truncate ${repair.isWet ? "text-blue-600 dark:text-blue-400 font-extrabold" : repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
+                    {/* Header with Solid Color Background */}
+                    <DialogHeader className={`p-5 sm:p-7 border-b shrink-0 relative overflow-hidden ${repair.isWet ? "bg-blue-600" : "bg-slate-900"}`}>
+                        <div className="absolute inset-0 bg-grid-white/[0.05] pointer-events-none" />
+                        <div className="flex items-center justify-between gap-4 w-full relative z-10">
+                            <div className="space-y-1.5 min-w-0">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <DialogTitle className="text-xl sm:text-3xl font-black tracking-tighter text-white uppercase italic">
                                         Ticket #{repair.ticketNumber}
                                     </DialogTitle>
-                                    <Badge variant="secondary" className={`font-semibold border rounded-full px-2 py-0 sm:px-3 sm:py-0.5 text-[10px] sm:text-xs ${colorClass}`}>
+                                    <Badge className={`font-black border-2 rounded-md px-3 py-1 shadow-lg uppercase text-[10px] sm:text-xs ${colorClass}`}>
                                         {repair.status.name}
                                     </Badge>
                                 </div>
                                 {repair.branch && (
-                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-white/70 font-bold uppercase tracking-widest">
+                                        <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse shadow-[0_0_8px_rgba(96,165,250,0.8)]" />
                                         <span className="truncate">{repair.branch.name}</span>
                                     </div>
                                 )}
@@ -138,47 +139,44 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                     <div className="flex-1 overflow-y-auto bg-muted/5 dark:bg-muted/10">
                         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
 
-                            {/* Top Stats Row */}
+                            {/* Top Stats Row - Vibrant Centered Cards */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                                <div className="bg-card p-3 sm:p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
-                                    <div className="flex items-center gap-2 text-muted-foreground mb-1 sm:mb-2">
-                                        <Calendar className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-semibold uppercase tracking-wider">Ingreso</span>
+                                <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl shadow-xl flex flex-col items-center justify-center text-center group hover:border-blue-500 transition-all">
+                                    <div className="flex items-center gap-2 text-blue-400 mb-2">
+                                        <Calendar className="w-4 h-4" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Ingreso</span>
                                     </div>
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs sm:text-sm font-medium">{format(new Date(repair.createdAt), "dd/MM/yy", { locale: es })}</p>
-                                        <p className="text-[10px] sm:text-xs text-muted-foreground">{format(new Date(repair.createdAt), "HH:mm", { locale: es })} hs</p>
-                                    </div>
+                                    <p className="text-lg font-black text-white">{format(new Date(repair.createdAt), "dd/MM/yy", { locale: es })}</p>
+                                    <p className="text-[11px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{format(new Date(repair.createdAt), "HH:mm", { locale: es })} hs</p>
                                 </div>
 
-                                <div className="bg-card p-3 sm:p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
-                                    <div className="flex items-center gap-2 text-muted-foreground mb-1 sm:mb-2">
-                                        <Clock className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-semibold uppercase tracking-wider">Prometido</span>
+                                <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl shadow-xl flex flex-col items-center justify-center text-center group hover:border-amber-500 transition-all">
+                                    <div className="flex items-center gap-2 text-amber-400 mb-2">
+                                        <Clock className="w-4 h-4" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Prometido</span>
                                     </div>
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs sm:text-sm font-medium">{format(new Date(repair.promisedAt), "dd/MM/yy", { locale: es })}</p>
-                                        <p className="text-[10px] sm:text-xs text-muted-foreground">{format(new Date(repair.promisedAt), "HH:mm", { locale: es })} hs</p>
-                                    </div>
+                                    <p className="text-lg font-black text-white">{format(new Date(repair.promisedAt), "dd/MM/yy", { locale: es })}</p>
+                                    <p className="text-[11px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{format(new Date(repair.promisedAt), "HH:mm", { locale: es })} hs</p>
                                 </div>
 
-                                <div className="bg-card p-3 sm:p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
-                                    <div className="flex items-center gap-2 text-muted-foreground mb-1 sm:mb-2">
-                                        <User className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-semibold uppercase tracking-wider">Técnico</span>
+                                <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl shadow-xl flex flex-col items-center justify-center text-center group hover:border-purple-500 transition-all">
+                                    <div className="flex items-center gap-2 text-purple-400 mb-2">
+                                        <User className="w-4 h-4" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Técnico</span>
                                     </div>
-                                    <p className="text-xs sm:text-sm font-medium truncate">
-                                        {repair.assignedTo ? repair.assignedTo.name : "Sin asignar"}
+                                    <p className="text-sm font-black text-white uppercase italic leading-tight px-1">
+                                        {repair.assignedTo ? repair.assignedTo.name : "SIN ASIGNAR"}
                                     </p>
                                 </div>
 
-                                <div className="bg-card p-3 sm:p-4 rounded-xl border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-colors">
-                                    <div className="flex items-center gap-2 text-muted-foreground mb-1 sm:mb-2 text-primary font-bold">
-                                        <DollarSign className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-semibold uppercase tracking-wider">Presupuesto</span>
+                                <div className="bg-blue-600 border-2 border-blue-400 p-4 rounded-2xl shadow-[0_0_20px_rgba(37,99,235,0.4)] flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50" />
+                                    <div className="flex items-center gap-2 text-blue-100 mb-2 relative z-10">
+                                        <DollarSign className="w-5 h-5" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Presupuesto</span>
                                     </div>
-                                    <p className="text-base sm:text-lg font-bold text-primary">
-                                        {repair.estimatedPrice > 0 ? `$${repair.estimatedPrice.toLocaleString()}` : "A cotizar"}
+                                    <p className="text-2xl font-black text-white relative z-10 tracking-tighter italic">
+                                        {repair.estimatedPrice > 0 ? `$${repair.estimatedPrice.toLocaleString()}` : "A COTIZAR"}
                                     </p>
                                 </div>
                             </div>
@@ -188,41 +186,33 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
 
                                 {/* LEFT COLUMN: Context (Customer + Device) */}
                                 <div className="md:col-span-4 space-y-6">
-                                    {/* Customer Section */}
-                                    <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-                                        <div className="bg-muted/30 px-4 py-3 border-b flex items-center gap-2">
-                                            <User className="w-4 h-4 text-muted-foreground" />
-                                            <h3 className="font-semibold text-sm">Cliente</h3>
+                                    {/* Customer Section - Modern Centered */}
+                                    <div className="bg-slate-900 border-2 border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col items-center text-center group">
+                                        <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20">
+                                            <User className="w-5 h-5 text-blue-400" />
                                         </div>
-                                        <div className="p-4 space-y-3">
-                                            <div>
-                                                <p className="text-lg font-bold text-foreground">{repair.customer.name}</p>
-                                            </div>
-                                            <div className="space-y-2 text-sm">
-                                                <div className="flex items-center gap-2 text-muted-foreground">
-                                                    <Smartphone className="w-3.5 h-3.5" />
-                                                    <span>{repair.customer.phone || "Sin teléfono"}</span>
-                                                </div>
-                                                {repair.customer.email && (
-                                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                                        <FileText className="w-3.5 h-3.5" />
-                                                        <span className="truncate">{repair.customer.email}</span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1">Cliente</span>
+                                        <p className="text-2xl font-black text-white uppercase tracking-tight leading-none mb-3">
+                                            {repair.customer.name}
+                                        </p>
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
+                                            <Smartphone className="w-3.5 h-3.5 text-blue-400" />
+                                            <span className="text-sm font-bold text-slate-300">{repair.customer.phone || "Sin teléfono"}</span>
                                         </div>
                                     </div>
 
-                                    {/* Device Section */}
-                                    <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-                                        <div className="bg-muted/30 px-4 py-3 border-b flex items-center gap-2">
-                                            <Smartphone className="w-4 h-4 text-muted-foreground" />
-                                            <h3 className="font-semibold text-sm">Dispositivo</h3>
+                                    {/* Device Section - Modern Centered */}
+                                    <div className="bg-slate-900 border-2 border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col items-center text-center group">
+                                        <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20">
+                                            <Smartphone className="w-5 h-5 text-purple-400" />
                                         </div>
-                                        <div className="p-4">
-                                            <p className="text-lg font-bold mb-1">{repair.deviceBrand}</p>
-                                            <p className="text-md text-muted-foreground">{repair.deviceModel}</p>
-                                        </div>
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1">Dispositivo</span>
+                                        <p className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none">
+                                            {repair.deviceBrand}
+                                        </p>
+                                        <p className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none mt-2">
+                                            {repair.deviceModel}
+                                        </p>
                                     </div>
                                 </div>
 
@@ -234,41 +224,36 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
 
                                         {/* Problem */}
                                         <div className="space-y-2">
-                                            <h3 className="text-sm font-semibold text-muted-foreground pl-1">PROBLEMA REPORTADO</h3>
-                                            <div className="bg-card p-4 rounded-xl border shadow-sm">
-                                                <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
-                                                    {repair.problemDescription}
+                                            <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">PROBLEMA REPORTADO</h3>
+                                            <div className="bg-slate-900/80 border-2 border-slate-800 p-5 rounded-2xl shadow-inner">
+                                                <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap text-white/90 italic">
+                                                    "{repair.problemDescription}"
                                                 </p>
                                             </div>
                                         </div>
 
 
-                                        {/* Diagnosis (Highlighted) */}
+                                        {/* Diagnosis (Vibrant Container) */}
                                         <div className="space-y-2">
-                                            <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400 pl-1 flex items-center gap-2">
+                                            <h3 className="text-[11px] font-black text-blue-400 uppercase tracking-[0.3em] pl-1 flex items-center gap-2">
                                                 DIAGNÓSTICO TÉCNICO
-                                                {repair.diagnosis ? <Clock className="w-3 h-3" /> : null}
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                                             </h3>
                                             <div className={`
-                                                p-5 rounded-xl border shadow-sm relative overflow-hidden
+                                                p-6 rounded-2xl border-2 shadow-2xl relative overflow-hidden
                                                 ${repair.diagnosis
-                                                    ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900"
-                                                    : "bg-muted/30 border-dashed border-muted-foreground/30"
+                                                    ? "bg-blue-600/10 border-blue-500/50"
+                                                    : "bg-slate-900/50 border-dashed border-slate-800"
                                                 }
                                             `}>
                                                 {repair.diagnosis ? (
-                                                    <div className="relative z-10">
-                                                        <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground font-medium">
-                                                            {repair.diagnosis}
-                                                        </p>
-                                                    </div>
+                                                    <p className="text-base font-black leading-relaxed whitespace-pre-wrap text-white">
+                                                        {repair.diagnosis}
+                                                    </p>
                                                 ) : (
-                                                    <div className="flex flex-col items-center justify-center py-6 text-center">
-                                                        <div className="rounded-full bg-muted p-3 mb-2">
-                                                            <Clock className="w-5 h-5 text-muted-foreground" />
-                                                        </div>
-                                                        <p className="text-sm font-medium text-muted-foreground">Sin diagnóstico registrado</p>
-                                                        <p className="text-xs text-muted-foreground/70 mt-1">El técnico aún no ha cargado observaciones.</p>
+                                                    <div className="flex flex-col items-center justify-center py-4 text-center">
+                                                        <Clock className="w-8 h-8 text-slate-700 mb-3" />
+                                                        <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Esperando reporte...</p>
                                                     </div>
                                                 )}
                                             </div>

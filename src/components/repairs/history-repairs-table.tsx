@@ -14,6 +14,7 @@ import { RepairDetailsDialog } from "@/components/repairs/repair-details-dialog"
 import { getRepairByIdAction } from "@/lib/actions/repairs";
 import { toast } from "sonner";
 import { printRepairTicket, printWarrantyTicket, printWetReport } from "@/lib/print-utils";
+import { cn } from "@/lib/utils";
 
 interface HistoryRepairsTableProps {
     repairs: any[];
@@ -22,16 +23,16 @@ interface HistoryRepairsTableProps {
 }
 
 const statusColorMap: Record<string, string> = {
-    blue: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
-    indigo: "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800",
-    yellow: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800",
-    gray: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/50 dark:text-gray-300 dark:border-gray-700",
-    green: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
-    red: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
-    purple: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
-    orange: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
-    amber: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
-    slate: "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700",
+    blue: "bg-blue-600 text-white border-blue-400 shadow-[0_0_10px_rgba(37,99,235,0.4)]",
+    indigo: "bg-indigo-600 text-white border-indigo-400 shadow-[0_0_10px_rgba(79,70,229,0.4)]",
+    yellow: "bg-amber-500 text-white border-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.4)]",
+    gray: "bg-slate-600 text-white border-slate-400 shadow-[0_0_10px_rgba(71,85,105,0.4)]",
+    green: "bg-emerald-600 text-white border-emerald-400 shadow-[0_0_10px_rgba(5,150,105,0.4)]",
+    red: "bg-red-600 text-white border-red-400 shadow-[0_0_10px_rgba(220,38,38,0.4)]",
+    purple: "bg-purple-600 text-white border-purple-400 shadow-[0_0_10px_rgba(147,51,234,0.4)]",
+    orange: "bg-orange-600 text-white border-orange-400 shadow-[0_0_10px_rgba(234,88,12,0.4)]",
+    amber: "bg-amber-600 text-white border-amber-400 shadow-[0_0_10_rgba(217,119,6,0.4)]",
+    slate: "bg-slate-800 text-white border-slate-600",
 };
 
 export function HistoryRepairsTable({ repairs, currentPage, totalPages }: HistoryRepairsTableProps) {
@@ -117,10 +118,12 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Buscar por ticket, cliente, dispositivo..."
-                        className="pl-9"
+                        placeholder="Buscar por ticket, cliente, dispositivo…"
+                        className="pl-9 bg-slate-900/50 border-slate-800 focus:ring-2 focus:ring-blue-500/50 transition-[border-color,box-shadow] duration-200"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
+                        autoComplete="off"
+                        spellCheck={false}
                     />
                 </div>
             </div>
@@ -128,26 +131,26 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
             {(!repairs || repairs.length === 0) ? (
                 <div className="text-center p-12 border rounded-lg bg-muted/10">
                     <History className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-                    <h3 className="text-lg font-semibold text-muted-foreground">
-                        {searchTerm ? "No se encontraron resultados" : "Sin historial"}
+                    <h3 className="text-lg font-black text-slate-400 uppercase tracking-widest italic">
+                        {searchTerm ? "Sin resultados" : "Historial Vacío"}
                     </h3>
-                    <p className="text-sm text-muted-foreground">
-                        {searchTerm ? "Intenta con otro término de búsqueda." : "No tienes reparaciones finalizadas aún."}
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-2">
+                        {searchTerm ? "Intenta con otro término de búsqueda…" : "No hay reparaciones finalizadas todavía…"}
                     </p>
                 </div>
             ) : (
-                <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
+                <div className="border-2 border-slate-800/60 rounded-[2rem] overflow-hidden bg-slate-950/40 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                     <Table>
-                        <TableHeader className="bg-muted/50">
-                            <TableRow>
-                                <TableHead className="text-center w-[100px]">Ticket</TableHead>
-                                <TableHead className="text-center w-[140px]">Finalizado</TableHead>
-                                <TableHead className="text-center w-[120px]">Duración</TableHead>
-                                <TableHead className="text-center">Cliente</TableHead>
-                                <TableHead className="text-center">Dispositivo</TableHead>
-                                <TableHead className="text-center w-[100px]">Precio</TableHead>
-                                <TableHead className="text-center w-[140px]">Estado</TableHead>
-                                <TableHead className="text-center w-[100px]">Acciones</TableHead>
+                        <TableHeader className="bg-slate-900/80 border-b border-slate-800">
+                            <TableRow className="hover:bg-transparent border-none">
+                                <TableHead className="text-center w-[130px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Protocolo</TableHead>
+                                <TableHead className="text-center w-[140px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Sincronización</TableHead>
+                                <TableHead className="text-center w-[120px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Ciclo</TableHead>
+                                <TableHead className="text-center text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Cliente</TableHead>
+                                <TableHead className="text-center w-[120px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Contacto</TableHead>
+                                <TableHead className="text-center text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Unidad Hardware</TableHead>
+                                <TableHead className="text-center w-[140px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Estado Global</TableHead>
+                                <TableHead className="text-center w-[100px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -170,65 +173,109 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
                                 }
 
                                 return (
-                                    <TableRow key={repair.id} className="hover:bg-muted/5">
-                                        <TableCell className={`text-center font-bold font-mono text-lg ${repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
-                                            {repair.ticketNumber}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex flex-col items-center">
-                                                <span className="text-sm font-medium">
-                                                    {repair.updatedAt ? format(new Date(repair.updatedAt), "dd/MM/yyyy", { locale: es }) : "-"}
+                                    <TableRow key={repair.id} className="hover:bg-white/[0.02] border-b border-white/[0.03] group transition-[background-color] duration-300">
+                                        <TableCell className="text-center py-5">
+                                            <div className={cn(
+                                                "inline-flex flex-col items-center justify-center min-w-[95px] p-2.5 rounded-2xl border-2 transition-[transform,box-shadow,background-color] duration-300 group-hover:scale-105 tabular-nums",
+                                                repair.isWet ? "bg-blue-600/10 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]" :
+                                                    repair.isWarranty ? "bg-amber-600/10 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]" :
+                                                        "bg-slate-900 border-slate-800 shadow-xl"
+                                            )}>
+                                                <span className={cn(
+                                                    "text-[9px] font-black tracking-[0.2em] leading-none mb-1.5 uppercase",
+                                                    repair.isWet ? "text-blue-400" : repair.isWarranty ? "text-amber-500" : "text-slate-500"
+                                                )}>
+                                                    {repair.ticketNumber.split("-")[0]}
                                                 </span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {repair.updatedAt ? format(new Date(repair.updatedAt), "HH:mm", { locale: es }) : ""}
+                                                <span className={cn(
+                                                    "text-base font-black font-mono leading-none tracking-tighter",
+                                                    repair.isWet ? "text-white" : repair.isWarranty ? "text-white" : "text-slate-100"
+                                                )}>
+                                                    {repair.ticketNumber.split("-").pop()}
                                                 </span>
                                             </div>
                                         </TableCell>
+
                                         <TableCell className="text-center">
-                                            <span className="font-bold text-lg text-yellow-600 dark:text-yellow-400">
-                                                {duration}
+                                            <div className="flex flex-col items-center tabular-nums">
+                                                <span className="text-sm font-black text-emerald-400 tracking-tight leading-none">
+                                                    {repair.updatedAt ? format(new Date(repair.updatedAt), "dd/MM/yy", { locale: es }) : "–"}
+                                                </span>
+                                                <div className="flex items-center gap-1.5 mt-2 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                                                    <span className="text-[9px] font-black text-emerald-500/80 uppercase tracking-widest">
+                                                        {repair.updatedAt ? format(new Date(repair.updatedAt), "HH:mm", { locale: es }) : ""} HS
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+
+                                        <TableCell className="text-center">
+                                            {(() => {
+                                                let dColor = "text-blue-400 bg-blue-500/10 border-blue-500/20";
+                                                if (duration.includes("h")) dColor = "text-purple-400 bg-purple-500/10 border-purple-500/20";
+                                                if (duration.includes("min") && parseInt(duration) < 30) dColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+
+                                                return (
+                                                    <div className={cn("inline-flex items-center justify-center px-4 py-1 rounded-full border border-white/5 font-black text-[11px] italic tracking-tight tabular-nums", dColor)}>
+                                                        {duration}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </TableCell>
+
+                                        <TableCell className="text-center">
+                                            <span className="font-black text-[13px] text-white uppercase tracking-tight leading-tight group-hover:text-blue-400 transition-colors duration-300">
+                                                {repair.customer.name}
                                             </span>
                                         </TableCell>
+
                                         <TableCell className="text-center">
-                                            <div className="flex flex-col items-center">
-                                                <span className="font-semibold text-sm">{repair.customer.name}</span>
+                                            <div className="inline-flex items-center justify-center bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-800/50 tabular-nums shadow-sm group-hover:border-blue-500/30 transition-colors duration-300">
+                                                <span className="text-sm font-black text-slate-300 uppercase tracking-tight">
+                                                    {repair.customer.phone || "———"}
+                                                </span>
                                             </div>
                                         </TableCell>
+
                                         <TableCell className="text-center">
-                                            <div className="flex flex-col items-center">
-                                                <span className="font-medium text-sm">{repair.deviceBrand} {repair.deviceModel}</span>
+                                            <div className="inline-flex flex-col items-center justify-center bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl shadow-lg group-hover:border-blue-500/30 transition-colors duration-300">
+                                                <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1.5 italic">
+                                                    {repair.deviceBrand}
+                                                </span>
+                                                <span className="text-[11px] font-black text-white uppercase tracking-tight leading-none">
+                                                    {repair.deviceModel}
+                                                </span>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-center font-bold text-base">
-                                            {repair.estimatedPrice ? `$${repair.estimatedPrice.toLocaleString()}` : "-"}
-                                        </TableCell>
+
                                         <TableCell className="text-center">
-                                            <Badge variant="outline" className={`font-bold border ${colorClass}`}>
+                                            <Badge className={`font-black rounded-lg px-3 py-1 text-[10px] uppercase tracking-wider border-2 ${colorClass}`}>
                                                 {repair.status.name}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <div className="flex items-center justify-center gap-1">
+                                            <div className="flex items-center justify-center gap-1.5 h-7">
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
+                                                    size="icon-xs"
                                                     onClick={() => handlePrint(repair)}
-                                                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                    className="text-slate-500 hover:text-white hover:bg-white/10 transition-[color,background-color] duration-200"
                                                     title="Imprimir Ticket"
                                                 >
-                                                    <Printer className="h-4 w-4" />
+                                                    <Printer className="h-3.5 w-3.5" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
+                                                    size="icon-xs"
                                                     onClick={() => handleViewDetails(repair.id)}
                                                     disabled={isPending && loadingId === repair.id}
+                                                    className="text-slate-500 hover:text-blue-400 hover:bg-white/10 transition-[color,background-color] duration-200"
                                                     title="Ver Detalles"
                                                 >
                                                     {isPending && loadingId === repair.id ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
                                                     ) : (
-                                                        <Eye className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                                        <Eye className="h-3.5 w-3.5" />
                                                     )}
                                                 </Button>
                                             </div>
@@ -239,37 +286,40 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
                         </TableBody>
                     </Table>
                 </div>
-            )}
+            )
+            }
 
             {/* Pagination Controls */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-end space-x-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage <= 1}
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="text-sm text-muted-foreground">
-                        Página {currentPage} de {totalPages}
+            {
+                totalPages > 1 && (
+                    <div className="flex items-center justify-end space-x-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage <= 1}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="text-sm text-muted-foreground">
+                            Página {currentPage} de {totalPages}
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage >= totalPages}
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
                     </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage >= totalPages}
-                    >
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
+                )
+            }
             <RepairDetailsDialog
                 isOpen={isDetailsOpen}
                 onClose={() => setIsDetailsOpen(false)}
                 repair={selectedRepair}
             />
-        </div>
+        </div >
     );
 }

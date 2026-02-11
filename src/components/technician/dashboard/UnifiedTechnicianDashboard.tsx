@@ -24,62 +24,41 @@ import { WeeklyOutputChart, MyStatusPieChart } from "./TechnicianCharts";
 // --- Standard Metrics Component ---
 function TechMetric({ title, value, icon: Icon, color, subtext, href }: any) {
     const strategies: any = {
-        violet: {
-            bg: "bg-gradient-to-br from-violet-600 to-fuchsia-600",
-            icon: "bg-white/20 text-white",
-            border: "border-violet-500/50"
-        },
-        blue: {
-            bg: "bg-gradient-to-br from-blue-600 to-cyan-500",
-            icon: "bg-white/20 text-white",
-            border: "border-blue-500/50"
-        },
-        emerald: {
-            bg: "bg-gradient-to-br from-emerald-500 to-teal-500",
-            icon: "bg-white/20 text-white",
-            border: "border-emerald-500/50"
-        },
-        orange: {
-            bg: "bg-gradient-to-br from-orange-500 to-red-500",
-            icon: "bg-white/20 text-white",
-            border: "border-orange-500/50"
-        },
+        violet: { bg: "bg-violet-600", text: "text-white", icon: "bg-violet-500", border: "border-violet-400" },
+        blue: { bg: "bg-blue-600", text: "text-white", icon: "bg-blue-500", border: "border-blue-400" },
+        emerald: { bg: "bg-emerald-600", text: "text-white", icon: "bg-emerald-500", border: "border-emerald-400" },
+        orange: { bg: "bg-orange-600", text: "text-white", icon: "bg-orange-500", border: "border-orange-400" },
     };
 
     const style = strategies[color] || strategies.blue;
 
     return (
         <Link href={href || "#"} className={cn(
-            "group relative p-6 rounded-3xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/50 flex flex-col justify-between overflow-hidden border",
+            "group relative p-6 rounded-2xl transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between overflow-hidden border-2 shadow-lg",
             style.bg,
             style.border
         )}>
-            {/* Glass Shine Effect */}
-            <div className="absolute top-0 left-0 w-full h-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-
-            {/* Floating Icon Background */}
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-all duration-500 transform group-hover:scale-110 group-hover:-rotate-12">
-                <Icon size={80} className="text-white" />
+            <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Icon size={120} />
             </div>
 
             <div className="relative z-10">
-                <div className="flex justify-between items-start mb-6">
-                    <div className={cn("p-3 rounded-2xl backdrop-blur-md shadow-lg", style.icon)}>
-                        <Icon size={24} />
+                <div className="flex justify-between items-start mb-4">
+                    <div className={cn("p-2 rounded-lg border border-white/20 shadow-inner", style.icon)}>
+                        <Icon size={20} className="text-white" />
                     </div>
                 </div>
                 <div>
-                    <h3 className="text-4xl font-black text-white tracking-tight mb-1 drop-shadow-sm">{value}</h3>
-                    <p className="text-white/80 text-sm font-semibold uppercase tracking-wider">{title}</p>
+                    <h3 className="text-3xl font-black text-white tracking-tighter mb-0.5 tabular-nums">{value}</h3>
+                    <p className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em]">{title}</p>
                 </div>
             </div>
 
             {subtext && (
-                <div className="mt-4 pt-3 border-t border-white/20">
-                    <div className="flex items-center gap-2">
+                <div className="mt-4 pt-3 border-t border-white/10">
+                    <div className="text-[10px] text-white/80 font-bold uppercase tracking-wider italic flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                        <p className="text-xs text-white/90 font-medium">{subtext}</p>
+                        {subtext}
                     </div>
                 </div>
             )}
@@ -89,46 +68,82 @@ function TechMetric({ title, value, icon: Icon, color, subtext, href }: any) {
 
 // --- List Items (Dense & Clean) ---
 function JobRow({ job, isActive }: { job: any, isActive?: boolean }) {
-    const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2);
-
-    return (
-        <div className={cn(
-            "flex items-center justify-between p-4 rounded-xl border transition-all group",
-            isActive
-                ? "bg-zinc-900/50 border-zinc-800 hover:bg-zinc-900 hover:border-violet-500/30"
-                : "bg-zinc-900/30 border-transparent hover:bg-zinc-900 hover:border-zinc-800"
-        )}>
-            <div className="flex items-center gap-4">
-                <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border",
-                    isActive ? "bg-violet-500/10 text-violet-400 border-violet-500/20" : "bg-zinc-800 text-zinc-500 border-zinc-700"
-                )}>
-                    {isActive ? <PlayCircle size={16} /> : <div className="text-[10px]">#{job.ticket}</div>}
+    if (isActive) {
+        return (
+            <Link href="/technician/repairs" className="group relative bg-[#09090b] border border-t-blue-500/50 border-x-zinc-800 border-b-zinc-800 rounded-[2rem] p-6 flex flex-col gap-6 overflow-hidden transition-all hover:border-blue-500/30 shadow-2xl hover:shadow-[0_10px_40px_rgba(37,99,235,0.15)]">
+                {/* Background Decor */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute top-4 right-4 text-zinc-900 opacity-50 pointer-events-none">
+                    <Smartphone size={140} strokeWidth={0.5} />
                 </div>
 
-                <div>
-                    <h4 className="font-bold text-zinc-200 text-sm group-hover:text-white transition-colors">
+                {/* Header: Status & Ticket */}
+                <div className="flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-2.5">
+                        <div className="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                        <span className="text-[11px] font-black text-blue-500 uppercase tracking-[0.2em] shadow-black drop-shadow-sm">En Proceso</span>
+                    </div>
+                    <div className="px-3 py-1 rounded-lg bg-zinc-900 border border-zinc-800 shadow-inner group-hover:border-blue-500/30 transition-colors">
+                        <span className="text-sm font-black font-mono text-white tracking-wider block tabular-nums text-right">{job.ticket}</span>
+                    </div>
+                </div>
+
+                {/* Main Info: Device */}
+                <div className="relative z-10 mt-2">
+                    <h4 className="text-3xl font-black text-white tracking-tighter leading-none mb-2 group-hover:text-blue-500 transition-colors duration-300 drop-shadow-md">
                         {job.device}
                     </h4>
-                    <div className="flex items-center gap-2 mt-0.5">
-                        <span className={cn(
-                            "text-[10px] px-1.5 py-0.5 rounded font-mono border",
-                            isActive ? "bg-violet-950 text-violet-400 border-violet-900" : "bg-zinc-950 text-zinc-500 border-zinc-800"
-                        )}>
-                            {isActive ? "En Progreso" : job.repairType}
-                        </span>
-                        <span className="text-xs text-zinc-500 truncate max-w-[120px]">{job.customer}</span>
+                    <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.15em]">{job.repairType || "Servicio Técnico"}</p>
+                </div>
+
+                {/* Details Grid */}
+                <div className="grid grid-cols-2 gap-4 relative z-10 mt-2">
+                    <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800 backdrop-blur-sm group-hover:border-zinc-700 transition-colors">
+                        <p className="text-[9px] font-bold text-zinc-500 uppercase mb-1 tracking-widest flex items-center gap-1.5">
+                            <User size={10} /> Cliente
+                        </p>
+                        <p className="text-xs font-black text-zinc-200 truncate">{job.customer}</p>
                     </div>
+                    <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800 backdrop-blur-sm group-hover:border-zinc-700 transition-colors">
+                        <p className="text-[9px] font-bold text-zinc-500 uppercase mb-1 tracking-widest flex items-center gap-1.5">
+                            <Clock size={10} /> Ingreso
+                        </p>
+                        <p className="text-xs font-black text-zinc-200 truncate">{new Date().toLocaleDateString()}</p>
+                    </div>
+                </div>
+
+                {/* Footer Action */}
+                <div className="mt-auto pt-4 flex justify-end relative z-10">
+                    <div className="h-12 pl-7 pr-6 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-3 transition-all cursor-pointer shadow-lg shadow-blue-900/20 group-hover:shadow-blue-600/40 group-hover:scale-[1.02]">
+                        <span className="text-[11px] font-black uppercase tracking-[0.15em]">Continuar</span>
+                        <ArrowRight size={18} strokeWidth={3} />
+                    </div>
+                </div>
+            </Link>
+        );
+    }
+
+    return (
+        <Link href="/technician/tickets" className="group block p-5 bg-zinc-900 border border-zinc-800 rounded-2xl hover:bg-zinc-800 hover:border-zinc-700 transition-all mb-3 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-20 h-full bg-gradient-to-l from-black/20 to-transparent pointer-events-none" />
+
+            <div className="flex justify-between items-start mb-3">
+                <div className="px-2.5 py-1 rounded-md bg-zinc-950 border border-zinc-800 text-zinc-400 font-mono text-xs font-black tracking-wider group-hover:text-white group-hover:border-blue-500/30 transition-colors">
+                    {job.ticket}
+                </div>
+                <div className="flex items-center gap-1 text-orange-500">
+                    <ArrowUpRight size={14} />
                 </div>
             </div>
 
-            <Link href={isActive ? "/technician/repairs" : "/technician/tickets"} className={cn(
-                "p-2 rounded-lg transition-colors",
-                isActive ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
-            )}>
-                {isActive ? <ArrowUpRight size={18} /> : <ArrowRight size={16} />}
-            </Link>
-        </div>
+            <div>
+                <h4 className="text-base font-black text-white leading-tight mb-1 group-hover:text-blue-400 transition-colors">{job.device}</h4>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-950/50 px-2 py-0.5 rounded">{job.customer}</span>
+                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider">{job.repairType || "Reparación"}</span>
+                </div>
+            </div>
+        </Link>
     );
 }
 
@@ -141,161 +156,143 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
     const weeklyData = stats.weeklyOutput || [];
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-zinc-50 font-sans p-6 lg:p-8 xl:p-10 selection:bg-violet-500/30">
+        <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans p-6 lg:p-10">
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-8 border-b border-zinc-900/50 pb-8">
-                <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-sm">
-                        <Wrench className="text-violet-500" size={24} />
+            <div className="flex items-center justify-between mb-10 pb-8 border-b border-zinc-900">
+                <div className="flex items-center gap-5">
+                    <div className="h-14 w-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-lg">
+                        <Wrench className="text-blue-500" size={28} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-white tracking-tight">Panel Técnico</h1>
-                        <p className="text-zinc-500 text-sm">Bienvenido, {user.name}.</p>
+                        <h1 className="text-3xl font-bold text-white tracking-tight">
+                            Dashboard <span className="text-blue-500 font-black">Técnico</span>
+                        </h1>
+                        <p className="text-xs font-medium text-zinc-500 uppercase tracking-widest mt-1">
+                            Sistema de Gestión • {user.name}
+                        </p>
                     </div>
                 </div>
-                <div className="hidden md:block text-xs font-mono text-zinc-600 bg-zinc-900 px-3 py-1 rounded-full">
-                    v2.1
+                <div className="hidden md:flex flex-col items-end">
+                    <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">v4.0.5 PROFESSIONAL</div>
+                    <div className="mt-2 flex items-center gap-2 px-3 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-full">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Sincronizado</span>
+                    </div>
                 </div>
             </div>
 
-            {/* Stagnation Radar - Conditional Alert */}
+            {/* Stagnation Radar - Serious Alert */}
             {stats.stagnatedRepairs && stats.stagnatedRepairs.length > 0 && (
-                <div className="mb-8 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 animate-in fade-in slide-in-from-top-4">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 bg-red-500/20 rounded-lg text-red-500 animate-pulse">
-                            <AlertTriangle size={20} />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-red-400">Radar de Demoras</h3>
-                            <p className="text-xs text-red-300">Hay {stats.stagnatedRepairs.length} equipos sin movimiento hace +48hs.</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
-                        {stats.stagnatedRepairs.map((r: any) => (
-                            <Link key={r.id} href="/technician/repairs" className="flex-shrink-0 min-w-[200px] p-3 rounded-xl bg-red-950/30 border border-red-500/10 hover:border-red-500/30 transition-colors group">
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className="text-xs font-mono font-bold text-red-300">#{r.ticketNumber}</span>
-                                    <span className="text-[10px] bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded">{r.daysInactive}d inact.</span>
+                <div className="mb-10 rounded-3xl bg-[#0F0505] border border-red-900/50 relative overflow-hidden group shadow-[0_0_50px_rgba(220,38,38,0.1)]">
+                    {/* Background Effects */}
+                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
+
+                    <div className="p-8 relative z-10">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                            <div className="flex items-start gap-5">
+                                <div className="p-3 bg-red-500/10 text-red-500 rounded-2xl border border-red-500/20 shadow-[0_0_20px_rgba(220,38,38,0.2)] animate-pulse">
+                                    <AlertTriangle size={32} strokeWidth={2} />
                                 </div>
-                                <p className="text-sm font-medium text-white truncate mb-0.5">{r.device}</p>
-                                <p className="text-xs text-zinc-500 group-hover:text-zinc-400">{r.statusName}</p>
-                            </Link>
-                        ))}
+                                <div>
+                                    <h3 className="text-sm font-black text-red-500 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                                        Atención Requerida
+                                    </h3>
+                                    <div className="flex items-baseline gap-3">
+                                        <span className="text-5xl font-black text-white tracking-tighter tabular-nums leading-none">
+                                            {stats.stagnatedRepairs.length}
+                                        </span>
+                                        <span className="text-lg font-bold text-zinc-400 tracking-tight">
+                                            UNIDADES CON DEMORA CRÍTICA
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="hidden md:block">
+                                <Link href="/technician/repairs?filter=critical" className="px-6 py-3 bg-red-950/50 hover:bg-red-900/50 border border-red-900/50 rounded-xl text-red-400 text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 group-hover:border-red-500/50">
+                                    Ver Todas <ArrowRight size={14} />
+                                </Link>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {stats.stagnatedRepairs.map((r: any) => (
+                                <Link key={r.id} href="/technician/repairs" className="group/card relative bg-black/40 border border-red-900/30 hover:border-red-500 mb-1 rounded-2xl p-5 transition-all hover:bg-red-950/10 hover:shadow-[0_0_30px_rgba(220,38,38,0.15)] flex flex-col justify-between h-full">
+                                    <div className="absolute top-3 right-3">
+                                        <span className="flex items-center gap-1.5 text-[10px] font-black text-red-500 bg-red-950/40 px-2 py-1 rounded-lg border border-red-900/50">
+                                            <Timer size={12} />
+                                            {r.daysInactive} DÍAS
+                                        </span>
+                                    </div>
+
+                                    <div className="mb-4">
+                                        <div className="inline-block px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono text-[10px] font-black tracking-wider mb-3 group-hover/card:text-white group-hover/card:border-red-500/30 transition-colors">
+                                            {r.ticketNumber || r.ticket}
+                                        </div>
+                                        <h4 className="text-lg font-black text-zinc-100 group-hover/card:text-red-400 transition-colors leading-tight">
+                                            {r.device}
+                                        </h4>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{r.statusName}</span>
+                                        <ArrowRight size={16} className="text-red-500 opacity-0 group-hover/card:opacity-100 -translate-x-2 group-hover/card:translate-x-0 transition-all duration-300" />
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Metrics Grid - 2 Rows of 4 for better balance */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <TechMetric
-                    title="En Mesa"
-                    value={stats.activeRepairs}
-                    subtext="Activos ahora"
-                    icon={PlayCircle}
-                    color="blue"
-                    href="/technician/repairs"
-                />
-                <TechMetric
-                    title="En Cola"
-                    value={stats.pendingTickets}
-                    subtext="Por revisar"
-                    icon={ListTodo}
-                    color="orange"
-                    href="/technician/tickets"
-                />
-                <TechMetric
-                    title="Finalizados"
-                    value={stats.completedToday}
-                    subtext="Hoy"
-                    icon={CheckCircle2}
-                    color="emerald"
-                    href="/technician/history"
-                />
-                <TechMetric
-                    title="Total Mes"
-                    value={stats.completedMonth}
-                    subtext="Equipos reparados"
-                    icon={Calendar}
-                    color="violet"
-                    href="/technician/history"
-                />
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                <TechMetric title="En Mesa" value={stats.activeRepairs} subtext="En Proceso" icon={PlayCircle} color="blue" href="/technician/repairs" />
+                <TechMetric title="En Cola" value={stats.pendingTickets} subtext="Pendientes" icon={ListTodo} color="orange" href="/technician/tickets" />
+                <TechMetric title="Finalizados" value={stats.completedToday} subtext="Turno Hoy" icon={CheckCircle2} color="emerald" href="/technician/history" />
+                <TechMetric title="Eficiencia" value={stats.avgRepairTime} subtext="Tiempo Promedio" icon={Timer} color="violet" href="/technician/history" />
 
-                {/* Row 2 */}
-                <TechMetric
-                    title="Eficiencia"
-                    value={stats.avgRepairTime}
-                    subtext="Tiempo prom."
-                    icon={Timer}
-                    color="violet"
-                    href="/technician/history"
-                />
-                <TechMetric
-                    title="Calidad"
-                    value={`${stats.qualityScore || 100}%`}
-                    subtext="Sin Garantías"
-                    icon={ShieldCheck}
-                    color="emerald" // Green for Quality
-                    href="/technician/profile"
-                />
-                <TechMetric
-                    title="Puntualidad"
-                    value={`${stats.onTimeRate || 100}%`}
-                    subtext="A tiempo"
-                    icon={CalendarCheck}
-                    color="blue"
-                    href="/technician/profile"
-                />
-
-                {/* Growth Card */}
+                <TechMetric title="Calidad" value={`${stats.qualityScore || 100}%`} subtext="Sin Garantías" icon={ShieldCheck} color="emerald" href="/technician/profile" />
+                <TechMetric title="Puntualidad" value={`${stats.onTimeRate || 100}%`} subtext="Entregas OK" icon={CalendarCheck} color="blue" href="/technician/profile" />
+                <TechMetric title="Producción" value={stats.completedMonth} subtext="Mensual" icon={Calendar} color="violet" href="/technician/history" />
                 {(() => {
                     const current = stats.completedMonth || 0;
                     const last = stats.completedLastMonth || 0;
                     let growth = 0;
-                    if (last > 0) {
-                        growth = Math.round(((current - last) / last) * 100);
-                    } else if (current > 0) {
-                        growth = 100; // Minimal positive interpretation
-                    }
+                    if (last > 0) growth = Math.round(((current - last) / last) * 100);
+                    else if (current > 0) growth = 100;
                     const sign = growth > 0 ? "+" : "";
-
                     return (
-                        <TechMetric
-                            title="Crecimiento"
-                            value={`${sign}${growth}%`}
-                            subtext={`vs ${last} (Mes Ant.)`}
-                            icon={ArrowUpRight} // Using ArrowUpRight as existing import
-                            color={growth >= 0 ? "emerald" : "orange"}
-                            href="/technician/profile"
-                        />
+                        <TechMetric title="Crecimiento" value={`${sign}${growth}%`} subtext="vs Mes Anterior" icon={ArrowUpRight} color={growth >= 0 ? "emerald" : "orange"} href="/technician/profile" />
                     );
                 })()}
             </div>
 
-            {/* Main Balanced Grid: 2 Columns (2/3 vs 1/3) */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
 
-                {/* Column 1: Workflow Management (Lists and Charts) */}
-                <div className="xl:col-span-2 space-y-8">
-
-                    {/* Panel 1: Active Workspace */}
-                    <div className="bg-[#18181b] rounded-2xl border border-zinc-800 p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                <PlayCircle className="text-blue-500" size={20} />
+                <div className="xl:col-span-2 space-y-10">
+                    {/* Workspace */}
+                    <div>
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-sm font-black uppercase tracking-[0.4em] text-zinc-100 flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-pulse" />
                                 Espacio de Trabajo
                             </h2>
-                            <span className="text-xs font-bold bg-blue-500/10 text-blue-500 px-2.5 py-1 rounded-full border border-blue-500/20">
+                            <div className="h-px flex-1 mx-8 bg-zinc-900" />
+                            <span className="text-[10px] font-black text-blue-400 bg-blue-500/10 px-4 py-1.5 rounded-full border border-blue-500/30 uppercase tracking-[0.2em]">
                                 {activeJobs.length} Activos
                             </span>
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {activeJobs.length === 0 ? (
-                                <div className="py-12 border-2 border-dashed border-zinc-800/50 rounded-xl flex flex-col items-center justify-center text-zinc-600">
-                                    <Wrench size={32} className="mb-3 opacity-50" />
-                                    <p className="text-sm">No tienes trabajos activos.</p>
-                                    <p className="text-xs">Toma uno de la cola para empezar.</p>
+                                <div className="col-span-full py-20 border-2 border-dashed border-zinc-900 rounded-[3rem] flex flex-col items-center justify-center text-zinc-700 bg-zinc-950/50">
+                                    <Smartphone size={48} className="mb-4 opacity-10" />
+                                    <p className="text-xs font-black uppercase tracking-[0.4em] opacity-40">Workshop despejado</p>
                                 </div>
                             ) : (
                                 activeJobs.map((job: any) => (
@@ -305,34 +302,47 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                         </div>
                     </div>
 
-                    {/* Panel 2: Weekly Output Chart (SINGLE INSTANCE HERE) */}
-                    <div className="bg-[#18181b] rounded-2xl border border-zinc-800 p-6 min-h-[350px]">
-                        <WeeklyOutputChart data={weeklyData} />
-                    </div>
-
+                    <WeeklyOutputChart data={weeklyData} />
                 </div>
 
-                {/* Column 2: Queue (Side list) */}
+                {/* Queue */}
                 <div className="xl:col-span-1">
-                    <div className="bg-[#18181b] rounded-2xl border border-zinc-800 p-6 h-full flex flex-col">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                <ListTodo className="text-orange-500" size={20} />
-                                Cola de Espera
-                            </h2>
-                            <span className="text-xs font-bold text-zinc-500">{queue.length} Pendientes</span>
+                    <div className="bg-[#09090b] rounded-[3rem] border-2 border-zinc-900 p-10 h-full flex flex-col shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500/0 via-orange-500 to-orange-500/0 opacity-50" />
+
+                        <div className="flex items-center justify-between mb-12">
+                            <div>
+                                <h2 className="text-sm font-black uppercase tracking-[0.4em] text-zinc-100 mb-1">Cola de Espera</h2>
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Siguiente Prioridad</p>
+                            </div>
+                            <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-2xl">
+                                <ListTodo className="text-orange-500" size={24} />
+                            </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 max-h-[800px]">
+                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 max-h-[650px]">
                             {queue.length === 0 ? (
-                                <div className="py-20 text-center text-zinc-500 text-sm">
-                                    <p>Cola vacía. ¡Buen trabajo!</p>
+                                <div className="py-24 text-center opacity-30">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.4em]">Sin pendientes</p>
                                 </div>
                             ) : (
                                 queue.map((item: any) => (
                                     <JobRow key={item.id} job={item} isActive={false} />
                                 ))
                             )}
+                        </div>
+
+                        <div className="mt-10 p-6 bg-zinc-950 rounded-[2rem] border border-zinc-900 shadow-inner">
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Carga de Trabajo</span>
+                                <span className="text-xs font-black text-orange-500 tabular-nums">{Math.round((queue.length / 10) * 100)}%</span>
+                            </div>
+                            <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-orange-600 shadow-[0_0_10px_rgba(234,88,12,0.5)] transition-all duration-1000"
+                                    style={{ width: `${Math.min((queue.length / 10) * 100, 100)}%` }}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

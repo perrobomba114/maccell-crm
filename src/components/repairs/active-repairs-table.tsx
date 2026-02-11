@@ -148,16 +148,16 @@ export function ActiveRepairsTable({
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow>
-                            <TableHead className="text-center w-[60px]">Pos.</TableHead>
-                            <TableHead className="text-center w-[100px]">Ticket</TableHead>
-                            <TableHead className="text-center w-[140px]">Entrega</TableHead>
-                            <TableHead className="text-center w-[100px]">Tiempo Est.</TableHead>
-                            <TableHead className="text-center">Cliente</TableHead>
-                            <TableHead className="text-center">Dispositivo</TableHead>
-                            <TableHead className="text-center w-[120px]">Técnico</TableHead>
-                            <TableHead className="text-center w-[100px]">Precio</TableHead>
-                            <TableHead className="text-center w-[120px]">Estado</TableHead>
-                            {(enableTakeover || enableManagement || enableImageUpload) && <TableHead className="text-center w-[100px]">Acciones</TableHead>}
+                            <TableHead className="text-center w-[50px] px-1">Pos.</TableHead>
+                            <TableHead className="text-center w-[90px] px-1">Ticket</TableHead>
+                            <TableHead className="text-center w-[120px] px-1">Entrega</TableHead>
+                            <TableHead className="text-center w-[90px] px-1 whitespace-nowrap">Est.</TableHead>
+                            <TableHead className="text-center px-2">Cliente</TableHead>
+                            <TableHead className="text-center px-2">Dispositivo</TableHead>
+                            <TableHead className="text-center w-[100px] px-1">Técnico</TableHead>
+                            <TableHead className="text-center w-[90px] px-1">Precio</TableHead>
+                            <TableHead className="text-center w-[110px] px-1">Estado</TableHead>
+                            {(enableTakeover || enableManagement || enableImageUpload) && <TableHead className="text-center w-[130px] px-1">Acciones</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -173,148 +173,133 @@ export function ActiveRepairsTable({
                                 const position = index + 1;
                                 return (
                                     <TableRow key={repair.id} className="hover:bg-muted/10">
-                                        <TableCell className="text-center">
-                                            <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full font-extrabold text-sm ${position <= 3
-                                                    ? "bg-red-100 text-red-700 border border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700"
-                                                    : position <= 6
-                                                        ? "bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700"
-                                                        : "bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600"
+                                        <TableCell className="text-center px-1">
+                                            <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full font-bold text-xs ${position <= 3
+                                                ? "bg-red-100 text-red-700 border border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700"
+                                                : position <= 6
+                                                    ? "bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700"
+                                                    : "bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600"
                                                 }`}>
                                                 {position}
                                             </span>
                                         </TableCell>
-                                        <TableCell className={`text-center font-bold font-mono text-lg ${repair.isWet ? "text-blue-500 font-extrabold" : repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
+                                        <TableCell className={`text-center font-bold font-mono text-sm px-1 ${repair.isWet ? "text-blue-500" : repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
                                             {repair.ticketNumber}
                                         </TableCell>
-                                        <TableCell className="text-center">
+                                        <TableCell className="text-center px-1">
                                             <div className="flex flex-col items-center">
-                                                <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                                                <span className="text-sm font-bold text-green-600 dark:text-green-400 whitespace-nowrap">
                                                     {format(new Date(repair.promisedAt), "dd/MM HH:mm", { locale: es })}
                                                 </span>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-center">
-                                            {repair.finishedAt && repair.startedAt ? (
-                                                (() => {
-                                                    const start = new Date(repair.startedAt).getTime();
-                                                    const end = new Date(repair.finishedAt).getTime();
-                                                    const diff = end - start;
-                                                    let duration = "-";
-                                                    if (diff > 0) {
-                                                        const hours = Math.floor(diff / (1000 * 60 * 60));
-                                                        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                                                        duration = `${hours}h ${minutes}m`;
-                                                        if (hours === 0) duration = `${minutes} min`;
-                                                    }
-                                                    return (
-                                                        <span className="font-bold text-lg text-yellow-600 dark:text-yellow-400">
-                                                            {duration}
-                                                        </span>
-                                                    );
-                                                })()
-                                            ) : (
-                                                <RepairTimer
-                                                    startedAt={repair.startedAt}
-                                                    estimatedMinutes={repair.estimatedTime}
-                                                    statusId={repair.statusId}
-                                                    onAdd={enableManagement ? () => setAssignmentRepair(repair) : undefined}
-                                                />
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex flex-col items-center">
-                                                <span className="font-semibold text-base">{repair.customer.name}</span>
-                                                <span className="text-xs text-muted-foreground">{repair.customer.phone}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex flex-col items-center">
-                                                <span className="font-medium text-sm">{repair.deviceBrand} {repair.deviceModel}</span>
-                                                <span className="text-xs text-muted-foreground truncate max-w-[150px] block" title={repair.problemDescription}>
-                                                    {repair.problemDescription}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex flex-col items-center justify-center">
-                                                {repair.assignedTo ? (
-                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
-                                                        {repair.assignedTo.name.split(' ')[0]}
-                                                    </Badge>
+                                        <TableCell className="text-center px-1">
+                                            <div className="flex items-center justify-center h-7">
+                                                {repair.finishedAt && repair.startedAt ? (
+                                                    (() => {
+                                                        const start = new Date(repair.startedAt).getTime();
+                                                        const end = new Date(repair.finishedAt).getTime();
+                                                        const diff = end - start;
+                                                        let duration = "-";
+                                                        if (diff > 0) {
+                                                            const hours = Math.floor(diff / (1000 * 60 * 60));
+                                                            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                                                            duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                                                        }
+                                                        return (
+                                                            <span className="font-bold text-sm text-yellow-600 dark:text-yellow-400 tabular-nums">
+                                                                {duration}
+                                                            </span>
+                                                        );
+                                                    })()
                                                 ) : (
-                                                    <span className="text-muted-foreground text-xs italic">-</span>
+                                                    <RepairTimer
+                                                        startedAt={repair.startedAt}
+                                                        estimatedMinutes={repair.estimatedTime}
+                                                        statusId={repair.statusId}
+                                                        onAdd={enableManagement ? () => setAssignmentRepair(repair) : undefined}
+                                                    />
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-center font-bold text-base">
+                                        <TableCell className="text-center px-2">
+                                            <div className="flex flex-col items-center">
+                                                <span className="font-semibold text-sm whitespace-nowrap">{repair.customer.name}</span>
+                                                <span className="text-[10px] text-muted-foreground">{repair.customer.phone}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center px-2 max-w-[180px]">
+                                            <div className="flex flex-col items-center">
+                                                <span className="font-semibold text-sm whitespace-normal">{repair.deviceBrand} {repair.deviceModel}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center w-[100px] px-1">
+                                            <div className="flex flex-col items-center justify-center">
+                                                {repair.assignedTo ? (
+                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 text-[10px] py-0">
+                                                        {repair.assignedTo.name?.split(' ')[0]}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-[10px] italic">-</span>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center font-bold text-sm px-1 whitespace-nowrap">
                                             {repair.estimatedPrice > 0 ? `$${repair.estimatedPrice.toLocaleString()}` : "-"}
                                         </TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge variant="outline" className={`font-bold border ${colorClass}`}>
+                                        <TableCell className="text-center px-1">
+                                            <Badge variant="outline" className={`font-bold border text-[10px] py-0 uppercase ${colorClass}`}>
                                                 {repair.status.name}
                                             </Badge>
                                         </TableCell>
                                         {(enableTakeover || enableManagement || enableImageUpload) && (
-                                            <TableCell className="text-center">
-                                                <div className="flex items-center justify-center gap-2">
-
-                                                    {/* Detail Button (For all Users if Actions Enabled) */}
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        onClick={() => setViewDetailsRepair(repair)}
-                                                        className="h-8 w-8 text-muted-foreground hover:text-blue-500"
-                                                        title="Ver Detalles y Notas"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
+                                            <TableCell className="text-center px-1">
+                                                <div className="flex items-center justify-start gap-1 h-7 pl-6">
+                                                    <div className="w-8 flex justify-center shrink-0">
+                                                        <Button
+                                                            size="icon-xs"
+                                                            variant="ghost"
+                                                            onClick={() => setViewDetailsRepair(repair)}
+                                                            className="text-muted-foreground hover:text-blue-500"
+                                                            title="Ver Detalles"
+                                                        >
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
 
                                                     {enableTakeover && (
                                                         <Button
-                                                            size="sm"
+                                                            size="xs"
                                                             onClick={() => setTakeoverRepair(repair)}
-                                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold w-[85px] justify-center px-2"
                                                         >
-                                                            Retirar
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="truncate">Retirar</span>
+                                                            </div>
                                                         </Button>
                                                     )}
 
-                                                    {/* Add Images Button (Only if enabled and < 3 images) */}
                                                     {enableImageUpload && (!repair.deviceImages || repair.deviceImages.length < 3) && (
                                                         <Button
-                                                            size="icon"
+                                                            size="icon-xs"
                                                             variant="ghost"
                                                             onClick={() => setImageUploadRepair(repair)}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                            title="Agregar fotos"
+                                                            className="text-muted-foreground hover:text-primary"
+                                                            title="Fotos"
                                                         >
-                                                            <Camera className="h-4 w-4" />
+                                                            <Camera className="h-3.5 w-3.5" />
                                                         </Button>
                                                     )}
 
-                                                    {/* Reprint Ticket Button - Hide for Technicians if management enabled */}
                                                     {!enableManagement && (
                                                         <Button
-                                                            size="icon"
+                                                            size="icon-xs"
                                                             variant="ghost"
                                                             onClick={() => handlePrint(repair)}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                            title="Reimprimir Ticket"
+                                                            className="text-muted-foreground hover:text-primary"
+                                                            title="Imprimir"
                                                         >
-                                                            <Printer className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-
-                                                    {/* Transfer Button - Only for Technicians in process or waiting */}
-                                                    {(enableManagement && repair.assignedUserId === currentUserId && [3, 7, 8, 9].includes(repair.statusId)) && (
-                                                        <Button
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            onClick={() => setTransferRepair(repair)}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-blue-500"
-                                                            title="Transferir a otro técnico"
-                                                        >
-                                                            <Share2 className="h-4 w-4" />
+                                                            <Printer className="h-3.5 w-3.5" />
                                                         </Button>
                                                     )}
 

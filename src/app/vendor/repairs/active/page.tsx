@@ -18,7 +18,7 @@ export default async function ActiveRepairsPage() {
     const repairs = await getActiveRepairsAction(user.branch.id);
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-[1600px] mx-auto space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold tracking-tight text-foreground">Reparaciones Activas</h1>
             </div>

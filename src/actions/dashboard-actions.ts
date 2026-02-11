@@ -723,17 +723,21 @@ export async function getTechnicianStats(technicianId: string) {
                 statusId: { in: [3, 4] }
             },
             include: {
-                status: true
+                status: true,
+                customer: true
             },
             orderBy: { updatedAt: 'desc' } // Order by recent activity so newly assigned appear top
         });
 
         const activeWorkspace = activeWorkspaceRaw.map(r => ({
             id: r.id,
+            ticket: r.ticketNumber,
             ticketNumber: r.ticketNumber,
             device: `${r.deviceBrand} ${r.deviceModel}`,
+            customer: r.customer?.name || "Cliente",
             problem: r.problemDescription,
-            startedAt: r.startedAt || r.updatedAt, // Fallback if startedAt is null
+            repairType: r.problemDescription,
+            startedAt: r.startedAt || r.updatedAt,
             estimatedTime: r.estimatedTime || 0,
             statusName: r.status.name,
             statusColor: r.status.color || "#3b82f6",
@@ -748,7 +752,8 @@ export async function getTechnicianStats(technicianId: string) {
                 statusId: { in: [1, 2, 4] } // Pending, Assigned, Diagnosing
             },
             include: {
-                status: true
+                status: true,
+                customer: true
             },
             orderBy: { createdAt: 'asc' }, // Oldest first
             take: 10
@@ -756,9 +761,12 @@ export async function getTechnicianStats(technicianId: string) {
 
         const queue = queueRaw.map(r => ({
             id: r.id,
+            ticket: r.ticketNumber,
             ticketNumber: r.ticketNumber,
             device: `${r.deviceBrand} ${r.deviceModel}`,
+            customer: r.customer?.name || "Cliente",
             problem: r.problemDescription,
+            repairType: r.problemDescription,
             createdAt: r.createdAt,
             statusName: r.status.name,
             statusColor: r.status.color || "#888",
