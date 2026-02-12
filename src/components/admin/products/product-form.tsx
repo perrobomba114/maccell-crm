@@ -98,21 +98,7 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
     const costPrice = form.watch("costPrice");
     const price = form.watch("price");
 
-    // Recalculate margin when cost or price changes
-    useEffect(() => {
-        const cPrice = parseFloat(costPrice) || 0;
-        const sPrice = parseFloat(price) || 0;
 
-        if (cPrice > 0 && sPrice > 0) {
-            const margin = ((sPrice - cPrice) / cPrice) * 100;
-            const currentMargin = parseFloat(form.getValues("profitMargin") || "0");
-
-            // Only update if difference is significant to avoid loops/jitter
-            if (Math.abs(margin - currentMargin) > 0.1) {
-                form.setValue("profitMargin", Math.round(margin).toString());
-            }
-        }
-    }, [costPrice, price, form]);
 
 
     async function onSubmit(values: z.infer<typeof formSchema>) {

@@ -215,8 +215,8 @@ export async function updateProduct(id: string, data: {
                 return { success: false, error: "El SKU ya existe en otro producto." };
             }
         }
-        // Otherwise recalculate if cost or margin changed
-        else if (updateData.costPrice !== undefined || updateData.profitMargin !== undefined) {
+        // Otherwise recalculate if cost or margin changed, BUT ONLY if price wasn't explicitly set
+        else if ((updateData.costPrice !== undefined || updateData.profitMargin !== undefined) && updateData.price === undefined) {
             const newCost = updateData.costPrice !== undefined ? updateData.costPrice : current.costPrice;
             const newMargin = updateData.profitMargin !== undefined ? updateData.profitMargin : current.profitMargin;
 
