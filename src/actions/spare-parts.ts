@@ -666,3 +666,38 @@ export async function syncRepairHistoryAction() {
         return { success: false, error: `Error: ${error.message || "Desconocido"}` };
     }
 }
+
+export async function getSparePartsForBuyReport(categoryId: string) {
+    try {
+        const where: any = {
+            deletedAt: null,
+            stockLocal: { lt: 10 },
+            stockDepot: { lt: 10 }
+        };
+
+        if (categoryId !== "all") {
+            where.categoryId = categoryId;
+        }
+
+        const spareParts = await prisma.sparePart.findMany({
+            where,
+            include: {
+                category: true,
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        // Calculate quantity to buy
+        const reportData = spareParts.map(part => ({
+            ...part,
+            quantityToBuy: Math.max(0, 10 - part.stockLocal)
+        }));
+
+        return { success: true, data: reportData };
+    } catch (error) {
+        console.error("Get buy report error:", error);
+        return { success: false, error: "Error al obtener repuestos para compra" };
+    }
+}

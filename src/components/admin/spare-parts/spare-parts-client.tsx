@@ -45,6 +45,7 @@ import {
 } from "@/actions/spare-parts";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
+import { BuyModal } from "./buy-modal";
 
 interface SparePartsClientProps {
     initialData: SparePartWithCategory[];
@@ -792,6 +793,7 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
                         <FileBarChart className="mr-2 h-4 w-4" />
                         Reponer
                     </Button>
+                    <BuyModal categories={categories} />
 
                     <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                         <DialogTrigger asChild>
@@ -800,7 +802,7 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
                                 Nuevo
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto !rounded-none">
+                        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto z-[80]">
                             <DialogHeader>
                                 <DialogTitle>Crear Nuevo Repuesto</DialogTitle>
                             </DialogHeader>
@@ -1071,17 +1073,19 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
 
             {/* Edit Dialog */}
             <Dialog open={!!editingPart} onOpenChange={(open) => !open && setEditingPart(null)}>
-                <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto !rounded-none">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto z-[80] !rounded-none p-0">
+                    <DialogHeader className="px-6 py-4 border-b sticky top-0 bg-background z-10">
                         <DialogTitle>Editar Repuesto</DialogTitle>
                     </DialogHeader>
-                    {editingPart && (
-                        <SparePartForm
-                            initialData={editingPart}
-                            categories={categories}
-                            onSuccess={() => setEditingPart(null)}
-                        />
-                    )}
+                    <div className="px-6 pb-6">
+                        {editingPart && (
+                            <SparePartForm
+                                initialData={editingPart}
+                                categories={categories}
+                                onSuccess={() => setEditingPart(null)}
+                            />
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
 

@@ -1,5 +1,5 @@
 "use client";
-import { Package, DollarSign, Store } from "lucide-react";
+import { Package, DollarSign, Store, Tag, Box } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -12,21 +12,12 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
     Form,
     FormControl,
     FormField,
     FormItem,
     FormLabel,
     FormMessage,
-    FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,6 +28,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createProduct, updateProduct } from "@/actions/products";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -45,12 +37,12 @@ import { useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 
 const formSchema = z.object({
-    name: z.string().min(2, "El nombre es requerido."),
-    sku: z.string().min(1, "El SKU es requerido."),
+    name: z.string().min(2, "Requerido"),
+    sku: z.string().min(1, "Requerido"),
     categoryId: z.string().optional(),
-    costPrice: z.coerce.number().min(0, "El costo debe ser mayor o igual a 0"),
-    profitMargin: z.coerce.number().min(0, "El margen debe ser mayor o igual a 0"),
-    price: z.coerce.number().min(0, "El precio debe ser mayor o igual a 0"),
+    costPrice: z.coerce.number().min(0),
+    profitMargin: z.coerce.number().min(0),
+    price: z.coerce.number().min(0),
     description: z.string().optional(),
     stocks: z.array(z.object({
         branchId: z.string(),
@@ -68,7 +60,6 @@ interface ProductFormProps {
     branches: Branch[];
 }
 
-
 export function ProductForm({ open, onOpenChange, product, categories, branches }: ProductFormProps) {
     const router = useRouter();
     const isEditing = !!product;
@@ -76,29 +67,24 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
     const form = useForm<ProductFormValues>({
         resolver: zodResolver(formSchema) as any,
         defaultValues: {
-            name: product?.name || "",
-            sku: product?.sku || "",
-            categoryId: product?.categoryId || undefined,
-            costPrice: product?.costPrice || 0,
-            profitMargin: product?.profitMargin || 0,
-            price: product?.price || 0,
-            description: product?.description || "",
-            stocks: product && (product as any).stock
-                ? branches.map(b => ({
-                    branchId: b.id,
-                    quantity: (product as any).stock.find((s: any) => s.branchId === b.id)?.quantity ?? 0
-                }))
-                : branches.map(b => ({ branchId: b.id, quantity: 0 }))
+            name: "",
+            sku: "",
+            categoryId: undefined,
+            costPrice: 0,
+            profitMargin: 0,
+            price: 0,
+            description: "",
+            stocks: []
         },
     });
 
     const costPrice = form.watch("costPrice");
     const price = form.watch("price");
 
+    // Recalculate margin when cost or price changes
     useEffect(() => {
         if (costPrice > 0 && price > 0) {
             const margin = ((price - costPrice) / costPrice) * 100;
-            // Avoid infinite loop if values are close enough
             const currentMargin = form.getValues("profitMargin");
             if (Math.abs(margin - currentMargin) > 0.1) {
                 form.setValue("profitMargin", Math.round(margin));
@@ -106,7 +92,7 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
         }
     }, [costPrice, price, form]);
 
-    const productId = product?.id;
+    // Reset form when opening or changing product
     useEffect(() => {
         if (open) {
             form.reset({
@@ -117,20 +103,19 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
                 profitMargin: product?.profitMargin || 0,
                 price: product?.price || 0,
                 description: product?.description || "",
-                stocks: product && (product as any).stock
-                    ? branches.map(b => ({
-                        branchId: b.id,
-                        quantity: (product as any).stock.find((s: any) => s.branchId === b.id)?.quantity ?? 0
-                    }))
-                    : branches.map(b => ({ branchId: b.id, quantity: 0 }))
+                stocks: branches.map(b => ({
+                    branchId: b.id,
+                    quantity: product && (product as any).stock
+                        ? (product as any).stock.find((s: any) => s.branchId === b.id)?.quantity ?? 0
+                        : 0
+                }))
             });
         }
-    }, [productId, open, branches.length]); // Use ID and length to avoid reset on branch data refresh if content is same
+    }, [product, open, branches, form]);
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         try {
             if (isEditing && product) {
-                // Now we include stocks in the update
                 const res = await updateProduct(product.id, values);
                 if (res.success) {
                     toast.success("Producto actualizado");
@@ -157,59 +142,78 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto !rounded-none">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-5xl min-h-[80vh] max-h-[90vh] overflow-y-auto !rounded-none z-[80] p-0">
+                <DialogHeader className="px-6 py-4 border-b sticky top-0 bg-background z-10">
                     <DialogTitle>{isEditing ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
-                    <DialogDescription>
-                        {isEditing ? "Modifica los detalles del producto." : "Agrega un nuevo producto al catálogo global."}
-                    </DialogDescription>
                 </DialogHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                            {/* Left Column: General Info (7/12) */}
-                            <div className="md:col-span-7 space-y-4">
-                                <h3 className="flex items-center gap-2 text-lg font-semibold text-blue-700 dark:text-blue-400">
-                                    <div className="h-6 w-1 rounded-full bg-blue-600 dark:bg-blue-500" />
-                                    Información General
-                                </h3>
 
-                                <div className="grid grid-cols-12 gap-3">
-                                    {/* SKU */}
-                                    <div className="col-span-4">
+                <div className="px-6 pb-6 pt-4">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+
+                            {/* HERO: NAME */}
+                            <div className="w-full">
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="flex justify-center uppercase text-xs font-bold text-muted-foreground mb-1">Nombre del Producto</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder="NOMBRE DEL PRODUCTO"
+                                                    {...field}
+                                                    className="text-center font-black text-2xl h-16 uppercase border-2 border-slate-200"
+                                                />
+                                            </FormControl>
+                                            <FormMessage className="text-center" />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                                {/* CARD 1: IDENTITY (BLUE) */}
+                                <Card className="border shadow-none">
+                                    <CardHeader className="py-3 px-4 bg-blue-50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20">
+                                        <CardTitle className="text-center text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-500">
+                                            Identidad
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-4 space-y-3">
                                         <FormField
                                             control={form.control}
                                             name="sku"
                                             render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>SKU</FormLabel>
+                                                <FormItem className="space-y-1">
+                                                    <FormLabel className="block text-center text-[10px] font-bold uppercase text-blue-600">SKU / Código</FormLabel>
                                                     <FormControl>
-                                                        <Input placeholder="COD-001" {...field} />
+                                                        <Input {...field} placeholder="COD-001" className="text-center font-mono font-bold h-9 text-white border-blue-200" />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
-                                    </div>
-                                    {/* Category */}
-                                    <div className="col-span-8">
                                         <FormField
                                             control={form.control}
                                             name="categoryId"
                                             render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Categoría</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormItem className="space-y-1">
+                                                    <FormLabel className="block text-center text-[10px] font-bold uppercase text-blue-600">Categoría</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
                                                         <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Seleccionar..." />
+                                                            <SelectTrigger className="h-9 w-full justify-center text-center px-8 relative text-white border-blue-200 font-bold">
+                                                                <div className="flex items-center justify-center w-full text-center">
+                                                                    <SelectValue placeholder="Seleccionar..." />
+                                                                </div>
                                                             </SelectTrigger>
                                                         </FormControl>
-                                                        <SelectContent>
+                                                        <SelectContent className="max-h-[200px] z-[100]">
                                                             {categories
                                                                 .filter(cat => cat.type === 'PRODUCT')
                                                                 .map((cat) => (
-                                                                    <SelectItem key={cat.id} value={cat.id}>
+                                                                    <SelectItem key={cat.id} value={cat.id} className="justify-center text-center cursor-pointer">
                                                                         {cat.name}
                                                                     </SelectItem>
                                                                 ))}
@@ -219,71 +223,72 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
                                                 </FormItem>
                                             )}
                                         />
-                                    </div>
-
-                                    {/* Name */}
-                                    <div className="col-span-12">
-                                        <FormField
-                                            control={form.control}
-                                            name="name"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Nombre del Producto</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Ej: iPhone 13 Pro Max" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {/* Description */}
-                                    <div className="col-span-12">
                                         <FormField
                                             control={form.control}
                                             name="description"
                                             render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Descripción</FormLabel>
+                                                <FormItem className="space-y-1">
+                                                    <FormLabel className="block text-center text-[10px] font-bold uppercase text-blue-600">Descripción</FormLabel>
                                                     <FormControl>
-                                                        <Textarea className="min-h-[85px] resize-none" placeholder="Detalles técnicos..." {...field} />
+                                                        <Textarea
+                                                            {...field}
+                                                            placeholder="Breve descripción..."
+                                                            className="text-center text-xs min-h-[60px] resize-none border-blue-200 focus-visible:ring-blue-500"
+                                                        />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
-                                    </div>
-                                </div>
-                            </div>
+                                    </CardContent>
+                                </Card>
 
-                            {/* Right Column: Pricing & Costs (5/12) */}
-                            <div className="md:col-span-5 space-y-6">
-                                <div className="space-y-4">
-                                    <h3 className="flex items-center gap-2 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
-                                        <div className="h-6 w-1 rounded-full bg-emerald-600 dark:bg-emerald-500" />
-                                        Precios y Márgenes
-                                    </h3>
-
-                                    <div className="grid grid-cols-2 gap-4">
+                                {/* CARD 2: PRICING (GREEN) */}
+                                <Card className="border shadow-none">
+                                    <CardHeader className="py-3 px-4 bg-emerald-50 dark:bg-emerald-900/10 border-b border-emerald-100 dark:border-emerald-900/20">
+                                        <CardTitle className="text-center text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                                            Finanzas
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-4 space-y-3">
                                         <FormField
                                             control={form.control}
                                             name="costPrice"
                                             render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Costo Base</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="number"
-                                                            step="100"
-                                                            {...field}
-                                                            value={field.value ?? ""}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value === "" ? 0 : parseInt(e.target.value);
-                                                                field.onChange(val);
-                                                            }}
-                                                        />
-                                                    </FormControl>
+                                                <FormItem className="space-y-1">
+                                                    <FormLabel className="block text-center text-[10px] font-bold uppercase text-emerald-600">Costo Base</FormLabel>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-2.5 font-bold text-emerald-600">$</span>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="number"
+                                                                step="1"
+                                                                {...field}
+                                                                className="text-center font-mono font-bold text-lg h-10 border-emerald-200 focus-visible:ring-emerald-500 text-emerald-600"
+                                                            />
+                                                        </FormControl>
+                                                    </div>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="price"
+                                            render={({ field }) => (
+                                                <FormItem className="space-y-1">
+                                                    <FormLabel className="block text-center text-[10px] font-bold uppercase text-blue-600">Precio Venta</FormLabel>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-2.5 font-bold text-blue-600">$</span>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="number"
+                                                                step="1"
+                                                                {...field}
+                                                                className="text-center font-mono font-bold text-lg h-10 border-blue-200 focus-visible:ring-blue-500 text-blue-600"
+                                                            />
+                                                        </FormControl>
+                                                    </div>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -291,101 +296,69 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
 
                                         <FormField
                                             control={form.control}
-                                            name="price"
+                                            name="profitMargin"
                                             render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Precio Venta</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="number"
-                                                            step="100"
-                                                            {...field}
-                                                            value={field.value ?? ""}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value === "" ? 0 : parseInt(e.target.value);
-                                                                field.onChange(val);
-                                                            }}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
+                                                <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-xl p-3 text-center border-2 border-emerald-200 dark:border-emerald-800 mt-4">
+                                                    <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">
+                                                        Margen Estimado
+                                                    </div>
+                                                    <div className="font-mono font-black text-xl text-emerald-800 dark:text-emerald-300">
+                                                        {field.value}%
+                                                    </div>
+                                                </div>
                                             )}
                                         />
+                                    </CardContent>
+                                </Card>
 
-                                        <div className="col-span-2">
-                                            <FormField
-                                                control={form.control}
-                                                name="profitMargin"
-                                                render={({ field }) => (
-                                                    <div className="flex justify-between items-center p-3 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                                                        <FormLabel className="mb-0">Margen Estimado</FormLabel>
-                                                        <span className={`text-lg font-bold ${Number(field.value) >= 30 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                            {field.value}%
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            />
+                                {/* CARD 3: STOCK (AMBER) */}
+                                <Card className="border shadow-none">
+                                    <CardHeader className="py-3 px-4 bg-amber-50 dark:bg-amber-900/10 border-b border-amber-100 dark:border-amber-900/20">
+                                        <CardTitle className="text-center text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-500">
+                                            Stock Inicial
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-4 space-y-3">
+                                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                                            {branches.map((branch, index) => (
+                                                <FormField
+                                                    key={branch.id}
+                                                    control={form.control}
+                                                    name={`stocks.${index}.quantity`}
+                                                    render={({ field }) => (
+                                                        <FormItem className="space-y-1">
+                                                            <FormLabel className={`block text-center text-[10px] font-bold uppercase ${index % 2 === 0 ? 'text-amber-600' : 'text-amber-700'}`}>
+                                                                {branch.name}
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    type="number"
+                                                                    {...field}
+                                                                    className="text-center font-bold text-lg h-10 border-amber-200 focus-visible:ring-amber-500 text-white"
+                                                                    value={field.value ?? 0}
+                                                                />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            ))}
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <h3 className="flex items-center gap-2 text-lg font-semibold text-amber-700 dark:text-amber-400">
-                                        <div className="h-6 w-1 rounded-full bg-amber-600 dark:bg-amber-500" />
-                                        Stock Inicial
-                                    </h3>
-
-                                    <div className="rounded-md border border-slate-200 dark:border-slate-800 overflow-hidden">
-                                        <Table>
-                                            <TableHeader className="bg-slate-50/80 dark:bg-slate-950/40">
-                                                <TableRow className="border-b border-slate-200 dark:border-slate-800">
-                                                    <TableHead className="h-9">Sucursal</TableHead>
-                                                    <TableHead className="h-9 w-24 text-right">Cant.</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {branches.map((branch, index) => (
-                                                    <TableRow key={branch.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                                                        <TableCell className="py-2 font-medium text-slate-700 dark:text-slate-300">{branch.name}</TableCell>
-                                                        <TableCell className="py-2 text-right">
-                                                            <FormField
-                                                                control={form.control}
-                                                                name={`stocks.${index}.quantity`}
-                                                                render={({ field }) => (
-                                                                    <FormItem className="space-y-0">
-                                                                        <FormControl>
-                                                                            <Input
-                                                                                type="number"
-                                                                                min="0"
-                                                                                className="text-right h-8"
-                                                                                {...field}
-                                                                                value={field.value ?? 0}
-                                                                                onChange={(e) => {
-                                                                                    const val = e.target.value === "" ? 0 : parseInt(e.target.value);
-                                                                                    field.onChange(val);
-                                                                                }}
-                                                                                onFocus={(e) => e.target.select()}
-                                                                            />
-                                                                        </FormControl>
-                                                                        <FormMessage />
-                                                                    </FormItem>
-                                                                )}
-                                                            />
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </div>
+                                    </CardContent>
+                                </Card>
                             </div>
-                        </div>
 
-                        <DialogFooter>
-                            <Button type="submit">{isEditing ? "Guardar Cambios" : "Crear Producto"}</Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
+                            <div className="flex justify-end gap-3 pt-4 border-t mt-2">
+                                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="h-10 text-xs uppercase font-bold tracking-wide">
+                                    Cancelar
+                                </Button>
+                                <Button type="submit" className="h-10 px-8 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wide">
+                                    {isEditing ? "Guardar Cambios" : "Crear Producto"}
+                                </Button>
+                            </div>
+
+                        </form>
+                    </Form>
+                </div>
             </DialogContent>
         </Dialog >
     );

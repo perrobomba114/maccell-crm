@@ -1,5 +1,5 @@
 "use client";
-import { Package, DollarSign, Store } from "lucide-react";
+
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,16 +21,21 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Category, SparePart } from "@prisma/client";
 import { createSparePart, updateSparePart } from "@/actions/spare-parts";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { Box, DollarSign, Tag, Barcode, Grid, Package } from "lucide-react";
 
 const formSchema = z.object({
-    name: z.string().min(1, "El nombre es requerido"),
-    sku: z.string().min(1, "El SKU es requerido"),
-    brand: z.string().min(1, "La marca es requerida"),
-    categoryId: z.string().min(1, "La categoría es requerida"),
+    name: z.string().min(1, "Requerido"),
+    sku: z.string().min(1, "Requerido"),
+    brand: z.string().min(1, "Requerido"),
+    categoryId: z.string().min(1, "Requerido"),
     stockLocal: z.coerce.number().min(0, "Mínimo 0"),
     stockDepot: z.coerce.number().min(0, "Mínimo 0"),
     maxStockLocal: z.coerce.number().min(0, "Mínimo 0"),
@@ -49,7 +54,6 @@ export function SparePartForm({ initialData, categories, onSuccess }: SparePartF
     const router = useRouter();
     const [loading, setLoading] = useState(false);
 
-    // Fetch rate for calculation display
     useEffect(() => {
         fetch("https://dolarapi.com/v1/dolares/oficial")
             .then(res => res.json())
@@ -94,14 +98,14 @@ export function SparePartForm({ initialData, categories, onSuccess }: SparePartF
                     priceArg
                 });
                 if (!res.success) throw new Error(res.error);
-                toast.success("Repuesto actualizado");
+                toast.success("Repuesto Actualizado");
             } else {
                 const res = await createSparePart({
                     ...values,
                     priceArg
                 });
                 if (!res.success) throw new Error(res.error);
-                toast.success("Repuesto creado");
+                toast.success("Repuesto Creado");
             }
             router.refresh();
             onSuccess?.();
@@ -115,212 +119,202 @@ export function SparePartForm({ initialData, categories, onSuccess }: SparePartF
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {/* General Info Section */}
-                <div className="space-y-4">
-                    <h3 className="flex items-center gap-2 text-lg font-semibold text-blue-700 dark:text-blue-400">
-                        <div className="h-6 w-1 rounded-full bg-blue-600 dark:bg-blue-500" />
-                        Información General
-                    </h3>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5 pt-2">
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Nombre</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Nombre del repuesto" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="sku"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>SKU</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Código único" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="brand"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Marca</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Ej: Samsung, Apple" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="categoryId"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Categoría</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                {/* 1. PRODUCT NAME - STANDARD INPUT, CENTERED */}
+                <div className="w-full">
+                    <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="flex justify-center uppercase text-xs font-bold text-muted-foreground mb-1">Nombre del Repuesto</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        placeholder="Ingrese el nombre..."
+                                        {...field}
+                                        className="text-center font-bold text-lg h-12"
+                                    />
+                                </FormControl>
+                                <FormMessage className="text-center" />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
+                {/* 2. MAIN CARDS GRID */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                    {/* CARD 1: IDENTITY */}
+                    <Card className="border shadow-none">
+                        <CardHeader className="py-3 px-4 bg-blue-50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20">
+                            <CardTitle className="text-center text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-500">
+                                Identidad
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-3">
+                            <FormField
+                                control={form.control}
+                                name="sku"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-1">
+                                        <FormLabel className="block text-center text-[10px] font-bold uppercase text-blue-600">SKU / Código</FormLabel>
                                         <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Seleccionar" />
-                                            </SelectTrigger>
+                                            <Input {...field} placeholder="CODE-123" className="text-center font-mono font-bold h-9 text-white border-blue-200" />
                                         </FormControl>
-                                        <SelectContent>
-                                            {categories.map((cat) => (
-                                                <SelectItem key={cat.id} value={cat.id}>
-                                                    {cat.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="brand"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-1">
+                                        <FormLabel className="block text-center text-[10px] font-bold uppercase text-blue-600">Marca</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="Samsung..." className="text-center h-9 text-white border-blue-200 font-bold" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="categoryId"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-1">
+                                        <FormLabel className="block text-center text-[10px] font-bold uppercase text-blue-600">Categoría</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger className="h-9 w-full justify-center text-center px-8 relative text-white border-blue-200 font-bold">
+                                                    <div className="flex items-center justify-center w-full text-center">
+                                                        <SelectValue placeholder="Seleccionar..." />
+                                                    </div>
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="max-h-[200px] z-[100]">
+                                                {categories.map((cat) => (
+                                                    <SelectItem key={cat.id} value={cat.id} className="justify-center text-center cursor-pointer">
+                                                        {cat.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </CardContent>
+                    </Card>
 
-                {/* Stock Section */}
-                <div className="space-y-4 pt-2">
-                    <h3 className="flex items-center gap-2 text-lg font-semibold text-amber-700 dark:text-amber-400">
-                        <div className="h-6 w-1 rounded-full bg-amber-600 dark:bg-amber-500" />
-                        Inventario y Stock
-                    </h3>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="stockLocal"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Stock Local</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            {...field}
-                                            value={field.value ?? ""}
-                                            onChange={field.onChange}
-                                            onFocus={(e) => e.target.select()}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="stockDepot"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Stock Depósito</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            {...field}
-                                            value={field.value ?? ""}
-                                            onChange={field.onChange}
-                                            onFocus={(e) => e.target.select()}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="maxStockLocal"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Cant. Máxima</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            {...field}
-                                            value={field.value ?? ""}
-                                            onChange={field.onChange}
-                                            onFocus={(e) => e.target.select()}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                </div>
-
-                {/* Pricing Section */}
-                <div className="space-y-4 pt-2">
-                    <h3 className="flex items-center gap-2 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
-                        <div className="h-6 w-1 rounded-full bg-emerald-600 dark:bg-emerald-500" />
-                        Precios
-                    </h3>
-
-                    <div className="grid grid-cols-3 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="priceUsd"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Precio USD</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            {...field}
-                                            value={field.value ?? ""}
-                                            onChange={field.onChange}
-                                            onFocus={(e) => e.target.select()}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="pricePos"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Pos (Precio Fijo)</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            {...field}
-                                            value={field.value ?? ""}
-                                            onChange={field.onChange}
-                                            onFocus={(e) => e.target.select()}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <div className="flex flex-col gap-2">
-                            <span className="text-sm font-medium mt-1">Precio ARG (Estimado)</span>
-                            <div className="h-10 px-3 py-2 border rounded-md bg-muted text-green-600 font-bold font-mono flex items-center">
-                                ${priceArg.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {/* CARD 2: STOCK */}
+                    <Card className="border shadow-none">
+                        <CardHeader className="py-3 px-4 bg-amber-50 dark:bg-amber-900/10 border-b border-amber-100 dark:border-amber-900/20">
+                            <CardTitle className="text-center text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-500">
+                                Stock
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                                <FormField
+                                    control={form.control}
+                                    name="stockLocal"
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-1">
+                                            <FormLabel className="block text-center text-[10px] font-bold uppercase text-amber-600">Local</FormLabel>
+                                            <FormControl>
+                                                <Input type="number" {...field} className="text-center font-bold text-lg h-10 border-amber-200 focus-visible:ring-amber-500 text-white" />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="stockDepot"
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-1">
+                                            <FormLabel className="block text-center text-[10px] font-bold uppercase text-amber-600">Depósito</FormLabel>
+                                            <FormControl>
+                                                <Input type="number" {...field} className="text-center font-bold text-lg h-10 border-amber-200 focus-visible:ring-amber-500 text-white" />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
                             </div>
+                            <FormField
+                                control={form.control}
+                                name="maxStockLocal"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-1">
+                                        <FormLabel className="block text-center text-[10px] font-bold uppercase text-amber-600">Ideal (Máximo)</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" {...field} className="text-center font-mono h-9 border-amber-200 text-white font-bold" />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </CardContent>
+                    </Card>
 
-                        </div>
-                    </div>
+                    {/* CARD 3: PRICING */}
+                    <Card className="border shadow-none">
+                        <CardHeader className="py-3 px-4 bg-emerald-50 dark:bg-emerald-900/10 border-b border-emerald-100 dark:border-emerald-900/20">
+                            <CardTitle className="text-center text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                                Finanzas
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-3">
+                            <FormField
+                                control={form.control}
+                                name="priceUsd"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-1">
+                                        <FormLabel className="block text-center text-[10px] font-bold uppercase text-emerald-600">Costo (USD)</FormLabel>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-2.5 font-bold text-emerald-600">$</span>
+                                            <Input type="number" step="0.01" {...field} className="text-center font-mono font-bold text-lg h-10 border-emerald-200 focus-visible:ring-emerald-500 text-emerald-600" />
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="pricePos"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-1">
+                                        <FormLabel className="block text-center text-[10px] font-bold uppercase text-blue-600">Venta (POS)</FormLabel>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-2.5 font-bold text-blue-600">$</span>
+                                            <Input type="number" step="0.01" {...field} className="text-center font-mono font-bold text-lg h-10 border-blue-200 focus-visible:ring-blue-500 text-blue-600" />
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* EST. ARS BOX */}
+                            <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-xl p-3 text-center border-2 border-emerald-200 dark:border-emerald-800">
+                                <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">
+                                    Costo ARS (Est.)
+                                </div>
+                                <div className="font-mono font-black text-xl text-emerald-800 dark:text-emerald-300">
+                                    ${priceArg.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                 </div>
-                <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => onSuccess?.()}>Cancel</Button>
-                    <Button type="submit" disabled={loading}>
-                        {loading ? "Guardando..." : initialData ? "Actualizar" : "Crear"}
+
+                <div className="flex justify-end gap-3 pt-4 border-t mt-2">
+                    <Button type="button" variant="ghost" onClick={() => onSuccess?.()} className="h-10 text-xs uppercase font-bold tracking-wide">
+                        Cancelar
+                    </Button>
+                    <Button type="submit" disabled={loading} className="h-10 px-8 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wide">
+                        {loading ? "Guardando..." : initialData ? "Guardar Cambios" : "Crear Repuesto"}
                     </Button>
                 </div>
+
             </form>
         </Form>
     );
