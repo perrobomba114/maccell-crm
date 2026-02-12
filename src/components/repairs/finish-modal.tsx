@@ -155,30 +155,33 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                         </div>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
 
                         {/* 1. Status Selection */}
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Resultado (Selecciona uno)</Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {finishStatuses.map((s) => {
                                     const isSelected = statusId === s.id.toString();
                                     const gradientColors = statusColors[s.id] || "from-primary to-primary";
 
+                                    // Solid colors for clearer visibility as requested
                                     const unselectedStyles: Record<number, string> = {
-                                        4: "bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 border-orange-200/50",
-                                        5: "bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 border-emerald-200/50",
-                                        6: "bg-red-600/10 hover:bg-red-600/20 text-red-600 border-red-200/50",
-                                        7: "bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 border-blue-200/50",
-                                        8: "bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 border-amber-200/50",
-                                        9: "bg-violet-600/10 hover:bg-violet-600/20 text-violet-600 border-violet-200/50"
+                                        4: "bg-orange-500 hover:bg-orange-600 text-white border-transparent",
+                                        5: "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent",
+                                        6: "bg-red-600 hover:bg-red-700 text-white border-transparent",
+                                        7: "bg-blue-600 hover:bg-blue-700 text-white border-transparent",
+                                        8: "bg-amber-500 hover:bg-amber-600 text-white border-transparent",
+                                        9: "bg-violet-600 hover:bg-violet-700 text-white border-transparent"
                                     };
 
                                     const styleClass = unselectedStyles[s.id] || "bg-muted text-muted-foreground";
-                                    const baseClasses = "relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-300 text-center gap-2 min-h-[5rem] group cursor-pointer active:scale-95";
+                                    // COMPACT: Reduced height (h-16/h-24), padding, and gap
+                                    const baseClasses = "relative flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all duration-300 text-center gap-1 h-16 sm:h-20 overflow-hidden group cursor-pointer shadow-sm hover:shadow-md active:scale-95";
 
                                     const finalClasses = isSelected
-                                        ? `bg-gradient-to-br ${gradientColors} border-transparent text-white shadow-lg shadow-black/5 ring-offset-2 ring-2 ring-${gradientColors.split('-')[1]}-500`
-                                        : `${styleClass}`;
+                                        ? `bg-gradient-to-br ${gradientColors} border-white/20 text-white shadow-lg scale-[1.02] ring-2 ring-offset-1 ring-primary/50`
+                                        : `${styleClass} border-transparent opacity-90 hover:opacity-100`;
 
                                     return (
                                         <button
@@ -187,12 +190,14 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                             onClick={() => setStatusId(s.id.toString())}
                                             className={`${baseClasses} ${finalClasses}`}
                                         >
-                                            {/* Icons */}
-                                            {s.id === 5 && <CheckCircle className={isSelected ? "w-6 h-6" : "w-6 h-6 opacity-80"} />}
-                                            {s.id === 6 && <X className={isSelected ? "w-6 h-6" : "w-6 h-6 opacity-80"} />}
-                                            {![5, 6].includes(s.id) && <div className={`w-3 h-3 rounded-full ${isSelected ? 'bg-white' : 'bg-current opacity-40'}`} />}
-
-                                            <span className="text-[10px] font-bold uppercase tracking-wide leading-tight px-1">
+                                            <div className={`transition-transform duration-300 flex-1 flex items-center justify-center ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>
+                                                {/* COMPACT: Smaller icons */}
+                                                {s.id === 5 && <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-sm" />}
+                                                {s.id === 6 && <X className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-sm" />}
+                                                {s.id === 4 && <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-sm" />}
+                                                {![4, 5, 6].includes(s.id) && <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-dashed border-white/80" />}
+                                            </div>
+                                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wide leading-none w-full px-1 drop-shadow-sm">
                                                 {s.name}
                                             </span>
                                         </button>
@@ -202,84 +207,122 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                         </div>
 
                         {/* 2. Diagnosis */}
-                        <div className="space-y-1 relative">
-                            <Textarea
-                                placeholder="Detalla el trabajo realizado..."
-                                className="min-h-[100px] resize-none text-base p-4 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white transition-colors"
-                                value={diagnosis}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    setDiagnosis(val.charAt(0).toUpperCase() + val.slice(1).toLowerCase());
-                                }}
-                            />
-                            <div className="flex justify-end px-1">
-                                <span className="text-[10px] text-zinc-400 font-medium">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Informe Técnico</Label>
+                            <div className="relative group">
+                                <Textarea
+                                    placeholder="Detalla el trabajo realizado..."
+                                    className="min-h-[80px] resize-none border-muted-foreground/20 bg-muted/5 p-3 text-sm leading-relaxed transition-all focus:ring-0 focus:border-primary/50 group-hover:bg-muted/10"
+                                    value={diagnosis}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setDiagnosis(val.charAt(0).toUpperCase() + val.slice(1).toLowerCase());
+                                    }}
+                                />
+                                <div className="absolute bottom-3 right-3 text-[10px] text-muted-foreground opacity-50">
                                     {diagnosis.length} caracteres
-                                </span>
+                                </div>
                             </div>
                         </div>
 
-                        {/* 2.5 Wet Checkbox - Simplified */}
-                        <div className="flex items-center space-x-3 px-1">
+                        {/* 2.5 Wet Equipment Flag */}
+                        <div className="flex items-center space-x-2 bg-blue-50/50 dark:bg-blue-900/10 p-2.5 rounded-lg border border-blue-100 dark:border-blue-800">
                             <Checkbox
                                 id="is_wet_finish"
                                 checked={isWet}
                                 onCheckedChange={(checked) => setIsWet(checked === true)}
-                                className="h-5 w-5 rounded-md border-2 border-zinc-300 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                                className="h-4 w-4 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                             />
-                            <label
-                                htmlFor="is_wet_finish"
-                                className="text-sm font-medium text-zinc-700 cursor-pointer select-none leading-none"
-                            >
-                                Marcar si encontraste rastros de humedad.
-                            </label>
+                            <div className="grid gap-0.5 leading-none">
+                                <Label
+                                    htmlFor="is_wet_finish"
+                                    className="text-xs font-bold text-blue-700 dark:text-blue-400 cursor-pointer flex items-center gap-1.5"
+                                >
+                                    <Droplets className="w-3.5 h-3.5" />
+                                    EQUIPO MOJADO / CON HUMEDAD
+                                </Label>
+                                <p className="text-[10px] text-muted-foreground">
+                                    Marcar si encontraste rastros de humedad.
+                                </p>
+                            </div>
                         </div>
 
-                        {/* 2.8 Parts Management (Preserved) */}
+                        {/* 2.8 Parts Management (New) */}
                         {repair.parts && repair.parts.length > 0 && (
-                            <div className="space-y-3 pt-2 border-t border-dashed">
-                                <Label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Repuestos</Label>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Repuestos Utilizados</Label>
                                 {statusId === "6" && (
-                                    <div className="bg-red-50 p-2 rounded text-[10px] text-red-600 font-bold uppercase mb-2">
-                                        Se devolverán automáticamente.
+                                    <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded border border-red-200 dark:border-red-900 mb-2">
+                                        <p className="text-[10px] text-red-600 dark:text-red-400 font-bold uppercase">
+                                            Equipos No Reparados: Los repuestos se devuelven automáticamente.
+                                        </p>
                                     </div>
                                 )}
-                                <div className="space-y-2">
-                                    {repair.parts.map((part: any) => {
+                                <div className="bg-muted/5 rounded-lg border border-border/50 divide-y divide-border/50">
+                                    {repair.parts.map((part: any, idx: number) => {
                                         if (!part.sparePart) return null;
                                         const isIrreparable = statusId === "6";
                                         const isReturned = partsToReturn.has(part.id) || isIrreparable;
                                         return (
-                                            <div key={part.id} className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 border border-zinc-100">
+                                            <div key={part.id} className={`p-3 flex items-center justify-between gap-3 ${isIrreparable ? 'bg-red-500/5' : 'bg-card/50'}`}>
                                                 <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-zinc-700">{part.sparePart.name}</span>
-                                                    <span className="text-[10px] text-zinc-400">Qty: {part.quantity}</span>
+                                                    <span className="text-sm font-medium">{part.sparePart.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground font-mono">{part.sparePart.sku} - Qty: {part.quantity}</span>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Checkbox
-                                                        id={`return-${part.id}`}
-                                                        checked={isReturned}
-                                                        onCheckedChange={() => !isIrreparable && togglePartReturn(part.id)}
-                                                        disabled={isIrreparable}
-                                                    />
-                                                    <label htmlFor={`return-${part.id}`} className="text-[10px] uppercase font-bold text-zinc-500 cursor-pointer">
-                                                        Devolver
+                                                <div className="flex items-center">
+                                                    <label htmlFor={`return-${part.id}`} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all cursor-pointer select-none ${isReturned ? 'bg-red-500/10 border-red-500/50 text-red-600' : 'bg-background border-border text-muted-foreground hover:bg-muted'} ${isIrreparable ? 'cursor-not-allowed opacity-80' : ''}`}>
+                                                        <Checkbox
+                                                            id={`return-${part.id}`}
+                                                            checked={isReturned}
+                                                            onCheckedChange={() => !isIrreparable && togglePartReturn(part.id)}
+                                                            disabled={isIrreparable}
+                                                            className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                                                        />
+                                                        <span className="text-xs font-medium">Devolver (Falla/Error)</span>
                                                     </label>
                                                 </div>
                                             </div>
                                         );
                                     })}
                                 </div>
+                                <p className="text-[10px] text-muted-foreground px-1">
+                                    {statusId === "6"
+                                        ? "* Al ser Irreparable, todos los repuestos se cargarán para devolución."
+                                        : "* Los repuestos NO marcados se considerarán consumidos exitosamente."
+                                    }
+                                </p>
                             </div>
                         )}
 
-                        {/* 3. Evidence Images */}
-                        <div className="space-y-2 pt-2">
-                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Máx. 3 fotos</p>
-                            <div className="flex gap-3 overflow-x-auto pb-2">
+                        {/* 3. Evidence */}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Evidencia visual</Label>
+                                <span className="text-[10px] text-muted-foreground">Máx. 3 fotos</span>
+                            </div>
+
+                            <div className="grid grid-cols-5 gap-2">
+                                {/* Existing Images */}
+                                {repair.deviceImages?.filter(isValidImg).map((url: string, idx: number) => {
+                                    const imgUrl = getImgUrl(url);
+                                    if (!imgUrl) return null;
+                                    return (
+                                        <SafeImageThumbnail
+                                            key={`old-${idx}`}
+                                            src={imgUrl}
+                                            alt="Evidencia previa"
+                                            onClick={() => {
+                                                setViewerIndex(idx);
+                                                setViewerOpen(true);
+                                            }}
+                                            onDelete={() => { }} // Read-only in finish modal? Or strictly no-op.
+                                        />
+                                    );
+                                })}
+
                                 {/* New Images */}
                                 {newImages.map((file, idx) => (
-                                    <div key={`new-${idx}`} className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden border border-zinc-200 group">
+                                    <div key={`new-${idx}`} className="relative aspect-square rounded-lg overflow-hidden border border-primary/50 shadow-sm group">
                                         <img
                                             src={URL.createObjectURL(file)}
                                             alt="Nueva evidencia"
@@ -287,7 +330,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                         />
                                         <button
                                             onClick={(e) => { e.stopPropagation(); removeNewImage(idx); }}
-                                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="absolute top-1 right-1 p-1 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
                                             type="button"
                                         >
                                             <X className="h-3 w-3" />
@@ -297,9 +340,9 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
 
                                 {/* Add Button */}
                                 {newImages.length < 3 && (
-                                    <label className="h-20 w-20 shrink-0 flex flex-col items-center justify-center border-2 border-dashed border-zinc-300 rounded-lg cursor-pointer hover:bg-zinc-50 hover:border-blue-400 transition-colors gap-1">
-                                        <Camera className="h-5 w-5 text-zinc-400" />
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase">Agregar</span>
+                                    <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group">
+                                        <Camera className="h-5 w-5 text-muted-foreground/70 group-hover:text-primary transition-colors mb-1" />
+                                        <span className="text-[9px] font-medium text-muted-foreground/70 group-hover:text-primary uppercase">Agregar</span>
                                         <input
                                             type="file"
                                             accept="image/*"
@@ -314,16 +357,21 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
 
                     </div>
 
-                    <DialogFooter className="p-4 bg-zinc-50/50 border-t border-zinc-100 flex gap-3">
-                        <Button variant="outline" onClick={onClose} disabled={isLoading} className="flex-1 border-zinc-200 font-bold text-zinc-600 hover:bg-zinc-100">
+                    <DialogFooter className="p-4 sm:p-6 pt-2 border-t bg-muted/5 flex flex-row gap-2 shrink-0">
+                        <Button variant="ghost" onClick={onClose} disabled={isLoading} className="flex-1 sm:flex-none text-muted-foreground hover:text-foreground h-11 sm:h-10">
                             Cancelar
                         </Button>
                         <Button
                             onClick={submitRepair}
                             disabled={isLoading}
-                            className="flex-1 bg-black hover:bg-zinc-800 text-white font-bold"
+                            className={`
+                                flex-1 sm:min-w-[140px] shadow-lg transition-all h-11 sm:h-10
+                                ${statusId === '5' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                ${statusId === '6' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                ${!['5', '6'].includes(statusId) ? 'bg-primary hover:bg-primary/90' : ''}
+                            `}
                         >
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                             Confirmar
                         </Button>
                     </DialogFooter>
