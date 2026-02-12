@@ -17,6 +17,7 @@ import { InvoicePrintButton } from "./invoice-print-button";
 import { getInvoices } from "@/actions/invoice-actions";
 import { InvoiceDateFilter } from "./invoice-date-filter";
 import { InvoicePagination } from "./invoice-pagination";
+import { InvoiceDetailModal } from "./invoice-detail-modal";
 
 
 export const dynamic = 'force-dynamic';
