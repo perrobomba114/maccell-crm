@@ -595,12 +595,6 @@ export default function AdminSalesClient() {
                                                 })()}
                                             </h2>
                                         </div>
-                                        {/* Ticket Number Badge */}
-                                        <div className="z-20">
-                                            <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-md text-zinc-300 font-mono font-bold text-sm shadow-lg">
-                                                #{viewingSale.saleNumber.split('SALE-').pop()?.split('-')[0]}
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                                 <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
@@ -678,11 +672,15 @@ export default function AdminSalesClient() {
                                 </div>
 
                                 {/* Footer / Total */}
-                                <div className="flex items-center justify-between pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                                    <div className="text-xs text-zinc-400 max-w-[200px]">
+                                <div className="flex items-end justify-between pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                                    <div className="flex flex-col gap-1">
+                                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Ticket N°</p>
+                                        <p className="text-2xl font-mono font-black text-zinc-700 dark:text-zinc-300 tracking-tighter">
+                                            #{viewingSale.saleNumber.split('SALE-').pop()?.split('-')[0]}
+                                        </p>
                                         {viewingSale.wasPaymentModified && (
-                                            <span className="text-red-500 font-bold flex items-center gap-1">
-                                                <AlertCircle size={10} /> Pago modificado manualmente
+                                            <span className="text-red-500 text-[10px] font-bold flex items-center gap-1 mt-1">
+                                                <AlertCircle size={10} /> Pago modificado
                                             </span>
                                         )}
                                     </div>
@@ -706,32 +704,62 @@ export default function AdminSalesClient() {
 
             {/* Edit Payment Method Dialog */}
             <Dialog open={!!editingSale} onOpenChange={(open) => !open && setEditingSale(null)}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Modificar Método de Pago</DialogTitle>
-                        <DialogDescription>
-                            Cambiar el método de pago para el ticket <span className="font-mono font-bold text-primary">{editingSale?.saleNumber.split('SALE-').pop()?.split('-')[0]}</span>.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-6">
-                        <Label className="text-sm font-medium">Nuevo Método de Pago</Label>
-                        <Select value={newPaymentMethod} onValueChange={setNewPaymentMethod}>
-                            <SelectTrigger className="mt-2 w-full">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="CASH">Efectivo</SelectItem>
-                                <SelectItem value="CARD">Tarjeta (Débito/Crédito)</SelectItem>
-                                <SelectItem value="MERCADOPAGO">MercadoPago / Transferencia</SelectItem>
-                            </SelectContent>
-                        </Select>
+                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-2 border-zinc-200 dark:border-zinc-800 shadow-2xl">
+                    {/* Header */}
+                    <div className="bg-zinc-950 text-white p-6 relative overflow-hidden">
+                        <div className="relative z-10 flex flex-col gap-1">
+                            <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Administración</p>
+                            <h2 className="text-2xl font-black tracking-tighter uppercase text-white">
+                                Modificar Pago
+                            </h2>
+                        </div>
+                        <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                            <Edit size={80} className="text-white" />
+                        </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingSale(null)}>Cancelar</Button>
-                        <Button onClick={handleUpdatePayment} disabled={isUpdating}>
-                            {isUpdating ? "Guardando..." : "Guardar Cambios"}
+
+                    <div className="p-6 bg-zinc-50/50 dark:bg-zinc-900/50 space-y-6">
+                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl shadow-sm">
+                            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1 block">Ticket Seleccionado</Label>
+                            <p className="text-2xl font-black text-zinc-900 dark:text-white font-mono tracking-tight">
+                                #{editingSale?.saleNumber.split('SALE-').pop()?.split('-')[0]}
+                            </p>
+                            <p className="text-xs text-zinc-500 mt-1">
+                                Seleccione el nuevo método de pago para esta transacción.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Nuevo Método de Pago</Label>
+                            <Select value={newPaymentMethod} onValueChange={setNewPaymentMethod}>
+                                <SelectTrigger className="w-full h-11 bg-white dark:bg-zinc-950 border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-zinc-950">
+                                    <SelectValue placeholder="Seleccionar método..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="CASH" className="font-medium">Efectivo</SelectItem>
+                                    <SelectItem value="CARD" className="font-medium">Tarjeta (Débito/Crédito)</SelectItem>
+                                    <SelectItem value="MERCADOPAGO" className="font-medium">MercadoPago / Transferencia</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setEditingSale(null)}
+                            className="font-bold border-zinc-300 hover:bg-zinc-200 text-zinc-600"
+                        >
+                            Cancelar
                         </Button>
-                    </DialogFooter>
+                        <Button
+                            onClick={handleUpdatePayment}
+                            disabled={isUpdating}
+                            className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-6"
+                        >
+                            {isUpdating ? "Guardando..." : "Confirmar Cambio"}
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 
