@@ -33,6 +33,7 @@ export function InvoiceDetailModal({ invoice }: InvoiceDetailModalProps) {
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-2 border-zinc-800 bg-zinc-950 text-white shadow-2xl">
+                <DialogTitle className="sr-only">Detalle de Factura</DialogTitle>
                 {/* Header */}
                 <div className="bg-zinc-900 border-b border-zinc-800 p-6 flex items-start justify-between">
                     <div className="space-y-1">
@@ -40,9 +41,9 @@ export function InvoiceDetailModal({ invoice }: InvoiceDetailModalProps) {
                             <Badge variant="outline" className="bg-blue-900/20 text-blue-400 border-blue-900/50 font-bold px-2 py-0.5 rounded text-sm">
                                 {invoice.invoiceType}
                             </Badge>
-                            <DialogTitle className="text-xl font-bold tracking-tight">
+                            <h2 className="text-xl font-bold tracking-tight">
                                 Factura Electrónica
-                            </DialogTitle>
+                            </h2>
                         </div>
                         <p className="text-sm text-zinc-400 font-mono">
                             N° {invoice.invoiceNumber}
