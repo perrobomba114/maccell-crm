@@ -162,23 +162,23 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 {finishStatuses.map((s) => {
                                     const isSelected = statusId === s.id.toString();
-                                    const gradientColors = statusColors[s.id] || "from-primary to-primary";
 
-                                    const unselectedStyles: Record<number, string> = {
-                                        4: "bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 border-orange-200/50",
-                                        5: "bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 border-emerald-200/50",
-                                        6: "bg-red-600/10 hover:bg-red-600/20 text-red-600 border-red-200/50",
-                                        7: "bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 border-blue-200/50",
-                                        8: "bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 border-amber-200/50",
-                                        9: "bg-violet-600/10 hover:bg-violet-600/20 text-violet-600 border-violet-200/50"
+                                    // Solid colors for selected state
+                                    const selectedColors: Record<number, string> = {
+                                        4: "bg-orange-500 border-orange-600",
+                                        5: "bg-emerald-600 border-emerald-700",
+                                        6: "bg-red-600 border-red-700",
+                                        7: "bg-blue-600 border-blue-700",
+                                        8: "bg-amber-500 border-amber-600",
+                                        9: "bg-violet-600 border-violet-700"
                                     };
 
-                                    const styleClass = unselectedStyles[s.id] || "bg-muted text-muted-foreground";
-                                    const baseClasses = "relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-300 text-center gap-2 min-h-[5rem] group cursor-pointer active:scale-95";
+                                    const baseClasses = "relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 text-center gap-1.5 h-20 cursor-pointer active:scale-95";
 
+                                    const selectedClass = selectedColors[s.id] || "bg-zinc-900 border-zinc-900";
                                     const finalClasses = isSelected
-                                        ? `bg-gradient-to-br ${gradientColors} border-transparent text-white shadow-lg shadow-black/5 ring-offset-2 ring-2 ring-${gradientColors.split('-')[1]}-500`
-                                        : `${styleClass}`;
+                                        ? `${selectedClass} text-white shadow-md`
+                                        : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 hover:border-zinc-300";
 
                                     return (
                                         <button
@@ -187,10 +187,11 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                             onClick={() => setStatusId(s.id.toString())}
                                             className={`${baseClasses} ${finalClasses}`}
                                         >
-                                            {/* Icons */}
-                                            {s.id === 5 && <CheckCircle className={isSelected ? "w-6 h-6" : "w-6 h-6 opacity-80"} />}
-                                            {s.id === 6 && <X className={isSelected ? "w-6 h-6" : "w-6 h-6 opacity-80"} />}
-                                            {![5, 6].includes(s.id) && <div className={`w-3 h-3 rounded-full ${isSelected ? 'bg-white' : 'bg-current opacity-40'}`} />}
+                                            {/* Simple Icons */}
+                                            {s.id === 5 && <CheckCircle className={isSelected ? "w-5 h-5" : "w-5 h-5 opacity-50"} />}
+                                            {s.id === 6 && <X className={isSelected ? "w-5 h-5" : "w-5 h-5 opacity-50"} />}
+                                            {s.id === 4 && <Loader2 className={isSelected ? "w-5 h-5" : "w-5 h-5 opacity-50"} />}
+                                            {![4, 5, 6].includes(s.id) && <div className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-white' : 'bg-zinc-300'}`} />}
 
                                             <span className="text-[10px] font-bold uppercase tracking-wide leading-tight px-1">
                                                 {s.name}
