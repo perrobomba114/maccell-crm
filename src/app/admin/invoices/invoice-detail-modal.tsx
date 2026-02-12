@@ -18,6 +18,7 @@ interface InvoiceDetailModalProps {
     invoice: any;
 }
 
+// Component
 export function InvoiceDetailModal({ invoice }: InvoiceDetailModalProps) {
     return (
         <Dialog>

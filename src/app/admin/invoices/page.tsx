@@ -27,6 +27,7 @@ export default async function InvoicesPage({
 }: {
     searchParams: { page?: string, date?: string, view?: string }
 }) {
+    console.log("InvoicesPage rendering...");
     const page = Number(searchParams.page) || 1;
     const viewAll = searchParams.view === 'all';
 
