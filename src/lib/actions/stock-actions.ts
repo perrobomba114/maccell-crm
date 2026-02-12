@@ -218,32 +218,10 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
 
         // CRITICAL: Check if this discrepancy was already resolved by another admin
         if (data.discrepancyId) {
-            // Find any notification for this specific discrepancy event that is NOT PENDING
-            // Note: Since we store JSON, we have to look for other notifications that share this discrepancyId
-            // Ideally we would have a separate table for Requests, but for now we query raw JSON or just check logic.
-            // A more robust way without raw JSON queries (which can be slow/DB specific) is to Fetch all notifications for this discrepancyId first.
-            // However, since we update ALL of them atomically below, we can check the status of the CURRENT notification.
-            // But if Admin A acted, Admin B's notification might still be PENDING if we didn't update it yet.
-            // So we MUST update ALL linked notifications.
-
-            // Let's protect against race conditions by checking if the stock has already been changed?
-            // No, stock might change for other reasons.
-            // We need to check if ANY sibling notification is resolved.
-
-            // Strategy: Find all notifications with this discrepancyId
-            // This requires reading all notifications which might be heavy if table is huge, but here it's fine (only few admins).
-            // Since filtering by JSON path is DB-specific (Postgres allows it), we will use a raw query or fetch potential candidates.
-            // Simpler approach: We will fetch all ACTION_REQUEST notifications created recently and filter in JS, or trust that we update them fast enough.
-
-            // BETTER APPROACH for Prisma + JSON: 
-            // We can't easily query inside the JSON with standard Prisma without raw queries. 
-            // But we can update them all. If we update all, we need to ensure we only run the stock logic ONCE.
-
-            // Let's use a transaction.
-            return await db.$transaction(async (tx) => {
-                // 1. Fetch potential sibling notifications (safer than raw JSON query)
-                // We fetch all pending ACTION_REQUESTs and filter in memory. 
-                // Since this list shouldn't be huge, this is safe.
+            // Transactional update to ensure atomicity
+            const transactionResult = await db.$transaction(async (tx) => {
+                // 1. Fetch potential sibling notifications
+                // We fetch all pending ACTION_REQUESTs and filter in memory.
                 const pendingNotifications = await tx.notification.findMany({
                     where: {
                         status: 'PENDING',
@@ -261,25 +239,17 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
                     .map(n => n.id);
 
                 if (siblingIds.length === 0) {
-                    // If we are here, it means they are already resolved or don't exist
-                    // But wait, the current notification exists and brought us here.
-                    // So this case implies someone else JUST resolved it between our read and now?
-                    // Or we are just processing 'this' one.
-                    // Actually, if we are here, at least 'notificationId' should be in the list? 
-                    // Not necessarily if we fetched from DB and it was just updated.
-                    // Let's proceed only if we find siblings.
-                }
-
-                // Double check if they are already resolved
-                // If the list is empty, it means they were resolved.
-                if (siblingIds.length === 0) {
+                    // Check if *this* notification was already processed (if so, return specific error)
                     return { success: false, error: "Esta solicitud ya fue procesada por otro administrador." };
                 }
 
                 // 2. ATOMIC UPDATE: Update all found siblings
+                // CRITICAL FIX: Only update if they are currently PENDING.
+                // This 'where' clause ensures we don't count rows that lost the race condition.
                 const result = await tx.notification.updateMany({
                     where: {
-                        id: { in: siblingIds }
+                        id: { in: siblingIds },
+                        status: 'PENDING'
                     },
                     data: {
                         status: approved ? 'ACCEPTED' : 'REJECTED',
@@ -287,9 +257,13 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
                     }
                 });
 
-                // 3. Perform Stock Update (Only if approved)
+                // If result.count is 0, it means another transaction beat us to it.
+                if (result.count === 0) {
+                    return { success: false, error: "Esta solicitud ya fue procesada por otro administrador." };
+                }
+
+                // 3. Perform Stock Update (Only if approved AND we actually updated the notifications)
                 if (approved) {
-                    // Check if stock still exists to prevent "Record not found" error
                     const stockExists = await tx.productStock.findUnique({
                         where: { id: data.stockId }
                     });
@@ -304,18 +278,27 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
                             }
                         });
                     } else {
-                        // Stock record deleted? We should maybe warn the user but still complete the notification
-                        // to unblock the list.
                         console.warn(`Stock ID ${data.stockId} not found. Skipping update.`);
-                        return { success: true, message: "Solicitud procesada, pero el producto ya no existe (no se actualizó el stock)." };
+                        return { success: true, message: "Solicitud procesada, pero el producto ya no existe." };
                     }
                 }
 
                 return { success: true };
             });
+
+            if (transactionResult.success) {
+                revalidatePath("/vendor/products");
+                revalidatePath("/admin");
+                revalidatePath("/admin/notifications");
+            }
+            return transactionResult;
         }
 
-        // Fallback for old notifications without discrepancyId (legacy support)
+        // Fallback for old notifications without discrepancyId
+        if (notification.status !== 'PENDING') {
+            return { success: false, error: "Ya respondida" };
+        }
+
         if (approved) {
             await db.productStock.update({
                 where: { id: data.stockId },
@@ -337,11 +320,11 @@ export async function resolveStockDiscrepancy(notificationId: string, approved: 
 
         revalidatePath("/vendor/products");
         revalidatePath("/admin");
+        revalidatePath("/admin/notifications");
 
         return { success: true };
     } catch (error) {
         console.error("Error resolving discrepancy:", error);
-        // Handle "already processed" explicitly to show nice message
         if (error instanceof Error && error.message.includes("ya fue procesada")) {
             return { success: false, error: error.message };
         }

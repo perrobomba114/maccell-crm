@@ -309,10 +309,23 @@ export function ActiveRepairsTable({
                                                     )}
 
                                                     {enableManagement && (
-                                                        <TechnicianActionButton
-                                                            repair={repair}
-                                                            currentUserId={currentUserId}
-                                                        />
+                                                        <>
+                                                            <div className="flex gap-1">
+                                                                <TechnicianActionButton
+                                                                    repair={repair}
+                                                                    currentUserId={currentUserId}
+                                                                />
+                                                                <Button
+                                                                    size="icon-xs"
+                                                                    variant="ghost"
+                                                                    onClick={() => setTransferRepair(repair)}
+                                                                    className="text-muted-foreground hover:text-blue-500"
+                                                                    title="Transferir"
+                                                                >
+                                                                    <Share2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </div>
+                                                        </>
                                                     )}
                                                 </div>
                                             </TableCell>
