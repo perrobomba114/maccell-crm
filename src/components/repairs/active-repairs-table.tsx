@@ -28,6 +28,7 @@ interface ActiveRepairsTableProps {
     enableManagement?: boolean;
     enableImageUpload?: boolean;
     currentUserId?: string;
+    showIssueSummary?: boolean;
 }
 
 const statusColorMap: Record<string, string> = {
@@ -49,7 +50,8 @@ export function ActiveRepairsTable({
     enableTakeover = false,
     enableManagement = false,
     enableImageUpload = false,
-    currentUserId = ""
+    currentUserId = "",
+    showIssueSummary = false
 }: ActiveRepairsTableProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [takeoverRepair, setTakeoverRepair] = useState<any | null>(null);
@@ -235,7 +237,12 @@ export function ActiveRepairsTable({
                                         </TableCell>
                                         <TableCell className="text-center px-2 max-w-[180px]">
                                             <div className="flex flex-col items-center">
-                                                <span className="font-semibold text-sm whitespace-normal">{repair.deviceBrand} {repair.deviceModel}</span>
+                                                <span className="font-semibold text-sm whitespace-normal leading-tight">{repair.deviceBrand} {repair.deviceModel}</span>
+                                                {showIssueSummary && repair.problemDescription && (
+                                                    <span className="text-[10px] text-muted-foreground mt-1 truncate max-w-[150px] block" title={repair.problemDescription}>
+                                                        {repair.problemDescription}
+                                                    </span>
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center w-[100px] px-1">

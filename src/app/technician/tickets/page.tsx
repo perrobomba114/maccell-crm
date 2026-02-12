@@ -45,6 +45,7 @@ export default async function AvailableWorkPage() {
                 emptyMessage="No hay trabajo disponible en este momento."
                 enableTakeover={true}
                 currentUserId={user?.id}
+                showIssueSummary={true}
             />
             <AutoRefresh intervalMs={30000} />
         </div>
