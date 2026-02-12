@@ -568,45 +568,43 @@ export default function AdminSalesClient() {
                 <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-2 border-zinc-200 dark:border-zinc-800 shadow-2xl">
                     {viewingSale && (
                         <>
-                            {/* Header Section with Ticket Number as Hero */}
+                            {/* Header Section with Payment Method as Hero */}
                             <div className="bg-zinc-950 text-white p-6 relative overflow-hidden">
                                 <div className="relative z-10 flex flex-col gap-4">
                                     <div className="flex justify-between items-start">
                                         <div className="flex flex-col gap-1">
-                                            <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Ticket de Venta</p>
-                                            <h2 className="text-4xl font-black tracking-tighter tabular-nums">
-                                                {viewingSale.saleNumber.split('SALE-').pop()?.split('-')[0]}
+                                            <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Método de Pago</p>
+                                            <h2 className="text-4xl font-black tracking-tighter uppercase text-white">
+                                                {(() => {
+                                                    const payments = (viewingSale as any).payments || [];
+                                                    let label = "MercadoPago";
+                                                    let method = viewingSale.paymentMethod;
+
+                                                    if (payments.length > 1) {
+                                                        label = "Mixto";
+                                                    } else if (payments.length === 1) {
+                                                        method = payments[0].method;
+                                                    }
+
+                                                    if (method === "CASH") label = "Efectivo";
+                                                    else if (method === "CARD") label = "Tarjeta";
+                                                    else if (method === "TRANSFER") label = "Transferencia";
+                                                    else if (method === "MERCADOPAGO") label = "MercadoPago";
+
+                                                    return label;
+                                                })()}
                                             </h2>
                                         </div>
-                                        {/* Payment Method Badge */}
+                                        {/* Ticket Number Badge */}
                                         <div className="z-20">
-                                            {(() => {
-                                                const payments = (viewingSale as any).payments || [];
-                                                let label = "MercadoPago";
-                                                let method = viewingSale.paymentMethod;
-
-                                                if (payments.length > 1) {
-                                                    label = "Mixto";
-                                                } else if (payments.length === 1) {
-                                                    method = payments[0].method;
-                                                }
-
-                                                if (method === "CASH") label = "Efectivo";
-                                                else if (method === "CARD") label = "Tarjeta";
-                                                else if (method === "TRANSFER") label = "Transferencia";
-                                                else if (method === "MERCADOPAGO") label = "MercadoPago";
-
-                                                return (
-                                                    <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-md text-white font-bold text-sm uppercase tracking-wider shadow-lg">
-                                                        {label}
-                                                    </div>
-                                                );
-                                            })()}
+                                            <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-md text-zinc-300 font-mono font-bold text-sm shadow-lg">
+                                                #{viewingSale.saleNumber.split('SALE-').pop()?.split('-')[0]}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="absolute top-0 right-0 p-6 opacity-20 pointer-events-none">
-                                    <ShoppingBag size={120} className="text-white" />
+                                <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
+                                    <DollarSign size={120} className="text-white" />
                                 </div>
                             </div>
 
@@ -646,35 +644,6 @@ export default function AdminSalesClient() {
                                         </p>
                                     </div>
 
-                                    <div className="bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-1 shadow-sm">
-                                        <div className="flex items-center gap-1.5 text-zinc-500 mb-1">
-                                            <DollarSign size={14} />
-                                            <span className="text-[10px] uppercase font-bold tracking-wider">Pago</span>
-                                        </div>
-                                        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate flex items-center gap-1">
-                                            {(() => {
-                                                const payments = (viewingSale as any).payments || [];
-                                                let label = "MercadoPago";
-                                                let method = viewingSale.paymentMethod;
-
-                                                if (payments.length > 1) {
-                                                    label = "Mixto";
-                                                } else if (payments.length === 1) {
-                                                    method = payments[0].method;
-                                                }
-
-                                                if (method === "CASH") label = "Efectivo";
-                                                else if (method === "CARD") label = "Tarjeta";
-                                                else if (method === "TRANSFER") label = "Transfer";
-                                                else if (method === "MERCADOPAGO") label = "MP";
-
-                                                return label;
-                                            })()}
-                                            {viewingSale.wasPaymentModified && (
-                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 ml-1" title="Modificado manualmente" />
-                                            )}
-                                        </p>
-                                    </div>
                                 </div>
 
                                 {/* Items Table */}
