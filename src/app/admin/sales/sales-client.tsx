@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Printer, Search, Building2, Edit, Eye, Trash2, DollarSign, ShoppingBag } from "lucide-react";
+import { CalendarIcon, Printer, Search, Building2, Edit, Eye, Trash2, DollarSign, ShoppingBag, User, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
@@ -296,32 +296,52 @@ export default function AdminSalesClient() {
                                 placeholder="Buscar por ticket..."
                                 className="pl-8"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSearchTerm(val);
+                                    if (val.length > 0) {
+                                        setDate(undefined);
+                                    } else {
+                                        setDate(new Date());
+                                    }
+                                }}
                             />
                         </div>
 
-                        <Popover>
-                            <PopoverTrigger asChild>
+                        <div className="flex items-center gap-1">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-full sm:w-[200px] justify-start text-left font-normal",
+                                            !date && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {date ? format(date, "PPP", { locale: es }) : <span>Filtrar por fecha</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={date}
+                                        onSelect={setDate}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                            {date && (
                                 <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-full sm:w-[200px] justify-start text-left font-normal",
-                                        !date && "text-muted-foreground"
-                                    )}
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setDate(undefined)}
+                                    title="Limpiar fecha"
                                 >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {date ? format(date, "PPP", { locale: es }) : <span>Filtrar por fecha</span>}
+                                    <Trash2 className="h-4 w-4 text-muted-foreground" />
                                 </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    mode="single"
-                                    selected={date}
-                                    onSelect={setDate}
-                                    initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -543,99 +563,175 @@ export default function AdminSalesClient() {
                 </CardContent>
             </Card>
 
-            {/* View Details Dialog */}
+            {/* View Details Dialog - Modern Redesign */}
             <Dialog open={!!viewingSale} onOpenChange={(open) => !open && setViewingSale(null)}>
-                <DialogContent className="sm:max-w-[600px]">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <span>Detalle de Venta</span>
-                            {viewingSale && (
-                                <Badge variant="outline" className="font-mono">
-                                    {viewingSale.saleNumber.split('SALE-').pop()?.split('-')[0]}
-                                </Badge>
-                            )}
-                        </DialogTitle>
-                        <DialogDescription>
-                            Información detallada de la transacción.
-                        </DialogDescription>
-                    </DialogHeader>
-
+                <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-2 border-zinc-200 dark:border-zinc-800 shadow-2xl">
                     {viewingSale && (
-                        <div className="py-4 space-y-6">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <Label className="text-muted-foreground">Fecha</Label>
-                                    <div className="font-medium">{format(new Date(viewingSale.createdAt), "dd 'de' MMMM, yyyy - HH:mm", { locale: es })}</div>
-                                </div>
-                                <div>
-                                    <Label className="text-muted-foreground">Sucursal</Label>
-                                    <div className="font-medium">{viewingSale.branch?.name || "N/A"}</div>
-                                </div>
-                                <div>
-                                    <Label className="text-muted-foreground">Vendedor</Label>
-                                    <div className="font-medium">{viewingSale.vendor?.name || "N/A"}</div>
-                                </div>
-                                <div>
-                                    <Label className="text-muted-foreground">Método de Pago</Label>
-                                    <div className="font-medium flex items-center gap-2">
-                                        {(() => {
-                                            const payments = (viewingSale as any).payments || [];
-                                            let label = "MercadoPago";
-                                            let method = viewingSale.paymentMethod;
+                        <>
+                            {/* Header Section with Ticket Number as Hero */}
+                            <div className="bg-zinc-950 text-white p-6 relative overflow-hidden">
+                                <div className="relative z-10 flex flex-col gap-4">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex flex-col gap-1">
+                                            <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Ticket de Venta</p>
+                                            <h2 className="text-4xl font-black tracking-tighter tabular-nums">
+                                                {viewingSale.saleNumber.split('SALE-').pop()?.split('-')[0]}
+                                            </h2>
+                                        </div>
+                                        {/* Payment Method Badge */}
+                                        <div className="z-20">
+                                            {(() => {
+                                                const payments = (viewingSale as any).payments || [];
+                                                let label = "MercadoPago";
+                                                let method = viewingSale.paymentMethod;
 
-                                            if (payments.length > 1) {
-                                                label = `Mixto (${payments.map((p: any) => p.method === "CASH" ? "Efvo" : p.method === "CARD" ? "Tarj" : "MP").join(" + ")})`;
-                                            } else if (payments.length === 1) {
-                                                method = payments[0].method;
-                                            }
+                                                if (payments.length > 1) {
+                                                    label = "Mixto";
+                                                } else if (payments.length === 1) {
+                                                    method = payments[0].method;
+                                                }
 
-                                            if (method === "CASH") label = "Efectivo";
-                                            else if (method === "CARD") label = "Tarjeta";
-                                            else if (method === "TRANSFER") label = "Transferencia";
-                                            else if (method === "MERCADOPAGO") label = "MercadoPago";
+                                                if (method === "CASH") label = "Efectivo";
+                                                else if (method === "CARD") label = "Tarjeta";
+                                                else if (method === "TRANSFER") label = "Transferencia";
+                                                else if (method === "MERCADOPAGO") label = "MercadoPago";
 
-                                            return label;
-                                        })()}
+                                                return (
+                                                    <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-md text-white font-bold text-sm uppercase tracking-wider shadow-lg">
+                                                        {label}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="absolute top-0 right-0 p-6 opacity-20 pointer-events-none">
+                                    <ShoppingBag size={120} className="text-white" />
+                                </div>
+                            </div>
+
+                            <div className="p-6 space-y-8 bg-zinc-50/50 dark:bg-zinc-900/50">
+                                {/* Metadata Grid */}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-1 shadow-sm">
+                                        <div className="flex items-center gap-1.5 text-zinc-500 mb-1">
+                                            <CalendarIcon size={14} />
+                                            <span className="text-[10px] uppercase font-bold tracking-wider">Fecha</span>
+                                        </div>
+                                        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                                            {format(new Date(viewingSale.createdAt), "dd MMM yyyy", { locale: es })}
+                                        </p>
+                                        <p className="text-xs text-zinc-500 truncate">
+                                            {format(new Date(viewingSale.createdAt), "HH:mm", { locale: es })} hs
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-1 shadow-sm">
+                                        <div className="flex items-center gap-1.5 text-zinc-500 mb-1">
+                                            <Building2 size={14} />
+                                            <span className="text-[10px] uppercase font-bold tracking-wider">Sucursal</span>
+                                        </div>
+                                        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                                            {viewingSale.branch?.name || "N/A"}
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-1 shadow-sm">
+                                        <div className="flex items-center gap-1.5 text-zinc-500 mb-1">
+                                            <User size={14} />
+                                            <span className="text-[10px] uppercase font-bold tracking-wider">Vendedor</span>
+                                        </div>
+                                        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                                            {viewingSale.vendor?.name?.split(' ')[0] || "N/A"}
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-1 shadow-sm">
+                                        <div className="flex items-center gap-1.5 text-zinc-500 mb-1">
+                                            <DollarSign size={14} />
+                                            <span className="text-[10px] uppercase font-bold tracking-wider">Pago</span>
+                                        </div>
+                                        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate flex items-center gap-1">
+                                            {(() => {
+                                                const payments = (viewingSale as any).payments || [];
+                                                let label = "MercadoPago";
+                                                let method = viewingSale.paymentMethod;
+
+                                                if (payments.length > 1) {
+                                                    label = "Mixto";
+                                                } else if (payments.length === 1) {
+                                                    method = payments[0].method;
+                                                }
+
+                                                if (method === "CASH") label = "Efectivo";
+                                                else if (method === "CARD") label = "Tarjeta";
+                                                else if (method === "TRANSFER") label = "Transfer";
+                                                else if (method === "MERCADOPAGO") label = "MP";
+
+                                                return label;
+                                            })()}
+                                            {viewingSale.wasPaymentModified && (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 ml-1" title="Modificado manualmente" />
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Items Table */}
+                                <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-black shadow-sm">
+                                    <Table>
+                                        <TableHeader className="bg-zinc-50 dark:bg-zinc-900">
+                                            <TableRow>
+                                                <TableHead className="w-[60px] text-center text-xs font-bold uppercase tracking-wider">Cant.</TableHead>
+                                                <TableHead className="text-xs font-bold uppercase tracking-wider">Producto</TableHead>
+                                                <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Subtotal</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {viewingSale.items.map((item: any) => (
+                                                <TableRow key={item.id} className="border-b border-zinc-100 dark:border-zinc-900 last:border-0">
+                                                    <TableCell className="font-bold text-center text-zinc-500">{item.quantity}</TableCell>
+                                                    <TableCell className="font-medium text-zinc-900 dark:text-zinc-100">
+                                                        <div className="flex flex-col">
+                                                            <span>{item.name}</span>
+                                                            <span className="text-[10px] text-zinc-400 font-mono">
+                                                                ${item.price.toLocaleString()} un.
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-bold text-zinc-700 dark:text-zinc-300">
+                                                        ${(item.quantity * item.price).toLocaleString()}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                {/* Footer / Total */}
+                                <div className="flex items-center justify-between pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                                    <div className="text-xs text-zinc-400 max-w-[200px]">
                                         {viewingSale.wasPaymentModified && (
-                                            <Badge variant="destructive" className="text-[10px] px-1 h-5">Modificado</Badge>
+                                            <span className="text-red-500 font-bold flex items-center gap-1">
+                                                <AlertCircle size={10} /> Pago modificado manualmente
+                                            </span>
                                         )}
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Total Final</p>
+                                        <p className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                                            {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(viewingSale.total)}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="border rounded-md overflow-hidden">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-muted/50">
-                                            <TableHead className="w-[80px]">Cant.</TableHead>
-                                            <TableHead>Producto</TableHead>
-                                            <TableHead className="text-right">Total</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {viewingSale.items.map((item: any) => (
-                                            <TableRow key={item.id}>
-                                                <TableCell className="font-medium">{item.quantity}x</TableCell>
-                                                <TableCell>{item.name}</TableCell>
-                                                <TableCell className="text-right">${(item.quantity * item.price).toLocaleString()}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                        <TableRow className="bg-muted/20 font-bold">
-                                            <TableCell colSpan={2} className="text-right">TOTAL</TableCell>
-                                            <TableCell className="text-right text-lg">${viewingSale.total.toLocaleString()}</TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
+                            <div className="bg-zinc-100 dark:bg-zinc-900 p-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+                                <Button onClick={() => setViewingSale(null)} className="font-bold">
+                                    Cerrar
+                                </Button>
                             </div>
-                        </div>
+                        </>
                     )}
-
-                    <DialogFooter className="sm:justify-between">
-                        <div className="flex items-center text-xs text-muted-foreground">
-                            {viewingSale?.id && <span className="font-mono text-[10px] opacity-70">ID: {viewingSale.id}</span>}
-                        </div>
-                        <Button onClick={() => setViewingSale(null)}>Cerrar</Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 

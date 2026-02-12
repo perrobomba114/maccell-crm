@@ -228,10 +228,26 @@ export async function getAdminSales(filters?: {
         }
 
         if (filters?.term) {
-            where.saleNumber = {
-                contains: filters.term,
-                mode: "insensitive",
-            };
+            where.OR = [
+                {
+                    saleNumber: {
+                        contains: filters.term,
+                        mode: "insensitive",
+                    }
+                },
+                {
+                    items: {
+                        some: {
+                            repair: {
+                                ticketNumber: {
+                                    contains: filters.term,
+                                    mode: "insensitive",
+                                }
+                            }
+                        }
+                    }
+                }
+            ];
         }
 
         const sales = await db.sale.findMany({
