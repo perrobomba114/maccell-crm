@@ -36,11 +36,11 @@ const formSchema = z.object({
     sku: z.string().min(1, "Requerido"),
     brand: z.string().min(1, "Requerido"),
     categoryId: z.string().min(1, "Requerido"),
-    stockLocal: z.coerce.number().min(0, "Mínimo 0"),
-    stockDepot: z.coerce.number().min(0, "Mínimo 0"),
-    maxStockLocal: z.coerce.number().min(0, "Mínimo 0"),
-    priceUsd: z.coerce.number().min(0, "Mínimo 0"),
-    pricePos: z.coerce.number().min(0, "Mínimo 0"),
+    stockLocal: z.string(),
+    stockDepot: z.string(),
+    maxStockLocal: z.string(),
+    priceUsd: z.string(),
+    pricePos: z.string(),
 });
 
 interface SparePartFormProps {
@@ -68,42 +68,47 @@ export function SparePartForm({ initialData, categories, onSuccess }: SparePartF
             sku: initialData.sku,
             brand: initialData.brand,
             categoryId: initialData.categoryId || "",
-            stockLocal: initialData.stockLocal,
-            stockDepot: initialData.stockDepot,
-            maxStockLocal: initialData.maxStockLocal,
-            priceUsd: initialData.priceUsd,
-            pricePos: initialData.pricePos || 0,
+            stockLocal: String(initialData.stockLocal),
+            stockDepot: String(initialData.stockDepot),
+            maxStockLocal: String(initialData.maxStockLocal),
+            priceUsd: String(initialData.priceUsd),
+            pricePos: String(initialData.pricePos || 0),
         } : {
             name: "",
             sku: "",
             brand: "",
             categoryId: "",
-            stockLocal: 0,
-            stockDepot: 0,
-            maxStockLocal: 0,
-            priceUsd: 0,
-            pricePos: 0,
+            stockLocal: "0",
+            stockDepot: "0",
+            maxStockLocal: "0",
+            priceUsd: "0",
+            pricePos: "0",
         },
     });
 
     const priceUsd = form.watch("priceUsd");
-    const priceArg = priceUsd && rate ? priceUsd * rate : 0;
+    const parsedPriceUsd = parseFloat(priceUsd) || 0;
+    const priceArg = parsedPriceUsd && rate ? parsedPriceUsd * rate : 0;
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         setLoading(true);
         try {
+            const payload = {
+                ...values,
+                stockLocal: parseInt(values.stockLocal) || 0,
+                stockDepot: parseInt(values.stockDepot) || 0,
+                maxStockLocal: parseInt(values.maxStockLocal) || 0,
+                priceUsd: parseFloat(values.priceUsd) || 0,
+                pricePos: parseFloat(values.pricePos) || 0,
+                priceArg
+            };
+
             if (initialData) {
-                const res = await updateSparePart(initialData.id, {
-                    ...values,
-                    priceArg
-                });
+                const res = await updateSparePart(initialData.id, payload);
                 if (!res.success) throw new Error(res.error);
                 toast.success("Repuesto Actualizado");
             } else {
-                const res = await createSparePart({
-                    ...values,
-                    priceArg
-                });
+                const res = await createSparePart(payload);
                 if (!res.success) throw new Error(res.error);
                 toast.success("Repuesto Creado");
             }
@@ -224,7 +229,12 @@ export function SparePartForm({ initialData, categories, onSuccess }: SparePartF
                                         <FormItem className="space-y-1">
                                             <FormLabel className="block text-center text-[10px] font-bold uppercase text-amber-600">Local</FormLabel>
                                             <FormControl>
-                                                <Input type="number" {...field} className="text-center font-bold text-lg h-10 border-amber-200 focus-visible:ring-amber-500 text-white" />
+                                                <Input
+                                                    type="number"
+                                                    {...field}
+                                                    onFocus={(e) => e.target.select()}
+                                                    className="text-center font-bold text-lg h-10 border-amber-200 focus-visible:ring-amber-500 text-white"
+                                                />
                                             </FormControl>
                                         </FormItem>
                                     )}
@@ -236,7 +246,12 @@ export function SparePartForm({ initialData, categories, onSuccess }: SparePartF
                                         <FormItem className="space-y-1">
                                             <FormLabel className="block text-center text-[10px] font-bold uppercase text-amber-600">Depósito</FormLabel>
                                             <FormControl>
-                                                <Input type="number" {...field} className="text-center font-bold text-lg h-10 border-amber-200 focus-visible:ring-amber-500 text-white" />
+                                                <Input
+                                                    type="number"
+                                                    {...field}
+                                                    onFocus={(e) => e.target.select()}
+                                                    className="text-center font-bold text-lg h-10 border-amber-200 focus-visible:ring-amber-500 text-white"
+                                                />
                                             </FormControl>
                                         </FormItem>
                                     )}
@@ -249,7 +264,12 @@ export function SparePartForm({ initialData, categories, onSuccess }: SparePartF
                                     <FormItem className="space-y-1">
                                         <FormLabel className="block text-center text-[10px] font-bold uppercase text-amber-600">Ideal (Máximo)</FormLabel>
                                         <FormControl>
-                                            <Input type="number" {...field} className="text-center font-mono h-9 border-amber-200 text-white font-bold" />
+                                            <Input
+                                                type="number"
+                                                {...field}
+                                                onFocus={(e) => e.target.select()}
+                                                className="text-center font-mono h-9 border-amber-200 text-white font-bold"
+                                            />
                                         </FormControl>
                                     </FormItem>
                                 )}
@@ -273,7 +293,13 @@ export function SparePartForm({ initialData, categories, onSuccess }: SparePartF
                                         <FormLabel className="block text-center text-[10px] font-bold uppercase text-emerald-600">Costo (USD)</FormLabel>
                                         <div className="relative">
                                             <span className="absolute left-3 top-2.5 font-bold text-emerald-600">$</span>
-                                            <Input type="number" step="0.01" {...field} className="text-center font-mono font-bold text-lg h-10 border-emerald-200 focus-visible:ring-emerald-500 text-emerald-600" />
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                {...field}
+                                                onFocus={(e) => e.target.select()}
+                                                className="text-center font-mono font-bold text-lg h-10 border-emerald-200 focus-visible:ring-emerald-500 text-emerald-600"
+                                            />
                                         </div>
                                     </FormItem>
                                 )}
@@ -286,7 +312,13 @@ export function SparePartForm({ initialData, categories, onSuccess }: SparePartF
                                         <FormLabel className="block text-center text-[10px] font-bold uppercase text-blue-600">Venta (POS)</FormLabel>
                                         <div className="relative">
                                             <span className="absolute left-3 top-2.5 font-bold text-blue-600">$</span>
-                                            <Input type="number" step="0.01" {...field} className="text-center font-mono font-bold text-lg h-10 border-blue-200 focus-visible:ring-blue-500 text-blue-600" />
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                {...field}
+                                                onFocus={(e) => e.target.select()}
+                                                className="text-center font-mono font-bold text-lg h-10 border-blue-200 focus-visible:ring-blue-500 text-blue-600"
+                                            />
                                         </div>
                                     </FormItem>
                                 )}

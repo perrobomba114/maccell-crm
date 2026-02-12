@@ -188,7 +188,7 @@ export function CreateInvoiceModal({ branches, userId }: { branches: any[], user
                     <Plus className="w-4 h-4 mr-2" /> Nueva Factura
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 bg-zinc-950 border-zinc-800 text-white sm:rounded-xl">
+            <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 bg-zinc-950 border-zinc-800 text-white sm:rounded-xl z-[100]">
                 <DialogHeader className="px-8 py-6 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur-xl">
                     <DialogTitle className="text-2xl font-bold flex items-center gap-3">
                         <div className="p-2.5 bg-blue-500/10 rounded-lg border border-blue-500/20">

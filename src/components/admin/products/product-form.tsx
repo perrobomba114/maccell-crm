@@ -40,13 +40,13 @@ const formSchema = z.object({
     name: z.string().min(2, "Requerido"),
     sku: z.string().min(1, "Requerido"),
     categoryId: z.string().optional(),
-    costPrice: z.coerce.number().min(0),
-    profitMargin: z.coerce.number().min(0),
-    price: z.coerce.number().min(0),
+    costPrice: z.string(),
+    profitMargin: z.string(),
+    price: z.string(),
     description: z.string().optional(),
     stocks: z.array(z.object({
         branchId: z.string(),
-        quantity: z.coerce.number().min(0)
+        quantity: z.string()
     })).optional()
 });
 
@@ -66,15 +66,32 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
 
     const form = useForm<ProductFormValues>({
         resolver: zodResolver(formSchema) as any,
-        defaultValues: {
+        defaultValues: product ? {
+            name: product.name,
+            sku: product.sku,
+            categoryId: product.categoryId || undefined,
+            costPrice: String(product.costPrice || 0),
+            profitMargin: String(product.profitMargin || 0),
+            price: String(product.price || 0),
+            description: product.description || "",
+            stocks: branches.map(b => ({
+                branchId: b.id,
+                quantity: String(product && (product as any).stock
+                    ? (product as any).stock.find((s: any) => s.branchId === b.id)?.quantity ?? 0
+                    : 0)
+            }))
+        } : {
             name: "",
             sku: "",
             categoryId: undefined,
-            costPrice: 0,
-            profitMargin: 0,
-            price: 0,
+            costPrice: "0",
+            profitMargin: "0",
+            price: "0",
             description: "",
-            stocks: []
+            stocks: branches.map(b => ({
+                branchId: b.id,
+                quantity: "0"
+            }))
         },
     });
 
@@ -83,40 +100,37 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
 
     // Recalculate margin when cost or price changes
     useEffect(() => {
-        if (costPrice > 0 && price > 0) {
-            const margin = ((price - costPrice) / costPrice) * 100;
-            const currentMargin = form.getValues("profitMargin");
+        const cPrice = parseFloat(costPrice) || 0;
+        const sPrice = parseFloat(price) || 0;
+
+        if (cPrice > 0 && sPrice > 0) {
+            const margin = ((sPrice - cPrice) / cPrice) * 100;
+            const currentMargin = parseFloat(form.getValues("profitMargin") || "0");
+
+            // Only update if difference is significant to avoid loops/jitter
             if (Math.abs(margin - currentMargin) > 0.1) {
-                form.setValue("profitMargin", Math.round(margin));
+                form.setValue("profitMargin", Math.round(margin).toString());
             }
         }
     }, [costPrice, price, form]);
 
-    // Reset form when opening or changing product
-    useEffect(() => {
-        if (open) {
-            form.reset({
-                name: product?.name || "",
-                sku: product?.sku || "",
-                categoryId: product?.categoryId || undefined,
-                costPrice: product?.costPrice || 0,
-                profitMargin: product?.profitMargin || 0,
-                price: product?.price || 0,
-                description: product?.description || "",
-                stocks: branches.map(b => ({
-                    branchId: b.id,
-                    quantity: product && (product as any).stock
-                        ? (product as any).stock.find((s: any) => s.branchId === b.id)?.quantity ?? 0
-                        : 0
-                }))
-            });
-        }
-    }, [product, open, branches, form]);
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         try {
+            // Convert strings back to numbers for the API
+            const payload = {
+                ...values,
+                costPrice: parseFloat(values.costPrice) || 0,
+                profitMargin: parseFloat(values.profitMargin) || 0,
+                price: parseFloat(values.price) || 0,
+                stocks: values.stocks?.map(s => ({
+                    branchId: s.branchId,
+                    quantity: parseFloat(s.quantity) || 0
+                }))
+            };
+
             if (isEditing && product) {
-                const res = await updateProduct(product.id, values);
+                const res = await updateProduct(product.id, payload);
                 if (res.success) {
                     toast.success("Producto actualizado");
                     onOpenChange(false);
@@ -125,7 +139,7 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
                     toast.error(res.error);
                 }
             } else {
-                const res = await createProduct(values);
+                const res = await createProduct(payload);
                 if (res.success) {
                     toast.success("Producto creado");
                     onOpenChange(false);
@@ -262,8 +276,9 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
                                                         <FormControl>
                                                             <Input
                                                                 type="number"
-                                                                step="1"
+                                                                step="0.01"
                                                                 {...field}
+                                                                onFocus={(e) => e.target.select()}
                                                                 className="text-center font-mono font-bold text-lg h-10 border-emerald-200 focus-visible:ring-emerald-500 text-emerald-600"
                                                             />
                                                         </FormControl>
@@ -283,8 +298,9 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
                                                         <FormControl>
                                                             <Input
                                                                 type="number"
-                                                                step="1"
+                                                                step="0.01"
                                                                 {...field}
+                                                                onFocus={(e) => e.target.select()}
                                                                 className="text-center font-mono font-bold text-lg h-10 border-blue-200 focus-visible:ring-blue-500 text-blue-600"
                                                             />
                                                         </FormControl>
@@ -334,6 +350,7 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
                                                                 <Input
                                                                     type="number"
                                                                     {...field}
+                                                                    onFocus={(e) => e.target.select()}
                                                                     className="text-center font-bold text-lg h-10 border-amber-200 focus-visible:ring-amber-500 text-white"
                                                                     value={field.value ?? 0}
                                                                 />

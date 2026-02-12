@@ -770,6 +770,7 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
             )}
 
             <ProductForm
+                key={editingProduct?.id ?? 'new_product'}
                 open={isFormOpen}
                 onOpenChange={setIsFormOpen}
                 product={editingProduct}

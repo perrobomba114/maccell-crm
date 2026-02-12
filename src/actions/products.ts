@@ -202,6 +202,19 @@ export async function updateProduct(id: string, data: {
         if (updateData.price !== undefined) {
             price = updateData.price;
         }
+
+        // Check availability of SKU if it's being changed
+        if (updateData.sku && updateData.sku !== current.sku) {
+            const existingSku = await prisma.product.findFirst({
+                where: {
+                    sku: updateData.sku,
+                    id: { not: id }
+                }
+            });
+            if (existingSku) {
+                return { success: false, error: "El SKU ya existe en otro producto." };
+            }
+        }
         // Otherwise recalculate if cost or margin changed
         else if (updateData.costPrice !== undefined || updateData.profitMargin !== undefined) {
             const newCost = updateData.costPrice !== undefined ? updateData.costPrice : current.costPrice;

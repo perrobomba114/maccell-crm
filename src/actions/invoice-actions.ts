@@ -1,11 +1,10 @@
-"use server";
-
+// ... (imports remain)
 import { db } from "@/lib/db";
 
 interface GetInvoicesOptions {
     page?: number;
     limit?: number;
-    date?: string; // ISO string YYYY-MM-DD
+    date?: string; // ISO string YYYY-MM-DD OR YYYY-MM
 }
 
 export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOptions) {
@@ -13,14 +12,25 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
 
     const where: any = {};
 
-    if (date) {
-        // Construct dates relative to Argentina Time (GMT-3)
-        // We want 00:00:00 to 23:59:59 in GMT-3
-        // "2024-05-20T00:00:00-03:00" parses to the correct UTC instant.
-        const start = new Date(`${date}T00:00:00-03:00`);
-        const end = new Date(`${date}T23:59:59.999-03:00`);
+    let start: Date;
+    let end: Date;
 
-        // Check validity
+    if (date) {
+        if (date.length === 7) {
+            // Month Filter: YYYY-MM
+            const [year, month] = date.split('-').map(Number);
+            // Construct Start of Month (Local/GMT-3 consideration: simplified to string)
+            // "2024-02-01T00:00:00"
+            start = new Date(`${date}-01T00:00:00`);
+            // End of Month: Day 0 of next month
+            end = new Date(year, month, 0, 23, 59, 59, 999);
+        } else {
+            // Day Filter: YYYY-MM-DD
+            start = new Date(`${date}T00:00:00-03:00`);
+            end = new Date(`${date}T23:59:59.999-03:00`);
+        }
+
+        // Validate
         if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
             where.createdAt = {
                 gte: start,
@@ -45,34 +55,13 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
         take: limit
     });
 
-    // Get Total Count (based on table filter)
+    // Get Total Count
     const totalCount = await db.saleInvoice.count({ where });
     const totalPages = Math.ceil(totalCount / limit);
 
-    // Get Total Amount
-    // If date filter is active, sum relevant records.
-    // If NO date filter, sum Current Month (per user request).
-    let sumWhere = where;
-
-    if (!date) {
-        const now = new Date();
-        // Construct Start of Month in GMT-3 (Approximate or Strict)
-        // Simplified: Start of Month UTC - 3h is tricky without library.
-        // Let's rely on standard current month defined by Server Time for "Current Month" concept.
-        // Or better, standard ISO: First day of current month 00:00 to now.
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-        sumWhere = {
-            createdAt: {
-                gte: startOfMonth,
-                lte: endOfMonth
-            }
-        };
-    }
-
+    // Get Aggregations (Total Amount for the filtered period)
     const aggregations = await db.saleInvoice.aggregate({
-        where: sumWhere,
+        where, // Use the same where clause (filtered by date)
         _sum: {
             totalAmount: true,
             netAmount: true,
@@ -90,7 +79,7 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
         totalPages,
         currentPage: page,
         totalAmount,
-        totalNet,
-        totalVat
+        totalNet, // Return Net for accurate VAT calc in UI
+        totalVat  // Return VAT for accurate VAT calc in UI
     };
 }

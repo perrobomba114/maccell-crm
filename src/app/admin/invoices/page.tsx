@@ -18,6 +18,7 @@ import { getInvoices } from "@/actions/invoice-actions";
 import { InvoiceDateFilter } from "./invoice-date-filter";
 import { InvoicePagination } from "./invoice-pagination";
 
+
 export const dynamic = 'force-dynamic';
 
 export default async function InvoicesPage({
@@ -28,10 +29,10 @@ export default async function InvoicesPage({
     const page = Number(searchParams.page) || 1;
     const viewAll = searchParams.view === 'all';
 
-    // Default to Today if not "view all" and no date provided
+    // Default to Current Month if not "view all" and no date provided
     let date = searchParams.date;
     if (!date && !viewAll) {
-        date = format(new Date(), 'yyyy-MM-dd');
+        date = format(new Date(), 'yyyy-MM');
     }
 
     // Determine User/Branch (Mock or real if auth available)
@@ -194,7 +195,10 @@ export default async function InvoicesPage({
                                             ${inv.totalAmount.toLocaleString()}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <InvoicePrintButton invoice={inv} />
+                                            <div className="flex justify-end gap-1">
+                                                <InvoiceDetailModal invoice={inv} />
+                                                <InvoicePrintButton invoice={inv} />
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))
