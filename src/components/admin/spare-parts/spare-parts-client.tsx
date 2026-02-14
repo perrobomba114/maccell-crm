@@ -802,7 +802,7 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
                                 Nuevo
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto z-[80]">
+                        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>Crear Nuevo Repuesto</DialogTitle>
                             </DialogHeader>
@@ -1073,7 +1073,7 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
 
             {/* Edit Dialog */}
             <Dialog open={!!editingPart} onOpenChange={(open) => !open && setEditingPart(null)}>
-                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto z-[80] !rounded-none p-0">
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto !rounded-none p-0">
                     <DialogHeader className="px-6 py-4 border-b sticky top-0 bg-background z-10">
                         <DialogTitle>Editar Repuesto</DialogTitle>
                     </DialogHeader>
