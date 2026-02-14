@@ -143,15 +143,12 @@ export async function getShiftSummary(shiftId: string): Promise<{ success: boole
         // If we want to be safe: check if sale has payments. If not, use sale header method. 
         // But for new system, rely on SalePayment.
 
-        // Calculate Bonus (Logic mirrored from closeRegister)
-        // Default to 1 employee for the summary view calculation. 
-        // If the final close has more employees, the difference will be adjusted then, 
-        // but for the discrepancy check, we assume the primary vendor takes the bonus.
+        // Calculate Bonus (Per Employee)
         const bonusRate = totalSales >= 1200000 ? 0.02 : 0.01;
-        // Round UP to nearest 1000 (User Request: avoid 500 bills)
-        const prizePerEmp = (Math.ceil((totalSales * bonusRate) / 1000) * 1000);
-        // Assuming 1 employee for the summary projection
-        const calculatedBonus = prizePerEmp * 1;
+        // Round to nearest 1000 using standard rounding to avoid "phantom" inflation
+        const prizePerEmp = (Math.round((totalSales * bonusRate) / 1000) * 1000);
+        // Assuming 1 employee for the summary projection (frontend multiplies this)
+        const calculatedBonus = prizePerEmp;
 
         // Expected Cash in Drawer = Start + Cash Sales - Expenses
         // We do NOT subtract bonus here anymore, because the frontend does it dynamically based on employee count.
@@ -191,7 +188,7 @@ export async function closeRegister(shiftId: string, finalAmount: number, employ
 
         if (summary) {
             const bonusRate = summary.totalSales >= 1200000 ? 0.02 : 0.01;
-            const prizePerEmp = (Math.ceil((summary.totalSales * bonusRate) / 1000) * 1000);
+            const prizePerEmp = (Math.round((summary.totalSales * bonusRate) / 1000) * 1000);
             bonusTotal = prizePerEmp * employeeCount;
         }
 

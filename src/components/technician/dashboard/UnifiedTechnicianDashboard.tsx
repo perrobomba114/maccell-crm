@@ -20,6 +20,8 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { WeeklyOutputChart, MyStatusPieChart } from "./TechnicianCharts";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 // --- Standard Metrics Component ---
 function TechMetric({ title, value, icon: Icon, color, subtext, href }: any) {
@@ -108,7 +110,9 @@ function JobRow({ job, isActive }: { job: any, isActive?: boolean }) {
                         <p className="text-[9px] font-bold text-zinc-500 uppercase mb-1 tracking-widest flex items-center gap-1.5">
                             <Clock size={10} /> Ingreso
                         </p>
-                        <p className="text-xs font-black text-zinc-200 truncate">{new Date().toLocaleDateString()}</p>
+                        <p suppressHydrationWarning className="text-xs font-black text-zinc-200 truncate">
+                            {format(new Date(), "dd/MM/yyyy", { locale: es })}
+                        </p>
                     </div>
                 </div>
 

@@ -187,7 +187,7 @@ export function Sidebar({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => onClose ? onClose() : setInternalIsMobileOpen(false)}
-                        className="fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm md:hidden"
+                        className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm md:hidden"
                     />
                 )}
             </AnimatePresence>
@@ -203,7 +203,7 @@ export function Sidebar({
                     ease: [0.4, 0, 0.2, 1],
                 }}
                 className={cn(
-                    "fixed left-0 top-0 z-[70] h-screen border-r border-sidebar-border/30 bg-background/95 backdrop-blur-xl shadow-xl overflow-hidden",
+                    "fixed left-0 top-0 z-40 h-screen border-r border-sidebar-border/30 bg-background/95 backdrop-blur-xl shadow-xl overflow-hidden",
                     isMobile && isMobileOpen ? "shadow-2xl ring-1 ring-white/10" : ""
                 )}
             >

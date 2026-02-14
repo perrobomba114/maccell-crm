@@ -98,8 +98,18 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
     const costPrice = form.watch("costPrice");
     const price = form.watch("price");
 
+    // Automatically calculate profit margin when cost or price changes
+    useEffect(() => {
+        const costNum = parseFloat(costPrice) || 0;
+        const priceNum = parseFloat(price) || 0;
 
-
+        if (priceNum > 0) {
+            const margin = ((priceNum - costNum) / priceNum) * 100;
+            form.setValue("profitMargin", margin.toFixed(2));
+        } else {
+            form.setValue("profitMargin", "0");
+        }
+    }, [costPrice, price, form]);
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         try {
@@ -142,7 +152,7 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-5xl min-h-[80vh] max-h-[90vh] overflow-y-auto !rounded-none z-[80] p-0">
+            <DialogContent className="sm:max-w-5xl min-h-[80vh] max-h-[90vh] overflow-y-auto !rounded-none p-0">
                 <DialogHeader className="px-6 py-4 border-b sticky top-0 bg-background z-10">
                     <DialogTitle>{isEditing ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
                 </DialogHeader>
