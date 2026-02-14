@@ -103,8 +103,8 @@ export function ProductForm({ open, onOpenChange, product, categories, branches 
         const costNum = parseFloat(costPrice) || 0;
         const priceNum = parseFloat(price) || 0;
 
-        if (priceNum > 0) {
-            const margin = ((priceNum - costNum) / priceNum) * 100;
+        if (costNum > 0) {
+            const margin = ((priceNum - costNum) / costNum) * 100;
             form.setValue("profitMargin", margin.toFixed(2));
         } else {
             form.setValue("profitMargin", "0");

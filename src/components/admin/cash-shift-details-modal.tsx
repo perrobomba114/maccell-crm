@@ -30,7 +30,8 @@ import {
     Wallet,
     AlertTriangle,
     Store,
-    Clock
+    Clock,
+    Box
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -146,7 +147,26 @@ export function CashShiftDetailsModal({
                 <div className="p-6 md:p-10 space-y-10">
 
                     {/* Big Stats Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                        {/* Start Amount Card - Solid Teal */}
+                        <div className="bg-teal-600 dark:bg-teal-700 p-6 rounded-2xl shadow-xl shadow-teal-200/50 dark:shadow-none flex flex-col justify-between relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+
+                            <div className="flex items-start justify-between mb-4 relative z-10">
+                                <div className="p-3 bg-white/20 text-white rounded-xl backdrop-blur-sm group-hover:scale-110 transition-transform duration-300">
+                                    <Box className="w-6 h-6" />
+                                </div>
+                                <span className="bg-white/20 text-white border border-white/20 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm">
+                                    INICIAL
+                                </span>
+                            </div>
+                            <div className="relative z-10">
+                                <h3 className="text-teal-100 text-[10px] sm:text-sm font-semibold uppercase tracking-wider">Caja Inicial</h3>
+                                <p className="text-xl sm:text-3xl font-black text-white mt-0.5 sm:mt-1 tabular-nums tracking-tight">
+                                    {formatMoney(shift.startAmount)}
+                                </p>
+                            </div>
+                        </div>
                         {/* Ventas Card - Solid Blue */}
                         <div className="bg-blue-600 dark:bg-blue-700 p-6 rounded-2xl shadow-xl shadow-blue-200/50 dark:shadow-none flex flex-col justify-between relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
