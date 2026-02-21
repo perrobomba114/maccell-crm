@@ -26,6 +26,7 @@ export default async function TechnicianRepairsPage() {
                     currentUserId={user.id}
                     enableTakeover={false}
                     enableManagement={true}
+                    showIssueSummary={true}
                 />
             </div>
         </div>

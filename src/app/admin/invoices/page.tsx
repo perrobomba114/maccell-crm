@@ -48,8 +48,8 @@ export default async function InvoicesPage({
     const branches = await db.branch.findMany({ select: { id: true, name: true } });
 
     // Fetch Invoices via Server Action
-    // @ts-ignore - Updated return type in server action
-    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalNet, totalVat } = await getInvoices({
+    // @ts-ignore
+    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalNet, totalVat, count21, count105 } = await getInvoices({
         page,
         limit: 25,
         date
@@ -79,7 +79,6 @@ export default async function InvoicesPage({
                 <div className="flex flex-col md:flex-row items-end md:items-center gap-4 w-full md:w-auto">
                     {/* Date Filter Toolbar */}
                     <div className="flex items-center gap-2 bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800">
-                        <CalendarIcon className="w-4 h-4 text-zinc-400 ml-2" />
                         <InvoiceDateFilter />
                     </div>
                     <CreateInvoiceModal branches={branches} userId={adminUserId} />
@@ -93,7 +92,7 @@ export default async function InvoicesPage({
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-white/80 flex items-center gap-2">
                             <DollarSign className="w-4 h-4 text-emerald-200" />
-                            {date ? "Total Facturado del Día" : "Total Facturado (Mes)"}
+                            {date && date.length === 10 ? "Total Facturado del Día" : "Total Facturado (Mes)"}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -101,7 +100,7 @@ export default async function InvoicesPage({
                             ${totalAmount.toLocaleString()}
                         </div>
                         <p className="text-xs text-emerald-100 mt-1">
-                            {date ? "Suma total del día seleccionado" : "Suma total del mes en curso"}
+                            {date && date.length === 10 ? "Suma total del día seleccionado" : "Suma total del mes seleccionado"}
                         </p>
                     </CardContent>
                 </Card>
@@ -119,7 +118,7 @@ export default async function InvoicesPage({
                             ${vat21.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </div>
                         <p className="text-xs text-blue-100 mt-1">
-                            Impuesto calculado (Estimado)
+                            {count21} Comprobantes (Mes)
                         </p>
                     </CardContent>
                 </Card>
@@ -137,7 +136,7 @@ export default async function InvoicesPage({
                             ${vat105.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </div>
                         <p className="text-xs text-orange-100 mt-1">
-                            Impuesto calculado (Estimado)
+                            {count105} Comprobantes (Mes)
                         </p>
                     </CardContent>
                 </Card>

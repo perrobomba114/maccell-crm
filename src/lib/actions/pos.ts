@@ -264,18 +264,16 @@ export async function processPosSale(data: {
             for (const item of data.items) {
                 const itemTotal = item.price * item.quantity;
                 const isRepair = item.type === "REPAIR";
-                const rate = isRepair ? 1.105 : 1.21;
+                // Repairs are now 21% as requested, so everything is 21% for now
+                // but keeping logic if future rates differ
+                const rate = 1.21;
 
                 const net = itemTotal / rate;
                 const vat = itemTotal - net;
 
-                if (!isRepair) {
-                    totalNet21 += net;
-                    totalVat21 += vat;
-                } else {
-                    totalNet105 += net;
-                    totalVat105 += vat;
-                }
+                // All items (Products & Repairs) go to 21% bucket now
+                totalNet21 += net;
+                totalVat21 += vat;
             }
 
             // --- FINAL ROUNDING ADJUSTMENT ---

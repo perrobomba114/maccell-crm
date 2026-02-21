@@ -73,13 +73,46 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
     const totalNet = aggregations._sum.netAmount || 0;
     const totalVat = aggregations._sum.vatAmount || 0;
 
+    // Get Counts by VAT rate
+    // We count invoices that contain items belonging to each VAT group.
+    // Heuristic: Products = 21%, Repairs = 10.5% (Historically).
+    const count21 = await db.saleInvoice.count({
+        where: {
+            ...where,
+            vatAmount: { gt: 0 },
+            sale: {
+                items: {
+                    some: {
+                        productId: { not: null }
+                    }
+                }
+            }
+        }
+    });
+
+    const count105 = await db.saleInvoice.count({
+        where: {
+            ...where,
+            vatAmount: { gt: 0 },
+            sale: {
+                items: {
+                    some: {
+                        repairId: { not: null }
+                    }
+                }
+            }
+        }
+    });
+
     return {
         invoices,
         totalCount,
         totalPages,
         currentPage: page,
         totalAmount,
-        totalNet, // Return Net for accurate VAT calc in UI
-        totalVat  // Return VAT for accurate VAT calc in UI
+        totalNet,
+        totalVat,
+        count21,
+        count105
     };
 }
