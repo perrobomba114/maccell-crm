@@ -34,6 +34,17 @@ export function CerebroLayout({ userId }: CerebroLayoutProps) {
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [showKnowledge, setShowKnowledge] = useState(false);
+    const [pendingKnowledgeContent, setPendingKnowledgeContent] = useState<string | null>(null);
+
+    useEffect(() => {
+        const handleSaveWiki = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            setPendingKnowledgeContent(customEvent.detail.content);
+            setShowKnowledge(true);
+        };
+        window.addEventListener('cerebro-save-wiki', handleSaveWiki);
+        return () => window.removeEventListener('cerebro-save-wiki', handleSaveWiki);
+    }, []);
 
     const loadConversations = useCallback(async (selectFirst = false) => {
         setIsLoading(true);
@@ -286,7 +297,11 @@ export function CerebroLayout({ userId }: CerebroLayoutProps) {
                         >
                             <ChevronRight className="w-5 h-5 md:rotate-0 rotate-180" />
                         </Button>
-                        <KnowledgePanel userId={userId} />
+                        <KnowledgePanel
+                            userId={userId}
+                            initialContent={pendingKnowledgeContent}
+                            onClearInitial={() => setPendingKnowledgeContent(null)}
+                        />
                     </div>
                 </div>
             )}

@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon } from "lucide-react";
+import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon, Plus } from "lucide-react";
 import { saveMessagesToDbAction, saveUserMessageAction, updateConversationTitleAction, generateGeminiPromptAction } from "@/actions/cerebro-actions";
 import { toast } from "sonner";
 
@@ -233,6 +233,20 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                                                 )}
                                                 {mainContent && (
                                                     <div className="whitespace-pre-wrap text-[14px]">{mainContent}</div>
+                                                )}
+                                                {message.role === 'assistant' && mainContent && (
+                                                    <div className="mt-4 flex justify-end">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                window.dispatchEvent(new CustomEvent('cerebro-save-wiki', { detail: { content: mainContent } }));
+                                                            }}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md hover:bg-emerald-500 hover:text-white transition-all shadow-lg shadow-emerald-900/10"
+                                                        >
+                                                            <Plus size={12} strokeWidth={3} />
+                                                            Guardar a Wiki
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </>
                                         );

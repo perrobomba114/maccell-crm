@@ -33,9 +33,11 @@ interface KnowledgeItem {
 
 interface KnowledgePanelProps {
     userId?: string;
+    initialContent?: string | null;
+    onClearInitial?: () => void;
 }
 
-export function KnowledgePanel({ userId }: KnowledgePanelProps) {
+export function KnowledgePanel({ userId, initialContent, onClearInitial }: KnowledgePanelProps) {
     const [search, setSearch] = useState("");
     const [items, setItems] = useState<KnowledgeItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -183,6 +185,18 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
         }, 500);
         return () => clearTimeout(timer);
     }, [search]);
+
+    useEffect(() => {
+        if (initialContent) {
+            setNewContent(initialContent);
+            setShowCreate(true);
+
+            // Unmount trigger cleanup
+            if (onClearInitial) {
+                onClearInitial();
+            }
+        }
+    }, [initialContent]);
 
     return (
         <div className="flex flex-col h-full bg-zinc-950 border-l border-zinc-800 w-full md:w-80 lg:w-96 overflow-hidden">
