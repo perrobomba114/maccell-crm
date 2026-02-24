@@ -229,6 +229,20 @@ export function CerebroLayout({ userId }: CerebroLayoutProps) {
                                         )}
                                     >
                                         <div className="flex items-center gap-2 w-full">
+                                            <button
+                                                type="button"
+                                                className={cn(
+                                                    "h-7 w-7 flex items-center justify-center rounded-md transition-all shrink-0",
+                                                    "bg-red-600 text-white hover:bg-red-500 shadow-md",
+                                                    "opacity-100"
+                                                )}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDeleteId(conv.id);
+                                                }}
+                                            >
+                                                <Trash2 size={13} strokeWidth={3} />
+                                            </button>
                                             <MessageSquare className={cn(
                                                 "w-3.5 h-3.5 shrink-0 transition-colors",
                                                 activeConversationId === conv.id ? "text-violet-400" : "text-zinc-600 group-hover:text-zinc-400"
@@ -236,20 +250,6 @@ export function CerebroLayout({ userId }: CerebroLayoutProps) {
                                             <span className="font-bold truncate text-[13px] flex-1 pr-2">
                                                 {conv.title || "Nueva Conversación"}
                                             </span>
-                                            <button
-                                                type="button"
-                                                className={cn(
-                                                    "h-8 w-8 flex items-center justify-center rounded-full transition-all shrink-0",
-                                                    "text-zinc-500 hover:text-red-500 hover:bg-red-500/10 active:scale-90",
-                                                    "opacity-60 hover:opacity-100"
-                                                )}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setDeleteId(conv.id);
-                                                }}
-                                            >
-                                                <Trash2 size={15} strokeWidth={2.5} />
-                                            </button>
                                         </div>
                                         <div className="flex items-center justify-between w-full mt-1 px-5">
                                             <span className="text-[9px] font-medium text-zinc-500">
