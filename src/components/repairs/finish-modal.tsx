@@ -243,19 +243,6 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                     placeholder="Detalla la reparación realizada..."
                                     className="min-h-[120px] bg-slate-900 border-2 border-slate-800 rounded-xl text-xs font-bold text-white p-4 focus:border-emerald-500 transition-all placeholder:text-slate-700"
                                 />
-                                {/* Mejorar con IA */}
-                                <button
-                                    type="button"
-                                    onClick={enhanceDiagnosis}
-                                    disabled={isEnhancing || !diagnosis.trim()}
-                                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border-2 border-violet-700/60 bg-violet-950/40 text-violet-300 text-[10px] font-black uppercase tracking-widest hover:bg-violet-900/50 hover:border-violet-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
-                                >
-                                    {isEnhancing ? (
-                                        <><Loader2 size={12} className="animate-spin" /> Mejorando con IA...</>
-                                    ) : (
-                                        <><Sparkles size={12} /> Mejorar con IA</>
-                                    )}
-                                </button>
                                 {enhanceError && (
                                     <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-950/40 border border-amber-700/50 text-amber-300 text-[10px] font-bold leading-relaxed">
                                         <AlertTriangle size={12} className="mt-0.5 shrink-0" />
@@ -342,20 +329,46 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                     </div>
 
                     {/* Footer consistent with Start/Assign modals */}
-                    <DialogFooter className="p-6 bg-slate-950 border-t-2 border-slate-900 flex flex-row gap-3 mt-0 pt-6">
-                        <Button variant="outline" onClick={onClose} disabled={isLoading}
-                            className="flex-1 h-12 border-2 border-slate-800 hover:bg-slate-900 text-slate-400 font-black uppercase tracking-widest rounded-2xl text-[11px] transition-all">
+                    <DialogFooter className="p-6 bg-slate-950 border-t-2 border-slate-900 flex flex-col sm:flex-row gap-3 mt-0 pt-6">
+                        <Button
+                            variant="outline"
+                            onClick={onClose}
+                            disabled={isLoading}
+                            className="h-12 border-2 border-slate-800 hover:bg-slate-900 text-slate-400 font-black uppercase tracking-widest rounded-2xl text-[10px] transition-all"
+                        >
                             Descartar
                         </Button>
-                        <Button
-                            onClick={submitRepair}
-                            disabled={isLoading}
-                            className={`flex-1 h-12 text-white font-black uppercase tracking-widest rounded-2xl text-[11px] shadow-lg transition-all active:scale-95 flex items-center justify-center
-                                ${activeStatus ? `${activeStatus.color} hover:brightness-110 shadow-${activeStatus.color}/20` : "bg-slate-800 text-slate-500 cursor-not-allowed"}
-                            `}
-                        >
-                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Cierre"}
-                        </Button>
+
+                        <div className="flex flex-1 gap-2">
+                            <Button
+                                type="button"
+                                onClick={enhanceDiagnosis}
+                                disabled={isEnhancing || !diagnosis.trim()}
+                                className="flex-1 h-12 border-2 border-violet-700/50 bg-violet-950/30 text-violet-300 font-black uppercase tracking-widest rounded-2xl text-[10px] hover:bg-violet-900/40 hover:border-violet-400 transition-all disabled:opacity-40"
+                            >
+                                {isEnhancing ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                )}
+                                Mejorar con IA (Groq)
+                            </Button>
+
+                            <Button
+                                onClick={submitRepair}
+                                disabled={isLoading || isEnhancing}
+                                className={`flex-1 h-12 text-white font-black uppercase tracking-widest rounded-2xl text-[10px] shadow-lg transition-all active:scale-95 flex items-center justify-center
+                                    ${activeStatus ? `${activeStatus.color} hover:brightness-110 shadow-${activeStatus.color}/20` : "bg-slate-800 text-slate-500 cursor-not-allowed"}
+                                `}
+                            >
+                                {isLoading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                )}
+                                Confirmar Cierre
+                            </Button>
+                        </div>
                     </DialogFooter>
 
                 </DialogContent>
