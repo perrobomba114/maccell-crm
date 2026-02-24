@@ -4,6 +4,9 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { streamText } from "ai";
 import { db as prisma } from "@/lib/db";
+import pdfParse from 'pdf-parse';
+import fs from 'fs';
+import path from 'path';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURACIÓN — Cascade multi-proveedor (sin pagar casi nada)
@@ -178,14 +181,36 @@ export async function POST(req: NextRequest) {
                 });
 
                 if (knowledgeBaseResults && knowledgeBaseResults.length > 0) {
-                    const ctx = knowledgeBaseResults.map((k: any, i: number) =>
-                        `[CASO RELEVANTE ${i + 1} — ${k.deviceBrand} ${k.deviceModel}]\nFalla: ${k.title}\nResolución: ${k.content}`
-                    ).join("\n\n");
+                    let ctx = "";
+                    for (let i = 0; i < knowledgeBaseResults.length; i++) {
+                        const k = knowledgeBaseResults[i];
+                        ctx += `[CASO RELEVANTE ${i + 1} — ${k.deviceBrand} ${k.deviceModel}]\nFalla: ${k.title}\nResolución: ${k.content}\n`;
 
-                    systemPrompt += `\n\n### 📚 WIKI DE MACCELL (BASE DE CONOCIMIENTO):
-He encontrado los siguientes casos reales documentados por técnicos en la base de datos de MACCELL que coinciden con la consulta. BÁSATE EN ESTOS DATOS RECIENTES PARA EL DIAGNÓSTICO:
+                        // Si hay URLs a PDFs manuales o esquemáticos, extraemos texto
+                        if (k.mediaUrls && Array.isArray(k.mediaUrls)) {
+                            for (const url of k.mediaUrls) {
+                                if (typeof url === 'string' && url.toLowerCase().endsWith('.pdf')) {
+                                    const pdfPath = path.join(process.cwd(), 'public', url);
+                                    if (fs.existsSync(pdfPath)) {
+                                        try {
+                                            const dataBuffer = fs.readFileSync(pdfPath);
+                                            const pdfData = await pdfParse(dataBuffer);
+                                            ctx += `\n[📋 CONTENIDO DEL PDF SCHEMATIC ASOCIADO: ${path.basename(url)}]\n${pdfData.text.substring(0, 3000)}...\n`;
+                                        } catch (e) {
+                                            console.log("[Cerebro] Falló lectura de PDF:", e);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        ctx += "\n";
+                    }
 
-${ctx}`;
+                    systemPrompt += `\n\n### 📚 WIKI DE MACCELL (BASE DE CONOCIMIENTO Y ESQUEMÁTICOS):
+He encontrado los siguientes casos reales documentados por técnicos en la base de datos de MACCELL que coinciden con la consulta:
+
+${ctx}
+BASA TU DIAGNÓSTICO EN ESTOS DATOS Y COMPONENTES (Si el PDF te tira nombres como TR_OUT_B12 o componentes U4001, menciónalos).`;
                 }
             }
         } catch (error) {
