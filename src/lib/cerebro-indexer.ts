@@ -52,62 +52,11 @@ export async function indexRepair(repair: {
     try {
         const { db } = await import('@/lib/db');
 
-        // 2. Guardar en RepairKnowledge (texto plano)
-        const title = `${repair.deviceBrand} ${repair.deviceModel} — ${repair.problemDescription.slice(0, 80)}`;
-        const technicalSummary = [
-            `Diagnóstico: ${repair.diagnosis || 'Sin diagnóstico detallado'}`,
-            repair.observations?.length
-                ? `Observaciones: ${repair.observations.map(o => o.content).join('. ')}`
-                : '',
-            repair.parts?.length
-                ? `Repuestos: ${repair.parts.map(p => p.sparePart.name).join(', ')}`
-                : ''
-        ].filter(Boolean).join('\n\n');
+        // ── Solo indexar en RAG vectorial (automático, silencioso) ──────────
+        // La wiki (repairKnowledge) es SOLO manual — el técnico decide qué guardar
+        // usando el botón "Guardar a Wiki" en Cerebro tras un buen diagnóstico.
+        // Esto mantiene la wiki curada y de alta calidad.
 
-        // Crear o actualizar entrada en la wiki técnica
-        await (db as any).repairKnowledge.upsert({
-            where: {
-                // Usamos un unique constraint ficticio — si no existe lo creamos
-                id: `auto_${repair.id}`,
-            },
-            create: {
-                id: `auto_${repair.id}`,
-                deviceBrand: repair.deviceBrand,
-                deviceModel: repair.deviceModel,
-                title,
-                content: technicalSummary,
-                problemTags: repair.problemDescription
-                    .toLowerCase()
-                    .split(/\s+/)
-                    .filter(w => w.length > 3),
-                authorId: repair.assignedUserId || 'system',
-                mediaUrls: repair.deviceImages || [],
-            },
-            update: {
-                content: technicalSummary,
-                updatedAt: new Date(),
-            },
-        }).catch(() => {
-            // Si falla upsert (ej: no existe campo id en el schema), crear directamente
-            return (db as any).repairKnowledge.create({
-                data: {
-                    deviceBrand: repair.deviceBrand,
-                    deviceModel: repair.deviceModel,
-                    title,
-                    content: technicalSummary,
-                    problemTags: repair.problemDescription
-                        .toLowerCase()
-                        .split(/\s+/)
-                        .filter(w => w.length > 3),
-                    authorId: repair.assignedUserId || 'system',
-                    mediaUrls: repair.deviceImages || [],
-                }
-            });
-        });
-
-        console.log(`[CEREBRO_INDEXER] 📝 Wiki guardada: ${repair.ticketNumber}`);
-
-        // 3. Generar embedding LOCAL (Transformers.js)
         console.log(`[CEREBRO_INDEXER] 🧠 Generando embedding para: ${repair.ticketNumber}`);
         const embedding = await generateEmbedding(document);
 
@@ -124,10 +73,9 @@ export async function indexRepair(repair: {
                         embedding     = EXCLUDED.embedding,
                         "updatedAt"   = now()
                 `, [repair.id, repair.ticketNumber, repair.deviceBrand, repair.deviceModel, document, vectorStr]);
-                console.log(`[CEREBRO_INDEXER] 📐 Vector indexado: ${repair.ticketNumber}`);
+                console.log(`[CEREBRO_INDEXER] ✅ RAG indexado: ${repair.ticketNumber}`);
             } catch (pgErr: any) {
-                // pgvector no disponible o tabla no existe — solo advertencia, no error fatal
-                console.warn(`[CEREBRO_INDEXER] ⚠️ pgvector no disponible (solo wiki text): ${pgErr.message.slice(0, 80)}`);
+                console.warn(`[CEREBRO_INDEXER] ⚠️ pgvector no disponible: ${pgErr.message.slice(0, 80)}`);
             }
         } else {
             console.warn(`[CEREBRO_INDEXER] ⚠️ No se pudo generar embedding para: ${repair.ticketNumber}`);
@@ -138,6 +86,7 @@ export async function indexRepair(repair: {
         console.error(`[CEREBRO_INDEXER] ❌ Error procesando ${repair.ticketNumber}:`, err.message);
         return false;
     }
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

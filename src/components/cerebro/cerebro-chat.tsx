@@ -215,44 +215,37 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     return (
         <div className="flex flex-col h-full bg-slate-900 overflow-hidden relative">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950/50 shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-violet-600/20 text-violet-400">
-                        <BrainCircuit size={20} />
-                    </div>
-                    <div>
-                        <h2 className="text-white font-bold text-sm">Cerebro AI</h2>
-                        <p className="text-slate-400 text-xs text-violet-300">Conectado a BD MACCELL</p>
-                    </div>
+            <div className="flex items-center p-4 border-b border-slate-800 bg-slate-950/50 shrink-0 gap-3">
+                <div className="p-2 rounded-lg bg-violet-600/20 text-violet-400 shrink-0">
+                    <BrainCircuit size={20} />
                 </div>
+                <div className="flex-1 min-w-0">
+                    <h2 className="text-white font-bold text-sm">Cerebro AI</h2>
+                    <p className="text-slate-400 text-xs text-violet-300">Conectado a BD MACCELL</p>
 
-                {/* Token gauge */}
-                {tokenUsage && (
-                    <div className="flex flex-col items-end gap-1 min-w-[130px]">
-                        <div className="flex items-center gap-1.5">
-                            <span className={`text-[10px] font-bold tabular-nums ${tokenUsage.percentage >= 80 ? 'text-red-400'
+                    {/* Token gauge — queda dentro del bloque izquierdo, no tapa el botón de wiki */}
+                    {tokenUsage && (
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className="w-20 h-1 bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-500 ${tokenUsage.percentage >= 80 ? 'bg-red-500'
+                                            : tokenUsage.percentage >= 50 ? 'bg-amber-500'
+                                                : 'bg-emerald-500'
+                                        }`}
+                                    style={{ width: `${tokenUsage.percentage}%` }}
+                                />
+                            </div>
+                            <span className={`text-[10px] font-semibold tabular-nums ${tokenUsage.percentage >= 80 ? 'text-red-400'
                                     : tokenUsage.percentage >= 50 ? 'text-amber-400'
                                         : 'text-emerald-400'
                                 }`}>
-                                {tokenUsage.remaining.toLocaleString()} restantes
+                                {tokenUsage.remaining.toLocaleString()} tkn restantes
                             </span>
                         </div>
-                        {/* Barra de progreso */}
-                        <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                            <div
-                                className={`h-full rounded-full transition-all duration-500 ${tokenUsage.percentage >= 80 ? 'bg-red-500'
-                                        : tokenUsage.percentage >= 50 ? 'bg-amber-500'
-                                            : 'bg-emerald-500'
-                                    }`}
-                                style={{ width: `${tokenUsage.percentage}%` }}
-                            />
-                        </div>
-                        <span className="text-[9px] text-slate-600 tabular-nums">
-                            {tokenUsage.used.toLocaleString()}/{tokenUsage.limit.toLocaleString()} · reset en {tokenUsage.resetAt}
-                        </span>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
+
 
             {/* Chat Area */}
             <ScrollArea className="flex-1 min-h-0" ref={scrollRef}>
