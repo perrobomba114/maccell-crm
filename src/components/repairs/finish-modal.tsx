@@ -19,7 +19,8 @@ import {
     ChevronRight,
     Wrench,
     FileText,
-    History
+    History,
+    Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { finishRepairAction } from "@/actions/repairs/technician-actions";
@@ -46,6 +47,8 @@ const finishStatuses = [
 
 export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: FinishRepairModalProps) {
     const [isLoading, setIsLoading] = useState(false);
+    const [isEnhancing, setIsEnhancing] = useState(false);
+    const [enhanceError, setEnhanceError] = useState<string | null>(null);
     const [statusId, setStatusId] = useState<string>("");
     const [diagnosis, setDiagnosis] = useState("");
     const [isWet, setIsWet] = useState<boolean>(!!repair.isWet);
@@ -74,6 +77,42 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             else next.add(partId);
             return next;
         });
+    };
+
+    const enhanceDiagnosis = async () => {
+        const trimmed = diagnosis.trim();
+        if (!trimmed) return toast.error("Escribí el diagnóstico antes de mejorarlo.");
+        if (trimmed.length < 5) return toast.error("El diagnóstico es demasiado corto para mejorar.");
+
+        setIsEnhancing(true);
+        setEnhanceError(null);
+        try {
+            const res = await fetch("/api/cerebro/enhance-diagnosis", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    diagnosis: trimmed,
+                    deviceBrand: repair.deviceBrand,
+                    deviceModel: repair.deviceModel,
+                    problemDescription: repair.problemDescription,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                if (data.modelUnavailable) {
+                    setEnhanceError(data.error);
+                } else {
+                    toast.error(data.error || "Error al mejorar el diagnóstico.");
+                }
+                return;
+            }
+            setDiagnosis(data.improved);
+            toast.success("Diagnóstico mejorado. Revisalo antes de guardar.");
+        } catch (e) {
+            toast.error("Error de conexión al mejorar el diagnóstico.");
+        } finally {
+            setIsEnhancing(false);
+        }
     };
 
     const submitRepair = async () => {
@@ -204,6 +243,25 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                     placeholder="Detalla la reparación realizada..."
                                     className="min-h-[120px] bg-slate-900 border-2 border-slate-800 rounded-xl text-xs font-bold text-white p-4 focus:border-emerald-500 transition-all placeholder:text-slate-700"
                                 />
+                                {/* Mejorar con IA */}
+                                <button
+                                    type="button"
+                                    onClick={enhanceDiagnosis}
+                                    disabled={isEnhancing || !diagnosis.trim()}
+                                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border-2 border-violet-700/60 bg-violet-950/40 text-violet-300 text-[10px] font-black uppercase tracking-widest hover:bg-violet-900/50 hover:border-violet-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                                >
+                                    {isEnhancing ? (
+                                        <><Loader2 size={12} className="animate-spin" /> Mejorando con IA...</>
+                                    ) : (
+                                        <><Sparkles size={12} /> Mejorar con IA</>
+                                    )}
+                                </button>
+                                {enhanceError && (
+                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-950/40 border border-amber-700/50 text-amber-300 text-[10px] font-bold leading-relaxed">
+                                        <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                                        <span>{enhanceError}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

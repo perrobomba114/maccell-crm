@@ -539,13 +539,34 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
 
         try {
             const zpl = generateProductZpl(printProduct, printQuantity, printPrefix, is300Dpi, manualOffset);
-            const res = await printLabelZPL(printerIp, zpl);
 
-            if (res.success) {
-                toast.success(`Enviado (ZPL ${is300Dpi ? "300DPI" : "203DPI"} | X+${manualOffset})`);
+            // INTENTO 1: Directo desde el navegador al printer (Obligatorio para entornos Cloud/Producción)
+            let printSuccess = false;
+            try {
+                // Las impresoras Zebra escuchan POST HTTP en /pstprnt
+                // mode 'no-cors' porque las impresoras no envían cabeceras CORS de vuelta
+                await fetch(`http://${printerIp}/pstprnt`, {
+                    method: 'POST',
+                    body: zpl,
+                    mode: 'no-cors'
+                });
+                printSuccess = true;
+                toast.success(`Enviado desde Navegador (ZPL ${is300Dpi ? "300DPI" : "203DPI"} | X+${manualOffset})`);
                 setPrintProduct(null);
-            } else {
-                toast.error("Error: " + res.error);
+            } catch (fallbackError) {
+                console.warn("No se pudo imprimir vía HTTP fetch, intentado TCP...", fallbackError);
+            }
+
+            // INTENTO 2: Desde el Servidor vía TCP (Funciona si el Servidor está en la misma red local que la impresora)
+            if (!printSuccess) {
+                const res = await printLabelZPL(printerIp, zpl);
+
+                if (res.success) {
+                    toast.success(`Enviado desde Servidor Local (ZPL ${is300Dpi ? "300DPI" : "203DPI"} | X+${manualOffset})`);
+                    setPrintProduct(null);
+                } else {
+                    toast.error("Error: " + res.error);
+                }
             }
         } catch (e) {
             console.error(e);

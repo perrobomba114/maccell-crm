@@ -277,6 +277,8 @@ Si estás contribuyendo a este proyecto o realizando modificaciones, por favor s
 ---
 
 ## 📈 Roadmap y Mejoras Futuras
+- [x] **Cerebro AI**: Integración de LLM local (Ollama) para asistencia en el laboratorio.
+- [x] **Base de Conocimiento**: Wiki técnica colaborativa con búsqueda inteligente.
 - [ ] Integración con APIs de transportistas para seguimiento de envíos de stock entre sucursales.
 - [ ] Exportación avanzada de reportes a PDF/Excel con plantillas personalizadas.
 - [ ] Módulo nativo de cámara para escaneo directo de piezas mediante OCR.

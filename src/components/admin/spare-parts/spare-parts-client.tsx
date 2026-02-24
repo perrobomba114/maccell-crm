@@ -584,13 +584,33 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
 
         try {
             const zpl = generateZpl(printPart, printQuantity, printPrefix);
-            const res = await printLabelZPL(printerIp, zpl);
 
-            if (res.success) {
-                toast.success("Enviado a imprimir correctamente");
-                setPrintPart(null); // Close dialog
-            } else {
-                toast.error("Error: " + res.error);
+            // INTENTO 1: Directo desde el navegador (Nube -> Impresora Local)
+            let printSuccess = false;
+            try {
+                // Zebra recibe raw ZPL por HTTP en /pstprnt
+                await fetch(`http://${printerIp}/pstprnt`, {
+                    method: 'POST',
+                    body: zpl,
+                    mode: 'no-cors'
+                });
+                printSuccess = true;
+                toast.success("Enviado desde el Navegador a impresora local");
+                setPrintPart(null);
+            } catch (fallbackError) {
+                console.warn("Fallo HTTP fetch, probando TCP...", fallbackError);
+            }
+
+            // INTENTO 2: Servidor (Funciona si el servidor de Next.js es local)
+            if (!printSuccess) {
+                const res = await printLabelZPL(printerIp, zpl);
+
+                if (res.success) {
+                    toast.success("Enviado al servidor de impresión local (TCP)");
+                    setPrintPart(null); // Close dialog
+                } else {
+                    toast.error("Error: " + res.error);
+                }
             }
         } catch (e) {
             console.error(e);

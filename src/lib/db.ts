@@ -12,12 +12,12 @@ const pool = new pg.Pool({ connectionString: safeConnectionString });
 const adapter = new PrismaPg(pool);
 
 declare global {
-    var prisma_v2: PrismaClient | undefined;
+    var prisma_v3: PrismaClient | undefined;
 }
 
 // Use adapter only if we have a valid connection string, otherwise standard init
-export const db = globalThis.prisma_v2 || new PrismaClient({ adapter });
+export const db = globalThis.prisma_v3 || new PrismaClient({ adapter });
 
 if (process.env.NODE_ENV !== "production") {
-    globalThis.prisma_v2 = db;
+    globalThis.prisma_v3 = db;
 }

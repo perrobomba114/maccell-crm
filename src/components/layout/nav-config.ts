@@ -36,6 +36,7 @@ export const technicianGroups = [
         label: "Principal",
         items: [
             { href: "/technician/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+            { href: "/technician/cerebro", label: "Cerebro AI", icon: "BrainCircuit" },
         ]
     },
     {
@@ -66,6 +67,7 @@ export const adminGroups = [
         items: [
             { href: "/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
             { href: "/admin/statistics", label: "Estadísticas", icon: "BarChart3" },
+            { href: "/admin/cerebro", label: "Cerebro AI", icon: "BrainCircuit" },
         ]
     },
     {

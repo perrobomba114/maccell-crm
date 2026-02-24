@@ -25,14 +25,15 @@ export const dynamic = 'force-dynamic';
 export default async function InvoicesPage({
     searchParams
 }: {
-    searchParams: { page?: string, date?: string, view?: string }
+    searchParams: Promise<{ page?: string, date?: string, view?: string }>
 }) {
     console.log("InvoicesPage rendering...");
-    const page = Number(searchParams.page) || 1;
-    const viewAll = searchParams.view === 'all';
+    const resolvedParams = await searchParams;
+    const page = Number(resolvedParams.page) || 1;
+    const viewAll = resolvedParams.view === 'all';
 
     // Default to Current Month if not "view all" and no date provided
-    let date = searchParams.date;
+    let date = resolvedParams.date;
     if (!date && !viewAll) {
         date = format(new Date(), 'yyyy-MM');
     }

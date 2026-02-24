@@ -13,20 +13,22 @@ export const dynamic = "force-dynamic";
 export default async function AdminExpensesPage({
     searchParams
 }: {
-    searchParams: { date?: string; page?: string; view?: string }
+    searchParams: Promise<{ date?: string; page?: string; view?: string }>
 }) {
     const user = await getUserData();
     if (user?.role !== "ADMIN") redirect("/");
 
+    const resolvedParams = await searchParams;
+
     // Default to Today if no date AND not explicitly viewing all
-    const isViewAll = searchParams.view === "all";
-    if (!searchParams.date && !isViewAll) {
+    const isViewAll = resolvedParams.view === "all";
+    if (!resolvedParams.date && !isViewAll) {
         const today = new Date().toISOString().split('T')[0];
         redirect(`/admin/expenses?date=${today}`);
     }
 
-    const date = isViewAll ? undefined : (searchParams.date || undefined);
-    const page = parseInt(searchParams.page || "1");
+    const date = isViewAll ? undefined : (resolvedParams.date || undefined);
+    const page = parseInt(resolvedParams.page || "1");
 
     const { expenses, totalAmount, monthlyTotal, totalCount, totalPages, currentPage } = await getExpensesAction({
         date,
@@ -96,7 +98,7 @@ export default async function AdminExpensesPage({
                                 asChild={currentPage > 1}
                             >
                                 {currentPage > 1 ? (
-                                    <a href={`/admin/expenses?${new URLSearchParams({ ...searchParams, page: String(currentPage - 1) }).toString()}`}>Anterior</a>
+                                    <a href={`/admin/expenses?${new URLSearchParams({ ...resolvedParams, page: String(currentPage - 1) } as any).toString()}`}>Anterior</a>
                                 ) : "Anterior"}
                             </Button>
                             <div className="flex items-center px-4 text-sm font-medium">
@@ -108,7 +110,7 @@ export default async function AdminExpensesPage({
                                 asChild={currentPage < totalPages}
                             >
                                 {currentPage < totalPages ? (
-                                    <a href={`/admin/expenses?${new URLSearchParams({ ...searchParams, page: String(currentPage + 1) }).toString()}`}>Siguiente</a>
+                                    <a href={`/admin/expenses?${new URLSearchParams({ ...resolvedParams, page: String(currentPage + 1) } as any).toString()}`}>Siguiente</a>
                                 ) : "Siguiente"}
                             </Button>
                         </div>

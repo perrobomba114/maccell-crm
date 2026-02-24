@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { businessHoursService } from "@/lib/services/business-hours";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/actions/auth-actions"; // Import getCurrentUser
+import { getCurrentUser } from "@/actions/auth-actions";
+import { indexRepair } from "@/lib/cerebro-indexer";
 
 // Status IDs:
 // 2: Tomado por Técnico (Claimed)
@@ -477,8 +478,25 @@ export async function finishRepairAction(formData: FormData) {
 
 
         revalidatePath("/technician/repairs");
-        revalidatePath("/admin/repairs"); // Also valid for admin
+        revalidatePath("/admin/repairs");
         revalidatePath("/technician/dashboard");
+
+        // 🧠 Auto-indexar en RAG (background, no bloquea la respuesta)
+        if (diagnosis && [5, 6, 7, 8, 9, 10].includes(statusId)) {
+            const fullRepair = await db.repair.findUnique({
+                where: { id: repairId },
+                include: {
+                    observations: { select: { content: true } },
+                    parts: { include: { sparePart: { select: { name: true, brand: true } } } },
+                }
+            });
+            if (fullRepair) {
+                indexRepair(fullRepair).catch(err =>
+                    console.error('[CEREBRO_INDEXER] Error auto-indexando repair:', err.message)
+                );
+            }
+        }
+
         return { success: true };
 
     } catch (error) {

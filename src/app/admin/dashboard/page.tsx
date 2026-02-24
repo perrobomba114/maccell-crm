@@ -28,7 +28,7 @@ function SectionSkeleton({ height = "h-[400px]" }: { height?: string }) {
     return <div className={`w-full ${height} bg-[#18181b]/50 rounded-2xl animate-pulse border border-zinc-800/50 mb-8`} />;
 }
 
-export default async function AdminDashboardPage({ searchParams }: { searchParams: { branchId?: string } }) {
+export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ branchId?: string }> }) {
     // Resolve params (Next.js 15 requires awaiting searchParams, doing so to be safe/future-proof)
     const resolvedParams = await searchParams; // In Next 14 this is just the object, in 15 it's a promise. Await is safe.
     const branchId = resolvedParams?.branchId;

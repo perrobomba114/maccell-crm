@@ -34,30 +34,33 @@ model Branch {
 }
 
 model User {
-  id                    String              @id @default(cuid())
-  email                 String              @unique
+  id                    String                @id @default(cuid())
+  email                 String                @unique
   password              String
   name                  String
-  role                  Role                @default(VENDOR)
+  role                  Role                  @default(VENDOR)
   branchId              String?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  isOnline              Boolean             @default(false)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  isOnline              Boolean               @default(false)
   lastActiveAt          DateTime?
   imageUrl              String?
+  avgDataQuality        Float                 @default(0)
   cashShifts            CashShift[]
+  cerebroConversations  CerebroConversation[]
   customersCreated      Customer[]
   expenses              Expense[]
   notifications         Notification[]
+  repairKnowledge       RepairKnowledge[]
   observations          RepairObservation[]
-  repairsAssigned       Repair[]            @relation("AssignedRepairs")
-  repairsCreated        Repair[]            @relation("CreatedRepairs")
-  resolvedReturns       ReturnRequest[]     @relation("AdminResolvedReturns")
-  technicianReturns     ReturnRequest[]     @relation("TechnicianReturns")
+  repairsAssigned       Repair[]              @relation("AssignedRepairs")
+  repairsCreated        Repair[]              @relation("CreatedRepairs")
+  resolvedReturns       ReturnRequest[]       @relation("AdminResolvedReturns")
+  technicianReturns     ReturnRequest[]       @relation("TechnicianReturns")
   sales                 Sale[]
   sparePartHistory      SparePartHistory[]
   stockTransfersCreated StockTransfer[]
-  branch                Branch?             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch                Branch?               @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([email])
   @@index([branchId])
@@ -308,6 +311,9 @@ model Repair {
   finishedAt         DateTime?
   startedAt          DateTime?
   isWet              Boolean             @default(false)
+  dataQualityScore   Int                 @default(0)
+  diagnosisEnriched  String?
+  diagnosticJson     Json?
   observations       RepairObservation[]
   parts              RepairPart[]
   assignedTo         User?               @relation("AssignedRepairs", fields: [assignedUserId], references: [id])
@@ -434,6 +440,79 @@ model backups {
   size      Int
   content   Bytes
   createdAt DateTime @default(now())
+}
+
+/// Familias de dispositivos con checklists dinámicos para el diagnóstico estructurado
+model DeviceFamily {
+  id            String   @id @default(cuid())
+  name          String
+  checklistJson Json
+  createdAt     DateTime @default(now())
+
+  @@map("device_families")
+}
+
+/// Soluciones y conocimiento técnico registrado por el equipo de MACCELL
+model RepairKnowledge {
+  id          String   @id @default(cuid())
+  deviceBrand String
+  deviceModel String
+  problemTags String[]
+  title       String
+  content     String
+  mediaUrls   String[]
+  authorId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  author      User     @relation(fields: [authorId], references: [id])
+
+  @@index([deviceBrand, deviceModel])
+  @@map("repair_knowledge")
+}
+
+/// Embeddings vectoriales de reparaciones para búsqueda semántica RAG
+/// Requiere extensión pgvector: CREATE EXTENSION IF NOT EXISTS vector;
+model RepairEmbedding {
+  id          String   @id @default(cuid())
+  repairId    String   @unique
+  ticketNumber String
+  deviceBrand String
+  deviceModel String
+  /// Campo vectorial — manejado manualmente con SQL raw (pgvector no soportado por Prisma natively)
+  contentText String   // Texto indexado: problema + diagnóstico
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([deviceBrand, deviceModel])
+  @@map("repair_embeddings")
+}
+
+/// Conversaciones del chat de Cerebro (una por sesión de trabajo)
+model CerebroConversation {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  CerebroMessage[]
+
+  @@index([userId])
+  @@map("cerebro_conversations")
+}
+
+/// Mensajes individuales dentro de una conversación de Cerebro
+model CerebroMessage {
+  id             String              @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  mediaUrls      String[]
+  createdAt      DateTime            @default(now())
+  conversation   CerebroConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("cerebro_messages")
 }
 
 model SparePartHistory {
