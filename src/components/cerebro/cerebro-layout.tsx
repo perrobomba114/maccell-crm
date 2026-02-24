@@ -233,7 +233,7 @@ export function CerebroLayout({ userId }: CerebroLayoutProps) {
                                                 type="button"
                                                 className={cn(
                                                     "h-7 w-7 flex items-center justify-center rounded-md transition-all shrink-0",
-                                                    "bg-red-600 text-white hover:bg-red-500 shadow-md",
+                                                    "bg-red-950/30 border border-red-900/50 text-red-600 hover:bg-red-600 hover:text-white",
                                                     "opacity-100"
                                                 )}
                                                 onClick={(e) => {

@@ -342,9 +342,9 @@ export function KnowledgePanel({ userId, initialContent, onClearInitial }: Knowl
                                             <button
                                                 type="button"
                                                 onClick={() => removeExistingMedia(i)}
-                                                className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1.5 border-2 border-zinc-950 shadow-xl transition-all z-10 opacity-100"
+                                                className="absolute -top-2 -right-2 bg-red-900/60 text-red-200 hover:bg-red-600 hover:text-white backdrop-blur-sm rounded-full p-1.5 border border-red-500/30 shadow-xl transition-all z-10 opacity-100"
                                             >
-                                                <X size={16} strokeWidth={3} />
+                                                <X size={14} strokeWidth={3} />
                                             </button>
                                         </div>
                                     );
@@ -357,7 +357,7 @@ export function KnowledgePanel({ userId, initialContent, onClearInitial }: Knowl
                                             <button
                                                 type="button"
                                                 onClick={() => removeMedia(i)}
-                                                className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1.5 border-2 border-zinc-950 shadow-xl transition-all z-10 opacity-100"
+                                                className="absolute -top-2 -right-2 bg-red-900/60 text-red-200 hover:bg-red-600 hover:text-white backdrop-blur-sm rounded-full p-1.5 border border-red-500/30 shadow-xl transition-all z-10 opacity-100"
                                             >
                                                 <X size={12} strokeWidth={3} />
                                             </button>
