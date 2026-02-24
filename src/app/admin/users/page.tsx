@@ -4,6 +4,7 @@ import { UsersTable } from "./_components/users-table";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function AdminUsersPage() {
     const [usersResult, branchesResult] = await Promise.all([
@@ -21,6 +22,11 @@ export default async function AdminUsersPage() {
                 <p className="text-muted-foreground">
                     Administra los usuarios del sistema y sus permisos
                 </p>
+                {!usersResult.success && (
+                    <div className="bg-red-500/10 text-red-500 p-3 mt-4 rounded-md border border-red-500/20 text-sm font-semibold tracking-tight">
+                        Error al cargar usuarios desde la base de datos: {usersResult.error}
+                    </div>
+                )}
             </div>
 
             <Card>

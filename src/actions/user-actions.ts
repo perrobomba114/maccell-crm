@@ -21,9 +21,9 @@ export async function getAllUsers() {
         });
 
         return { success: true, users };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Get users error:", error);
-        return { success: false, error: "Error al obtener usuarios" };
+        return { success: false, error: error?.message || "Error al obtener usuarios" };
     }
 }
 
