@@ -339,8 +339,12 @@ export function KnowledgePanel({ userId, initialContent, onClearInitial }: Knowl
                                     return (
                                         <div key={`exist-${i}`} className="relative group w-[72px] h-[72px] bg-zinc-900 rounded-lg border border-zinc-800 flex items-center justify-center overflow-hidden hover:border-emerald-500/50 transition-colors">
                                             {isPdf ? <FileIcon className="text-blue-400" size={28} /> : <img src={url} alt="existing" className="w-full h-full object-cover" />}
-                                            <button type="button" onClick={() => removeExistingMedia(i)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:scale-100 scale-75">
-                                                <X size={12} strokeWidth={3} />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeExistingMedia(i)}
+                                                className="absolute top-1 right-1 bg-zinc-950/80 text-red-500 hover:text-white hover:bg-red-500 backdrop-blur-md rounded-full p-1.5 border border-white/10 shadow-xl transition-all md:opacity-0 md:group-hover:opacity-100"
+                                            >
+                                                <X size={14} strokeWidth={3} />
                                             </button>
                                         </div>
                                     );
@@ -350,8 +354,12 @@ export function KnowledgePanel({ userId, initialContent, onClearInitial }: Knowl
                                     return (
                                         <div key={`new-${i}`} className="relative group w-[72px] h-[72px] bg-zinc-900 rounded-lg border-2 border-dashed border-emerald-500/50 flex items-center justify-center overflow-hidden">
                                             {isPdf ? <FileIcon className="text-blue-400" size={28} /> : <img src={media.base64} alt="preview" className="w-full h-full object-cover opacity-80" />}
-                                            <button type="button" onClick={() => removeMedia(i)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:scale-100 scale-75">
-                                                <X size={12} strokeWidth={3} />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeMedia(i)}
+                                                className="absolute top-1 right-1 bg-zinc-950/80 text-red-500 hover:text-white hover:bg-red-500 backdrop-blur-md rounded-full p-1.5 border border-white/10 shadow-xl transition-all"
+                                            >
+                                                <X size={14} strokeWidth={3} />
                                             </button>
                                         </div>
                                     );

@@ -233,14 +233,14 @@ export function CerebroLayout({ userId }: CerebroLayoutProps) {
                                                 "w-3.5 h-3.5 shrink-0 transition-colors",
                                                 activeConversationId === conv.id ? "text-violet-400" : "text-zinc-600 group-hover:text-zinc-400"
                                             )} />
-                                            <span className="font-bold truncate text-[12px] flex-1">
+                                            <span className="font-bold truncate text-[13px] flex-1 pr-2">
                                                 {conv.title || "Nueva Conversación"}
                                             </span>
                                             <button
                                                 type="button"
                                                 className={cn(
-                                                    "h-7 w-7 flex items-center justify-center rounded-lg transition-all",
-                                                    "text-zinc-600 hover:text-red-400 hover:bg-red-400/10",
+                                                    "h-8 w-8 flex items-center justify-center rounded-full transition-all shrink-0",
+                                                    "text-zinc-500 hover:text-red-400 hover:bg-red-400/10 active:scale-90",
                                                     "md:opacity-0 md:group-hover:opacity-100"
                                                 )}
                                                 onClick={(e) => {
@@ -248,7 +248,7 @@ export function CerebroLayout({ userId }: CerebroLayoutProps) {
                                                     setDeleteId(conv.id);
                                                 }}
                                             >
-                                                <Trash2 className="w-3.5 h-3.5" />
+                                                <Trash2 size={15} strokeWidth={2.5} />
                                             </button>
                                         </div>
                                         <div className="flex items-center justify-between w-full mt-1 px-5">

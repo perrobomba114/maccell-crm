@@ -401,9 +401,9 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                                     <button
                                         type="button"
                                         onClick={() => removeFile(i)}
-                                        className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="absolute -top-1.5 -right-1.5 bg-zinc-950/90 text-red-500 hover:text-white hover:bg-red-500 backdrop-blur-md rounded-full p-1 border border-white/10 shadow-lg transition-all md:opacity-0 md:group-hover:opacity-100"
                                     >
-                                        <X size={10} />
+                                        <X size={12} strokeWidth={3} />
                                     </button>
                                 </div>
                             ))}
