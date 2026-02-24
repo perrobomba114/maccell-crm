@@ -58,14 +58,9 @@ export async function findSimilarRepairs(
     // ── Intento 1: pgvector ──────────────────────────────────────────────────
     try {
         const vectorStr = `[${embedding.join(',')}]`;
-        // Usamos el operador <=> para similitud coseno (distancia)
-        // O <#> para producto punto (negativo), que es más rápido si están normalizados
         const result = await getPool().query<SimilarRepair>(
             `SELECT
-                "ticketNumber",
-                "deviceBrand",
-                "deviceModel",
-                "contentText",
+                "ticketNumber", "deviceBrand", "deviceModel", "contentText",
                 1 - (embedding <=> $1::vector) AS similarity
             FROM repair_embeddings
             WHERE 1 - (embedding <=> $1::vector) >= $2
@@ -79,7 +74,39 @@ export async function findSimilarRepairs(
             return result.rows;
         }
     } catch (err: any) {
-        console.warn('[RAG] pgvector error/no disponible:', err.message.slice(0, 50));
+        // ── Intento 2: Fallback In-Memory sobre la tabla de embeddings ───────
+        try {
+            console.warn('[RAG] pgvector no disponible, usando búsqueda en memoria sobre repair_embeddings.');
+            const result = await getPool().query<any>(
+                `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding"
+                 FROM repair_embeddings`
+            );
+
+            if (result.rows.length > 0) {
+                const results: SimilarRepair[] = result.rows.map((row: any) => {
+                    // Si es un array de Postgres, viene como [1, 2, 3]
+                    // Si es un vector de pgvector, el driver pg lo devuelve como string "[1,2,3]"
+                    const rowEmbedding = typeof row.embedding === 'string'
+                        ? JSON.parse(row.embedding)
+                        : row.embedding;
+
+                    return {
+                        ticketNumber: row.ticketNumber,
+                        deviceBrand: row.deviceBrand,
+                        deviceModel: row.deviceModel,
+                        contentText: row.contentText,
+                        similarity: calculateSimilarity(embedding, rowEmbedding)
+                    };
+                })
+                    .filter((r: SimilarRepair) => r.similarity >= minSimilarity)
+                    .sort((a: SimilarRepair, b: SimilarRepair) => b.similarity - a.similarity)
+                    .slice(0, limit);
+
+                if (results.length > 0) return results;
+            }
+        } catch (memErr: any) {
+            console.warn('[RAG] Error en búsqueda de embeddings en memoria:', memErr.message);
+        }
     }
 
     // ── Fallback: Brute-force en memoria (Optimizado con Producto Punto) ──────
