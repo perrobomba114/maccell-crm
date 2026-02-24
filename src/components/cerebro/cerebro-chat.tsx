@@ -53,6 +53,8 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [zoom, setZoom] = useState(1);
 
 
     const { messages, sendMessage, stop, status, error } = useChat({
@@ -226,7 +228,11 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                                                         <img
                                                             src={fileUrl}
                                                             alt={fileName}
-                                                            className="max-w-full rounded-lg border border-slate-700 overflow-hidden shadow-md"
+                                                            onClick={() => {
+                                                                setSelectedImage(fileUrl);
+                                                                setZoom(1);
+                                                            }}
+                                                            className="max-w-full rounded-lg border border-slate-700 overflow-hidden shadow-md cursor-pointer hover:opacity-90 transition-opacity active:scale-[0.98]"
                                                             style={{ maxHeight: '300px' }}
                                                         />
                                                     ) : (
@@ -406,6 +412,54 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                         </div>
                     </div>
                 </form>
+                {/* Lightbox / Fullscreen Image Preview */}
+                {selectedImage && (
+                    <div
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-200"
+                        onClick={() => setSelectedImage(null)}
+                    >
+                        <button
+                            className="absolute top-6 right-6 p-3 rounded-full bg-slate-800/80 text-white hover:bg-slate-700 transition-colors z-[110]"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedImage(null);
+                            }}
+                        >
+                            <X size={24} />
+                        </button>
+
+                        <div className="relative w-full h-full flex items-center justify-center p-4 md:p-12 overflow-hidden">
+                            <img
+                                src={selectedImage}
+                                alt="Full screen preview"
+                                className="max-w-full max-h-full object-contain transition-transform duration-300 ease-out shadow-2xl rounded-lg"
+                                style={{ transform: `scale(${zoom})` }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setZoom(prev => prev === 1 ? 2 : 1);
+                                }}
+                            />
+
+                            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 px-6 py-3 bg-slate-900/80 border border-slate-800 rounded-full backdrop-blur-sm transition-all shadow-xl">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setZoom(prev => Math.max(1, prev - 0.5)); }}
+                                    className="text-white hover:text-violet-400 font-bold px-2 py-1"
+                                >
+                                    -
+                                </button>
+                                <span className="text-white text-xs font-mono min-w-[60px] text-center">
+                                    Zoom: {(zoom * 100).toFixed(0)}%
+                                </span>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setZoom(prev => Math.min(4, prev + 0.5)); }}
+                                    className="text-white hover:text-violet-400 font-bold px-2 py-1"
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
