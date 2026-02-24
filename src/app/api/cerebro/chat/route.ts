@@ -154,12 +154,29 @@ function toCoreMsgs(messages: any[]): any[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CONFIGURACIÓN DE RUTA (Next.js)
+// ─────────────────────────────────────────────────────────────────────────────
+export const maxDuration = 60; // 60 segundos para procesar PDFs pesados
+export const dynamic = 'force-dynamic';
+
+// Aumentar el límite de tamaño para recibir PDFs y esquemáticos
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '20mb',
+        },
+    },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HANDLER
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
     let body: any;
-    try { body = await req.json(); } catch {
+    try {
+        body = await req.json();
+    } catch {
         return new Response("JSON inválido.", { status: 400 });
     }
 
@@ -186,6 +203,7 @@ export async function POST(req: NextRequest) {
 - **Equipo:** ${repairData.deviceBrand} ${repairData.deviceModel}
 - **Falla reportada por recepción:** ${repairData.problemDescription}
 - **Observaciones técnicas previas:** ${repairData.diagnosis || 'Ninguna'}
+- **Estado actual:** ${repairData.statusId}
 ⚠️ Cerebro: MARCA OBLIGATORIA: ${repairData.deviceBrand}. Cualquier término de iPhone en este equipo Samsung/Motorola resultará en error de sistema.`;
             }
         } else {
@@ -215,45 +233,44 @@ export async function POST(req: NextRequest) {
         userText = lastUserMessage.parts.map((p: any) => p.text || "").join(" ");
     }
 
-    // --- 📄 NUEVO: Lectura de PDF subido por el técnico ---
-    // Buscamos PDFs en toda la conversación para no perder el contexto (manuales/esquemáticos)
+    // --- 📄 LECTURA DE PDF (Manuales / Esquemáticos) ---
     const allPdfParts = messages
         .filter((m: any) => m.role === 'user')
         .flatMap((m: any) => m.parts || [])
         .filter((p: any) => p.type === 'file' && (p.mediaType === 'application/pdf' || p.filename?.toLowerCase().endsWith('.pdf')));
 
-    // Usamos un Map para procesar PDFs únicos y no duplicar texto
     const uniquePdfs = new Map();
     for (const part of allPdfParts) {
-        if (!uniquePdfs.has(part.filename)) {
-            uniquePdfs.set(part.filename, part);
-        }
-    }
-
-    for (const part of Array.from(uniquePdfs.values())) {
-        try {
-            const base64Data = part.url?.split(';base64,').pop();
-            if (base64Data) {
-                const buffer = Buffer.from(base64Data, 'base64');
-                const pdfData = await pdfParse(buffer);
-                console.log(`[CEREBRO] PDF en memoria (Historial): ${part.filename}`);
-                systemPrompt += `\n\n### 📋 CONTENIDO DEL DOCUMENTO ADJUNTO (${part.filename}):\n${pdfData.text.substring(0, 12000)}\n(Usa los nombres de componentes y mediciones de este documento en tu respuesta).`;
-            }
-        } catch (pdfErr) {
-            console.error("[Cerebro] Falló lectura de PDF adjunto:", pdfErr);
-        }
+        if (!uniquePdfs.has(part.filename)) uniquePdfs.set(part.filename, part);
     }
 
     if (uniquePdfs.size > 0) {
-        systemPrompt += `\n\n🚨 INSTRUCCIÓN EXCEPCIONAL DE SISTEMA: El usuario ha proporcionado documentos PDF técnicos (esquemáticos o manuales).
-👉 ANULA LA REGLA ANTERIOR DE "MODO DE RESPUESTA OBLIGATORIO" y de "PROTOCOLO DE MEDICIÓN" si el usuario solo está haciendo consultas sobre el documento.
-👉 IGNORA EL FORMATO DE ANÁLISIS DIFERENCIAL 📊 a menos que el usuario esté pidiendo un diagnóstico de una placa real basándose en este documento. NO inventes consumos como 0.9A.
+        console.log(`[CEREBRO] Intentando procesar ${uniquePdfs.size} PDFs...`);
+        for (const part of Array.from(uniquePdfs.values())) {
+            try {
+                const base64Data = part.url?.split(';base64,').pop();
+                if (base64Data) {
+                    const buffer = Buffer.from(base64Data, 'base64');
+                    // Solo intentar parsear si el buffer no es gigantesco (> 15MB) para evitar crash
+                    if (buffer.length < 15 * 1024 * 1024) {
+                        const pdfData = await pdfParse(buffer);
+                        const extractedText = pdfData.text.substring(0, 15000); // Subimos un poco el límite
+                        console.log(`[CEREBRO] PDF procesado: ${part.filename} (${extractedText.length} caps)`);
+                        systemPrompt += `\n\n### 📋 CONTENIDO DEL DOCUMENTO TÉCNICO (${part.filename}):\n${extractedText}\n(Usa estos datos técnicos específicos en tu diagnóstico).`;
+                    } else {
+                        console.warn(`[CEREBRO] PDF demasiado grande para procesar: ${part.filename}`);
+                    }
+                }
+            } catch (pdfErr) {
+                console.error(`[CEREBRO] Error al parsear PDF ${part.filename}:`, pdfErr);
+            }
+        }
 
-⚠️ REGLAS INQUEBRANTABLES PARA ESTA CONVERSACIÓN CON PDF:
-1. EL USUARIO ES UN TÉCNICO DE MICROSOLDADURA NIVEL 3. 
-2. NUNCA des consejos de usuario final (ej. "revisa el cable", "limpia el pin", "llévalo a un profesional", "es peligroso").
-3. TU TAREA ES ERICTAMENTE BASARTE EN EL PDF ADJUNTO: Si el usuario pregunta "no carga", busca las líneas VBUS, el IC de carga (PMIC/IF PMIC), y dile exactamente qué líneas medir, qué voltajes esperar y qué componentes (resistencias, capacitores) revisar.
-4. Responde de ingeniero a ingeniero, directo al grano y utilizando términos técnicos apropiados.`;
+        systemPrompt += `\n\n🚨 INSTRUCCIÓN EXCEPCIONAL: El usuario te ha dado documentos técnicos (PDF).
+1. PRIORIZA el contenido del PDF sobre tus conocimientos generales.
+2. Si es un manual/esquemático, habla como un ingeniero de hardware.
+3. Si pides medidas, especifica los componentes que aparecen en el PDF (ej. C500, U200).
+4. El formato "Análisis Diferencial 📊" es opcional si el usuario solo pregunta datos del manual.`;
     }
 
 

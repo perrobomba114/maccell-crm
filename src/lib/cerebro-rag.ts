@@ -2,26 +2,8 @@
  * MACCELL Cerebro RAG — Búsqueda Semántica Optimizada
  */
 
-import pg from 'pg';
+import { db } from '@/lib/db';
 import { generateEmbedding, calculateSimilarity } from '@/lib/local-embeddings';
-
-// Pool de conexión reutilizable (singleton)
-let pool: pg.Pool | null = null;
-function getPool() {
-    if (!pool) {
-        const connectionString = process.env.DATABASE_URL;
-        if (!connectionString) {
-            throw new Error('[RAG] DATABASE_URL no configurada en las variables de entorno.');
-        }
-        pool = new pg.Pool({
-            connectionString,
-            max: 10,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 2000,
-        });
-    }
-    return pool;
-}
 
 export interface SimilarRepair {
     ticketNumber: string;
@@ -67,7 +49,7 @@ export async function findSimilarRepairs(
     // ── Intento 1: pgvector ──────────────────────────────────────────────────
     try {
         const vectorStr = `[${embedding.join(',')}]`;
-        const result = await getPool().query<SimilarRepair>(
+        const rows = await db.$queryRawUnsafe<SimilarRepair[]>(
             `SELECT
                 "ticketNumber", "deviceBrand", "deviceModel", "contentText",
                 1 - (embedding <=> $1::vector) AS similarity
@@ -75,24 +57,24 @@ export async function findSimilarRepairs(
             WHERE 1 - (embedding <=> $1::vector) >= $2
             ORDER BY embedding <=> $1::vector ASC
             LIMIT $3`,
-            [vectorStr, minSimilarity, limit]
+            vectorStr, minSimilarity, limit
         );
 
-        if (result.rows.length > 0) {
-            console.log(`[RAG] 🎯 pgvector: ${result.rows.length} hallados.`);
-            return result.rows;
+        if (rows && rows.length > 0) {
+            console.log(`[RAG] 🎯 pgvector: ${rows.length} hallados.`);
+            return rows;
         }
     } catch (err: any) {
         // ── Intento 2: Fallback In-Memory sobre la tabla de embeddings ───────
         try {
-            console.warn('[RAG] pgvector no disponible, usando búsqueda en memoria sobre repair_embeddings.');
-            const result = await getPool().query<any>(
+            console.warn('[RAG] pgvector no disponible o falló, usando búsqueda en memoria sobre repair_embeddings.');
+            const rows = await db.$queryRawUnsafe<any[]>(
                 `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding"
                  FROM repair_embeddings`
             );
 
-            if (result.rows.length > 0) {
-                const results: SimilarRepair[] = result.rows.map((row: any): SimilarRepair => {
+            if (rows && rows.length > 0) {
+                const results: SimilarRepair[] = rows.map((row: any): SimilarRepair => {
                     // Si es un array de Postgres, viene como [1, 2, 3]
                     // Si es un vector de pgvector, el driver pg lo devuelve como string "[1,2,3]"
                     const rowEmbedding = typeof row.embedding === 'string'
@@ -120,8 +102,6 @@ export async function findSimilarRepairs(
 
     // ── Fallback: Brute-force en memoria (Optimizado con Producto Punto) ──────
     try {
-        const { db } = await import('@/lib/db');
-
         // Traemos los últimos registros de conocimiento para comparar
         const knowledgeItems = await (db as any).repairKnowledge.findMany({
             take: 150,
