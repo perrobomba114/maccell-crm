@@ -65,7 +65,8 @@ FORMATO DE RESPUESTA:
 ### 🎯 ACCIÓN
 [pasos concretos]
 
-Sin datos de consumo → pedí la TRIADA: 1)Amperaje fuente (encendido/apagado) 2)Tensión VBUS 3)Reconocimiento USB en PC`;
+🚨 IMPORTANTE: Si la "WIKI DE MACCELL" te informa de un caso relevante (ej. jumper de carga), DEBÉS sugerir esa misma solución directamente en la sección ACCIÓN y mencionarlo.
+Solo si NO hay datos en la Wiki y no hay datos de consumo → pedí la TRIADA: 1)Amperaje fuente 2)Tensión VBUS 3)USB en PC.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -145,8 +146,14 @@ export async function POST(req: NextRequest) {
 
     if (userText && userText.length > 2) {
         try {
+            // Filter common stop words to improve Prisma search matches
+            const stopWords = new Set(["hola", "tengo", "que", "hacer", "como", "para", "con", "por", "los", "las", "del", "una", "uno", "celular", "equipo", "falla", "problema"]);
+
             // Extraer posibles términos de búsqueda (modelos, fallas, etc)
-            const terms = userText.split(/\s+/).filter((t: string) => t.length >= 3).slice(0, 5);
+            const terms = userText.toLowerCase().split(/\s+/)
+                .map((t: string) => t.replace(/[^a-z0-9]/g, ''))
+                .filter((t: string) => t.length >= 2 && !stopWords.has(t))
+                .slice(0, 5);
 
             if (terms.length > 0) {
                 const searchConditions = terms.map((term: string) => ({
