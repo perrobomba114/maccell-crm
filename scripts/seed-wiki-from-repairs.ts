@@ -10,8 +10,10 @@ async function main() {
         where: {
             diagnosis: { not: null },
             OR: [
-                { statusId: 5 }, // Finalizado OK
-                { statusId: 7 }  // Diagnosticado
+                { statusId: 5 },  // Finalizado OK
+                { statusId: 7 },  // Diagnosticado
+                { statusId: 10 }, // Entregado (La gran mayoría)
+                { statusId: 6 }   // No Reparado (Info técnica de por qué falló)
             ]
         },
         include: {
