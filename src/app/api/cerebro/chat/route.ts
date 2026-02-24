@@ -201,33 +201,35 @@ ${ctx}`;
     const googleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     const openrouterKey = process.env.OPENROUTER_API_KEY;
 
-    // Groq — ultrarrápido, gratis, sin tarjeta (IDs verificados vía API)
-    if (groqKey) {
-        const groq = createGroq({ apiKey: groqKey });
-
-        if (visionMode) {
-            // Llama 4 Maverick: 751 TPS con VISIÓN ✅
-            attempts.push({ label: 'Groq/llama-4-maverick [751TPS VISIÓN 🔥]', model: groq('meta-llama/llama-4-maverick-17b-128e-instruct') });
-            attempts.push({ label: 'Groq/llama-4-scout [~500TPS VISIÓN]', model: groq('meta-llama/llama-4-scout-17b-16e-instruct') });
-        } else {
-            // GPT-OSS-120B: 3000 TPS, solo texto (sin visión) ⚡
-            attempts.push({ label: 'Groq/gpt-oss-120b [3000TPS TEXTO ⚡]', model: groq('openai/gpt-oss-120b') });
-            attempts.push({ label: 'Groq/llama-4-maverick [751TPS]', model: groq('meta-llama/llama-4-maverick-17b-128e-instruct') });
-            attempts.push({ label: 'Groq/llama-3.3-70b [346TPS]', model: groq('llama-3.3-70b-versatile') });
+    if (visionMode) {
+        // EN MODO VISIÓN, GOOGLE GEMINI DEBE SER EL REY ABSOLUTO
+        // (Llama Vision a través de Groq tiene alucinaciones severas con microsoldadura y FPCs)
+        if (googleKey) {
+            const google = createGoogleGenerativeAI({ apiKey: googleKey });
+            attempts.push({ label: 'Gemini/2.0-flash-exp [VISIÓN NATIVA DOMINANTE EXPERTA]', model: google('gemini-2.0-flash-exp') });
+            attempts.push({ label: 'Gemini/1.5-pro-latest [VISIÓN PRO fallback]', model: google('gemini-1.5-pro-latest') });
+        }
+        if (groqKey) {
+            const groq = createGroq({ apiKey: groqKey });
+            attempts.push({ label: 'Groq/llama-3.2-90b-vision-preview [VISIÓN]', model: groq('llama-3.2-90b-vision-preview') });
+        }
+    } else {
+        // EN MODO TEXTO, GROQ SIGUE SIENDO PRIORIDAD POR VELOCIDAD
+        if (groqKey) {
+            const groq = createGroq({ apiKey: groqKey });
+            attempts.push({ label: 'Groq/llama-3.3-70b [LLAMA 3.3 TIER 1]', model: groq('llama-3.3-70b-versatile') });
+            attempts.push({ label: 'Groq/llama-3.1-8b [FALLBACK RAPIDO]', model: groq('llama-3.1-8b-instant') });
+        }
+        if (googleKey) {
+            const google = createGoogleGenerativeAI({ apiKey: googleKey });
+            attempts.push({ label: 'Gemini/2.0-flash-exp [FREE]', model: google('gemini-2.0-flash-exp') });
         }
     }
 
-    // 3 — Google Gemini directo (237 TPS, gratis, visión nativa)
-    if (googleKey) {
-        const google = createGoogleGenerativeAI({ apiKey: googleKey });
-        attempts.push({ label: 'Gemini/2.0-flash-exp [FREE 237TPS]', model: google('gemini-2.0-flash-exp') });
-    }
-
-    // 4 & 5 — OpenRouter como último recurso
+    // OpenRouter como último recurso
     if (openrouterKey) {
         const openrouter = createOpenRouter({ apiKey: openrouterKey });
-        attempts.push({ label: 'OpenRouter/free [FREE]', model: openrouter('openrouter/free') });
-        attempts.push({ label: 'OpenRouter/gemini-flash-lite [pago]', model: openrouter('google/gemini-2.0-flash-lite-001') });
+        attempts.push({ label: 'OpenRouter/free [FREE Fallback]', model: openrouter('openrouter/free') });
     }
 
     if (attempts.length === 0) {
