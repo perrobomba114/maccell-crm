@@ -56,6 +56,8 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const [partsToReturn, setPartsToReturn] = useState<Set<string>>(new Set());
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
+    const [wasEnhanced, setWasEnhanced] = useState(false);
+    const [showAiWarning, setShowAiWarning] = useState(false);
 
     const images = (repair.deviceImages || []).filter(isValidImg);
 
@@ -107,6 +109,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                 return;
             }
             setDiagnosis(data.improved);
+            setWasEnhanced(true);
             toast.success("Diagnóstico mejorado. Revisalo antes de guardar.");
         } catch (e) {
             toast.error("Error de conexión al mejorar el diagnóstico.");
@@ -115,9 +118,15 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
         }
     };
 
-    const submitRepair = async () => {
+    const submitRepair = async (forceNoAi: boolean = false) => {
         if (!statusId) return toast.error("Selecciona un estado.");
         if (!diagnosis.trim()) return toast.error("El informe técnico es obligatorio.");
+
+        // 🧠 ADVERTENCIA: ¿Confirmar sin IA?
+        if (!wasEnhanced && !forceNoAi && diagnosis.length > 5 && [5, 7].includes(parseInt(statusId))) {
+            setShowAiWarning(true);
+            return;
+        }
 
         setIsLoading(true);
         try {
@@ -239,7 +248,10 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                 </div>
                                 <Textarea
                                     value={diagnosis}
-                                    onChange={(e) => setDiagnosis(e.target.value)}
+                                    onChange={(e) => {
+                                        setDiagnosis(e.target.value);
+                                        setWasEnhanced(false);
+                                    }}
                                     placeholder="Detalla la reparación realizada..."
                                     className="min-h-[120px] bg-slate-900 border-2 border-slate-800 rounded-xl text-xs font-bold text-white p-4 focus:border-emerald-500 transition-all placeholder:text-slate-700"
                                 />
@@ -355,7 +367,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                             </Button>
 
                             <Button
-                                onClick={submitRepair}
+                                onClick={() => submitRepair()}
                                 disabled={isLoading || isEnhancing}
                                 className={`flex-1 h-12 text-white font-black uppercase tracking-widest rounded-2xl text-[10px] shadow-lg transition-all active:scale-95 flex items-center justify-center
                                     ${activeStatus ? `${activeStatus.color} hover:brightness-110 shadow-${activeStatus.color}/20` : "bg-slate-800 text-slate-500 cursor-not-allowed"}
@@ -370,6 +382,53 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                             </Button>
                         </div>
                     </DialogFooter>
+
+                    {/* 🧠 AI Warning Overlay */}
+                    {showAiWarning && (
+                        <div className="absolute inset-0 z-[120] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-200">
+                            <div className="w-full max-w-sm bg-slate-900 border-2 border-violet-500/50 shadow-[0_0_30px_rgba(139,92,246,0.2)] rounded-3xl p-8 flex flex-col items-center text-center space-y-6">
+                                <div className="p-4 rounded-full bg-violet-500/10 border-2 border-violet-500/20">
+                                    <Sparkles size={32} className="text-violet-400" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="text-lg font-black text-white uppercase tracking-tight italic">¿Informe sin mejorar?</h3>
+                                    <p className="text-xs font-bold text-slate-400 leading-relaxed">
+                                        ¿Estás seguro que no quieres mejorar el diagnóstico con IA antes de cerrar?
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-1 gap-3 w-full pt-2">
+                                    <Button
+                                        onClick={() => {
+                                            setShowAiWarning(false);
+                                            enhanceDiagnosis();
+                                        }}
+                                        className="h-12 bg-violet-600 hover:bg-violet-500 text-white font-black uppercase tracking-widest rounded-2xl text-[10px] shadow-lg transition-all"
+                                    >
+                                        <Sparkles size={14} className="mr-2" /> Mejorar con Cerebro
+                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => setShowAiWarning(false)}
+                                            className="flex-1 h-12 text-slate-500 hover:text-white font-black uppercase tracking-widest rounded-2xl text-[9px]"
+                                        >
+                                            Cancelar
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => {
+                                                setShowAiWarning(false);
+                                                submitRepair(true); // Proceed without AI
+                                            }}
+                                            className="flex-1 h-12 border-2 border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white font-black uppercase tracking-widest rounded-2xl text-[9px]"
+                                        >
+                                            Confirmar igual
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                 </DialogContent>
             </Dialog>
