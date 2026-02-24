@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon } from "lucide-react";
-import { saveMessagesToDbAction, updateConversationTitleAction, generateGeminiPromptAction } from "@/actions/cerebro-actions";
+import { saveMessagesToDbAction, saveUserMessageAction, updateConversationTitleAction, generateGeminiPromptAction } from "@/actions/cerebro-actions";
 import { toast } from "sonner";
 
 interface CerebroChatProps {
@@ -94,6 +94,16 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                     url: dataUrl
                 };
             }));
+
+            // ✅ Guardar mensaje del usuario INMEDIATAMENTE en DB
+            // Si el usuario recarga antes de que el AI responda, el mensaje ya está guardado
+            const isFirstMessage = !initialMessages || initialMessages.length === 0;
+            saveUserMessageAction(
+                conversationId,
+                currentInput,
+                fileParts.map(f => f.url),
+                isFirstMessage  // actualizar título si es el primer mensaje
+            ).catch(err => console.error('[onSubmit] Error guardando user msg:', err));
 
             sendMessage({
                 text: currentInput,

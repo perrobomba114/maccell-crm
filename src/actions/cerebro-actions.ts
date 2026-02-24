@@ -60,6 +60,48 @@ export async function createConversationAction(userId: string, title: string = "
     }
 }
 
+/**
+ * Guarda el mensaje del usuario INMEDIATAMENTE al enviarlo.
+ * No espera a onFinish — evita pérdida de mensajes si el usuario recarga.
+ */
+export async function saveUserMessageAction(
+    conversationId: string,
+    content: string,
+    mediaUrls: string[] = [],
+    updateTitle = false
+) {
+    try {
+        // Verificar cuántos mensajes existen ya para esta conversación
+        const existingCount = await prisma.cerebroMessage.count({
+            where: { conversationId }
+        });
+
+        await prisma.cerebroMessage.create({
+            data: {
+                conversationId,
+                role: 'user',
+                content: content || '',
+                mediaUrls
+            }
+        });
+
+        // Si es el primer mensaje → actualizar título de la conversación
+        if (existingCount === 0 && content && updateTitle) {
+            const cleanTitle = content.substring(0, 50).trim() + (content.length > 50 ? '...' : '');
+            await prisma.cerebroConversation.update({
+                where: { id: conversationId },
+                data: { title: cleanTitle }
+            });
+        }
+
+        console.log(`[CEREBRO_USER_MSG] Guardado inmediato en conv: ${conversationId}`);
+        return { success: true };
+    } catch (error: any) {
+        console.error('[saveUserMessageAction] Error:', error);
+        return { success: false };
+    }
+}
+
 export async function saveMessagesToDbAction(conversationId: string, messages: { role: string; content: string; mediaUrls?: string[] }[]) {
     try {
         console.log(`[CEREBRO_SAVE] Sincronizando ${messages.length} mensajes para conv: ${conversationId}`);
