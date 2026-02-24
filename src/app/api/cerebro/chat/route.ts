@@ -2,399 +2,242 @@ import { NextRequest } from "next/server";
 import { createGroq } from "@ai-sdk/groq";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { streamText } from "ai";
+import { streamText, type CoreMessage } from "ai";
 import { db as prisma } from "@/lib/db";
-import fs from 'fs';
-import path from 'path';
 import pdfParse from 'pdf-parse';
 import { findSimilarRepairs, formatRAGContext } from "@/lib/cerebro-rag";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CONFIGURACIÓN — Cascade multi-proveedor (sin pagar casi nada)
+// CONFIGURACIÓN
 // ─────────────────────────────────────────────────────────────────────────────
-/**
- * Cascade por proveedor — todos GRATIS, ordenados por velocidad:
- *
- *  GROQ (API key: GROQ_API_KEY en .env)
- *  1. meta-llama/llama-4-maverick-17b-128e-instruct  → 751 TPS 🔥 VISIÓN
- *  2. meta-llama/llama-4-scout-17b-16e-instruct      → ~500 TPS   VISIÓN
- *
- *  GOOGLE GEMINI directo (API key: GOOGLE_GENERATIVE_AI_API_KEY en .env)
- *  3. gemini-2.0-flash-exp                           → 237 TPS   VISIÓN (free: 15 RPM)
- *
- *  OPENROUTER (fallback final, API key: OPENROUTER_API_KEY en .env)
- *  4. openrouter/free                                → variable  VISIÓN
- *  5. google/gemini-2.0-flash-lite-001               → pago ~$0.00019/consulta
- *
- * Para obtener keys gratis:
- *  - Groq: https://console.groq.com (sin tarjeta)
- *  - Gemini: https://aistudio.google.com/apikey (sin tarjeta)
- */
-
 const MAX_HISTORY_MSGS = 6;
-const MAX_MSG_CHARS = 600;
-const MAX_OUTPUT_TOKENS = 1200;
+const MAX_MSG_CHARS = 1000;
+const MAX_OUTPUT_TOKENS = 1500;
+
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMPTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const VISION_PROMPT = `Eres "Cerebro", el sistema experto de visión y diagnóstico técnico de MACCELL. Analiza la imagen con "Ojos de Técnico en Microsoldadura Nivel 3".
+const SYSTEM_PROMPT = `Eres "Cerebro", el sistema de inteligencia artificial experto de MACCELL. Tu misión es asistir a técnicos de microsoldadura de Nivel 3.
+Tu tono debe ser profesional, técnico, directo y extremadamente preciso.
 
-🚨 REGLAS VISUALES CRÍTICAS PARA DIAGNÓSTICO:
-1. ATENCIÓN EXTREMA A CONECTORES FPC: Busca levantamiento de pads de cobre (delaminación), pines internos hundidos o aplastados, soldadura fría, o plástico derretido por estrés térmico.
-2. Si ves una estructura plástica rectangular con múltiples pines dorados paralelos, es un conector FPC (para flex de pantalla, carga, cámara, etc.), NO es una ranura SIM o SD.
-3. INSPECCIÓN DE PLACA (PCB): Identifica signos de sulfatación por humedad, resina/underfill mal removido, pistas rotas y componentes SMD (filtros EMI, condensadores) faltantes o quemados.
+### 🛠️ REGLAS DE ORO:
+1. NO SEAS GENÉRICO. No sugieras "reiniciar el equipo" o "probar con otro cable". Habla de integrados (IC), líneas de alimentación (VBUS, VCC_MAIN), protocolos (I2C, SPI) y valores en escala de diodo.
+2. NO MEZCLES FALLAS. Enfócate solo en el síntoma reportado.
+3. PROHIBICIÓN DE PRECIOS: NUNCA menciones precios ni costos. Solo indica disponibilidad de stock si aplica.
+4. MODO DE RESPUESTA: Utiliza el formato "Análisis Diferencial 📊".
 
-FORMATO DE SALIDA ESTRICTO (No agregues nada más ni des saludos):
-DAÑO VISIBLE: [Ej. Observo delaminación de pads y pines 3, 4 y 5 sulfatados en el conector FPC de 40 pines]
-SECTOR: [FPC Pantalla / Línea VBUS / PMIC / Tristar / Baseband CPU]
-DIAGNÓSTICO TÉCNICO: [Ej. Posible pérdida de comunicación MIPI DSI o cortocircuito a tierra por pines fusionados]
-ACCIÓN SUGERIDA: [Ej. Usar aleación de 138°C para extraer el FPC sin dañar más pads, reconstruir pistas dañadas con hilo de cobre (jump wire) y curar con máscara UV antes de soldar un FPC nuevo.]`;
+### 📊 ESTRUCTURA DE RESPUESTA (Obligatoria):
+1. **Análisis Diferencial 📊**: Resumen técnico del problema.
+2. **🔍 ESTADO DEL SISTEMA**: Qué líneas o componentes están involucrados.
+3. **🕵️‍♂️ PROTOCOLO DE MEDICIÓN**: Pasos exactos a medir con multímetro/osciloscopio.
+4. **🎯 INTERVENCIÓN SUGERIDA**: Qué componentes revisar o reemplazar (ej: U2, Tristar, PMIC).
+`;
 
-const SYSTEM_PROMPT = `Eres "Cerebro", el núcleo de inteligencia técnica de MACCELL. Especialista en Diagnóstico Diferencial de Nivel 3.
-
-🚨 REGLAS DE ORO DE DIAGNÓSTICO (ESTRICTAS):
-1. CRÉELE AL TÉCNICO. Céntrate ÚNICAMENTE en el síntoma exacto informado ("no carga", "no da imagen", "no enciende", "se reinicia", "no hay wifi", etc.).
-2. NO MEZCLES FALLAS INCOMPATIBLES. Si el técnico dice "no carga", el problema ES de carga; NUNCA sugieras que "podría ser una falla de imagen" (o viceversa). Solo junta diagnósticos si el usuario literalmente dice "no carga Y TAMPOCO da imagen".
-3. NO ASUMAS CONSUMOS NI DATOS. Si no te dan un amperaje, no inventes que el equipo consume "0.9A".
-4. MANTÉN EL FOCO: La solución debe ser directa al problema mencionado.
-5. PROHIBICIÓN DE PRECIOS: NUNCA, bajo ninguna circunstancia, proporciones precios de repuestos o mano de obra. Indica únicamente la disponibilidad de stock.
-
-### 🧠 PROTOCOLO DE RAZONAMIENTO (Diferencial):
-1. **Fallas de Imagen (No hay video):** 
-   - Si vibra/suena pero no hay luz: Revisar Circuito Backlight (Diodo, Bobina, IC Boost). Voltajes de 20V+.
-   - Si no hay ni imagen ni luz: Revisar Voltajes LDO de Display (+5.4V / -5.4V), líneas de datos MIPI (Modo Diodo: todos los pares deben ser similares ~300-500mV) y Reset del LCD.
-2. **Fallas de Carga (No sube el porcentaje / no detecta el cargador):**
-   - Verificar voltaje de entrada (VBUS 5V).
-   - Revisar OVP, IC de Carga (Tristar/Hydra en Apple, IF PMIC en Android).
-   - Comprobar batería y resistencia de sensado de temperatura (Thermistor).
-3. **Fallas de Encendido (No consume o consume poco):** 
-   - Consumo 0.010 - 0.050: Falla de comunicación (CPU/RAM) o cristal oscilador.
-   - Consumo fijo (stuck) 0.150 - 0.250: Falla de voltajes secundarios o PMIC enviando señales de error.
-3. **Identificación de Marca (ESTRICTO):**
-   - **ANDROID:** (Series A, S, J, G, Moto) -> Usa IF PMIC, OVP, FPC de 34/40 pines. Prohibido decir Tristar/Hydra.
-   - **APPLE:** (iPhone 6 al 16) -> Usa Tristar, Tigris, Hydra, Chestnut.
-
-### 📋 MODO DE RESPUESTA OBLIGATORIO:
-> 📊 **Análisis Diferencial MACCELL:** Cruzando datos de consumo y comportamiento lógico...
-
-### 🔍 ESTADO DEL SISTEMA
-[Contextualiza el problema reportado por el técnico y aísla el circuito responsable de forma directa]
-
-### 🕵️‍♂️ PROTOCOLO DE MEDICIÓN (PASO A PASO)
-- **Paso 1 (Modo Diodo):** [Medir X línea en el conector FPC]
-- **Paso 2 (Voltaje):** [Medir voltajes de alimentación del sector afectado]
-- **Valores de Referencia:** [Ej: 1.8V en C..., 20V en D..., MIPI en 450mV]
-
-### 🎯 INTERVENCIÓN SUGERIDA
-[Solución lógica: Cambio de FPC, jumper en línea de datos, reballing del IC de imagen, etc.]
-
-🚨 ATENCIÓN: Si recibes un PDF o Ticket, usa los nombres de los componentes de ese documento (ej: U5002, L201). NO INVENTES.`;
+const VISION_PROMPT = `${SYSTEM_PROMPT}\n\nAnaliza la imagen con ojos de técnico. Busca sulfatación, componentes faltantes, pads rotos o conectores FPC dañados.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
+// UTILIDADES
 // ─────────────────────────────────────────────────────────────────────────────
-
-function hasImageParts(messages: any[]): boolean {
-    const last = messages[messages.length - 1];
-    if (!last) return false;
-    if (Array.isArray(last.parts)) {
-        return last.parts.some((p: any) => p.type === 'file' && p.mediaType?.startsWith('image/'));
-    }
-    if (Array.isArray(last.experimental_attachments)) {
-        return last.experimental_attachments.some((a: any) => a.contentType?.startsWith('image/'));
-    }
-    return false;
-}
 
 function truncate(text: string, max = MAX_MSG_CHARS): string {
+    if (!text) return "";
     return text.length <= max ? text : text.slice(0, max) + '…';
 }
 
-function toCoreMsgs(messages: any[]): any[] {
+/**
+ * Convierte mensajes del frontend a CoreMessage de AI SDK de forma ultra-robusta.
+ */
+function toCoreMsgs(messages: any[]): CoreMessage[] {
     const lastMsg = messages[messages.length - 1];
     const history = messages.slice(0, -1).slice(-MAX_HISTORY_MSGS + 1);
     const trimmed = [...history, lastMsg];
 
     return trimmed
         .filter((m: any) => m.role === 'user' || m.role === 'assistant')
-        .map((m: any) => {
-            if (Array.isArray(m.parts) && m.parts.length > 0) {
-                const contentParts: any[] = [];
+        .map((m: any): CoreMessage => {
+            let content: any = [];
+
+            // 1. Procesar parts (formato moderno)
+            if (Array.isArray(m.parts)) {
                 for (const part of m.parts) {
                     if (part.type === 'text') {
-                        const text = truncate(part.text || '');
-                        if (text.trim()) contentParts.push({ type: 'text', text });
-                    } else if (part.type === 'file') {
-                        const url = part.url || '';
-                        const mimeType = part.mediaType || part.mimeType || '';
-                        if (url && (mimeType.startsWith('image/') || url.startsWith('data:image/'))) {
-                            contentParts.push({ type: 'image', image: url });
+                        content.push({ type: 'text', text: truncate(part.text) });
+                    } else if (part.type === 'file' || part.type === 'image') {
+                        const url = part.url || part.image || '';
+                        if (url.startsWith('data:image/') || (part.mediaType && part.mediaType.startsWith('image/'))) {
+                            content.push({ type: 'image', image: url });
                         }
                     }
                 }
-                if (!contentParts.some((p: any) => p.type === 'text')) {
-                    const textContent = typeof m.content === 'string' ? m.content : (m.text || '');
-                    if (textContent) {
-                        contentParts.unshift({ type: 'text', text: truncate(textContent) });
+            }
+
+            // 2. Procesar content (formato string o legacy parts)
+            if (typeof m.content === 'string' && m.content.trim()) {
+                if (content.length === 0) {
+                    return { role: m.role, content: truncate(m.content) };
+                }
+                content.push({ type: 'text', text: truncate(m.content) });
+            } else if (Array.isArray(m.content)) {
+                for (const part of m.content) {
+                    if (part.type === 'text') {
+                        content.push({ type: 'text', text: truncate(part.text) });
+                    } else if (part.type === 'image') {
+                        content.push({ type: 'image', image: part.image });
                     }
                 }
-
-                // Si no hay texto ni imágenes después de procesar parts
-                if (contentParts.length === 0) {
-                    contentParts.push({ type: 'text', text: '[Contenido no textual]' });
-                }
-
-                return {
-                    role: m.role,
-                    content: contentParts,
-                };
             }
-            const finalContent = typeof m.content === 'string' ? m.content : '';
-            return { role: m.role, content: truncate(finalContent) };
-        })
-        .filter((m: any) => {
-            if (typeof m.content === 'string') return m.content.trim().length > 0;
-            if (Array.isArray(m.content)) return m.content.length > 0;
-            return false;
+
+            // 3. Fallback si no hay nada
+            if (content.length === 0) {
+                return { role: m.role, content: "[Sin contenido]" };
+            }
+
+            return { role: m.role, content };
         });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CONFIGURACIÓN DE RUTA (Next.js App Router)
-// ─────────────────────────────────────────────────────────────────────────────
-export const maxDuration = 60;
-export const dynamic = 'force-dynamic';
-// Nota: 'export const config' no se usa en App Router para bodyParser.
+/**
+ * Timeout helper para promesas
+ */
+async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+    ]);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HANDLER
+// HANDLER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+    console.log("[CEREBRO] New request received");
+
     let body: any;
     try {
         body = await req.json();
-    } catch {
-        return new Response("JSON inválido.", { status: 400 });
+    } catch (err) {
+        console.error("[CEREBRO] JSON parse error");
+        return new Response("Invalid JSON", { status: 400 });
     }
 
-    const messages: any[] = body.messages || [];
-    if (!messages.length) return new Response("No messages.", { status: 400 });
+    const messages = body.messages || [];
+    if (messages.length === 0) return new Response("No messages", { status: 400 });
 
-    const visionMode = hasImageParts(messages);
-    let systemPrompt = visionMode ? VISION_PROMPT : SYSTEM_PROMPT;
+    const hasImages = messages.some((m: any) =>
+        (Array.isArray(m.parts) && m.parts.some((p: any) => p.type === 'image' || p.mediaType?.startsWith('image/'))) ||
+        (Array.isArray(m.content) && m.content.some((p: any) => p.type === 'image'))
+    );
 
-    // 🔍 BUSCAR TICKET DE REPARACIÓN (Para dar contexto del problema real)
+    let systemPrompt = hasImages ? VISION_PROMPT : SYSTEM_PROMPT;
+
+    // 1. BUSCAR TICKET (Intento rápido)
     try {
-        const fullText = messages.map(m => typeof m.content === 'string' ? m.content : '').join(' ');
+        const fullText = JSON.stringify(messages);
         const ticketMatch = fullText.match(/MAC\d*-\d+/gi);
         if (ticketMatch) {
             const ticketNo = ticketMatch[0].toUpperCase();
-            const repairData = await prisma.repair.findUnique({
-                where: { ticketNumber: ticketNo }
-            });
+            const repairData = await withTimeout(
+                prisma.repair.findUnique({ where: { ticketNumber: ticketNo } }),
+                2000,
+                null
+            );
             if (repairData) {
-                console.log(`[CEREBRO] Ticket detectado: ${ticketNo}`);
-                const brandForce = repairData.deviceBrand.toUpperCase() === 'IPHONE' || repairData.deviceBrand.toUpperCase() === 'APPLE' ? 'APPLE' : 'ANDROID';
-                systemPrompt += `\n\n### 📝 INFO DEL TICKET ${ticketNo}:
-- **MARCA CONFIRMADA:** ${repairData.deviceBrand.toUpperCase()} (ESTO ES UN ${brandForce})
-- **Equipo:** ${repairData.deviceBrand} ${repairData.deviceModel}
-- **Falla reportada por recepción:** ${repairData.problemDescription}
-- **Observaciones técnicas previas:** ${repairData.diagnosis || 'Ninguna'}
-- **Estado actual:** ${repairData.statusId}
-⚠️ Cerebro: MARCA OBLIGATORIA: ${repairData.deviceBrand}. Cualquier término de iPhone en este equipo Samsung/Motorola resultará en error de sistema.`;
-            }
-        } else {
-            // Detección manual de marca por keywords en caso de no haber ticket
-            const lowerText = fullText.toLowerCase();
-            if (lowerText.includes('samsung') || /a\d0|s\d2/i.test(lowerText)) {
-                systemPrompt += `\n\n[SISTEMA: CUIDADO - La consulta parece referirse a un SAMSUNG. No uses términos de iPhone.]`;
-            } else if (lowerText.includes('moto') || lowerText.includes('motorola')) {
-                systemPrompt += `\n\n[SISTEMA: CUIDADO - La consulta parece referirse a un MOTOROLA. No uses términos de iPhone.]`;
+                systemPrompt += `\n\n### 📝 CONTEXTO TICKET ${ticketNo}:
+- Equipo: ${repairData.deviceBrand} ${repairData.deviceModel}
+- Problema: ${repairData.problemDescription}
+- Diagnóstico previo: ${repairData.diagnosis || 'Ninguno'}`;
             }
         }
     } catch (e) {
-        console.error("[CEREBRO] Falló búsqueda de ticket:", e);
+        console.error("[CEREBRO] Ticket lookup failed");
     }
 
+    // 2. RECUPERACIÓN RAG (Con timeout estricto)
+    try {
+        const lastUserMsg = messages.findLast((m: any) => m.role === 'user');
+        const userText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : "";
+
+        if (userText.length > 5) {
+            const similar = await withTimeout(findSimilarRepairs(userText, 3, 0.6), 4000, []);
+            if (similar.length > 0) {
+                systemPrompt += formatRAGContext(similar);
+            }
+        }
+    } catch (e) {
+        console.error("[CEREBRO] RAG failed");
+    }
+
+    // 3. PDF PROCESSING
+    try {
+        const pdfBase64 = messages.flatMap((m: any) => m.parts || [])
+            .find((p: any) => p.type === 'file' && (p.mediaType === 'application/pdf' || p.filename?.endsWith('.pdf')))
+            ?.url?.split('base64,').pop();
+
+        if (pdfBase64) {
+            const pdfData = await withTimeout(pdfParse(Buffer.from(pdfBase64, 'base64')), 5000, null);
+            if (pdfData?.text) {
+                systemPrompt += `\n\n### 📋 MANUAL/PDF:\n${pdfData.text.substring(0, 10000)}`;
+            }
+        }
+    } catch (e) {
+        console.error("[CEREBRO] PDF failed");
+    }
+
+    // 4. MODEL CASCADE
     const coreMessages = toCoreMsgs(messages);
-    if (coreMessages.length === 0) return new Response("No valid messages.", { status: 400 });
-
-    const modeLabel = visionMode ? 'VISIÓN' : 'TEXTO';
-
-    // ── Recuperación RAG (Base de Conocimiento Semántica + Historial) ────────
-    let ragContext = "";
-    try {
-        const lastUserMessage = messages.findLast((m: any) => m.role === 'user');
-        let userText = "";
-        if (typeof lastUserMessage?.content === 'string') {
-            userText = lastUserMessage.content;
-        } else if (Array.isArray(lastUserMessage?.parts)) {
-            userText = lastUserMessage.parts.map((p: any) => p.text || "").join(" ");
-        }
-
-        if (userText && userText.length > 3) {
-            console.log(`[CEREBRO]🧠 Buscando: "${userText.substring(0, 40)}..."`);
-            const similarRepairs = await findSimilarRepairs(userText, 4, 0.60);
-            ragContext = formatRAGContext(similarRepairs);
-
-            // Búsqueda Proactiva por Marca/Modelo
-            const brands = ['IPHONE', 'SAMSUNG', 'MOTOROLA', 'XIAOMI', 'HUAWEI', 'REEDMI', 'POCO', 'MOTO'];
-            const detectedBrand = brands.find(b => userText.toUpperCase().includes(b));
-
-            if (detectedBrand) {
-                const historicalContext = await (prisma as any).repair.findMany({
-                    where: {
-                        deviceBrand: { contains: detectedBrand, mode: 'insensitive' },
-                        diagnosis: { not: null, notIn: [""] },
-                        statusId: { in: [5, 6, 7, 8, 9, 10] }
-                    },
-                    orderBy: { updatedAt: 'desc' },
-                    take: 3
-                }).catch(() => []);
-
-                if (historicalContext.length > 0) {
-                    ragContext += `\n\n### 📜 ÚLTIMOS CASOS REALES DE ${detectedBrand} EN MACCELL:`;
-                    historicalContext.forEach((r: any, idx: number) => {
-                        ragContext += `\n[Caso ${idx + 1}]: ${r.deviceModel} - Falla: ${r.problemDescription}. Diagnóstico: ${r.diagnosis}`;
-                    });
-                }
-            }
-        }
-    } catch (ragErr) {
-        console.error("[CEREBRO] RAG Bloque falló:", ragErr);
-    }
-
-    if (ragContext) systemPrompt += ragContext;
-
-    // --- 📄 LECTURA DE PDF (Manuales / Esquemáticos) ---
-    try {
-        const allPdfParts = messages
-            .filter((m: any) => m.role === 'user')
-            .flatMap((m: any) => m.parts || [])
-            .filter((p: any) => p.type === 'file' && (p.mediaType === 'application/pdf' || p.filename?.toLowerCase().endsWith('.pdf')));
-
-        const uniquePdfs = new Map();
-        for (const part of allPdfParts) {
-            if (!uniquePdfs.has(part.filename)) uniquePdfs.set(part.filename, part);
-        }
-
-        if (uniquePdfs.size > 0) {
-            console.log(`[CEREBRO] Procesando ${uniquePdfs.size} PDFs...`);
-            for (const part of Array.from(uniquePdfs.values())) {
-                const base64Data = part.url?.split(';base64,').pop();
-                if (base64Data) {
-                    const buffer = Buffer.from(base64Data, 'base64');
-                    // Límite de 10MB para procesar texto y no saturar memoria
-                    if (buffer.length < 10 * 1024 * 1024) {
-                        const pdfData = await pdfParse(buffer);
-                        const extractedText = pdfData.text.substring(0, 12000);
-                        systemPrompt += `\n\n### 📋 DOCUMENTO TÉCNICO (${part.filename}):\n${extractedText}`;
-                    }
-                }
-            }
-            systemPrompt += `\n\n🚨 INSTRUCCIÓN: Usa el PDF adjunto para mediciones exactas y componentes.`;
-        }
-    } catch (pdfErr) {
-        console.error("[CEREBRO] PDF Bloque falló:", pdfErr);
-    }
-
-    // ── Cascade de intentos ──────────────────────────────────────────────────
-    // Cada entrada: { label, model }
-    // Construimos el array según las env vars disponibles
-
-    type Attempt = { label: string; model: any };
-    const attempts: Attempt[] = [];
 
     const groqKey = process.env.GROQ_API_KEY;
     const googleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    const openrouterKey = process.env.OPENROUTER_API_KEY;
 
-    if (visionMode) {
-        // EN MODO VISIÓN, GOOGLE GEMINI DEBE SER EL REY ABSOLUTO
-        // (Groq deprecó por completo sus modelos Llama 3.2 Vision)
+    const attempts = [];
+
+    if (hasImages) {
         if (googleKey) {
             const google = createGoogleGenerativeAI({ apiKey: googleKey });
-            attempts.push({ label: 'Gemini/2.0-flash [VISIÓN NATIVA DOMINANTE EXPERTA]', model: google('gemini-2.0-flash') });
-            attempts.push({ label: 'Gemini/1.5-pro [VISIÓN PRO fallback]', model: google('gemini-1.5-pro') });
+            attempts.push({ label: 'Gemini 2.0 Flash', model: google('gemini-2.0-flash') });
         }
     } else {
-        // EN MODO TEXTO, GROQ SIGUE SIENDO PRIORIDAD POR VELOCIDAD
         if (groqKey) {
             const groq = createGroq({ apiKey: groqKey });
-            attempts.push({ label: 'Groq/llama-3.3-70b [LLAMA 3.3 TIER 1]', model: groq('llama-3.3-70b-versatile') });
-            attempts.push({ label: 'Groq/llama-3.1-8b [FALLBACK RAPIDO]', model: groq('llama-3.1-8b-instant') });
+            attempts.push({ label: 'Groq Llama 3.3', model: groq('llama-3.3-70b-versatile') });
         }
         if (googleKey) {
             const google = createGoogleGenerativeAI({ apiKey: googleKey });
-            attempts.push({ label: 'Gemini/2.0-flash [FREE]', model: google('gemini-2.0-flash') });
+            attempts.push({ label: 'Gemini 2.0 Flash', model: google('gemini-2.0-flash') });
         }
-    }
-
-    // OpenRouter como último recurso
-    if (openrouterKey) {
-        const openrouter = createOpenRouter({ apiKey: openrouterKey });
-        const orModel = process.env.OPENROUTER_MODEL || (visionMode ? 'google/gemini-2.0-flash-lite-001' : 'openrouter/free');
-        attempts.push({ label: `OpenRouterFallback [${orModel}]`, model: openrouter(orModel) });
     }
 
     if (attempts.length === 0) {
-        return new Response("❌ No hay API keys configuradas. Agregá GROQ_API_KEY o GOOGLE_GENERATIVE_AI_API_KEY en .env", { status: 500 });
+        return new Response("No se configuraron modelos de IA (Faltan keys en .env)", { status: 500 });
     }
 
-    // Intentar cada modelo en orden hasta que uno funcione
-    for (let i = 0; i < attempts.length; i++) {
-        const { label, model } = attempts[i];
-        const isLast = i === attempts.length - 1;
-
+    for (const attempt of attempts) {
         try {
+            console.log(`[CEREBRO] Trying ${attempt.label}...`);
             const result = await streamText({
-                model,
+                model: attempt.model,
                 system: systemPrompt,
                 messages: coreMessages,
-                temperature: 0.3,
-                maxOutputTokens: MAX_OUTPUT_TOKENS,
-                maxRetries: 0, // Fallback INMEDIATO sin reintentos automáticos que cuelguen la app
+                temperature: 0.1,
+                maxTokens: 1000,
             });
-
-            console.log(`[CEREBRO] ▶ ${label} | ${modeLabel}`);
 
             return result.toUIMessageStreamResponse({
-                headers: {
-                    'Cache-Control': 'no-cache, no-store',
-                    'X-Accel-Buffering': 'no',
-                    'X-Model-Used': label,
-                }
+                headers: { 'X-Cerebro-Model': attempt.label }
             });
-
-        } catch (error: any) {
-            const status = error?.status ?? error?.statusCode;
-            const msg = String(error?.message || '');
-
-            // Error fatal de autenticación
-            if (status === 401 || msg.includes('User not found') || msg.includes('invalid_api_key')) {
-                console.error(`[CEREBRO] ❌ API key inválida para ${label}`);
-                if (!isLast) continue; // probar siguiente proveedor
-                return new Response("❌ API Key inválida.", { status: 401 });
+        } catch (err: any) {
+            console.error(`[CEREBRO] ${attempt.label} failed:`, err.message);
+            // Si no es el último, seguimos con el siguiente
+            if (attempt === attempts[attempts.length - 1]) {
+                return new Response(`Error de IA: ${err.message}`, { status: 500 });
             }
-
-            // Rate limit o no disponible → siguiente
-            const isRetryable = status === 429 || status === 503 || status === 502
-                || msg.includes('rate limit') || msg.includes('overloaded')
-                || msg.includes('unavailable') || msg.includes('quota')
-                || msg.includes('model_not_found');
-
-            if ((isRetryable || true) && !isLast) {
-                console.warn(`[CEREBRO] ⚠️ ${label} falló (${status ?? msg.slice(0, 60)}). Siguiente...`);
-                continue;
-            }
-
-            console.error(`[CEREBRO] ❌ Error con ${label}:`, error);
-            return new Response(`❌ Error: ${error.message || 'Error desconocido'}`, { status: 500 });
         }
     }
 
-    return new Response("❌ Sin modelos disponibles. Verificá tus API keys en .env", { status: 503 });
+    return new Response("Todos los modelos fallaron.", { status: 503 });
 }
