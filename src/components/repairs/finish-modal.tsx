@@ -122,8 +122,8 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
         if (!statusId) return toast.error("Selecciona un estado.");
         if (!diagnosis.trim()) return toast.error("El informe técnico es obligatorio.");
 
-        // 🧠 ADVERTENCIA: ¿Confirmar sin IA?
-        if (!wasEnhanced && !forceNoAi && diagnosis.length > 5 && [5, 7].includes(parseInt(statusId))) {
+        // 🧠 ADVERTENCIA: ¿Confirmar sin IA? (Se activa para cualquier estado excepto PAUSADO)
+        if (!wasEnhanced && !forceNoAi && diagnosis.length > 2 && [5, 6, 7, 8, 9].includes(parseInt(statusId))) {
             setShowAiWarning(true);
             return;
         }
