@@ -56,8 +56,22 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [zoom, setZoom] = useState(1);
+    const [tokenUsage, setTokenUsage] = useState<{
+        used: number; limit: number; remaining: number; percentage: number; resetAt: string;
+    } | null>(null);
 
-
+    // Polling de tokens cada 30 segundos
+    useEffect(() => {
+        const fetchTokens = async () => {
+            try {
+                const res = await fetch('/api/cerebro/tokens');
+                if (res.ok) setTokenUsage(await res.json());
+            } catch { }
+        };
+        fetchTokens();
+        const interval = setInterval(fetchTokens, 30_000);
+        return () => clearInterval(interval);
+    }, []);
     const { messages, sendMessage, stop, status, error } = useChat({
         id: conversationId,
         messages: initialMessages,
@@ -211,6 +225,33 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                         <p className="text-slate-400 text-xs text-violet-300">Conectado a BD MACCELL</p>
                     </div>
                 </div>
+
+                {/* Token gauge */}
+                {tokenUsage && (
+                    <div className="flex flex-col items-end gap-1 min-w-[130px]">
+                        <div className="flex items-center gap-1.5">
+                            <span className={`text-[10px] font-bold tabular-nums ${tokenUsage.percentage >= 80 ? 'text-red-400'
+                                    : tokenUsage.percentage >= 50 ? 'text-amber-400'
+                                        : 'text-emerald-400'
+                                }`}>
+                                {tokenUsage.remaining.toLocaleString()} restantes
+                            </span>
+                        </div>
+                        {/* Barra de progreso */}
+                        <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-500 ${tokenUsage.percentage >= 80 ? 'bg-red-500'
+                                        : tokenUsage.percentage >= 50 ? 'bg-amber-500'
+                                            : 'bg-emerald-500'
+                                    }`}
+                                style={{ width: `${tokenUsage.percentage}%` }}
+                            />
+                        </div>
+                        <span className="text-[9px] text-slate-600 tabular-nums">
+                            {tokenUsage.used.toLocaleString()}/{tokenUsage.limit.toLocaleString()} · reset en {tokenUsage.resetAt}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Chat Area */}

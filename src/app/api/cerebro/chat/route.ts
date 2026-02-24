@@ -2,17 +2,17 @@ import { NextRequest } from "next/server";
 import { createGroq } from "@ai-sdk/groq";
 import { streamText } from "ai";
 import { db as prisma } from "@/lib/db";
+import { trackTokens } from "@/lib/cerebro-token-tracker";
 import { findSimilarRepairs, formatRAGContext } from "@/lib/cerebro-rag";
+import pdfParse from "pdf-parse";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROVEEDOR: Solo Groq
-// Modelo principal: llama-3.3-70b-versatile
-// Fallback:        llama-3.1-8b-instant
+// CONFIGURACIÓN
 // ─────────────────────────────────────────────────────────────────────────────
-
-const MAX_HISTORY_MSGS = 8;
+const MAX_HISTORY_MSGS = 6;
 const MAX_MSG_CHARS = 1200;
-const MAX_OUTPUT_TOKENS = 1500;
+const MAX_OUTPUT_TOKENS = 1200;
+const MAX_PDF_CHARS = 4000; // Controlado para no explotar tokens de Groq
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -20,15 +20,20 @@ export const dynamic = 'force-dynamic';
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMPTS
 // ─────────────────────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `Eres "Cerebro", el sistema experto de MACCELL. Asiste a técnicos de microsoldadura Nivel 3.
-Responde siempre con el formato "Análisis Diferencial 📊". Sé directo, técnico y preciso.
-PROHIBIDO mencionar precios.
+const SYSTEM_PROMPT = `Eres "Cerebro", el asistente experto de microsoldadura Nivel 3 de MACCELL.
+Respondés SIEMPRE como técnico avanzado: voltajes, componentes específicos, puntos de medición concretos.
+PROHIBIDO responder de forma genérica. PROHIBIDO mencionar precios.
 
-### ESTRUCTURA:
-1. **Análisis Diferencial 📊**
-2. **🔍 ESTADO DEL SISTEMA**
-3. **🕵️‍♂️ PROTOCOLO DE MEDICIÓN**
-4. **🎯 INTERVENCIÓN SUGERIDA**`;
+### ESTRUCTURA OBLIGATORIA:
+1. **Análisis Diferencial 📊** — hipótesis ordenadas por probabilidad
+2. **🔍 ESTADO DEL SISTEMA** — qué componentes están bajo sospecha y por qué
+3. **🕵️‍♂️ PROTOCOLO DE MEDICIÓN** — puntos exactos donde medir (voltaje, resistencia, continuidad)
+4. **🎯 INTERVENCIÓN SUGERIDA** — qué reemplazar o reparar y en qué orden
+
+### REGLA PARA SCHEMATICS:
+Si el técnico adjunta un schematic o PDF, NO lo describas en general.
+Usalo ÚNICAMENTE para responder el síntoma específico que preguntó.
+Identificá los componentes relacionados con ese síntoma en el schematic y dá puntos de medición reales.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILIDADES
@@ -38,40 +43,113 @@ function truncate(text: string, max = MAX_MSG_CHARS): string {
     return text.length <= max ? text : text.slice(0, max) + '...';
 }
 
-function toCoreMsgs(messages: any[]): any[] {
+/**
+ * Extrae texto de un PDF enviado como data URL base64.
+ * Retorna null si falla.
+ */
+async function extractPdfText(dataUrl: string): Promise<string | null> {
+    try {
+        const base64 = dataUrl.split(',')[1];
+        if (!base64) return null;
+        const buffer = Buffer.from(base64, 'base64');
+        const parsed = await pdfParse(buffer);
+        const text = parsed.text?.trim();
+        if (!text) return null;
+        return text.length > MAX_PDF_CHARS
+            ? text.slice(0, MAX_PDF_CHARS) + '\n[...schematic truncado...]'
+            : text;
+    } catch (err: any) {
+        console.warn('[CEREBRO] ⚠️ Error parseando PDF:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Convierte mensajes del frontend (AI SDK v6) a CoreMessages para Groq.
+ *
+ * REGLA CRÍTICA PARA TOKENS:
+ * - Si un mensaje tiene PDF adjunto → extrae el texto UNA SOLA VEZ
+ * - En el historial (mensajes anteriores) → reemplaza PDFs por placeholder corto
+ *   Esto evita que el historial multiplique los tokens en cada turn.
+ */
+async function toCoreMsgs(messages: any[]): Promise<any[]> {
     try {
         const lastMsg = messages[messages.length - 1];
         const history = messages.slice(0, -1).slice(-MAX_HISTORY_MSGS + 1);
-        const trimmed = [...history, lastMsg];
 
-        return trimmed
-            .filter((m: any) => m.role === 'user' || m.role === 'assistant')
-            .map((m: any) => {
-                // String simple
-                if (typeof m.content === 'string' && m.content.trim()) {
-                    return { role: m.role, content: truncate(m.content) };
+        const result: any[] = [];
+
+        // ── Historial: solo texto, PDFs → placeholder ─────────────────────
+        for (const m of history) {
+            if (m.role !== 'user' && m.role !== 'assistant') continue;
+
+            let textContent = '';
+            let hadPdf = false;
+
+            if (Array.isArray(m.parts)) {
+                for (const p of m.parts) {
+                    if (p.type === 'text' && p.text) textContent += p.text + ' ';
+                    if (p.type === 'file') {
+                        const mt = p.mediaType || p.file?.mediaType || '';
+                        if (mt === 'application/pdf') hadPdf = true;
+                    }
                 }
+            }
+            if (typeof m.content === 'string' && m.content.trim()) textContent = m.content;
+            if (Array.isArray(m.content)) {
+                textContent = m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
+            }
 
-                // Array de parts (AI SDK v6 useChat format)
+            // PDF en historial → placeholder (no re-enviar 4000 chars en cada turn)
+            const finalText = truncate(textContent.trim()) +
+                (hadPdf ? ' [schematic PDF adjunto en este mensaje]' : '');
+
+            result.push({ role: m.role, content: finalText || '[mensaje vacío]' });
+        }
+
+        // ── Último mensaje: extrae PDFs completamente ─────────────────────
+        {
+            const m = lastMsg;
+            if (m.role === 'user' || m.role === 'assistant') {
+                let textContent = '';
+                const pdfTexts: string[] = [];
+
                 if (Array.isArray(m.parts)) {
-                    const text = m.parts
-                        .filter((p: any) => p.type === 'text' && p.text)
-                        .map((p: any) => truncate(p.text))
-                        .join(' ');
-                    return { role: m.role, content: text || '[sin texto]' };
+                    for (const p of m.parts) {
+                        if (p.type === 'text' && p.text) textContent += p.text + ' ';
+                        if (p.type === 'file') {
+                            const mt = p.mediaType || p.file?.mediaType || '';
+                            const url = p.url || p.file?.url || '';
+                            if (mt === 'application/pdf' && url) {
+                                console.log('[CEREBRO] 📄 PDF detectado en mensaje actual, extrayendo...');
+                                const pdf = await extractPdfText(url);
+                                if (pdf) {
+                                    pdfTexts.push(pdf);
+                                    console.log(`[CEREBRO] ✅ PDF extraído: ${pdf.length} chars`);
+                                }
+                            }
+                        }
+                    }
                 }
-
-                // Array de content
+                if (typeof m.content === 'string' && m.content.trim()) textContent = m.content;
                 if (Array.isArray(m.content)) {
-                    const text = m.content
-                        .filter((c: any) => c.type === 'text' && c.text)
-                        .map((c: any) => truncate(c.text))
-                        .join(' ');
-                    return { role: m.role, content: text || '[sin texto]' };
+                    textContent = m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
                 }
 
-                return { role: m.role, content: '[mensaje vacío]' };
-            });
+                textContent = truncate(textContent.trim());
+
+                if (pdfTexts.length > 0) {
+                    const pdfBlock = pdfTexts
+                        .map((t, i) => `\n\n📄 [SCHEMATIC/PDF #${i + 1} — úsalo SOLO para responder el síntoma específico]:\n${t}`)
+                        .join('\n');
+                    textContent = textContent + pdfBlock;
+                }
+
+                result.push({ role: m.role, content: textContent || '[mensaje vacío]' });
+            }
+        }
+
+        return result;
     } catch (e) {
         console.error("[CEREBRO] toCoreMsgs error:", e);
         return [{ role: 'user', content: 'Error procesando mensajes' }];
@@ -115,11 +193,6 @@ export async function POST(req: NextRequest) {
                     .filter((p: any) => p.type === 'text')
                     .map((p: any) => p.text || '')
                     .join(' ');
-            } else if (Array.isArray(lastUserMsg.content)) {
-                lastUserText = lastUserMsg.content
-                    .filter((c: any) => c.type === 'text')
-                    .map((c: any) => c.text || '')
-                    .join(' ');
             }
         }
 
@@ -143,8 +216,9 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const coreMessages = toCoreMsgs(messages);
-        console.log(`[CEREBRO] 📨 Mensajes procesados: ${coreMessages.length}`);
+        // ── Procesar mensajes ────────────────────────────────────────────────
+        const coreMessages = await toCoreMsgs(messages);
+        console.log(`[CEREBRO] 📨 Mensajes: ${coreMessages.length}`);
 
         // ── Cascada de modelos Groq ──────────────────────────────────────────
         const groq = createGroq({ apiKey: groqKey });
@@ -163,12 +237,14 @@ export async function POST(req: NextRequest) {
                     messages: coreMessages,
                     maxOutputTokens: MAX_OUTPUT_TOKENS,
                     temperature: 0.2,
+                    onFinish: ({ usage }) => {
+                        if (usage?.totalTokens) {
+                            trackTokens(usage.totalTokens);
+                            console.log(`[CEREBRO] 🪙 Tokens usados: ${usage.totalTokens} (in: ${usage.inputTokens}, out: ${usage.outputTokens})`);
+                        }
+                    },
                 });
 
-                // ✅ CRÍTICO: toUIMessageStreamResponse() para AI SDK v6 + DefaultChatTransport
-                // En ai@6, DefaultChatTransport espera el protocolo UIMessageStream.
-                // toTextStreamResponse() = texto plano (solo para TextStreamChatTransport)
-                // toUIMessageStreamResponse() = formato correcto para useChat + DefaultChatTransport
                 return result.toUIMessageStreamResponse({
                     headers: {
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
