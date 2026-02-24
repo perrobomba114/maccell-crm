@@ -203,15 +203,11 @@ ${ctx}`;
 
     if (visionMode) {
         // EN MODO VISIÓN, GOOGLE GEMINI DEBE SER EL REY ABSOLUTO
-        // (Llama Vision a través de Groq tiene alucinaciones severas con microsoldadura y FPCs)
+        // (Groq deprecó por completo sus modelos Llama 3.2 Vision)
         if (googleKey) {
             const google = createGoogleGenerativeAI({ apiKey: googleKey });
             attempts.push({ label: 'Gemini/2.0-flash [VISIÓN NATIVA DOMINANTE EXPERTA]', model: google('gemini-2.0-flash') });
             attempts.push({ label: 'Gemini/1.5-pro [VISIÓN PRO fallback]', model: google('gemini-1.5-pro') });
-        }
-        if (groqKey) {
-            const groq = createGroq({ apiKey: groqKey });
-            attempts.push({ label: 'Groq/llama-3.2-90b-vision-preview [VISIÓN]', model: groq('llama-3.2-90b-vision-preview') });
         }
     } else {
         // EN MODO TEXTO, GROQ SIGUE SIENDO PRIORIDAD POR VELOCIDAD
@@ -229,7 +225,8 @@ ${ctx}`;
     // OpenRouter como último recurso
     if (openrouterKey) {
         const openrouter = createOpenRouter({ apiKey: openrouterKey });
-        attempts.push({ label: 'OpenRouter/free [FREE Fallback]', model: openrouter('openrouter/free') });
+        const orModel = process.env.OPENROUTER_MODEL || (visionMode ? 'google/gemini-2.0-flash-lite-001' : 'openrouter/free');
+        attempts.push({ label: `OpenRouterFallback [${orModel}]`, model: openrouter(orModel) });
     }
 
     if (attempts.length === 0) {
@@ -248,6 +245,7 @@ ${ctx}`;
                 messages: coreMessages,
                 temperature: 0.3,
                 maxOutputTokens: MAX_OUTPUT_TOKENS,
+                maxRetries: 0, // Fallback INMEDIATO sin reintentos automáticos que cuelguen la app
             });
 
             console.log(`[CEREBRO] ▶ ${label} | ${modeLabel}`);
