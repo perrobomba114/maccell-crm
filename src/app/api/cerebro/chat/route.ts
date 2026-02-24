@@ -12,10 +12,24 @@ import pdfParse from "pdf-parse";
 const MAX_HISTORY_MSGS = 6;
 const MAX_MSG_CHARS = 1200;
 const MAX_OUTPUT_TOKENS = 1200;
-const MAX_PDF_CHARS = 4000; // Controlado para no explotar tokens de Groq
+const MAX_PDF_CHARS = 4000;
+// Llama 4 Scout: max 5 imágenes por request, base64 < 4MB por solicitud
+const MAX_IMAGES = 4;
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODELOS
+// ─────────────────────────────────────────────────────────────────────────────
+/** Para análisis de texto + RAG (sin imágenes) */
+const TEXT_MODELS = [
+    { label: 'Llama 3.3 70B', id: 'llama-3.3-70b-versatile' },
+    { label: 'Llama 3.1 8B', id: 'llama-3.1-8b-instant' },
+];
+
+/** Para análisis de imágenes de placa / componentes */
+const VISION_MODEL = { label: 'Llama 4 Scout Vision', id: 'meta-llama/llama-4-scout-17b-16e-instruct' };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMPTS
@@ -39,6 +53,14 @@ Respondés SIEMPRE con datos técnicos ESPECÍFICOS. PROHIBIDO responder genéri
 
 4. **🎯 INTERVENCIÓN SUGERIDA** — IC a reemplazar, técnica (reballing, hot air, jumper wire, ultrasónico), orden de intervención
 
+### REGLA PARA IMÁGENES DE PLACA:
+Si el técnico adjunta una foto de placa, analizá VISUALMENTE:
+- Componentes dañados (capacitores rotos, ICs con quemaduras, soldadura fría)
+- Zonas de daño por agua (corrosión, residuos blancos)
+- Componentes faltantes (pads vacíos donde debería haber un componente)
+- Orientación y ubicación respecto a zonas conocidas de la placa
+Luego correlacioná lo que ves con el síntoma relatado.
+
 ### REGLA PARA SCHEMATICS:
 Si el técnico adjunta un PDF schematic, NO describas el schematic en general.
 Usalo EXCLUSIVAMENTE para el síntoma preguntado: nombrá los componentes reales, sus valores y los testpoints del schematic.`;
@@ -51,10 +73,6 @@ function truncate(text: string, max = MAX_MSG_CHARS): string {
     return text.length <= max ? text : text.slice(0, max) + '...';
 }
 
-/**
- * Extrae texto de un PDF enviado como data URL base64.
- * Retorna null si falla.
- */
 async function extractPdfText(dataUrl: string): Promise<string | null> {
     try {
         const base64 = dataUrl.split(',')[1];
@@ -73,12 +91,79 @@ async function extractPdfText(dataUrl: string): Promise<string | null> {
 }
 
 /**
- * Convierte mensajes del frontend (AI SDK v6) a CoreMessages para Groq.
- *
- * REGLA CRÍTICA PARA TOKENS:
- * - Si un mensaje tiene PDF adjunto → extrae el texto UNA SOLA VEZ
- * - En el historial (mensajes anteriores) → reemplaza PDFs por placeholder corto
- *   Esto evita que el historial multiplique los tokens en cada turn.
+ * Detecta si el último mensaje del usuario contiene imágenes.
+ * Retorna la lista de data-URLs de las imágenes encontradas.
+ */
+function extractImages(msg: any): string[] {
+    const images: string[] = [];
+    if (!msg || !Array.isArray(msg.parts)) return images;
+
+    for (const p of msg.parts) {
+        // Soporte para tipo 'file' con mediaType de imagen
+        const mt = p.mediaType || p.file?.mediaType || '';
+        const url = p.url || p.file?.url || '';
+
+        if (mt.startsWith('image/') && url) {
+            images.push(url);
+        }
+
+        // También soporte tipo 'image' directo (varía según versión AI SDK)
+        if (p.type === 'image' && (p.image || p.url)) {
+            images.push(p.image || p.url);
+        }
+    }
+
+    return images.slice(0, MAX_IMAGES); // Groq permite máx 5, nosotros limitamos a 4 por seguridad
+}
+
+/**
+ * Construye mensajes para el modelo de VISIÓN.
+ * El último mensaje lleva texto + image_url parts.
+ * El historial anterior va solo como texto (para no exceder tokens).
+ */
+async function buildVisionMessages(messages: any[], images: string[]): Promise<any[]> {
+    const lastMsg = messages[messages.length - 1];
+    const history = messages.slice(0, -1).slice(-MAX_HISTORY_MSGS + 1);
+
+    const result: any[] = [];
+
+    // Historial → solo texto
+    for (const m of history) {
+        if (m.role !== 'user' && m.role !== 'assistant') continue;
+        let text = '';
+        if (Array.isArray(m.parts)) {
+            text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join(' ');
+        } else if (typeof m.content === 'string') {
+            text = m.content;
+        }
+        result.push({ role: m.role, content: truncate(text.trim()) || '[mensaje vacío]' });
+    }
+
+    // Último mensaje → texto + imágenes en content array (formato Groq vision)
+    let userText = '';
+    if (Array.isArray(lastMsg.parts)) {
+        userText = lastMsg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join(' ');
+    } else if (typeof lastMsg.content === 'string') {
+        userText = lastMsg.content;
+    }
+
+    const contentParts: any[] = [
+        { type: 'text', text: truncate(userText.trim()) || '¿Podés analizar esta imagen de placa?' }
+    ];
+
+    for (const imgUrl of images) {
+        contentParts.push({
+            type: 'image',
+            image: imgUrl, // AI SDK acepta data URL directamente
+        });
+    }
+
+    result.push({ role: 'user', content: contentParts });
+    return result;
+}
+
+/**
+ * Convierte mensajes a CoreMessages para el modelo de texto (sin visión).
  */
 async function toCoreMsgs(messages: any[]): Promise<any[]> {
     try {
@@ -87,10 +172,8 @@ async function toCoreMsgs(messages: any[]): Promise<any[]> {
 
         const result: any[] = [];
 
-        // ── Historial: solo texto, PDFs → placeholder ─────────────────────
         for (const m of history) {
             if (m.role !== 'user' && m.role !== 'assistant') continue;
-
             let textContent = '';
             let hadPdf = false;
 
@@ -108,14 +191,13 @@ async function toCoreMsgs(messages: any[]): Promise<any[]> {
                 textContent = m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
             }
 
-            // PDF en historial → placeholder (no re-enviar 4000 chars en cada turn)
             const finalText = truncate(textContent.trim()) +
                 (hadPdf ? ' [schematic PDF adjunto en este mensaje]' : '');
 
             result.push({ role: m.role, content: finalText || '[mensaje vacío]' });
         }
 
-        // ── Último mensaje: extrae PDFs completamente ─────────────────────
+        // Último mensaje: extrae PDFs
         {
             const m = lastMsg;
             if (m.role === 'user' || m.role === 'assistant') {
@@ -129,7 +211,7 @@ async function toCoreMsgs(messages: any[]): Promise<any[]> {
                             const mt = p.mediaType || p.file?.mediaType || '';
                             const url = p.url || p.file?.url || '';
                             if (mt === 'application/pdf' && url) {
-                                console.log('[CEREBRO] 📄 PDF detectado en mensaje actual, extrayendo...');
+                                console.log('[CEREBRO] 📄 PDF detectado, extrayendo...');
                                 const pdf = await extractPdfText(url);
                                 if (pdf) {
                                     pdfTexts.push(pdf);
@@ -180,7 +262,6 @@ export async function POST(req: NextRequest) {
     try {
         const groqKey = process.env.GROQ_API_KEY;
         if (!groqKey || groqKey.length < 10) {
-            console.error("[CEREBRO] ❌ GROQ_API_KEY no configurada");
             return new Response("Error: GROQ_API_KEY no configurada.", { status: 500 });
         }
 
@@ -188,10 +269,16 @@ export async function POST(req: NextRequest) {
         const messages = body.messages || [];
         if (!messages.length) return new Response("No messages provided", { status: 400 });
 
-        // ── Enriquecimiento RAG ──────────────────────────────────────────────
-        let finalSystemPrompt = SYSTEM_PROMPT;
+        const groq = createGroq({ apiKey: groqKey });
 
+        // ── Detectar si hay imágenes en el último mensaje ────────────────────
         const lastUserMsg = messages.findLast((m: any) => m.role === 'user');
+        const images = lastUserMsg ? extractImages(lastUserMsg) : [];
+        const hasImages = images.length > 0;
+
+        console.log(`[CEREBRO] 📸 Imágenes detectadas: ${images.length} | Modo: ${hasImages ? 'VISION' : 'TEXT'}`);
+
+        // ── Extraer texto del usuario para RAG ───────────────────────────────
         let lastUserText = '';
         if (lastUserMsg) {
             if (typeof lastUserMsg.content === 'string') {
@@ -203,6 +290,9 @@ export async function POST(req: NextRequest) {
                     .join(' ');
             }
         }
+
+        // ── Enriquecimiento RAG ──────────────────────────────────────────────
+        let finalSystemPrompt = SYSTEM_PROMPT;
 
         if (lastUserText.length > 3) {
             const similar = await withTimeout(findSimilarRepairs(lastUserText, 3, 0.6), 4000, []);
@@ -224,19 +314,48 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // ── Procesar mensajes ────────────────────────────────────────────────
+        const onFinishCb = ({ usage }: any) => {
+            if (usage?.totalTokens) {
+                trackTokens(usage.totalTokens);
+                console.log(`[CEREBRO] 🪙 Tokens: ${usage.totalTokens} (in: ${usage.inputTokens}, out: ${usage.outputTokens})`);
+            }
+        };
+
+        // ══════════════════════════════════════════════════════════════════════
+        // MODO VISIÓN — Llama 4 Scout con imágenes
+        // ══════════════════════════════════════════════════════════════════════
+        if (hasImages) {
+            console.log(`[CEREBRO] 🔭 Usando ${VISION_MODEL.label} para análisis visual`);
+            try {
+                const visionMessages = await buildVisionMessages(messages, images);
+                const result = await streamText({
+                    model: groq(VISION_MODEL.id),
+                    system: finalSystemPrompt,
+                    messages: visionMessages,
+                    maxOutputTokens: MAX_OUTPUT_TOKENS,
+                    temperature: 0.2,
+                    onFinish: onFinishCb,
+                });
+
+                return result.toUIMessageStreamResponse({
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'X-Cerebro-Provider': VISION_MODEL.label,
+                    }
+                });
+            } catch (visionErr: any) {
+                console.warn(`[CEREBRO] ⚠️ Vision model falló: ${visionErr.message} — fallback a texto`);
+                // Si falla visión, continúa con el modo texto normal (imágenes ignoradas)
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // MODO TEXTO — cascada Llama 3.3 70B → Llama 3.1 8B
+        // ══════════════════════════════════════════════════════════════════════
         const coreMessages = await toCoreMsgs(messages);
-        console.log(`[CEREBRO] 📨 Mensajes: ${coreMessages.length}`);
+        console.log(`[CEREBRO] 📨 Mensajes procesados: ${coreMessages.length}`);
 
-        // ── Cascada de modelos Groq ──────────────────────────────────────────
-        const groq = createGroq({ apiKey: groqKey });
-
-        const GROQ_MODELS = [
-            { label: 'Llama 3.3 70B', id: 'llama-3.3-70b-versatile' },
-            { label: 'Llama 3.1 8B', id: 'llama-3.1-8b-instant' },
-        ];
-
-        for (const m of GROQ_MODELS) {
+        for (const m of TEXT_MODELS) {
             try {
                 console.log(`[CEREBRO] 🤖 Intentando con ${m.label}...`);
                 const result = await streamText({
@@ -245,12 +364,7 @@ export async function POST(req: NextRequest) {
                     messages: coreMessages,
                     maxOutputTokens: MAX_OUTPUT_TOKENS,
                     temperature: 0.2,
-                    onFinish: ({ usage }) => {
-                        if (usage?.totalTokens) {
-                            trackTokens(usage.totalTokens);
-                            console.log(`[CEREBRO] 🪙 Tokens usados: ${usage.totalTokens} (in: ${usage.inputTokens}, out: ${usage.outputTokens})`);
-                        }
-                    },
+                    onFinish: onFinishCb,
                 });
 
                 return result.toUIMessageStreamResponse({
@@ -261,7 +375,7 @@ export async function POST(req: NextRequest) {
                 });
             } catch (err: any) {
                 console.warn(`[CEREBRO] ⚠️ ${m.label} falló: ${err.message}`);
-                if (m === GROQ_MODELS[GROQ_MODELS.length - 1]) throw err;
+                if (m === TEXT_MODELS[TEXT_MODELS.length - 1]) throw err;
             }
         }
 
