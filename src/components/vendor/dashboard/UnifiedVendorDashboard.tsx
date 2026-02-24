@@ -175,14 +175,12 @@ export function UnifiedVendorDashboard({ stats, user }: UnifiedVendorDashboardPr
             {/* 2. KPI Grid (4 Columns) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <VendorMetric
-                    title="Ventas Hoy (Est.)"
-                    // Usually daily info isn't in stats, assuming stats has updated month totals.
-                    // Let's use what we have: Sales Month and Count
+                    title="Ventas del Mes"
                     value={fmtMoney(stats.salesMonthTotal)}
                     subtext={`${stats.salesMonthCount} Operaciones este mes`}
                     icon={DollarSign}
                     color="emerald"
-                    trend={`${stats.salesMonthCount} Ops`}
+                    trend={`${stats.salesMonthGrowth > 0 ? '+' : ''}${stats.salesMonthGrowth?.toFixed(1) || '0.0'}% vs mes ant.`}
                     href="/vendor/sales"
                 />
                 <VendorMetric

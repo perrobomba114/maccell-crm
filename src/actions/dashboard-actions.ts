@@ -331,6 +331,11 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
         const { start: todayStart } = getDailyRange();
         const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange();
 
+        const nowAr = getArgentinaDate();
+        const lastMonthAr = new Date(nowAr.getFullYear(), nowAr.getMonth() - 1, 1);
+        const lastMonthStr = lastMonthAr.toISOString().split('T')[0];
+        const { start: lastMonthStart, end: lastMonthEnd } = getMonthlyRange(lastMonthStr);
+
         // 1. Sales Metrics (Current Month)
         // We really want to filter by the VENDOR (user) if possible, or Branch if it's a general dashboard.
         // Usually "Vendor Dashboard" implies PERSONAL stats, but falling back to BRANCH stats is common if they want to see "How we are doing".
@@ -368,10 +373,25 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
                     ],
                     createdAt: { gte: todayStart }
                 }
+            }),
+            // Total Revenue (Last Month)
+            prisma.sale.aggregate({
+                where: {
+                    OR: [
+                        { vendorId },
+                        { branchId, saleNumber: { startsWith: 'H' } }
+                    ],
+                    createdAt: { gte: lastMonthStart, lte: lastMonthEnd } // <= OJO: el lte
+                },
+                _sum: { total: true }
             })
         ]);
 
-        const [salesMonthCount, salesMonthTotal, salesTodayCount] = await salesPromise;
+        const [salesMonthCount, salesMonthTotal, salesTodayCount, salesLastMonthTotalAgg] = await salesPromise;
+
+        const currentMonthRevenue = salesMonthTotal._sum.total || 0;
+        const lastMonthRevenue = salesLastMonthTotalAgg._sum.total || 0;
+        const salesMonthGrowth = lastMonthRevenue > 0 ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
 
         // 2. Repairs Intakes (Month) - "Equipos recibidos"
         // This is usually repairs CREATED by this vendor (userId is the creator)
@@ -587,6 +607,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
         return {
             salesMonthCount: salesMonthCount,
             salesMonthTotal: salesMonthTotal._sum.total || 0,
+            salesMonthGrowth,
             repairsIntakeMonth,
             repairRevenueMonth: repairRevenue,
             repairCountMonth: repairCount,
@@ -604,6 +625,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
         return {
             salesMonthCount: 0,
             salesMonthTotal: 0,
+            salesMonthGrowth: 0,
             repairsIntakeMonth: 0,
             repairRevenueMonth: 0,
             readyForPickup: [],
