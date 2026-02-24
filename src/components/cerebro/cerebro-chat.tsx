@@ -6,9 +6,8 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon, Settings, LogIn } from "lucide-react";
+import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon, LogIn } from "lucide-react";
 import { saveMessagesToDbAction, updateConversationTitleAction, generateGeminiPromptAction } from "@/actions/cerebro-actions";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 interface CerebroChatProps {
@@ -25,28 +24,11 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     // Login Settings and State
     const [technicianName, setTechnicianName] = useState("");
     const [loginNameInput, setLoginNameInput] = useState("");
-    const [isConfigOpen, setIsConfigOpen] = useState(false);
-    const [geminiKey, setGeminiKey] = useState("");
-    const [openrouterKey, setOpenrouterKey] = useState("");
 
     useEffect(() => {
-        // Cargar key guardada en cookie y técnico
-        const keyMatch = document.cookie.match(new RegExp('(^| )geminiKey=([^;]+)'));
-        if (keyMatch) setGeminiKey(keyMatch[2]);
-
-        const openrouterMatch = document.cookie.match(new RegExp('(^| )openrouterKey=([^;]+)'));
-        if (openrouterMatch) setOpenrouterKey(openrouterMatch[2]);
-
         const techMatch = document.cookie.match(new RegExp('(^| )techName=([^;]+)'));
         if (techMatch) setTechnicianName(techMatch[2]);
     }, []);
-
-    const handleSaveConfig = () => {
-        document.cookie = `geminiKey=${geminiKey}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
-        document.cookie = `openrouterKey=${openrouterKey}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
-        setIsConfigOpen(false);
-        toast.success("Configuración de CEREBRO guardada");
-    };
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
@@ -73,7 +55,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
 
                         return {
                             role: m.role as "user" | "assistant",
-                            content: m.content || m.parts?.map((p: any) => p.type === 'text' ? p.text : '').join('') || '',
+                            content: m.content || m.text || '',
                             mediaUrls
                         };
                     }));
@@ -81,7 +63,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                     if (allMessages.length <= 2) {
                         const firstUserMessage = allMessages.find((m: any) => m.role === 'user');
                         if (firstUserMessage) {
-                            const rawContent = firstUserMessage.content || firstUserMessage.parts?.map((p: any) => p.type === 'text' ? p.text : '').join('') || '';
+                            const rawContent = firstUserMessage.content || firstUserMessage.text || '';
                             const cleanTitle = rawContent.substring(0, 30).trim() + (rawContent.length > 30 ? "..." : "");
                             if (cleanTitle) {
                                 await updateConversationTitleAction(conversationId, cleanTitle);
@@ -106,29 +88,27 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
             setInput('');
             setFiles([]);
 
-            const parts: any[] = [];
-            // Agregar nombre del técnico para personalizar la interacción
-            const userPrefix = currentInput.trim() ? `[Técnico ${technicianName}]: ` : '';
+            const userPrefix = `[Técnico ${technicianName}]: `;
 
-            if (currentInput.trim()) {
-                parts.push({ type: 'text', text: userPrefix + currentInput });
-            } else if (currentFiles.length > 0) {
-                parts.push({ type: 'text', text: `[Técnico ${technicianName} subió una imagen para analizar]` });
-            }
-
-            for (const file of currentFiles) {
+            // Format files as expected by ai sdk FileUIPart if they are browser File objects
+            const fileParts = await Promise.all(currentFiles.map(async (file) => {
                 const dataUrl = await new Promise<string>((resolve) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result as string);
                     reader.readAsDataURL(file);
                 });
-                parts.push({
-                    type: 'file',
-                    file: { name: file.name, type: file.type, url: dataUrl }
-                });
-            }
+                return {
+                    type: 'file' as const,
+                    filename: file.name,
+                    mediaType: file.type,
+                    url: dataUrl
+                };
+            }));
 
-            (sendMessage as any)({ parts });
+            sendMessage({
+                text: userPrefix + currentInput,
+                files: fileParts.length > 0 ? fileParts : undefined
+            });
         }
     };
 
@@ -180,47 +160,6 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
 
     return (
         <div className="flex flex-col h-full bg-slate-900 overflow-hidden relative">
-            <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-                <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800 text-white">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Settings className="w-5 h-5 text-violet-500" />
-                            Configuración Secreta de CEREBRO
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <p className="text-xs text-slate-400">
-                            Pega aquí la clave de "Google AI Studio" o de "OpenRouter" para que todos los técnicos puedan conversar usando el modelo más avanzado sin salir de MACCELL. Si tienes OpenRouter, tendrá prioridad.
-                        </p>
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-200">OpenRouter API Key (Recomendado)</label>
-                                <Input
-                                    value={openrouterKey}
-                                    onChange={(e) => setOpenrouterKey(e.target.value)}
-                                    placeholder="sk-or-v1-..."
-                                    className="bg-slate-950 border-slate-700 font-mono text-xs"
-                                    type="password"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-200">Google AI Studio API Key</label>
-                                <Input
-                                    value={geminiKey}
-                                    onChange={(e) => setGeminiKey(e.target.value)}
-                                    placeholder="AIzaSy..."
-                                    className="bg-slate-950 border-slate-700 font-mono text-xs"
-                                    type="password"
-                                />
-                            </div>
-                        </div>
-                        <Button className="w-full bg-violet-600 hover:bg-violet-700" onClick={handleSaveConfig}>
-                            Guardar Conexión
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950/50 shrink-0">
                 <div className="flex items-center gap-3">
@@ -236,9 +175,6 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                     <div className="text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
                         Técnico: <span className="text-white font-bold">{technicianName}</span>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setIsConfigOpen(true)} className="text-slate-400 hover:text-white border border-slate-800 h-8">
-                        <Settings className="w-4 h-4" />
-                    </Button>
                 </div>
             </div>
 

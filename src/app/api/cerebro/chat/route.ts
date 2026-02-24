@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { OLLAMA_MODELS } from "@/config/ai-models";
 import { findSimilarRepairs, formatRAGContext } from "@/lib/cerebro-rag";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { streamText } from "ai";
 
@@ -204,71 +203,57 @@ export async function POST(req: NextRequest) {
         const modelToUse = hasImagesInLastMessage ? OLLAMA_MODELS.VISION : OLLAMA_MODELS.CHAT;
         console.log(`[CEREBRO] Modelo=${modelToUse} | Modo=${hasImagesInLastMessage ? 'VISION + ROUTER ✅' : 'TEXTO (deepseek-r1)'} | Msgs=${messagesForOllama.length}`);
 
-        const geminiKey = req.cookies.get('geminiKey')?.value;
-        const openrouterKey = req.cookies.get('openrouterKey')?.value;
+        const openrouterKey = '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';
 
-        // 4. Modo OpenRouter o Google Cloud (Nube)
-        if (openrouterKey || geminiKey) {
-            console.log(`[CEREBRO] Ruteando hacia LA NUBE - Bypass de Ollama local.`);
+        // 4. Modo OpenRouter Directo (Hardcodeado)
+        console.log(`[CEREBRO] Ruteando hacia LA NUBE OPENROUTER.`);
 
-            let modelProvider;
-            let modelName = 'liquid/lfm-40b:free'; // Default OpenRouter Free LLM
+        const openrouter = createOpenRouter({ apiKey: openrouterKey });
+        // Utilizando un modelo rápido y apto para visión/texto
+        const modelName = 'google/gemini-2.5-flash-lite-preview-02-05:free';
 
-            if (openrouterKey) {
-                console.log("[CEREBRO] Usando llave de OPENROUTER gratis");
-                const openrouter = createOpenRouter({ apiKey: openrouterKey });
-                modelProvider = openrouter;
-                // Using a known free model if using free tier OpenRouter
-                modelName = 'google/gemini-2.5-flash-lite-preview-02-05:free'; // free tier gemini inside openrouter
-            } else if (geminiKey) {
-                console.log("[CEREBRO] Usando llave local de GOOGLE GEMINI AI STUDIO");
-                const google = createGoogleGenerativeAI({ apiKey: geminiKey });
-                modelProvider = google;
-                modelName = 'gemini-1.5-pro';
+        const coreMessages = messagesForOllama.map(m => {
+            let content: any = m.content || "";
+
+            if (m.images && m.images.length > 0 && m.role === 'user') {
+                content = [
+                    { type: 'text', text: m.content || "Analiza esta placa electrónica." }
+                ];
+                m.images.forEach((b64: string) => {
+                    content.push({ type: 'image', image: `data:image/jpeg;base64,${b64}` });
+                });
             }
+            return { role: m.role, content };
+        });
 
-            const coreMessages = messagesForOllama.map(m => {
-                let content: any = m.content || "";
-
-                if (m.images && m.images.length > 0 && m.role === 'user') {
-                    content = [
-                        { type: 'text', text: m.content || "Analiza esta placa electrónica." }
-                    ];
-                    m.images.forEach((b64: string) => {
-                        content.push({ type: 'image', image: `data:image/jpeg;base64,${b64}` });
-                    });
-                }
-                return { role: m.role, content };
+        // Usamos modelo online a través de Vercel AI SDK Standardized Object 
+        try {
+            const result = streamText({
+                model: openrouter(modelName),
+                messages: coreMessages as any,
+                temperature: 0.6,
             });
 
-            // Usamos modelo online a través de Vercel AI SDK Standardized Object 
-            try {
-                const result = streamText({
-                    model: modelProvider!(modelName),
-                    messages: coreMessages as any,
-                    temperature: 0.6,
-                });
-
-                const stream = new ReadableStream({
-                    async start(controller) {
-                        try {
-                            for await (const textPart of result.textStream) {
-                                controller.enqueue(new TextEncoder().encode(textPart));
-                            }
-                        } catch (e: any) {
-                            console.error("[CLOUD_API] Stream error:", e);
-                            controller.enqueue(new TextEncoder().encode(`\n[Error de Cloud API: ${e.message}]`));
-                        } finally {
-                            controller.close();
+            const stream = new ReadableStream({
+                async start(controller) {
+                    try {
+                        for await (const textPart of result.textStream) {
+                            controller.enqueue(new TextEncoder().encode(textPart));
                         }
+                    } catch (e: any) {
+                        console.error("[CLOUD_API] Stream error:", e);
+                        controller.enqueue(new TextEncoder().encode(`\n[Error de Cloud API: ${e.message}]`));
+                    } finally {
+                        controller.close();
                     }
-                });
+                }
+            });
 
-                return new Response(stream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-            } catch (error: any) {
-                console.error("[CEREBRO NUBE] Fallo ruteo a api:", error);
-                return new Response(`[Error fatal del servidor enrutador: ${error.message}]`, { status: 500 })
-            }
+            return new Response(stream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        } catch (error: any) {
+            console.error("[CEREBRO NUBE] Fallo ruteo a api:", error);
+            // Si falla devolvemos error
+            return new Response(`[Error fatal del servidor enrutador: ${error.message}]`, { status: 500 });
         }
 
         // 4. Petición manual a Ollama con soporte para Abort Signal (Modo Local Legacy)
