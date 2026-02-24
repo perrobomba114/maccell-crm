@@ -206,8 +206,8 @@ ${ctx}`;
         // (Llama Vision a través de Groq tiene alucinaciones severas con microsoldadura y FPCs)
         if (googleKey) {
             const google = createGoogleGenerativeAI({ apiKey: googleKey });
-            attempts.push({ label: 'Gemini/2.0-flash-exp [VISIÓN NATIVA DOMINANTE EXPERTA]', model: google('gemini-2.0-flash-exp') });
-            attempts.push({ label: 'Gemini/1.5-pro-latest [VISIÓN PRO fallback]', model: google('gemini-1.5-pro-latest') });
+            attempts.push({ label: 'Gemini/2.0-flash [VISIÓN NATIVA DOMINANTE EXPERTA]', model: google('gemini-2.0-flash') });
+            attempts.push({ label: 'Gemini/1.5-pro [VISIÓN PRO fallback]', model: google('gemini-1.5-pro') });
         }
         if (groqKey) {
             const groq = createGroq({ apiKey: groqKey });
@@ -222,7 +222,7 @@ ${ctx}`;
         }
         if (googleKey) {
             const google = createGoogleGenerativeAI({ apiKey: googleKey });
-            attempts.push({ label: 'Gemini/2.0-flash-exp [FREE]', model: google('gemini-2.0-flash-exp') });
+            attempts.push({ label: 'Gemini/2.0-flash [FREE]', model: google('gemini-2.0-flash') });
         }
     }
 
@@ -242,7 +242,7 @@ ${ctx}`;
         const isLast = i === attempts.length - 1;
 
         try {
-            const result = streamText({
+            const result = await streamText({
                 model,
                 system: systemPrompt,
                 messages: coreMessages,
