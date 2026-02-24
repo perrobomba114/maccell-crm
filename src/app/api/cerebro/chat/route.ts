@@ -59,6 +59,7 @@ const SYSTEM_PROMPT = `Eres "Cerebro", el núcleo de inteligencia técnica de MA
 2. NO MEZCLES FALLAS INCOMPATIBLES. Si el técnico dice "no carga", el problema ES de carga; NUNCA sugieras que "podría ser una falla de imagen" (o viceversa). Solo junta diagnósticos si el usuario literalmente dice "no carga Y TAMPOCO da imagen".
 3. NO ASUMAS CONSUMOS NI DATOS. Si no te dan un amperaje, no inventes que el equipo consume "0.9A".
 4. MANTÉN EL FOCO: La solución debe ser directa al problema mencionado.
+5. PROHIBICIÓN DE PRECIOS: NUNCA, bajo ninguna circunstancia, proporciones precios de repuestos o mano de obra. Indica únicamente la disponibilidad de stock.
 
 ### 🧠 PROTOCOLO DE RAZONAMIENTO (Diferencial):
 1. **Fallas de Imagen (No hay video):** 
@@ -306,9 +307,9 @@ export async function POST(req: NextRequest) {
                 });
 
                 if (spareParts.length > 0) {
-                    ragContext += `\n\n### 📦 STOCK DE REPUESTOS RELACIONADOS:`;
+                    ragContext += `\n\n### 📦 DISPONIBILIDAD DE REPUESTOS EN STOCK:`;
                     spareParts.forEach((p: any) => {
-                        ragContext += `\n- ${p.name} (${p.brand}): ${p.stockLocal} unidades en local | Precio: $${p.priceArg}`;
+                        ragContext += `\n- ${p.name} (${p.brand}): ${p.stockLocal} unidades disponibles en local.`;
                     });
                 }
             }
