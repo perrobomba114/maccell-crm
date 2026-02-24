@@ -1,91 +1,87 @@
 /**
- * MACCELL Cerebro — Optimizado
- * 
- * Generación de embeddings locales usando Transformers.js.
+ * MACCELL Cerebro — Embeddings Locales via @xenova/transformers
+ *
+ * Modelo: Xenova/all-MiniLM-L6-v2
+ * - Corre 100% en local/servidor Node.js (sin API key)
+ * - 384 dimensiones, rápido y ligero
+ * - El modelo se descarga una vez y queda en caché (~23MB)
+ *
+ * NOTA: Groq NO ofrece un endpoint de embeddings en su API.
+ *       Por eso seguimos usando Xenova para los vectores RAG.
+ *       El chat sí usa Groq exclusivamente.
  */
+
 import { pipeline, env, type FeatureExtractionPipeline } from '@xenova/transformers';
 
-/**
- * MACCELL Cerebro — Singleton para gestión de IA local
- */
-class MaccellCerebro {
+// ─────────────────────────────────────────────────────────────────────────────
+// Singleton — carga el modelo una sola vez en toda la vida del servidor
+// ─────────────────────────────────────────────────────────────────────────────
+class EmbeddingPipeline {
     private static instance: FeatureExtractionPipeline | null = null;
-    private static loadingPromise: Promise<FeatureExtractionPipeline> | null = null;
+    private static loading: Promise<FeatureExtractionPipeline> | null = null;
 
-    static async getPipeline(): Promise<FeatureExtractionPipeline> {
+    static async get(): Promise<FeatureExtractionPipeline> {
         if (this.instance) return this.instance;
-        if (this.loadingPromise) return this.loadingPromise;
+        if (this.loading) return this.loading;
 
-        this.loadingPromise = (async () => {
+        this.loading = (async () => {
             try {
-                // Configuración de entorno
-                env.allowLocalModels = false; // Forzar descarga si no está en cache
-                env.remoteHost = 'https://huggingface.co/';
+                // Usar caché local si ya fue descargado antes
+                env.allowLocalModels = true;
+                env.allowRemoteModels = true;
 
-                // Optimización de hilos en Node.js
+                // En Node.js, optimizar hilos del runtime WASM
                 if (env.backends?.onnx?.wasm) {
-                    const threads = process.env.CPU_THREADS ? parseInt(process.env.CPU_THREADS) : 2;
-                    env.backends.onnx.wasm.numThreads = Math.max(1, threads);
+                    env.backends.onnx.wasm.numThreads = 2;
                 }
 
                 console.log('[EMBEDDINGS] 🔄 Cargando modelo all-MiniLM-L6-v2...');
                 const pipe = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-                console.log('[EMBEDDINGS] ✅ Modelo cargado y listo.');
-
+                console.log('[EMBEDDINGS] ✅ Modelo listo.');
                 this.instance = pipe;
                 return pipe;
             } catch (err) {
-                this.loadingPromise = null;
+                this.loading = null; // Permitir reintento
                 throw err;
             }
         })();
 
-        return this.loadingPromise;
+        return this.loading;
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// API pública
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Genera el embedding optimizado
- * El modelo 'all-MiniLM-L6-v2' tiene un max_seq_length de 256 o 512 tokens.
- * Dejamos que el pipeline trunque internamente para mayor precisión.
+ * Genera un embedding de 384 dimensiones para el texto dado.
+ * Retorna null si falla — el RAG simplemente no enriquece el prompt.
  */
 export async function generateEmbedding(text: string): Promise<number[] | null> {
     if (!text?.trim()) return null;
 
     try {
-        const pipe = await MaccellCerebro.getPipeline();
-
-        const output = await pipe(text, {
-            pooling: 'mean',
-            normalize: true,
-        });
-
-        // Convertir tensor → array plano (Float32Array)
+        const pipe = await EmbeddingPipeline.get();
+        const output = await pipe(text, { pooling: 'mean', normalize: true });
         return Array.from(output.data as Float32Array);
     } catch (err: any) {
-        console.error('[CEREBRO_ERROR]:', err.message);
+        console.error('[EMBEDDINGS] ❌ Error:', err.message);
         return null;
     }
 }
 
 /**
- * Similitud por Producto Punto
- * Como los vectores vienen normalizados de 'generateEmbedding' (normalize: true),
- * el producto punto es idéntico a la similitud coseno y MUCHO más rápido.
+ * Similitud coseno entre dos vectores normalizados.
+ * Como los vectores vienen normalizados (normalize: true),
+ * el producto punto es equivalente a la similitud coseno.
  */
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {
     if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
-
-    let dotProduct = 0;
-    for (let i = 0; i < vecA.length; i++) {
-        dotProduct += vecA[i] * vecB[i];
-    }
-
-    // Resultado entre -1 y 1 (normalmente 0 a 1 en embeddings de texto)
-    return dotProduct;
+    let dot = 0;
+    for (let i = 0; i < vecA.length; i++) dot += vecA[i] * vecB[i];
+    return dot;
 }
 
-/**
- * Alias para mayor claridad semántica
- */
+/** Alias semántico */
 export const calculateSimilarity = cosineSimilarity;
