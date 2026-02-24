@@ -10,6 +10,7 @@ import { getUserData } from "@/actions/get-user";
 import { technicianGroups } from "@/components/layout/nav-config";
 
 import { TechnicianDeadlineMonitor } from "@/components/repairs/technician-deadline-monitor";
+import { PresenceHeartbeat } from "@/components/shared/presence-heartbeat";
 
 export default function TechnicianLayout({
     children,
@@ -93,6 +94,7 @@ export default function TechnicianLayout({
 
     return (
         <div className="flex min-h-screen" suppressHydrationWarning>
+            <PresenceHeartbeat />
             <TechnicianDeadlineMonitor userId={userId} />
 
             <Sidebar

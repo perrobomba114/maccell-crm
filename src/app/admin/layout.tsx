@@ -9,6 +9,7 @@ import { getUserData } from "@/actions/get-user";
 
 import { adminGroups } from "@/components/layout/nav-config";
 import { getTechniciansWorkload } from "@/actions/dashboard-actions";
+import { PresenceHeartbeat } from "@/components/shared/presence-heartbeat";
 
 export default function AdminLayout({
     children,
@@ -117,6 +118,7 @@ export default function AdminLayout({
 
     return (
         <div className="flex min-h-screen" suppressHydrationWarning>
+            <PresenceHeartbeat />
             <div className="print:hidden">
                 <Sidebar
                     groups={adminGroups}

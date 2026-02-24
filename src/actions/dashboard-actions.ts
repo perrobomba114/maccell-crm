@@ -998,9 +998,9 @@ export async function getTechniciansWorkload(branchId?: string) {
             const now = new Date();
             if (isOnline && tech.lastActiveAt) {
                 const diffMs = now.getTime() - new Date(tech.lastActiveAt).getTime();
-                const hours = diffMs / (1000 * 60 * 60);
-                if (hours > 4) {
-                    isOnline = false; // Effectively offline
+                const minutes = diffMs / (1000 * 60);
+                if (minutes > 8) {
+                    isOnline = false; // Sin heartbeat en los últimos 8 min = offline real
                 }
             }
 

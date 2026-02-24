@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { getUserData } from "@/actions/get-user";
+import { PresenceHeartbeat } from "@/components/shared/presence-heartbeat";
 
 interface LinkItem {
     href: string;
@@ -105,6 +106,7 @@ export function VendorLayoutClient({
 
     return (
         <div className="flex min-h-screen" suppressHydrationWarning>
+            <PresenceHeartbeat />
             <Sidebar
                 groups={groups}
                 onCollapseChange={setIsCollapsed}
