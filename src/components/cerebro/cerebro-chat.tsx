@@ -182,21 +182,26 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                                         if (part.type === 'text') {
                                             return <div key={index} className="whitespace-pre-wrap">{part.text}</div>;
                                         }
-                                        if (part.type === 'file') {
-                                            const isImage = part.file.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(part.file.name || '');
+                                        if (part.type === 'file' || part.type === 'image') {
+                                            const fileObj = part.file || part;
+                                            const mediaType = fileObj.mediaType || fileObj.type || '';
+                                            const isImage = part.type === 'image' || mediaType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileObj.name || fileObj.filename || '');
+                                            const fileUrl = fileObj.url || (fileObj.data ? `data:${mediaType};base64,${fileObj.data}` : '') || (part.image || '');
+                                            const fileName = fileObj.name || fileObj.filename || 'Imagen adjunta';
+
                                             return (
                                                 <div key={index} className="mt-1">
                                                     {isImage ? (
                                                         <img
-                                                            src={part.file.url || (part.file.data ? `data:${part.file.type};base64,${part.file.data}` : '')}
-                                                            alt={part.file.name}
+                                                            src={fileUrl}
+                                                            alt={fileName}
                                                             className="max-w-full rounded-lg border border-slate-700 overflow-hidden shadow-md"
                                                             style={{ maxHeight: '300px' }}
                                                         />
                                                     ) : (
                                                         <div className="flex items-center gap-2 p-2 bg-slate-900/50 rounded-lg border border-slate-700 text-xs">
                                                             <FileIcon size={14} className="text-slate-400" />
-                                                            <span className="truncate">{part.file.name}</span>
+                                                            <span className="truncate">{fileName}</span>
                                                         </div>
                                                     )}
                                                 </div>
