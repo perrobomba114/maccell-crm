@@ -191,73 +191,89 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
                 setShowCreate(open);
                 if (!open) resetForm();
             }}>
-                <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <PenTool className="w-5 h-5 text-emerald-500" />
+                <DialogContent className="bg-zinc-950 border border-zinc-800/60 text-zinc-100 sm:max-w-[500px] p-0 overflow-hidden shadow-2xl shadow-emerald-900/10">
+                    <DialogHeader className="px-6 py-5 border-b border-zinc-800/60 bg-zinc-900/40">
+                        <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                            <div className="p-1.5 bg-emerald-500/10 rounded-md border border-emerald-500/20">
+                                <PenTool className="w-5 h-5 text-emerald-400" />
+                            </div>
                             {editId ? "Editar Solución" : "Nueva Solución Técnica"}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="space-y-2">
-                            <label className="text-xs font-semibold text-zinc-400">TÍTULO DE LA FALLA</label>
+                    <div className="grid gap-5 px-6 py-5">
+                        <div className="space-y-2.5">
+                            <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                                TÍTULO DE LA FALLA
+                            </label>
                             <Input
                                 placeholder="Ej: No carga, consumo oscilante en Hydra"
-                                className="bg-zinc-800/50 border-zinc-700"
+                                className="bg-zinc-900/80 border-zinc-800 text-sm h-10 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500/50"
                                 value={newTitle}
                                 onChange={e => setNewTitle(e.target.value)}
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-zinc-400">MARCA</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2.5">
+                                <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    MARCA
+                                </label>
                                 <Input
-                                    placeholder="iPhone"
-                                    className="bg-zinc-800/50 border-zinc-700"
+                                    placeholder="Ej: iPhone"
+                                    className="bg-zinc-900/80 border-zinc-800 text-sm h-10 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500/50"
                                     value={newBrand}
                                     onChange={e => setNewBrand(e.target.value)}
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-zinc-400">MODELO</label>
+                            <div className="space-y-2.5">
+                                <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    MODELO
+                                </label>
                                 <Input
-                                    placeholder="11 Pro Max"
-                                    className="bg-zinc-800/50 border-zinc-700"
+                                    placeholder="Ej: 11 Pro Max"
+                                    className="bg-zinc-900/80 border-zinc-800 text-sm h-10 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500/50"
                                     value={newModel}
                                     onChange={e => setNewModel(e.target.value)}
                                 />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-semibold text-zinc-400">PASOS Y RESOLUCIÓN</label>
+                        <div className="space-y-2.5">
+                            <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                                PASOS Y RESOLUCIÓN
+                            </label>
                             <Textarea
-                                placeholder="Describe el diagnóstico, mediciones y componentes reemplazados..."
-                                className="bg-zinc-800/50 border-zinc-700 min-h-[120px]"
+                                placeholder="Describe el diagnóstico, mediciones, componentes reemplazados y toda la técnica utilizada..."
+                                className="bg-zinc-900/80 border-zinc-800 text-sm focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500/50 min-h-[140px] resize-none"
                                 value={newContent}
                                 onChange={e => setNewContent(e.target.value)}
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-semibold text-zinc-400">TAGS (Separados por coma)</label>
+                        <div className="space-y-2.5">
+                            <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                                TAGS
+                                <span className="font-normal text-zinc-500 lowercase tracking-normal">(separados por coma)</span>
+                            </label>
                             <Input
-                                placeholder="Hydra, Carga, U2, CC1"
-                                className="bg-zinc-800/50 border-zinc-700"
+                                placeholder="Ej: Hydra, Carga, U2, CC1"
+                                className="bg-zinc-900/80 border-zinc-800 text-sm h-10 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500/50"
                                 value={newTags}
                                 onChange={e => setNewTags(e.target.value)}
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-semibold text-zinc-400">ADJUNTOS (Esquemáticos, Fotos de placa)</label>
+                        <div className="space-y-3 pt-2">
+                            <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
+                                <span>ADJUNTOS</span>
+                                <span className="font-normal text-zinc-500 lowercase tracking-normal bg-zinc-800/50 px-2 py-0.5 rounded-md">JPG, PNG, PDF</span>
+                            </label>
 
                             <div className="flex flex-wrap gap-2 mb-2 p-2 bg-zinc-800/30 rounded-lg border border-zinc-700/50 empty:hidden">
                                 {existingMedia.map((url, i) => {
                                     const isPdf = url.toLowerCase().endsWith('.pdf');
                                     return (
-                                        <div key={`exist-${i}`} className="relative group w-16 h-16 bg-zinc-800 rounded-md border border-zinc-700 flex items-center justify-center overflow-hidden">
-                                            {isPdf ? <FileIcon className="text-blue-400" size={24} /> : <img src={url} alt="existing" className="w-full h-full object-cover" />}
-                                            <button type="button" onClick={() => removeExistingMedia(i)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <X size={12} />
+                                        <div key={`exist-${i}`} className="relative group w-[72px] h-[72px] bg-zinc-900 rounded-lg border border-zinc-800 flex items-center justify-center overflow-hidden hover:border-emerald-500/50 transition-colors">
+                                            {isPdf ? <FileIcon className="text-blue-400" size={28} /> : <img src={url} alt="existing" className="w-full h-full object-cover" />}
+                                            <button type="button" onClick={() => removeExistingMedia(i)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:scale-100 scale-75">
+                                                <X size={12} strokeWidth={3} />
                                             </button>
                                         </div>
                                     );
@@ -265,10 +281,10 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
                                 {mediaFiles.map((media, i) => {
                                     const isPdf = media.file.type === "application/pdf";
                                     return (
-                                        <div key={`new-${i}`} className="relative group w-16 h-16 bg-zinc-800 rounded-md border border-zinc-700 flex items-center justify-center overflow-hidden">
-                                            {isPdf ? <FileIcon className="text-blue-400" size={24} /> : <img src={media.base64} alt="preview" className="w-full h-full object-cover" />}
-                                            <button type="button" onClick={() => removeMedia(i)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <X size={12} />
+                                        <div key={`new-${i}`} className="relative group w-[72px] h-[72px] bg-zinc-900 rounded-lg border-2 border-dashed border-emerald-500/50 flex items-center justify-center overflow-hidden">
+                                            {isPdf ? <FileIcon className="text-blue-400" size={28} /> : <img src={media.base64} alt="preview" className="w-full h-full object-cover opacity-80" />}
+                                            <button type="button" onClick={() => removeMedia(i)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:scale-100 scale-75">
+                                                <X size={12} strokeWidth={3} />
                                             </button>
                                         </div>
                                     );
@@ -276,17 +292,19 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
                             </div>
 
                             <input type="file" hidden multiple accept="image/*,application/pdf" ref={fileInputRef} onChange={handleFileChange} />
-                            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="w-full bg-zinc-800/50 border-zinc-700 text-zinc-300 hover:bg-zinc-700">
-                                <Plus className="w-4 h-4 mr-2" /> Subir Esquemático / Imagen
+                            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full h-11 bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white border-dashed hover:border-emerald-500/50 transition-all font-medium">
+                                <Plus className="w-4 h-4 mr-2 text-emerald-500" /> Subir Esquemático / Imagen
                             </Button>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => { setShowCreate(false); resetForm(); }} className="text-zinc-400">Cancelar</Button>
+                    <DialogFooter className="px-6 py-4 border-t border-zinc-800/60 bg-zinc-900/40">
+                        <Button variant="ghost" onClick={() => { setShowCreate(false); resetForm(); }} className="text-zinc-400 hover:text-white hover:bg-zinc-800 font-medium px-6">
+                            Cancelar
+                        </Button>
                         <Button
                             onClick={handleSaveWikiEntry}
                             disabled={isSaving}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 shadow-lg shadow-emerald-900/20"
                         >
                             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             {editId ? "Actualizar" : "Guardar en Wiki"}
