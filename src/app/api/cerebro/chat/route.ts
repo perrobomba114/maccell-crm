@@ -55,6 +55,8 @@ COMPORTAMIENTO:
 - Respuestas cortas y estructuradas.
 
 FORMATO DE RESPUESTA:
+> 📊 **Base de datos MACCELL consultada:** analizando historial de reparaciones y manuales de esquemáticos...
+
 ### 🔍 DIAGNÓSTICO
 [análisis de la falla]
 ### 🛠️ MEDICIÓN
