@@ -63,7 +63,7 @@ RUN chown nextjs:nodejs backups
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-RUN npm install -g prisma@6.1.0
+RUN npm install -g prisma@6.1.0 tsx
 
 USER nextjs
 
