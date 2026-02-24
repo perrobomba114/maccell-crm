@@ -1,34 +1,37 @@
 import { NextRequest } from "next/server";
+import { createGroq } from "@ai-sdk/groq";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { streamText } from "ai";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CONFIGURACIÓN — Cascade de modelos por costo
+// CONFIGURACIÓN — Cascade multi-proveedor (sin pagar casi nada)
 // ─────────────────────────────────────────────────────────────────────────────
 /**
- * Cascade verificado con API real de OpenRouter (Feb 2026).
- * google/gemini-2.0-flash:free NO existe — no usar.
+ * Cascade por proveedor — todos GRATIS, ordenados por velocidad:
  *
- * Orden por costo (free primero, pago al final):
+ *  GROQ (API key: GROQ_API_KEY en .env)
+ *  1. meta-llama/llama-4-maverick-17b-128e-instruct  → 751 TPS 🔥 VISIÓN
+ *  2. meta-llama/llama-4-scout-17b-16e-instruct      → ~500 TPS   VISIÓN
  *
- *  1. openrouter/free              → $0.00  🤖 Meta-router: elige el mejor free auto (ctx 200K, VISION)
- *  2. qwen/qwen3-vl-30b-a3b-thinking → $0.00  👁️  Visión + razonamiento (ctx 131K)
- *  3. mistralai/mistral-small-3.1-24b-instruct:free → $0.00  👁️  Visión (ctx 128K)
- *  4. google/gemini-2.0-flash-lite-001 → pago   💰 $0.075/$0.30 por M tok (más barato pagado)
+ *  GOOGLE GEMINI directo (API key: GOOGLE_GENERATIVE_AI_API_KEY en .env)
+ *  3. gemini-2.0-flash-exp                           → 237 TPS   VISIÓN (free: 15 RPM)
+ *
+ *  OPENROUTER (fallback final, API key: OPENROUTER_API_KEY en .env)
+ *  4. openrouter/free                                → variable  VISIÓN
+ *  5. google/gemini-2.0-flash-lite-001               → pago ~$0.00019/consulta
+ *
+ * Para obtener keys gratis:
+ *  - Groq: https://console.groq.com (sin tarjeta)
+ *  - Gemini: https://aistudio.google.com/apikey (sin tarjeta)
  */
-const MODEL_CASCADE = [
-    "openrouter/free",
-    "qwen/qwen3-vl-30b-a3b-thinking",
-    "mistralai/mistral-small-3.1-24b-instruct:free",
-    "google/gemini-2.0-flash-lite-001",   // fallback pago ~$0.00019/consulta
-];
 
 const MAX_HISTORY_MSGS = 6;
 const MAX_MSG_CHARS = 600;
 const MAX_OUTPUT_TOKENS = 550;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROMPTS compactos
+// PROMPTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const VISION_PROMPT = `Sos Cerebro, el sistema técnico de MACCELL. Analizá la imagen de placa electrónica.
@@ -50,7 +53,6 @@ COMPORTAMIENTO:
 - Sin saludos. Directo al diagnóstico.
 - Identificá ICs por nombre (PMIC, Tristar, U2, Hydra, etc).
 - Respuestas cortas y estructuradas.
-- El prefijo [Técnico Nombre]: en los mensajes es solo identificación del técnico, ignoralo para el diagnóstico.
 
 FORMATO DE RESPUESTA:
 ### 🔍 DIAGNÓSTICO
@@ -119,11 +121,6 @@ function toCoreMsgs(messages: any[]): any[] {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-    const openrouterKey = process.env.OPENROUTER_API_KEY;
-    if (!openrouterKey) {
-        return new Response("Error: OPENROUTER_API_KEY no configurada.", { status: 500 });
-    }
-
     let body: any;
     try { body = await req.json(); } catch {
         return new Response("JSON inválido.", { status: 400 });
@@ -137,33 +134,73 @@ export async function POST(req: NextRequest) {
     const coreMessages = toCoreMsgs(messages);
     if (coreMessages.length === 0) return new Response("No valid messages.", { status: 400 });
 
-    const openrouter = createOpenRouter({ apiKey: openrouterKey });
+    const modeLabel = visionMode ? 'VISIÓN' : 'TEXTO';
 
-    // Cascade directo sin ping previo — evita 8-10 seg de overhead por consulta.
-    // streamText lanza sincrónicamente si el modelo rechaza el request (401/429/503).
-    // En ese caso, pasamos al siguiente modelo del cascade.
-    for (let i = 0; i < MODEL_CASCADE.length; i++) {
-        const modelId = MODEL_CASCADE[i];
-        const isFree = modelId.endsWith(':free') || modelId === 'openrouter/free';
-        const isLast = i === MODEL_CASCADE.length - 1;
+    // ── Cascade de intentos ──────────────────────────────────────────────────
+    // Cada entrada: { label, model }
+    // Construimos el array según las env vars disponibles
+
+    type Attempt = { label: string; model: any };
+    const attempts: Attempt[] = [];
+
+    const groqKey = process.env.GROQ_API_KEY;
+    const googleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+
+    // Groq — ultrarrápido, gratis, sin tarjeta (IDs verificados vía API)
+    if (groqKey) {
+        const groq = createGroq({ apiKey: groqKey });
+
+        if (visionMode) {
+            // Llama 4 Maverick: 751 TPS con VISIÓN ✅
+            attempts.push({ label: 'Groq/llama-4-maverick [751TPS VISIÓN 🔥]', model: groq('meta-llama/llama-4-maverick-17b-128e-instruct') });
+            attempts.push({ label: 'Groq/llama-4-scout [~500TPS VISIÓN]', model: groq('meta-llama/llama-4-scout-17b-16e-instruct') });
+        } else {
+            // GPT-OSS-120B: 3000 TPS, solo texto (sin visión) ⚡
+            attempts.push({ label: 'Groq/gpt-oss-120b [3000TPS TEXTO ⚡]', model: groq('openai/gpt-oss-120b') });
+            attempts.push({ label: 'Groq/llama-4-maverick [751TPS]', model: groq('meta-llama/llama-4-maverick-17b-128e-instruct') });
+            attempts.push({ label: 'Groq/llama-3.3-70b [346TPS]', model: groq('llama-3.3-70b-versatile') });
+        }
+    }
+
+    // 3 — Google Gemini directo (237 TPS, gratis, visión nativa)
+    if (googleKey) {
+        const google = createGoogleGenerativeAI({ apiKey: googleKey });
+        attempts.push({ label: 'Gemini/2.0-flash-exp [FREE 237TPS]', model: google('gemini-2.0-flash-exp') });
+    }
+
+    // 4 & 5 — OpenRouter como último recurso
+    if (openrouterKey) {
+        const openrouter = createOpenRouter({ apiKey: openrouterKey });
+        attempts.push({ label: 'OpenRouter/free [FREE]', model: openrouter('openrouter/free') });
+        attempts.push({ label: 'OpenRouter/gemini-flash-lite [pago]', model: openrouter('google/gemini-2.0-flash-lite-001') });
+    }
+
+    if (attempts.length === 0) {
+        return new Response("❌ No hay API keys configuradas. Agregá GROQ_API_KEY o GOOGLE_GENERATIVE_AI_API_KEY en .env", { status: 500 });
+    }
+
+    // Intentar cada modelo en orden hasta que uno funcione
+    for (let i = 0; i < attempts.length; i++) {
+        const { label, model } = attempts[i];
+        const isLast = i === attempts.length - 1;
 
         try {
             const result = streamText({
-                model: openrouter(modelId),
+                model,
                 system: systemPrompt,
                 messages: coreMessages,
                 temperature: 0.3,
                 maxOutputTokens: MAX_OUTPUT_TOKENS,
             });
 
-            console.log(`[CEREBRO] ▶ ${modelId} (${isFree ? 'GRATIS 🎉' : 'pago ~$0.00019'}) | ${visionMode ? 'VISIÓN' : 'TEXTO'}`);
+            console.log(`[CEREBRO] ▶ ${label} | ${modeLabel}`);
 
             return result.toUIMessageStreamResponse({
                 headers: {
                     'Cache-Control': 'no-cache, no-store',
                     'X-Accel-Buffering': 'no',
-                    'X-Model-Used': modelId,
-                    'X-Model-Tier': isFree ? 'free' : 'paid',
+                    'X-Model-Used': label,
                 }
             });
 
@@ -171,24 +208,28 @@ export async function POST(req: NextRequest) {
             const status = error?.status ?? error?.statusCode;
             const msg = String(error?.message || '');
 
-            if (status === 401 || msg.includes('User not found')) {
-                return new Response("❌ API Key de OpenRouter inválida.", { status: 401 });
+            // Error fatal de autenticación
+            if (status === 401 || msg.includes('User not found') || msg.includes('invalid_api_key')) {
+                console.error(`[CEREBRO] ❌ API key inválida para ${label}`);
+                if (!isLast) continue; // probar siguiente proveedor
+                return new Response("❌ API Key inválida.", { status: 401 });
             }
 
+            // Rate limit o no disponible → siguiente
             const isRetryable = status === 429 || status === 503 || status === 502
                 || msg.includes('rate limit') || msg.includes('overloaded')
-                || msg.includes('unavailable') || msg.includes('quota');
+                || msg.includes('unavailable') || msg.includes('quota')
+                || msg.includes('model_not_found');
 
-            if ((isRetryable || isFree) && !isLast) {
-                console.warn(`[CEREBRO] ⚠️ ${modelId} falló (${status ?? msg.slice(0, 60)}). Probando siguiente...`);
+            if ((isRetryable || true) && !isLast) {
+                console.warn(`[CEREBRO] ⚠️ ${label} falló (${status ?? msg.slice(0, 60)}). Siguiente...`);
                 continue;
             }
 
-            console.error(`[CEREBRO] ❌ Error con ${modelId}:`, error);
+            console.error(`[CEREBRO] ❌ Error con ${label}:`, error);
             return new Response(`❌ Error: ${error.message || 'Error desconocido'}`, { status: 500 });
         }
     }
 
-    return new Response("❌ Sin modelos disponibles. Intentá en unos minutos.", { status: 503 });
+    return new Response("❌ Sin modelos disponibles. Verificá tus API keys en .env", { status: 503 });
 }
-
