@@ -178,10 +178,8 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                                 }`}>
 
                                 <div className="flex flex-col gap-3">
+                                    {/* Mapeo de imagenes y adjuntos unicamente */}
                                     {(message.parts || []).map((part: any, index: number) => {
-                                        if (part.type === 'text') {
-                                            return <div key={index} className="whitespace-pre-wrap">{part.text}</div>;
-                                        }
                                         if (part.type === 'file' || part.type === 'image') {
                                             const fileObj = part.file || part;
                                             const mediaType = fileObj.mediaType || fileObj.type || '';
@@ -190,7 +188,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                                             const fileName = fileObj.name || fileObj.filename || 'Imagen adjunta';
 
                                             return (
-                                                <div key={index} className="mt-1">
+                                                <div key={`media-${index}`} className="mt-1">
                                                     {isImage ? (
                                                         <img
                                                             src={fileUrl}
@@ -209,22 +207,32 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                                         }
                                         return null;
                                     })}
-                                    {!message.parts && message.content && (() => {
-                                        const content = message.content;
-                                        if (message.role === 'user') return <div className="whitespace-pre-wrap">{content}</div>;
 
-                                        const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/);
+                                    {/* Renderizado centralizado del Texto */}
+                                    {(() => {
+                                        let rawText = '';
+                                        if (message.parts && message.parts.length > 0) {
+                                            rawText = message.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n');
+                                        } else if (message.content) {
+                                            rawText = message.content;
+                                        }
+
+                                        if (!rawText) return null;
+
+                                        if (message.role === 'user') return <div className="whitespace-pre-wrap">{rawText}</div>;
+
+                                        const thinkMatch = rawText.match(/<think>([\s\S]*?)(?:<\/think>|$)/);
                                         const hasThink = !!thinkMatch;
                                         const thinkContent = hasThink ? thinkMatch[1].trim() : '';
-                                        const mainContent = content.replace(/<think>[\s\S]*?(?:<\/think>|$)/, '').trim();
+                                        const mainContent = rawText.replace(/<think>[\s\S]*?(?:<\/think>|$)/, '').trim();
 
                                         return (
                                             <>
                                                 {hasThink && (
-                                                    <details className="mb-3 mt-1 group" open={!content.includes('</think>')}>
+                                                    <details className="mb-3 mt-1 group" open={!rawText.includes('</think>')}>
                                                         <summary className="text-[11px] text-slate-500 font-medium cursor-pointer flex items-center gap-1.5 hover:text-slate-300 transition-colors select-none">
-                                                            <div className={`w-1.5 h-1.5 rounded-full ${content.includes('</think>') ? 'bg-emerald-500/50' : 'bg-violet-500/80 animate-pulse'}`} />
-                                                            {content.includes('</think>') ? 'Análisis lógico completado' : 'Analizando hardware (DeepSeek Reasoning)...'}
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${rawText.includes('</think>') ? 'bg-emerald-500/50' : 'bg-violet-500/80 animate-pulse'}`} />
+                                                            {rawText.includes('</think>') ? 'Análisis lógico completado' : 'Analizando hardware (DeepSeek Reasoning)...'}
                                                         </summary>
                                                         <div className="mt-2 mb-2 text-[11.5px] text-slate-400 border-l-2 border-violet-900/50 pl-3 py-1.5 bg-slate-950/30 rounded-r-md">
                                                             <div className="whitespace-pre-wrap font-mono leading-relaxed">{thinkContent}</div>
@@ -234,7 +242,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                                                 {mainContent && (
                                                     <div className="whitespace-pre-wrap text-[14px]">{mainContent}</div>
                                                 )}
-                                                {message.role === 'assistant' && mainContent && (
+                                                {(message.role === 'assistant' || message.role === 'system') && mainContent && (
                                                     <div className="mt-4 flex justify-end">
                                                         <button
                                                             onClick={(e) => {
