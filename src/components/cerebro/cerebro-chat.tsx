@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon, Plus } from "lucide-react";
+import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon, Plus, Loader2 } from "lucide-react";
 import { saveMessagesToDbAction, saveUserMessageAction, updateConversationTitleAction, generateGeminiPromptAction } from "@/actions/cerebro-actions";
 import { toast } from "sonner";
 
@@ -53,6 +53,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isSummarizing, setIsSummarizing] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [zoom, setZoom] = useState(1);
 
@@ -144,6 +145,34 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                 text: currentInput,
                 files: fileParts.length > 0 ? fileParts : undefined
             });
+        }
+    };
+
+    const handleSummarize = async () => {
+        if (messages.length === 0) return;
+
+        setIsSummarizing(true);
+        try {
+            const res = await fetch("/api/cerebro/summarize", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ messages }),
+            });
+
+            const data = await res.json();
+            if (res.ok && data.summary) {
+                // Dispatch event to open KnowledgePanel with the summary
+                window.dispatchEvent(new CustomEvent('cerebro-save-wiki', {
+                    detail: { content: data.summary }
+                }));
+                toast.success("Resumen técnico generado correctamente.");
+            } else {
+                toast.error(data.error || "Error al generar el resumen.");
+            }
+        } catch (error) {
+            toast.error("Error de conexión al resumir.");
+        } finally {
+            setIsSummarizing(false);
         }
     };
 
@@ -330,7 +359,25 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
             </ScrollArea>
 
             {/* Input Area */}
-            <div className="p-4 border-t border-slate-800 bg-slate-950/50 shrink-0">
+            <div className="p-4 border-t border-slate-800 bg-slate-950/50 shrink-0 relative">
+                {/* Floating Summary Button */}
+                {messages.length > 1 && (
+                    <div className="absolute -top-12 left-0 right-0 flex justify-center px-4 pointer-events-none">
+                        <button
+                            type="button"
+                            onClick={handleSummarize}
+                            disabled={isSummarizing || isLoading}
+                            className="pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 border border-emerald-400/20 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            {isSummarizing ? (
+                                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Procesando Solución...</>
+                            ) : (
+                                <><BrainCircuit className="w-3.5 h-3.5" /> Finalizar y Resumir para Wiki</>
+                            )}
+                        </button>
+                    </div>
+                )}
+
                 <form
                     onSubmit={onSubmit}
                     className="flex flex-col gap-2 w-full mx-auto"
