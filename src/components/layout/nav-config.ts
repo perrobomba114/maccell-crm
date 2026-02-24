@@ -1,8 +1,14 @@
 export const vendorGroups = [
     {
-        label: "Comercial",
+        label: "Principal",
         items: [
             { href: "/vendor/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+            { href: "/vendor/cerebro", label: "Cerebro AI", icon: "BrainCircuit" },
+        ]
+    },
+    {
+        label: "Comercial",
+        items: [
             { href: "/vendor/pos", label: "Punto de Venta", icon: "ShoppingCart" },
             { href: "/vendor/sales", label: "Mis Ventas", icon: "Receipt" },
             { href: "/vendor/expenses", label: "Mis Gastos", icon: "Banknote" },
