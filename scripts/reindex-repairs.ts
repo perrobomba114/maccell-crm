@@ -68,11 +68,12 @@ async function main() {
             const cast = useVector ? '::vector' : '';
 
             await pool.query(
-                `INSERT INTO repair_embeddings ("id", "repairId", "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding")
-                 VALUES ($1, $2, $3, $4, $5, $6, $7${cast})
+                `INSERT INTO repair_embeddings ("id", "repairId", "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding", "updatedAt")
+                 VALUES ($1, $2, $3, $4, $5, $6, $7${cast}, NOW())
                  ON CONFLICT ("repairId") DO UPDATE SET
                  "contentText" = EXCLUDED."contentText",
-                 "embedding" = EXCLUDED."embedding"`,
+                 "embedding" = EXCLUDED."embedding",
+                 "updatedAt" = NOW()`,
                 [
                     `emb_${repair.id}`,
                     repair.id,
