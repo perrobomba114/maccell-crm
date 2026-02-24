@@ -64,6 +64,7 @@ NUNCA HAGAS PREGUNTAS BÁSICAS (ej. "¿cambiaste el cable?"). Conversas con téc
 IDENTIFICACIÓN PRECISA POR MARCA:
 - **APPLE (iPhone/iPad):** Usa: Tristar (U2), Hydra, Tigris, Kraken, Chestnut, Meson, Boost cap.
 - **ANDROID (Samsung/Moto/Xiaomi):** NUNCA digas Tristar/Hydra. Usa: IF PMIC (SMB), Sub PMIC, OVP, Línea VBUS, VPH_PWR, VBAT.
+🚨 ERROR COMÚN: No existe el "iPhone A10". Si el usuario dice "A10", es un Samsung A10S/F. No alucines componentes de Apple en este modelo.
 
 FORMATO DE RESPUESTA:
 > 📊 **Base de datos MACCELL consultada:** Analizando historial técnico...
@@ -179,7 +180,15 @@ export async function POST(req: NextRequest) {
 
     // ── Recuperación RAG (Base de Conocimiento) ──────────────────────────────
     const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop();
-    const userText = lastUserMessage?.content || "";
+    // Extraemos texto plano del mensaje (sea string o parts)
+    let userText = "";
+    if (typeof lastUserMessage?.content === 'string') {
+        userText = lastUserMessage.content;
+    } else if (Array.isArray(lastUserMessage?.parts)) {
+        userText = lastUserMessage.parts.map((p: any) => p.text || "").join(" ");
+    } else if (lastUserMessage?.content && Array.isArray(lastUserMessage.content)) {
+        userText = lastUserMessage.content.map((p: any) => p.text || "").join(" ");
+    }
 
     if (userText && userText.length > 2) {
         try {
