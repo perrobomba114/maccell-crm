@@ -6,6 +6,7 @@ import { streamText } from "ai";
 import { db as prisma } from "@/lib/db";
 import fs from 'fs';
 import path from 'path';
+import pdfParse from 'pdf-parse';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURACIÓN — Cascade multi-proveedor (sin pagar casi nada)
@@ -31,7 +32,7 @@ import path from 'path';
 
 const MAX_HISTORY_MSGS = 6;
 const MAX_MSG_CHARS = 600;
-const MAX_OUTPUT_TOKENS = 550;
+const MAX_OUTPUT_TOKENS = 1200;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMPTS
@@ -193,17 +194,8 @@ export async function POST(req: NextRequest) {
                                     if (fs.existsSync(pdfPath)) {
                                         try {
                                             const dataBuffer = fs.readFileSync(pdfPath);
-                                            // Usamos eval('require') para que Next.js/Webpack ignore esta librería en el bundle
-                                            // y no tire 404 not-found errors por problemas de empaquetado.
-                                            let pdfData;
-                                            try {
-                                                const parseFn = eval('require')('pdf-parse');
-                                                pdfData = await parseFn(dataBuffer);
-                                            } catch (requireError) {
-                                                console.error("[Cerebro] No se pudo hacer require dinámico de pdf-parse", requireError);
-                                                pdfData = { text: "" };
-                                            }
-                                            ctx += `\n[📋 CONTENIDO DEL PDF SCHEMATIC ASOCIADO: ${path.basename(url)}]\n${pdfData.text.substring(0, 3000)}...\n`;
+                                            const pdfData = await pdfParse(dataBuffer);
+                                            ctx += `\n[📋 CONTENIDO DEL PDF SCHEMATIC ASOCIADO: ${path.basename(url)}]\n${pdfData.text.substring(0, 6000)}...\n`;
                                         } catch (e) {
                                             console.log("[Cerebro] Falló lectura de PDF:", e);
                                         }
@@ -211,8 +203,8 @@ export async function POST(req: NextRequest) {
                                 }
                             }
                         }
-                        ctx += "\n";
                     }
+                    ctx += "\n";
 
                     systemPrompt += `\n\n### 📚 WIKI DE MACCELL (BASE DE CONOCIMIENTO Y ESQUEMÁTICOS):
 He encontrado los siguientes casos reales documentados por técnicos en la base de datos de MACCELL que coinciden con la consulta:

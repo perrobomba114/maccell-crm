@@ -21,8 +21,8 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  serverExternalPackages: ['pdf-parse'],
   experimental: {
-    serverComponentsExternalPackages: ['pdf-parse'],
     serverActions: {
       allowedOrigins: ["sistema.maccell.com.ar", "localhost:3000"],
       bodySizeLimit: '50mb',
