@@ -74,7 +74,8 @@ async function isElectronicBoard(base64Image: string): Promise<boolean> {
                 }],
                 stream: false,
                 options: { temperature: 0, num_predict: 5 }
-            })
+            }),
+            signal: AbortSignal.timeout(3000) // 3 segundos max para decidir
         });
         if (!res.ok) return true; // Si el router falla, dejamos pasar al modelo principal
         const data = await res.json();
@@ -201,58 +202,50 @@ export async function POST(req: NextRequest) {
         }
 
         const modelToUse = hasImagesInLastMessage ? OLLAMA_MODELS.VISION : OLLAMA_MODELS.CHAT;
-        console.log(`[CEREBRO] Modelo=${modelToUse} | Modo=${hasImagesInLastMessage ? 'VISION + ROUTER ✅' : 'TEXTO (deepseek-r1)'} | Msgs=${messagesForOllama.length}`);
+        console.log(`[CEREBRO] Modo=${hasImagesInLastMessage ? 'VISION' : 'TEXTO'} | Msgs=${messagesForOllama.length}`);
 
+        // 4. Modo OpenRouter Directo (Ruta Principal en Producción)
         const openrouterKey = process.env.OPENROUTER_API_KEY || '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';
-        const modelName = process.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-lite-preview-02-05:free';
+        const modelName = process.env.OPENROUTER_MODEL || (hasImagesInLastMessage ? 'google/gemini-2.0-flash-exp:free' : 'google/gemini-2.0-flash-lite-preview-02-05:free');
 
-        // 4. Modo OpenRouter Directo
-        console.log(`[CEREBRO] Ruteando hacia LA NUBE OPENROUTER (${modelName}).`);
+        console.log(`[CEREBRO] Ruteando hacia OPENROUTER (${modelName})...`);
 
-        const openrouter = createOpenRouter({ apiKey: openrouterKey });
-
-        const coreMessages = messagesForOllama.map(m => {
-            let content: any = m.content || "";
-
-            if (m.images && m.images.length > 0 && m.role === 'user') {
-                content = [
-                    { type: 'text', text: m.content || "Analiza esta placa electrónica." }
-                ];
-                m.images.forEach((b64: string) => {
-                    content.push({ type: 'image', image: `data:image/jpeg;base64,${b64}` });
-                });
-            }
-            return { role: m.role, content };
-        });
-
-        // Usamos modelo online a través de Vercel AI SDK Standardized Object 
         try {
+            const openrouter = createOpenRouter({
+                apiKey: openrouterKey,
+                headers: {
+                    "HTTP-Referer": "https://sistema.maccell.com.ar",
+                    "X-Title": "Maccell CRM",
+                }
+            });
+
+            const coreMessages = messagesForOllama.map(m => {
+                let content: any = m.content || "";
+                if (m.images && m.images.length > 0 && m.role === 'user') {
+                    content = [{ type: 'text', text: m.content || "Analizá esta placa electrónica." }];
+                    m.images.forEach((b64: string) => {
+                        content.push({ type: 'image', image: `data:image/jpeg;base64,${b64}` });
+                    });
+                }
+                return { role: m.role, content };
+            });
+
             const result = streamText({
                 model: openrouter(modelName),
                 messages: coreMessages as any,
                 temperature: 0.6,
             });
 
-            const stream = new ReadableStream({
-                async start(controller) {
-                    try {
-                        for await (const textPart of result.textStream) {
-                            controller.enqueue(new TextEncoder().encode(textPart));
-                        }
-                    } catch (e: any) {
-                        console.error("[CLOUD_API] Stream error:", e);
-                        controller.enqueue(new TextEncoder().encode(`\n[Error de Cloud API: ${e.message}]`));
-                    } finally {
-                        controller.close();
-                    }
+            // Retornar stream de texto puro para el transport del cliente
+            return result.toTextStreamResponse({
+                headers: {
+                    'Content-Type': 'text/plain; charset=utf-8',
+                    'Cache-Control': 'no-cache',
                 }
             });
-
-            return new Response(stream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         } catch (error: any) {
-            console.error("[CEREBRO NUBE] Fallo ruteo a api:", error);
-            // Si falla devolvemos error
-            return new Response(`[Error fatal del servidor enrutador: ${error.message}]`, { status: 500 });
+            console.error("[CEREBRO NUBE ERROR]:", error);
+            return new Response(`Error de Conexión con IA: ${error.message}`, { status: 500 });
         }
 
         // 4. Petición manual a Ollama con soporte para Abort Signal (Modo Local Legacy)
