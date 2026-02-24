@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { streamText, generateText } from "ai";
+import { streamText } from "ai";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURACIÓN — Cascade de modelos por costo
@@ -139,70 +139,56 @@ export async function POST(req: NextRequest) {
 
     const openrouter = createOpenRouter({ apiKey: openrouterKey });
 
-    // ── Paso 1: Encontrar el primer modelo disponible con un ping rápido ──
-    // Los modelos :free pueden fallar al iniciar el stream DESPUÉS de responder 200.
-    // Un ping de 1 token detecta la disponibilidad real antes de hacer el stream completo.
-    let activeModel: string | null = null;
-
+    // Cascade directo sin ping previo — evita 8-10 seg de overhead por consulta.
+    // streamText lanza sincrónicamente si el modelo rechaza el request (401/429/503).
+    // En ese caso, pasamos al siguiente modelo del cascade.
     for (let i = 0; i < MODEL_CASCADE.length; i++) {
         const modelId = MODEL_CASCADE[i];
-        const isFree = modelId.endsWith(':free');
+        const isFree = modelId.endsWith(':free') || modelId === 'openrouter/free';
         const isLast = i === MODEL_CASCADE.length - 1;
 
         try {
-            // Ping: 1 token para verificar que el modelo responde
-            await generateText({
+            const result = streamText({
                 model: openrouter(modelId),
-                messages: [{ role: 'user', content: 'ok' }],
-                maxOutputTokens: 1,
-                temperature: 0,
+                system: systemPrompt,
+                messages: coreMessages,
+                temperature: 0.3,
+                maxOutputTokens: MAX_OUTPUT_TOKENS,
             });
-            activeModel = modelId;
-            console.log(`[CEREBRO] ✅ Usando: ${modelId} (${isFree ? 'GRATIS 🎉' : 'pago ~$0.0002'}) | modo=${visionMode ? 'visión' : 'texto'}`);
-            break;
-        } catch (pingErr: any) {
-            const errInfo = pingErr?.status ?? pingErr?.message?.slice(0, 80) ?? 'error';
-            if (!isLast) {
-                console.warn(`[CEREBRO] ⚠️ ${modelId} no disponible (${errInfo}). Siguiente...`);
-                continue;
-            }
-            console.error(`[CEREBRO] ❌ Todos los modelos fallaron.`);
-            if (pingErr?.status === 401 || pingErr?.message?.includes('User not found')) {
+
+            console.log(`[CEREBRO] ▶ ${modelId} (${isFree ? 'GRATIS 🎉' : 'pago ~$0.00019'}) | ${visionMode ? 'VISIÓN' : 'TEXTO'}`);
+
+            return result.toUIMessageStreamResponse({
+                headers: {
+                    'Cache-Control': 'no-cache, no-store',
+                    'X-Accel-Buffering': 'no',
+                    'X-Model-Used': modelId,
+                    'X-Model-Tier': isFree ? 'free' : 'paid',
+                }
+            });
+
+        } catch (error: any) {
+            const status = error?.status ?? error?.statusCode;
+            const msg = String(error?.message || '');
+
+            if (status === 401 || msg.includes('User not found')) {
                 return new Response("❌ API Key de OpenRouter inválida.", { status: 401 });
             }
-            return new Response("❌ Todos los modelos no disponibles. Intentá en unos minutos.", { status: 503 });
-        }
-    }
 
-    if (!activeModel) {
-        return new Response("❌ Sin modelo disponible.", { status: 503 });
-    }
+            const isRetryable = status === 429 || status === 503 || status === 502
+                || msg.includes('rate limit') || msg.includes('overloaded')
+                || msg.includes('unavailable') || msg.includes('quota');
 
-    // ── Paso 2: Stream con el modelo confirmado ──
-    try {
-        const isFree = activeModel.endsWith(':free');
-        const result = streamText({
-            model: openrouter(activeModel),
-            system: systemPrompt,
-            messages: coreMessages,
-            temperature: 0.3,
-            maxOutputTokens: MAX_OUTPUT_TOKENS,
-        });
-
-        return result.toUIMessageStreamResponse({
-            headers: {
-                'Cache-Control': 'no-cache, no-store',
-                'X-Accel-Buffering': 'no',
-                'X-Model-Used': activeModel,
-                'X-Model-Tier': isFree ? 'free' : 'paid',
+            if ((isRetryable || isFree) && !isLast) {
+                console.warn(`[CEREBRO] ⚠️ ${modelId} falló (${status ?? msg.slice(0, 60)}). Probando siguiente...`);
+                continue;
             }
-        });
 
-    } catch (error: any) {
-        console.error(`[CEREBRO] Error en stream con ${activeModel}:`, error);
-        if (error.status === 401 || error.message?.includes('User not found')) {
-            return new Response("❌ API Key inválida.", { status: 401 });
+            console.error(`[CEREBRO] ❌ Error con ${modelId}:`, error);
+            return new Response(`❌ Error: ${error.message || 'Error desconocido'}`, { status: 500 });
         }
-        return new Response(`❌ Error: ${error.message || 'Error desconocido'}`, { status: 500 });
     }
+
+    return new Response("❌ Sin modelos disponibles. Intentá en unos minutos.", { status: 503 });
 }
+
