@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Search, Plus, BookOpen, ChevronRight, Loader2, PenTool, Hash, Info } from "lucide-react";
+import { Search, Plus, BookOpen, ChevronRight, Loader2, PenTool, Hash, Info, FileIcon, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,6 +16,8 @@ import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { uploadKnowledgeMedia } from "@/actions/upload-actions";
+import { useRef } from "react";
 
 interface KnowledgeItem {
     id: string;
@@ -24,6 +26,7 @@ interface KnowledgeItem {
     deviceBrand: string;
     deviceModel: string;
     problemTags: string[];
+    mediaUrls?: string[];
     createdAt: string;
     author: { name: string };
 }
@@ -47,6 +50,9 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
     const [newBrand, setNewBrand] = useState("");
     const [newModel, setNewModel] = useState("");
     const [newTags, setNewTags] = useState("");
+    const [mediaFiles, setMediaFiles] = useState<{ file: File, base64: string, name: string }[]>([]);
+    const [existingMedia, setExistingMedia] = useState<string[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const fetchKnowledge = async (query = "") => {
         setIsLoading(true);
@@ -63,6 +69,31 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
         }
     };
 
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const filesArray = Array.from(e.target.files);
+            const newMedia = await Promise.all(
+                filesArray.map(async (file) => {
+                    const base64 = await new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.readAsDataURL(file);
+                    });
+                    return { file, base64, name: file.name };
+                })
+            );
+            setMediaFiles(prev => [...prev, ...newMedia]);
+        }
+    };
+
+    const removeMedia = (index: number) => {
+        setMediaFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const removeExistingMedia = (index: number) => {
+        setExistingMedia(prev => prev.filter((_, i) => i !== index));
+    };
+
     const handleSaveWikiEntry = async () => {
         if (!newTitle || !newContent || !userId) {
             toast.error("Título y contenido son obligatorios");
@@ -71,6 +102,18 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
 
         setIsSaving(true);
         try {
+            const uploadedUrls: string[] = [];
+            for (const media of mediaFiles) {
+                const res = await uploadKnowledgeMedia(media.base64, media.name);
+                if (res.success && res.url) {
+                    uploadedUrls.push(res.url);
+                } else {
+                    toast.error(`Error subiendo ${media.name}`);
+                }
+            }
+
+            const finalMediaUrls = [...existingMedia, ...uploadedUrls];
+
             const res = await fetch("/api/cerebro/knowledge", {
                 method: editId ? "PATCH" : "POST",
                 body: JSON.stringify({
@@ -80,7 +123,8 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
                     deviceBrand: newBrand,
                     deviceModel: newModel,
                     problemTags: newTags.split(",").map(t => t.trim()).filter(Boolean),
-                    authorId: userId
+                    authorId: userId,
+                    mediaUrls: finalMediaUrls
                 })
             });
 
@@ -95,7 +139,8 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
                         content: newContent,
                         deviceBrand: newBrand,
                         deviceModel: newModel,
-                        problemTags: newTags.split(",").map(t => t.trim()).filter(Boolean)
+                        problemTags: newTags.split(",").map(t => t.trim()).filter(Boolean),
+                        mediaUrls: finalMediaUrls
                     });
                 }
                 resetForm();
@@ -115,6 +160,8 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
         setNewBrand("");
         setNewModel("");
         setNewTags("");
+        setMediaFiles([]);
+        setExistingMedia([]);
         setEditId(null);
     };
 
@@ -125,6 +172,8 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
         setNewBrand(item.deviceBrand);
         setNewModel(item.deviceModel);
         setNewTags(item.problemTags.join(", "));
+        setExistingMedia(item.mediaUrls || []);
+        setMediaFiles([]);
         setShowCreate(true);
     };
 
@@ -196,6 +245,40 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
                                 value={newTags}
                                 onChange={e => setNewTags(e.target.value)}
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-zinc-400">ADJUNTOS (Esquemáticos, Fotos de placa)</label>
+
+                            <div className="flex flex-wrap gap-2 mb-2 p-2 bg-zinc-800/30 rounded-lg border border-zinc-700/50 empty:hidden">
+                                {existingMedia.map((url, i) => {
+                                    const isPdf = url.toLowerCase().endsWith('.pdf');
+                                    return (
+                                        <div key={`exist-${i}`} className="relative group w-16 h-16 bg-zinc-800 rounded-md border border-zinc-700 flex items-center justify-center overflow-hidden">
+                                            {isPdf ? <FileIcon className="text-blue-400" size={24} /> : <img src={url} alt="existing" className="w-full h-full object-cover" />}
+                                            <button type="button" onClick={() => removeExistingMedia(i)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                                {mediaFiles.map((media, i) => {
+                                    const isPdf = media.file.type === "application/pdf";
+                                    return (
+                                        <div key={`new-${i}`} className="relative group w-16 h-16 bg-zinc-800 rounded-md border border-zinc-700 flex items-center justify-center overflow-hidden">
+                                            {isPdf ? <FileIcon className="text-blue-400" size={24} /> : <img src={media.base64} alt="preview" className="w-full h-full object-cover" />}
+                                            <button type="button" onClick={() => removeMedia(i)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <input type="file" hidden multiple accept="image/*,application/pdf" ref={fileInputRef} onChange={handleFileChange} />
+                            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="w-full bg-zinc-800/50 border-zinc-700 text-zinc-300 hover:bg-zinc-700">
+                                <Plus className="w-4 h-4 mr-2" /> Subir Esquemático / Imagen
+                            </Button>
                         </div>
                     </div>
                     <DialogFooter>
@@ -302,6 +385,33 @@ export function KnowledgePanel({ userId }: KnowledgePanelProps) {
                                 {selectedItem.content}
                             </div>
                         </div>
+
+                        {selectedItem.mediaUrls && selectedItem.mediaUrls.length > 0 && (
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-semibold text-zinc-400 mb-2 flex items-center gap-2">
+                                    <ImageIcon className="w-3 h-3" />
+                                    ESQUEMÁTICOS Y ADJUNTOS
+                                </h4>
+                                <div className="flex flex-col gap-2">
+                                    {selectedItem.mediaUrls.map((url, i) => {
+                                        const isPdf = url.toLowerCase().endsWith('.pdf');
+                                        if (isPdf) {
+                                            return (
+                                                <a key={i} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-colors">
+                                                    <FileIcon className="w-5 h-5" />
+                                                    <span className="text-sm font-medium">Ver Esquemático PDF</span>
+                                                </a>
+                                            );
+                                        }
+                                        return (
+                                            <a key={i} href={url} target="_blank" rel="noreferrer" className="block rounded-lg overflow-hidden border border-zinc-700/50 bg-zinc-900 shadow-sm hover:border-emerald-500/50 transition-colors">
+                                                <img src={url} alt="Adjunto técnico" className="w-full h-auto object-contain max-h-[400px]" loading="lazy" />
+                                            </a>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="bg-violet-500/5 rounded-lg p-3 border border-violet-500/10 flex gap-3">
                             <Info className="w-4 h-4 text-violet-500 shrink-0 mt-0.5" />

@@ -72,22 +72,28 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
     try {
         const body = await req.json();
-        const { id, title, content, deviceBrand, deviceModel, problemTags, authorId } = body;
+        const { id, title, content, deviceBrand, deviceModel, problemTags, authorId, mediaUrls } = body;
 
         if (!id || !title || !content) {
             return NextResponse.json({ error: "Información incompleta." }, { status: 400 });
         }
 
+        const dataToUpdate: any = {
+            title,
+            content,
+            deviceBrand: deviceBrand || undefined,
+            deviceModel: deviceModel || undefined,
+            problemTags: problemTags || undefined,
+            authorId: authorId || undefined,
+        };
+
+        if (mediaUrls !== undefined) {
+            dataToUpdate.mediaUrls = mediaUrls;
+        }
+
         const updated = await (prisma as any).repairKnowledge.update({
             where: { id },
-            data: {
-                title,
-                content,
-                deviceBrand: deviceBrand || undefined,
-                deviceModel: deviceModel || undefined,
-                problemTags: problemTags || undefined,
-                authorId: authorId || undefined
-            }
+            data: dataToUpdate
         });
 
         return NextResponse.json(updated);
