@@ -3,6 +3,7 @@ import { createGroq } from "@ai-sdk/groq";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { streamText } from "ai";
+import { db as prisma } from "@/lib/db";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURACIÓN — Cascade multi-proveedor (sin pagar casi nada)
@@ -132,11 +133,52 @@ export async function POST(req: NextRequest) {
     if (!messages.length) return new Response("No messages.", { status: 400 });
 
     const visionMode = hasImageParts(messages);
-    const systemPrompt = visionMode ? VISION_PROMPT : SYSTEM_PROMPT;
+    let systemPrompt = visionMode ? VISION_PROMPT : SYSTEM_PROMPT;
     const coreMessages = toCoreMsgs(messages);
     if (coreMessages.length === 0) return new Response("No valid messages.", { status: 400 });
 
     const modeLabel = visionMode ? 'VISIÓN' : 'TEXTO';
+
+    // ── Recuperación RAG (Base de Conocimiento) ──────────────────────────────
+    const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop();
+    const userText = lastUserMessage?.content || "";
+
+    if (userText && userText.length > 2) {
+        try {
+            // Extraer posibles términos de búsqueda (modelos, fallas, etc)
+            const terms = userText.split(/\s+/).filter((t: string) => t.length >= 3).slice(0, 5);
+
+            if (terms.length > 0) {
+                const searchConditions = terms.map((term: string) => ({
+                    OR: [
+                        { title: { contains: term, mode: 'insensitive' } },
+                        { deviceModel: { contains: term, mode: 'insensitive' } },
+                        { content: { contains: term, mode: 'insensitive' } },
+                        { problemTags: { hasSome: [term] } }
+                    ]
+                }));
+
+                const knowledgeBaseResults = await (prisma as any).repairKnowledge.findMany({
+                    where: { OR: searchConditions },
+                    take: 3,
+                    orderBy: { createdAt: 'desc' }
+                });
+
+                if (knowledgeBaseResults && knowledgeBaseResults.length > 0) {
+                    const ctx = knowledgeBaseResults.map((k: any, i: number) =>
+                        `[CASO RELEVANTE ${i + 1} — ${k.deviceBrand} ${k.deviceModel}]\nFalla: ${k.title}\nResolución: ${k.content}`
+                    ).join("\n\n");
+
+                    systemPrompt += `\n\n### 📚 WIKI DE MACCELL (BASE DE CONOCIMIENTO):
+He encontrado los siguientes casos reales documentados por técnicos en la base de datos de MACCELL que coinciden con la consulta. BÁSATE EN ESTOS DATOS RECIENTES PARA EL DIAGNÓSTICO:
+
+${ctx}`;
+                }
+            }
+        } catch (error) {
+            console.error("[Cerebro] RAG Error:", error);
+        }
+    }
 
     // ── Cascade de intentos ──────────────────────────────────────────────────
     // Cada entrada: { label, model }
