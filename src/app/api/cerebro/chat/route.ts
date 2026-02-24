@@ -61,6 +61,7 @@ REGLAS DE RESPUESTA (NIVEL SENIOR):
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function isElectronicBoard(base64Image: string): Promise<boolean> {
+    if (!OLLAMA_URL) return true; // Si no hay Ollama local, dejamos pasar al modelo de nube
     try {
         const res = await fetch(`${OLLAMA_URL}/api/chat`, {
             method: 'POST',
