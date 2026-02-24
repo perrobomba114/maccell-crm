@@ -7,6 +7,7 @@ import { db as prisma } from "@/lib/db";
 import fs from 'fs';
 import path from 'path';
 import pdfParse from 'pdf-parse';
+import { findSimilarRepairs, formatRAGContext } from "@/lib/cerebro-rag";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURACIÓN — Cascade multi-proveedor (sin pagar casi nada)
@@ -53,14 +54,21 @@ ACCIÓN SUGERIDA: [Ej. Usar aleación de 138°C para extraer el FPC sin dañar m
 
 const SYSTEM_PROMPT = `Eres "Cerebro", el núcleo de inteligencia técnica de MACCELL. Especialista en Diagnóstico Diferencial de Nivel 3.
 
-🚨 REGLA DE ORO DE DIAGNÓSTICO:
-NO ASUMAS. Si un equipo carga 0.9A o 1.0A y no da imagen, el sistema de carga ESTÁ FUNCIONANDO. El problema es de **IMAGEN (Display/Backlight)** o **BOOT**. Nunca diagnostiques "falla de carga" si el consumo es superior a 0.5A estables, ya que eso indica que el PMIC está alimentando la placa.
+🚨 REGLAS DE ORO DE DIAGNÓSTICO (ESTRICTAS):
+1. CRÉELE AL TÉCNICO. Céntrate ÚNICAMENTE en el síntoma exacto informado ("no carga", "no da imagen", "no enciende", "se reinicia", "no hay wifi", etc.).
+2. NO MEZCLES FALLAS INCOMPATIBLES. Si el técnico dice "no carga", el problema ES de carga; NUNCA sugieras que "podría ser una falla de imagen" (o viceversa). Solo junta diagnósticos si el usuario literalmente dice "no carga Y TAMPOCO da imagen".
+3. NO ASUMAS CONSUMOS NI DATOS. Si no te dan un amperaje, no inventes que el equipo consume "0.9A".
+4. MANTÉN EL FOCO: La solución debe ser directa al problema mencionado.
 
 ### 🧠 PROTOCOLO DE RAZONAMIENTO (Diferencial):
 1. **Fallas de Imagen (No hay video):** 
    - Si vibra/suena pero no hay luz: Revisar Circuito Backlight (Diodo, Bobina, IC Boost). Voltajes de 20V+.
    - Si no hay ni imagen ni luz: Revisar Voltajes LDO de Display (+5.4V / -5.4V), líneas de datos MIPI (Modo Diodo: todos los pares deben ser similares ~300-500mV) y Reset del LCD.
-2. **Fallas de Encendido (No consume o consume poco):** 
+2. **Fallas de Carga (No sube el porcentaje / no detecta el cargador):**
+   - Verificar voltaje de entrada (VBUS 5V).
+   - Revisar OVP, IC de Carga (Tristar/Hydra en Apple, IF PMIC en Android).
+   - Comprobar batería y resistencia de sensado de temperatura (Thermistor).
+3. **Fallas de Encendido (No consume o consume poco):** 
    - Consumo 0.010 - 0.050: Falla de comunicación (CPU/RAM) o cristal oscilador.
    - Consumo fijo (stuck) 0.150 - 0.250: Falla de voltajes secundarios o PMIC enviando señales de error.
 3. **Identificación de Marca (ESTRICTO):**
@@ -71,7 +79,7 @@ NO ASUMAS. Si un equipo carga 0.9A o 1.0A y no da imagen, el sistema de carga ES
 > 📊 **Análisis Diferencial MACCELL:** Cruzando datos de consumo y comportamiento lógico...
 
 ### 🔍 ESTADO DEL SISTEMA
-[Analiza qué secciones funcionan (ej: Carga OK a 0.9A) y cuál es la sospecha real]
+[Contextualiza el problema reportado por el técnico y aísla el circuito responsable de forma directa]
 
 ### 🕵️‍♂️ PROTOCOLO DE MEDICIÓN (PASO A PASO)
 - **Paso 1 (Modo Diodo):** [Medir X línea en el conector FPC]
@@ -119,12 +127,21 @@ function toCoreMsgs(messages: any[]): any[] {
                         if (text.trim()) contentParts.push({ type: 'text', text });
                     } else if (part.type === 'file') {
                         const url = part.url || '';
-                        if (url) contentParts.push({ type: 'image', image: url });
+                        const mimeType = part.mediaType || part.mimeType || '';
+                        if (url && (mimeType.startsWith('image/') || url.startsWith('data:image/'))) {
+                            contentParts.push({ type: 'image', image: url });
+                        }
                     }
                 }
                 if (!contentParts.some((p: any) => p.type === 'text') && m.content) {
                     contentParts.unshift({ type: 'text', text: truncate(m.content) });
                 }
+
+                // Si no hay texto ni imágenes (ej. solo subió un PDF vacío de texto)
+                if (contentParts.length === 0 && m.parts.some((p: any) => p.type === 'file')) {
+                    contentParts.push({ type: 'text', text: '[Documento PDF adjunto y procesado]' });
+                }
+
                 return {
                     role: m.role,
                     content: contentParts.length > 0 ? contentParts : truncate(m.content || ''),
@@ -188,80 +205,120 @@ export async function POST(req: NextRequest) {
 
     const modeLabel = visionMode ? 'VISIÓN' : 'TEXTO';
 
-    // ── Recuperación RAG (Base de Conocimiento) ──────────────────────────────
+    // ── Recuperación RAG (Base de Conocimiento Semántica + Historial) ────────
     const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop();
-    // Extraemos texto plano del mensaje (sea string o parts)
     let userText = "";
     if (typeof lastUserMessage?.content === 'string') {
         userText = lastUserMessage.content;
     } else if (Array.isArray(lastUserMessage?.parts)) {
         userText = lastUserMessage.parts.map((p: any) => p.text || "").join(" ");
-    } else if (lastUserMessage?.content && Array.isArray(lastUserMessage.content)) {
-        userText = lastUserMessage.content.map((p: any) => p.text || "").join(" ");
     }
 
-    if (userText && userText.length > 2) {
+    // --- 📄 NUEVO: Lectura de PDF subido por el técnico ---
+    // Buscamos PDFs en toda la conversación para no perder el contexto (manuales/esquemáticos)
+    const allPdfParts = messages
+        .filter((m: any) => m.role === 'user')
+        .flatMap((m: any) => m.parts || [])
+        .filter((p: any) => p.type === 'file' && (p.mediaType === 'application/pdf' || p.filename?.toLowerCase().endsWith('.pdf')));
+
+    // Usamos un Map para procesar PDFs únicos y no duplicar texto
+    const uniquePdfs = new Map();
+    for (const part of allPdfParts) {
+        if (!uniquePdfs.has(part.filename)) {
+            uniquePdfs.set(part.filename, part);
+        }
+    }
+
+    for (const part of Array.from(uniquePdfs.values())) {
         try {
-            // Filter common stop words to improve Prisma search matches
-            const stopWords = new Set(["hola", "tengo", "que", "hacer", "como", "para", "con", "por", "los", "las", "del", "una", "uno", "celular", "equipo", "falla", "problema"]);
+            const base64Data = part.url?.split(';base64,').pop();
+            if (base64Data) {
+                const buffer = Buffer.from(base64Data, 'base64');
+                const pdfData = await pdfParse(buffer);
+                console.log(`[CEREBRO] PDF en memoria (Historial): ${part.filename}`);
+                systemPrompt += `\n\n### 📋 CONTENIDO DEL DOCUMENTO ADJUNTO (${part.filename}):\n${pdfData.text.substring(0, 12000)}\n(Usa los nombres de componentes y mediciones de este documento en tu respuesta).`;
+            }
+        } catch (pdfErr) {
+            console.error("[Cerebro] Falló lectura de PDF adjunto:", pdfErr);
+        }
+    }
 
-            // Extraer posibles términos de búsqueda (modelos, fallas, etc)
-            const terms = userText.toLowerCase().split(/\s+/)
-                .map((t: string) => t.replace(/[^a-z0-9]/g, ''))
-                .filter((t: string) => t.length >= 2 && !stopWords.has(t))
-                .slice(0, 5);
+    if (uniquePdfs.size > 0) {
+        systemPrompt += `\n\n🚨 INSTRUCCIÓN EXCEPCIONAL DE SISTEMA: El usuario ha proporcionado documentos PDF técnicos (esquemáticos o manuales).
+👉 ANULA LA REGLA ANTERIOR DE "MODO DE RESPUESTA OBLIGATORIO" y de "PROTOCOLO DE MEDICIÓN" si el usuario solo está haciendo consultas sobre el documento.
+👉 IGNORA EL FORMATO DE ANÁLISIS DIFERENCIAL 📊 a menos que el usuario esté pidiendo un diagnóstico de una placa real basándose en este documento. NO inventes consumos como 0.9A.
 
-            if (terms.length > 0) {
-                const searchConditions = terms.map((term: string) => ({
-                    OR: [
-                        { title: { contains: term, mode: 'insensitive' } },
-                        { deviceModel: { contains: term, mode: 'insensitive' } },
-                        { content: { contains: term, mode: 'insensitive' } },
-                        { problemTags: { hasSome: [term] } }
-                    ]
-                }));
+⚠️ REGLAS INQUEBRANTABLES PARA ESTA CONVERSACIÓN CON PDF:
+1. EL USUARIO ES UN TÉCNICO DE MICROSOLDADURA NIVEL 3. 
+2. NUNCA des consejos de usuario final (ej. "revisa el cable", "limpia el pin", "llévalo a un profesional", "es peligroso").
+3. TU TAREA ES ERICTAMENTE BASARTE EN EL PDF ADJUNTO: Si el usuario pregunta "no carga", busca las líneas VBUS, el IC de carga (PMIC/IF PMIC), y dile exactamente qué líneas medir, qué voltajes esperar y qué componentes (resistencias, capacitores) revisar.
+4. Responde de ingeniero a ingeniero, directo al grano y utilizando términos técnicos apropiados.`;
+    }
 
-                const knowledgeBaseResults = await (prisma as any).repairKnowledge.findMany({
-                    where: { OR: searchConditions },
-                    take: 3,
-                    orderBy: { createdAt: 'desc' }
+
+    if (userText && userText.length > 3) {
+        try {
+            console.log(`[CEREBRO]🧠 Iniciando búsqueda semántica para: "${userText.substring(0, 40)}..."`);
+
+            // 1. Búsqueda Semántica en la Wiki Técnica (pgvector o local cosine)
+            const similarRepairs = await findSimilarRepairs(userText, 3, 0.65);
+            let ragContext = formatRAGContext(similarRepairs);
+
+            // 2. Búsqueda Proactiva por Marca/Modelo en historial de reparaciones
+            // Intentamos detectar marca/modelo en el texto si no hubo ticket
+            const brands = ['IPHONE', 'SAMSUNG', 'MOTOROLA', 'XIAOMI', 'HUAWEI', 'REEDMI', 'POCO', 'MOTO'];
+            const detectedBrand = brands.find(b => userText.toUpperCase().includes(b));
+
+            // Si detectamos una marca, buscamos las últimas 5 reparaciones exitosas de esa marca/modelo
+            if (detectedBrand) {
+                const words = userText.split(/\s+/).filter(w => w.length > 3);
+
+                // Historial de reparaciones similares
+                const historicalContext = await (prisma as any).repair.findMany({
+                    where: {
+                        deviceBrand: { contains: detectedBrand, mode: 'insensitive' },
+                        diagnosis: { not: null, notIn: [""] },
+                        statusId: { in: [5, 6, 7, 8, 9, 10] }
+                    },
+                    orderBy: { updatedAt: 'desc' },
+                    take: 3
                 });
 
-                if (knowledgeBaseResults && knowledgeBaseResults.length > 0) {
-                    let ctx = "";
-                    for (let i = 0; i < knowledgeBaseResults.length; i++) {
-                        const k = knowledgeBaseResults[i];
-                        ctx += `[CASO RELEVANTE ${i + 1} — ${k.deviceBrand} ${k.deviceModel}]\nFalla: ${k.title}\nResolución: ${k.content}\n`;
+                if (historicalContext.length > 0) {
+                    ragContext += `\n\n### 📜 ÚLTIMOS CASOS REALES DE ${detectedBrand} EN MACCELL:`;
+                    historicalContext.forEach((r: any, idx: number) => {
+                        ragContext += `\n[Caso ${idx + 1}]: ${r.deviceModel} - Falla: ${r.problemDescription}. Diagnóstico exitoso: ${r.diagnosis}`;
+                    });
+                }
 
-                        // Si hay URLs a PDFs manuales o esquemáticos, extraemos texto
-                        if (k.mediaUrls && Array.isArray(k.mediaUrls)) {
-                            for (const url of k.mediaUrls) {
-                                if (typeof url === 'string' && url.toLowerCase().endsWith('.pdf')) {
-                                    const pdfPath = path.join(process.cwd(), 'public', url);
-                                    if (fs.existsSync(pdfPath)) {
-                                        try {
-                                            const dataBuffer = fs.readFileSync(pdfPath);
-                                            const pdfData = await pdfParse(dataBuffer);
-                                            ctx += `\n[📋 CONTENIDO DEL PDF SCHEMATIC ASOCIADO: ${path.basename(url)}]\n${pdfData.text.substring(0, 6000)}...\n`;
-                                        } catch (e) {
-                                            console.log("[Cerebro] Falló lectura de PDF:", e);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    ctx += "\n";
+                // Stock de repuestos relacionados
+                const spareParts = await (prisma as any).sparePart.findMany({
+                    where: {
+                        OR: [
+                            { name: { contains: detectedBrand, mode: 'insensitive' } },
+                            { brand: { contains: detectedBrand, mode: 'insensitive' } },
+                            ...(words.length > 0 ? [{ name: { contains: words[0], mode: 'insensitive' } }] : [])
+                        ],
+                        deletedAt: null,
+                        stockLocal: { gt: 0 }
+                    },
+                    take: 5
+                });
 
-                    systemPrompt += `\n\n### 📚 WIKI DE MACCELL (BASE DE CONOCIMIENTO Y ESQUEMÁTICOS):
-He encontrado los siguientes casos reales documentados por técnicos en la base de datos de MACCELL que coinciden con la consulta:
-
-${ctx}
-BASA TU DIAGNÓSTICO EN ESTOS DATOS Y COMPONENTES (Si el PDF te tira nombres como TR_OUT_B12 o componentes U4001, menciónalos).`;
+                if (spareParts.length > 0) {
+                    ragContext += `\n\n### 📦 STOCK DE REPUESTOS RELACIONADOS:`;
+                    spareParts.forEach((p: any) => {
+                        ragContext += `\n- ${p.name} (${p.brand}): ${p.stockLocal} unidades en local | Precio: $${p.priceArg}`;
+                    });
                 }
             }
+
+            if (ragContext) {
+                systemPrompt += ragContext;
+            }
+
         } catch (error) {
-            console.error("[Cerebro] RAG Error:", error);
+            console.error("[Cerebro] RAG Error Global:", error);
         }
     }
 

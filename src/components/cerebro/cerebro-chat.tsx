@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon, Plus, Loader2 } from "lucide-react";
+import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon, Plus, Loader2, Paperclip, FileText } from "lucide-react";
 import { saveMessagesToDbAction, saveUserMessageAction, updateConversationTitleAction, generateGeminiPromptAction } from "@/actions/cerebro-actions";
 import { toast } from "sonner";
 
@@ -386,16 +386,19 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                     {files.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-2 p-2 bg-slate-900/30 rounded-lg border border-slate-800/50">
                             {files.map((file, i) => (
-                                <div key={i} className="relative group">
+                                <div key={i} className="relative group shrink-0">
                                     {file.type.startsWith('image/') ? (
-                                        <img
-                                            src={URL.createObjectURL(file)}
-                                            alt="preview"
-                                            className="w-12 h-12 object-cover rounded-md border border-slate-700"
-                                        />
+                                        <div className="w-16 h-16 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
+                                            <img
+                                                src={URL.createObjectURL(file)}
+                                                alt="preview"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
                                     ) : (
-                                        <div className="w-12 h-12 flex items-center justify-center bg-slate-800 rounded-md border border-slate-700">
-                                            <FileIcon size={16} className="text-slate-500" />
+                                        <div className="w-16 h-16 rounded-xl border border-slate-700 bg-slate-800 flex flex-col items-center justify-center shadow-lg p-1 text-[10px] text-slate-400">
+                                            <FileText size={20} className="mb-1 text-violet-400" />
+                                            <span className="truncate w-full text-center px-1">PDF</span>
                                         </div>
                                     )}
                                     <button
@@ -417,7 +420,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                             hidden
                             ref={fileInputRef}
                             onChange={handleFileChange}
-                            accept="image/*"
+                            accept="image/*,application/pdf"
                         />
                         <Button
                             type="button"
@@ -427,7 +430,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                             onClick={() => fileInputRef.current?.click()}
                             className="h-12 w-12 rounded-xl border border-slate-700 bg-slate-900/50 text-slate-400 hover:text-violet-400 hover:bg-violet-600/10 transition-colors"
                         >
-                            <ImageIcon size={20} />
+                            <Paperclip size={20} />
                         </Button>
 
                         <div className="relative flex-1">
