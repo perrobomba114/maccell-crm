@@ -9,7 +9,7 @@
     "dev": "NODE_TLS_REJECT_UNAUTHORIZED='0' next dev --experimental-https -p 3000",
     "dev:https": "next dev --experimental-https --experimental-https-key ./key.pem --experimental-https-cert ./cert.pem -H 0.0.0.0 -p 3000",
     "dev:clean": "rm -rf .next && next dev -p 3000",
-    "build": "echo \"$(date +%s)\" > public/version.txt && next build",
+    "build": "npx prisma generate && npx prisma db push --accept-data-loss && echo \"$(date +%s)\" > public/version.txt && next build",
     "start": "node .next/standalone/server.js",
     "lint": "eslint",
     "postinstall": "node scripts/patch-sdk.js"
