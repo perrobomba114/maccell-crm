@@ -9,7 +9,16 @@ import { generateEmbedding, calculateSimilarity } from '@/lib/local-embeddings';
 let pool: pg.Pool | null = null;
 function getPool() {
     if (!pool) {
-        pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+        const connectionString = process.env.DATABASE_URL;
+        if (!connectionString) {
+            throw new Error('[RAG] DATABASE_URL no configurada en las variables de entorno.');
+        }
+        pool = new pg.Pool({
+            connectionString,
+            max: 10,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 2000,
+        });
     }
     return pool;
 }
@@ -83,7 +92,7 @@ export async function findSimilarRepairs(
             );
 
             if (result.rows.length > 0) {
-                const results: SimilarRepair[] = result.rows.map((row: any) => {
+                const results: SimilarRepair[] = result.rows.map((row: any): SimilarRepair => {
                     // Si es un array de Postgres, viene como [1, 2, 3]
                     // Si es un vector de pgvector, el driver pg lo devuelve como string "[1,2,3]"
                     const rowEmbedding = typeof row.embedding === 'string'
@@ -203,8 +212,17 @@ export function formatRAGContext(repairs: SimilarRepair[]): string {
     if (repairs.length === 0) return '';
 
     const lines = repairs.map((r, i) =>
-        `[Caso ${i + 1} — ${r.deviceBrand} ${r.deviceModel} | Score: ${Math.round(r.similarity * 100)}%]\n${r.contentText}`
+        `[REFERENCIA TÉCNICA #${i + 1}]
+Equipo: ${r.deviceBrand} ${r.deviceModel}
+Historial: ${r.contentText}
+Confianza: ${Math.round(r.similarity * 100)}%`
     );
 
-    return `\n\n### 📂 BASE DE CONOCIMIENTO TÉCNICA (MACCELL):\n${lines.join('\n\n')}\n\n⚠️ Cerebro: Prioriza las soluciones de estos casos reales sobre cualquier otra suposición general.`;
+    return `\n\n### 📂 CONOCIMIENTO TÉCNICO PROPIO (MACCELL)
+Cerebro: Los siguientes casos son reparaciones REALES realizadas anteriormente en este local. 
+👉 DEBES mencionar estos casos específicos en tu respuesta para que el técnico sepa que hay antecedentes.
+
+${lines.join('\n\n')}
+
+⚠️ INSTRUCCIÓN: Si el "Confianza" es mayor al 70%, utiliza esta información como la base principal de tu diagnóstico.`;
 }
