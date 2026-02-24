@@ -134,39 +134,39 @@ function toCoreMsgs(messages: any[]): any[] {
                         }
                     }
                 }
-                if (!contentParts.some((p: any) => p.type === 'text') && m.content) {
-                    contentParts.unshift({ type: 'text', text: truncate(m.content) });
+                if (!contentParts.some((p: any) => p.type === 'text')) {
+                    const textContent = typeof m.content === 'string' ? m.content : (m.text || '');
+                    if (textContent) {
+                        contentParts.unshift({ type: 'text', text: truncate(textContent) });
+                    }
                 }
 
-                // Si no hay texto ni imágenes (ej. solo subió un PDF vacío de texto)
-                if (contentParts.length === 0 && m.parts.some((p: any) => p.type === 'file')) {
-                    contentParts.push({ type: 'text', text: '[Documento PDF adjunto y procesado]' });
+                // Si no hay texto ni imágenes después de procesar parts
+                if (contentParts.length === 0) {
+                    contentParts.push({ type: 'text', text: '[Contenido no textual]' });
                 }
 
                 return {
                     role: m.role,
-                    content: contentParts.length > 0 ? contentParts : truncate(m.content || ''),
+                    content: contentParts,
                 };
             }
-            return { role: m.role, content: truncate(m.content || '') };
+            const finalContent = typeof m.content === 'string' ? m.content : '';
+            return { role: m.role, content: truncate(finalContent) };
         })
-        .filter((m: any) => m.content && (typeof m.content === 'string' ? m.content.trim() : m.content.length > 0));
+        .filter((m: any) => {
+            if (typeof m.content === 'string') return m.content.trim().length > 0;
+            if (Array.isArray(m.content)) return m.content.length > 0;
+            return false;
+        });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CONFIGURACIÓN DE RUTA (Next.js)
+// CONFIGURACIÓN DE RUTA (Next.js App Router)
 // ─────────────────────────────────────────────────────────────────────────────
-export const maxDuration = 60; // 60 segundos para procesar PDFs pesados
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
-
-// Aumentar el límite de tamaño para recibir PDFs y esquemáticos
-export const config = {
-    api: {
-        bodyParser: {
-            sizeLimit: '20mb',
-        },
-    },
-};
+// Nota: 'export const config' no se usa en App Router para bodyParser.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HANDLER
@@ -225,73 +225,26 @@ export async function POST(req: NextRequest) {
     const modeLabel = visionMode ? 'VISIÓN' : 'TEXTO';
 
     // ── Recuperación RAG (Base de Conocimiento Semántica + Historial) ────────
-    const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop();
-    let userText = "";
-    if (typeof lastUserMessage?.content === 'string') {
-        userText = lastUserMessage.content;
-    } else if (Array.isArray(lastUserMessage?.parts)) {
-        userText = lastUserMessage.parts.map((p: any) => p.text || "").join(" ");
-    }
-
-    // --- 📄 LECTURA DE PDF (Manuales / Esquemáticos) ---
-    const allPdfParts = messages
-        .filter((m: any) => m.role === 'user')
-        .flatMap((m: any) => m.parts || [])
-        .filter((p: any) => p.type === 'file' && (p.mediaType === 'application/pdf' || p.filename?.toLowerCase().endsWith('.pdf')));
-
-    const uniquePdfs = new Map();
-    for (const part of allPdfParts) {
-        if (!uniquePdfs.has(part.filename)) uniquePdfs.set(part.filename, part);
-    }
-
-    if (uniquePdfs.size > 0) {
-        console.log(`[CEREBRO] Intentando procesar ${uniquePdfs.size} PDFs...`);
-        for (const part of Array.from(uniquePdfs.values())) {
-            try {
-                const base64Data = part.url?.split(';base64,').pop();
-                if (base64Data) {
-                    const buffer = Buffer.from(base64Data, 'base64');
-                    // Solo intentar parsear si el buffer no es gigantesco (> 15MB) para evitar crash
-                    if (buffer.length < 15 * 1024 * 1024) {
-                        const pdfData = await pdfParse(buffer);
-                        const extractedText = pdfData.text.substring(0, 15000); // Subimos un poco el límite
-                        console.log(`[CEREBRO] PDF procesado: ${part.filename} (${extractedText.length} caps)`);
-                        systemPrompt += `\n\n### 📋 CONTENIDO DEL DOCUMENTO TÉCNICO (${part.filename}):\n${extractedText}\n(Usa estos datos técnicos específicos en tu diagnóstico).`;
-                    } else {
-                        console.warn(`[CEREBRO] PDF demasiado grande para procesar: ${part.filename}`);
-                    }
-                }
-            } catch (pdfErr) {
-                console.error(`[CEREBRO] Error al parsear PDF ${part.filename}:`, pdfErr);
-            }
+    let ragContext = "";
+    try {
+        const lastUserMessage = messages.findLast((m: any) => m.role === 'user');
+        let userText = "";
+        if (typeof lastUserMessage?.content === 'string') {
+            userText = lastUserMessage.content;
+        } else if (Array.isArray(lastUserMessage?.parts)) {
+            userText = lastUserMessage.parts.map((p: any) => p.text || "").join(" ");
         }
 
-        systemPrompt += `\n\n🚨 INSTRUCCIÓN EXCEPCIONAL: El usuario te ha dado documentos técnicos (PDF).
-1. PRIORIZA el contenido del PDF sobre tus conocimientos generales.
-2. Si es un manual/esquemático, habla como un ingeniero de hardware.
-3. Si pides medidas, especifica los componentes que aparecen en el PDF (ej. C500, U200).
-4. El formato "Análisis Diferencial 📊" es opcional si el usuario solo pregunta datos del manual.`;
-    }
-
-
-    if (userText && userText.length > 3) {
-        try {
-            console.log(`[CEREBRO]🧠 Iniciando búsqueda semántica para: "${userText.substring(0, 40)}..."`);
-
-            // 1. Búsqueda Semántica en la Wiki Técnica (pgvector o local cosine)
+        if (userText && userText.length > 3) {
+            console.log(`[CEREBRO]🧠 Buscando: "${userText.substring(0, 40)}..."`);
             const similarRepairs = await findSimilarRepairs(userText, 4, 0.60);
-            let ragContext = formatRAGContext(similarRepairs);
+            ragContext = formatRAGContext(similarRepairs);
 
-            // 2. Búsqueda Proactiva por Marca/Modelo en historial de reparaciones
-            // Intentamos detectar marca/modelo en el texto si no hubo ticket
+            // Búsqueda Proactiva por Marca/Modelo
             const brands = ['IPHONE', 'SAMSUNG', 'MOTOROLA', 'XIAOMI', 'HUAWEI', 'REEDMI', 'POCO', 'MOTO'];
             const detectedBrand = brands.find(b => userText.toUpperCase().includes(b));
 
-            // Si detectamos una marca, buscamos las últimas 5 reparaciones exitosas de esa marca/modelo
             if (detectedBrand) {
-                const words = userText.split(/\s+/).filter(w => w.length > 3);
-
-                // Historial de reparaciones similares
                 const historicalContext = await (prisma as any).repair.findMany({
                     where: {
                         deviceBrand: { contains: detectedBrand, mode: 'insensitive' },
@@ -300,44 +253,52 @@ export async function POST(req: NextRequest) {
                     },
                     orderBy: { updatedAt: 'desc' },
                     take: 3
-                });
+                }).catch(() => []);
 
                 if (historicalContext.length > 0) {
                     ragContext += `\n\n### 📜 ÚLTIMOS CASOS REALES DE ${detectedBrand} EN MACCELL:`;
                     historicalContext.forEach((r: any, idx: number) => {
-                        ragContext += `\n[Caso ${idx + 1}]: ${r.deviceModel} - Falla: ${r.problemDescription}. Diagnóstico exitoso: ${r.diagnosis}`;
-                    });
-                }
-
-                // Stock de repuestos relacionados
-                const spareParts = await (prisma as any).sparePart.findMany({
-                    where: {
-                        OR: [
-                            { name: { contains: detectedBrand, mode: 'insensitive' } },
-                            { brand: { contains: detectedBrand, mode: 'insensitive' } },
-                            ...(words.length > 0 ? [{ name: { contains: words[0], mode: 'insensitive' } }] : [])
-                        ],
-                        deletedAt: null,
-                        stockLocal: { gt: 0 }
-                    },
-                    take: 5
-                });
-
-                if (spareParts.length > 0) {
-                    ragContext += `\n\n### 📦 DISPONIBILIDAD DE REPUESTOS EN STOCK:`;
-                    spareParts.forEach((p: any) => {
-                        ragContext += `\n- ${p.name} (${p.brand}): ${p.stockLocal} unidades disponibles en local.`;
+                        ragContext += `\n[Caso ${idx + 1}]: ${r.deviceModel} - Falla: ${r.problemDescription}. Diagnóstico: ${r.diagnosis}`;
                     });
                 }
             }
-
-            if (ragContext) {
-                systemPrompt += ragContext;
-            }
-
-        } catch (error) {
-            console.error("[Cerebro] RAG Error Global:", error);
         }
+    } catch (ragErr) {
+        console.error("[CEREBRO] RAG Bloque falló:", ragErr);
+    }
+
+    if (ragContext) systemPrompt += ragContext;
+
+    // --- 📄 LECTURA DE PDF (Manuales / Esquemáticos) ---
+    try {
+        const allPdfParts = messages
+            .filter((m: any) => m.role === 'user')
+            .flatMap((m: any) => m.parts || [])
+            .filter((p: any) => p.type === 'file' && (p.mediaType === 'application/pdf' || p.filename?.toLowerCase().endsWith('.pdf')));
+
+        const uniquePdfs = new Map();
+        for (const part of allPdfParts) {
+            if (!uniquePdfs.has(part.filename)) uniquePdfs.set(part.filename, part);
+        }
+
+        if (uniquePdfs.size > 0) {
+            console.log(`[CEREBRO] Procesando ${uniquePdfs.size} PDFs...`);
+            for (const part of Array.from(uniquePdfs.values())) {
+                const base64Data = part.url?.split(';base64,').pop();
+                if (base64Data) {
+                    const buffer = Buffer.from(base64Data, 'base64');
+                    // Límite de 10MB para procesar texto y no saturar memoria
+                    if (buffer.length < 10 * 1024 * 1024) {
+                        const pdfData = await pdfParse(buffer);
+                        const extractedText = pdfData.text.substring(0, 12000);
+                        systemPrompt += `\n\n### 📋 DOCUMENTO TÉCNICO (${part.filename}):\n${extractedText}`;
+                    }
+                }
+            }
+            systemPrompt += `\n\n🚨 INSTRUCCIÓN: Usa el PDF adjunto para mediciones exactas y componentes.`;
+        }
+    } catch (pdfErr) {
+        console.error("[CEREBRO] PDF Bloque falló:", pdfErr);
     }
 
     // ── Cascade de intentos ──────────────────────────────────────────────────

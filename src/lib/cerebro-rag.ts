@@ -48,35 +48,36 @@ export async function findSimilarRepairs(
 
     // ── Intento 1: pgvector ──────────────────────────────────────────────────
     try {
+        if (!db) throw new Error("Database client not initialized");
+
         const vectorStr = `[${embedding.join(',')}]`;
-        const rows = await db.$queryRawUnsafe<SimilarRepair[]>(
-            `SELECT
-                "ticketNumber", "deviceBrand", "deviceModel", "contentText",
-                1 - (embedding <=> $1::vector) AS similarity
-            FROM repair_embeddings
-            WHERE 1 - (embedding <=> $1::vector) >= $2
-            ORDER BY embedding <=> $1::vector ASC
-            LIMIT $3`,
-            vectorStr, minSimilarity, limit
+        const rows = await db.$queryRawUnsafe<any[]>(
+            `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", (1 - (embedding <=> $1::vector)) as similarity FROM "repair_embeddings" WHERE 1 - (embedding <=> $1::vector) >= $2 ORDER BY embedding <=> $1::vector ASC LIMIT $3`,
+            vectorStr,
+            minSimilarity,
+            limit
         );
 
         if (rows && rows.length > 0) {
             console.log(`[RAG] 🎯 pgvector: ${rows.length} hallados.`);
-            return rows;
+            return rows.map(r => ({
+                ticketNumber: r.ticketNumber,
+                deviceBrand: r.deviceBrand,
+                deviceModel: r.deviceModel,
+                contentText: r.contentText,
+                similarity: Number(r.similarity)
+            }));
         }
     } catch (err: any) {
+        console.warn(`[RAG] pgvector falló: ${err.message}`);
         // ── Intento 2: Fallback In-Memory sobre la tabla de embeddings ───────
         try {
-            console.warn('[RAG] pgvector no disponible o falló, usando búsqueda en memoria sobre repair_embeddings.');
             const rows = await db.$queryRawUnsafe<any[]>(
-                `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding"
-                 FROM repair_embeddings`
+                `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding" FROM "repair_embeddings" LIMIT 500`
             );
 
             if (rows && rows.length > 0) {
                 const results: SimilarRepair[] = rows.map((row: any): SimilarRepair => {
-                    // Si es un array de Postgres, viene como [1, 2, 3]
-                    // Si es un vector de pgvector, el driver pg lo devuelve como string "[1,2,3]"
                     const rowEmbedding = typeof row.embedding === 'string'
                         ? JSON.parse(row.embedding)
                         : row.embedding;
@@ -96,57 +97,53 @@ export async function findSimilarRepairs(
                 if (results.length > 0) return results;
             }
         } catch (memErr: any) {
-            console.warn('[RAG] Error en búsqueda de embeddings en memoria:', memErr.message);
+            console.warn('[RAG] Fallback memoria falló:', memErr.message);
+        }
+
+        // ── Fallback: Brute-force en memoria (Optimizado con Producto Punto) ──────
+        try {
+            // Traemos los últimos registros de conocimiento para comparar
+            const knowledgeItems = await (db as any).repairKnowledge.findMany({
+                take: 100,
+                orderBy: { createdAt: 'desc' },
+            });
+
+            if (knowledgeItems && knowledgeItems.length > 0) {
+                const results: SimilarRepair[] = [];
+                for (const item of knowledgeItems) {
+                    const itemText = `${item.deviceBrand} ${item.deviceModel} ${item.title} ${item.content}`;
+                    const chunks = chunkText(itemText, 600, 60);
+
+                    let bestSim = 0;
+                    for (const chunk of chunks) {
+                        const itemEmbed = await generateEmbedding(chunk);
+                        if (!itemEmbed) continue;
+                        const sim = calculateSimilarity(embedding, itemEmbed);
+                        if (sim > bestSim) bestSim = sim;
+                    }
+
+                    if (bestSim >= minSimilarity) {
+                        results.push({
+                            ticketNumber: item.id,
+                            deviceBrand: item.deviceBrand,
+                            deviceModel: item.deviceModel,
+                            contentText: `${item.title}\n${item.content}`,
+                            similarity: bestSim,
+                        });
+                    }
+                }
+                if (results.length > 0) {
+                    return results.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
+                }
+            }
+        } catch (err: any) {
+            console.error('[RAG] Fallback brute-force falló:', err.message);
         }
     }
 
-    // ── Fallback: Brute-force en memoria (Optimizado con Producto Punto) ──────
-    try {
-        // Traemos los últimos registros de conocimiento para comparar
-        const knowledgeItems = await (db as any).repairKnowledge.findMany({
-            take: 150,
-            orderBy: { createdAt: 'desc' },
-        });
-
-        if (!knowledgeItems || knowledgeItems.length === 0) return [];
-
-        const results: SimilarRepair[] = [];
-
-        // Procesamiento en paralelo para mayor velocidad
-        await Promise.all(knowledgeItems.map(async (item: any) => {
-            const itemText = `${item.deviceBrand} ${item.deviceModel} ${item.title} ${item.content}`;
-            const chunks = chunkText(itemText, 600, 60);
-
-            // Evaluamos el mejor chunk de cada item
-            let bestSim = 0;
-            for (const chunk of chunks) {
-                const itemEmbed = await generateEmbedding(chunk);
-                if (!itemEmbed) continue;
-
-                const sim = calculateSimilarity(embedding, itemEmbed);
-                if (sim > bestSim) bestSim = sim;
-            }
-
-            if (bestSim >= minSimilarity) {
-                results.push({
-                    ticketNumber: item.id,
-                    deviceBrand: item.deviceBrand,
-                    deviceModel: item.deviceModel,
-                    contentText: `${item.title}\n${item.content}`,
-                    similarity: bestSim,
-                });
-            }
-        }));
-
-        return results
-            .sort((a, b) => b.similarity - a.similarity)
-            .slice(0, limit);
-
-    } catch (err: any) {
-        console.error('[RAG] Error en fallback:', err.message);
-        return [];
-    }
+    return [];
 }
+
 
 /**
  * Búsqueda rápida por texto (Complementaria)
