@@ -261,7 +261,7 @@ export async function POST(req: NextRequest) {
             console.log(`[CEREBRO]🧠 Iniciando búsqueda semántica para: "${userText.substring(0, 40)}..."`);
 
             // 1. Búsqueda Semántica en la Wiki Técnica (pgvector o local cosine)
-            const similarRepairs = await findSimilarRepairs(userText, 3, 0.65);
+            const similarRepairs = await findSimilarRepairs(userText, 4, 0.60);
             let ragContext = formatRAGContext(similarRepairs);
 
             // 2. Búsqueda Proactiva por Marca/Modelo en historial de reparaciones
