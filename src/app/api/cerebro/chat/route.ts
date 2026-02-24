@@ -4,7 +4,6 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { streamText } from "ai";
 import { db as prisma } from "@/lib/db";
-import pdfParse from 'pdf-parse';
 import fs from 'fs';
 import path from 'path';
 
@@ -194,7 +193,16 @@ export async function POST(req: NextRequest) {
                                     if (fs.existsSync(pdfPath)) {
                                         try {
                                             const dataBuffer = fs.readFileSync(pdfPath);
-                                            const pdfData = await pdfParse(dataBuffer);
+                                            // Usamos eval('require') para que Next.js/Webpack ignore esta librería en el bundle
+                                            // y no tire 404 not-found errors por problemas de empaquetado.
+                                            let pdfData;
+                                            try {
+                                                const parseFn = eval('require')('pdf-parse');
+                                                pdfData = await parseFn(dataBuffer);
+                                            } catch (requireError) {
+                                                console.error("[Cerebro] No se pudo hacer require dinámico de pdf-parse", requireError);
+                                                pdfData = { text: "" };
+                                            }
                                             ctx += `\n[📋 CONTENIDO DEL PDF SCHEMATIC ASOCIADO: ${path.basename(url)}]\n${pdfData.text.substring(0, 3000)}...\n`;
                                         } catch (e) {
                                             console.log("[Cerebro] Falló lectura de PDF:", e);
