@@ -163,8 +163,14 @@ export async function POST(req: NextRequest) {
                     temperature: 0.2,
                 });
 
-                return result.toDataStreamResponse({
-                    headers: { 'X-Cerebro-Provider': provider.label }
+                return result.toTextStreamResponse({
+                    headers: {
+                        'Content-Type': 'text/plain; charset=utf-8',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'X-Content-Type-Options': 'nosniff',
+                        'X-Cerebro-Provider': provider.label
+                    }
                 });
             } catch (err: any) {
                 console.warn(`[CEREBRO] ⚠️ Proveedor ${provider.label} falló:`, err.message);
