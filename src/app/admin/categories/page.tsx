@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { getCategories } from "@/actions/categories";
 import { CategoriesClient } from "@/components/admin/categories/categories-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function CategoriesPage() {
     const { categories } = await getCategories();
 

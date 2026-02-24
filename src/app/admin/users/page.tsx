@@ -3,6 +3,8 @@ import { getAllBranches } from "@/actions/branch-actions";
 import { UsersTable } from "./_components/users-table";
 import { Card, CardContent } from "@/components/ui/card";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminUsersPage() {
     const [usersResult, branchesResult] = await Promise.all([
         getAllUsers(),

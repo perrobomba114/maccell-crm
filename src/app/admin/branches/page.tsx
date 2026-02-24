@@ -2,6 +2,8 @@ import { getAllBranches } from "@/actions/branch-actions";
 import { BranchesTable } from "./_components/branches-table";
 import { Card, CardContent } from "@/components/ui/card";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminBranchesPage() {
     const result = await getAllBranches();
     const branches = result.success ? result.branches : [];
