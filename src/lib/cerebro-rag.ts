@@ -10,7 +10,7 @@
 
 import pg from 'pg';
 
-const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'http://100.110.53.47:11434';
+const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 
 // Pool de conexión reutilizable (singleton)
 let pool: pg.Pool | null = null;

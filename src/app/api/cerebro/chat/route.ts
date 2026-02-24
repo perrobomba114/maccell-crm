@@ -203,14 +203,13 @@ export async function POST(req: NextRequest) {
         const modelToUse = hasImagesInLastMessage ? OLLAMA_MODELS.VISION : OLLAMA_MODELS.CHAT;
         console.log(`[CEREBRO] Modelo=${modelToUse} | Modo=${hasImagesInLastMessage ? 'VISION + ROUTER ✅' : 'TEXTO (deepseek-r1)'} | Msgs=${messagesForOllama.length}`);
 
-        const openrouterKey = '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';
+        const openrouterKey = process.env.OPENROUTER_API_KEY || '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';
+        const modelName = process.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-lite-preview-02-05:free';
 
-        // 4. Modo OpenRouter Directo (Hardcodeado)
-        console.log(`[CEREBRO] Ruteando hacia LA NUBE OPENROUTER.`);
+        // 4. Modo OpenRouter Directo
+        console.log(`[CEREBRO] Ruteando hacia LA NUBE OPENROUTER (${modelName}).`);
 
         const openrouter = createOpenRouter({ apiKey: openrouterKey });
-        // Utilizando un modelo rápido y apto para visión/texto
-        const modelName = 'google/gemini-2.5-flash-lite-preview-02-05:free';
 
         const coreMessages = messagesForOllama.map(m => {
             let content: any = m.content || "";
