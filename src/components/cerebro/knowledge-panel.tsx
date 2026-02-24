@@ -329,7 +329,7 @@ export function KnowledgePanel({ userId, initialContent, onClearInitial }: Knowl
 
                         <div className="space-y-3 pt-2">
                             <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
-                                <span>ADJUNTOS</span>
+                                <span>ADJUNTOS (WIKI)</span>
                                 <span className="font-normal text-zinc-500 lowercase tracking-normal bg-zinc-800/50 px-2 py-0.5 rounded-md">JPG, PNG, PDF</span>
                             </label>
 
@@ -342,7 +342,7 @@ export function KnowledgePanel({ userId, initialContent, onClearInitial }: Knowl
                                             <button
                                                 type="button"
                                                 onClick={() => removeExistingMedia(i)}
-                                                className="absolute top-1 right-1 bg-zinc-950/80 text-red-500 hover:text-white hover:bg-red-500 backdrop-blur-md rounded-full p-1.5 border border-white/10 shadow-xl transition-all md:opacity-0 md:group-hover:opacity-100"
+                                                className="absolute top-1 right-1 bg-zinc-950/80 text-red-500 hover:text-white hover:bg-red-500 backdrop-blur-md rounded-full p-1.5 border border-white/10 shadow-xl transition-all opacity-90"
                                             >
                                                 <X size={14} strokeWidth={3} />
                                             </button>

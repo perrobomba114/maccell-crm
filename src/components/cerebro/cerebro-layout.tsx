@@ -240,8 +240,8 @@ export function CerebroLayout({ userId }: CerebroLayoutProps) {
                                                 type="button"
                                                 className={cn(
                                                     "h-8 w-8 flex items-center justify-center rounded-full transition-all shrink-0",
-                                                    "text-zinc-500 hover:text-red-400 hover:bg-red-400/10 active:scale-90",
-                                                    "md:opacity-0 md:group-hover:opacity-100"
+                                                    "text-zinc-500 hover:text-red-500 hover:bg-red-500/10 active:scale-90",
+                                                    "opacity-60 hover:opacity-100"
                                                 )}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
