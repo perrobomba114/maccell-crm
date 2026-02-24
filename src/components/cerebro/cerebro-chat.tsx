@@ -10,6 +10,39 @@ import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIc
 import { saveMessagesToDbAction, saveUserMessageAction, updateConversationTitleAction, generateGeminiPromptAction } from "@/actions/cerebro-actions";
 import { toast } from "sonner";
 
+function renderFormattedText(text: string) {
+    if (!text) return null;
+
+    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = linkRegex.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            parts.push(text.substring(lastIndex, match.index));
+        }
+        parts.push(
+            <a
+                key={match.index}
+                href={match[2]}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-violet-400 hover:text-violet-300 underline underline-offset-2 break-all font-semibold"
+            >
+                {match[1]}
+            </a>
+        );
+        lastIndex = linkRegex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+        parts.push(text.substring(lastIndex));
+    }
+
+    return parts;
+}
+
 interface CerebroChatProps {
     conversationId: string;
     initialMessages?: UIMessage[];
@@ -240,7 +273,9 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                                                     </details>
                                                 )}
                                                 {mainContent && (
-                                                    <div className="whitespace-pre-wrap text-[14px]">{mainContent}</div>
+                                                    <div className="whitespace-pre-wrap text-[14px]">
+                                                        {renderFormattedText(mainContent)}
+                                                    </div>
                                                 )}
                                                 {(message.role === 'assistant' || message.role === 'system') && mainContent && (
                                                     <div className="mt-4 flex justify-end">

@@ -1,12 +1,12 @@
 const { streamText } = require("ai");
-const { createGroq } = require("@ai-sdk/groq");
+const { createOpenRouter } = require("@openrouter/ai-sdk-provider");
 require("dotenv").config();
 
-const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
+const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 async function run() {
     try {
         const res = await streamText({
-            model: groq('llama-3.2-11b-vision-preview'),
+            model: openrouter(process.env.OPENROUTER_MODEL),
             messages: [
                 {
                     role: 'user', content: [
@@ -21,7 +21,7 @@ async function run() {
         }
         console.log();
     } catch (e) {
-        console.error("Error from AI:", typeof e.message === 'string' ? e.message : e);
+        console.error("Caught Stream Error:", e.name, e.message);
     }
 }
 run();
