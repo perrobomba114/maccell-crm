@@ -191,6 +191,59 @@ export function KnowledgePanel({ userId, initialContent, onClearInitial }: Knowl
             setNewContent(initialContent);
             setShowCreate(true);
 
+            // 🧠 AUTO-PARSING inteligente
+            try {
+                let detectedTitle = "";
+                let detectedBrand = "";
+                let detectedModel = "";
+
+                // Intentar extraer Título/Falla (agregamos más variantes)
+                const titleMatch = initialContent.match(/(?:FALLA|DIAGNÓSTICO|TITULO|ASUNTO|SOLUCIÓN|RESOLUCIÓN):\s*([^\n\r*]+)/i);
+                if (titleMatch && titleMatch[1]) {
+                    detectedTitle = titleMatch[1].trim();
+                } else {
+                    // Si no hay etiqueta, intentar tomar la primera línea como título si es corta
+                    const firstLine = initialContent.split('\n')[0].replace(/[*#]/g, '').trim();
+                    if (firstLine.length > 5 && firstLine.length < 60) {
+                        detectedTitle = firstLine;
+                    }
+                }
+
+                // Intentar extraer Marca/Modelo
+                const brandMatch = initialContent.match(/(?:MARCA|BRANDS|EQUIPO|DISPOSITIVO):\s*([^\n\r*]+)/i);
+                if (brandMatch && brandMatch[1]) detectedBrand = brandMatch[1].trim();
+
+                const modelMatch = initialContent.match(/(?:MODELO|MODEL):\s*([^\n\r*]+)/i);
+                if (modelMatch && modelMatch[1]) detectedModel = modelMatch[1].trim();
+
+                // Detección extra: Apple/iPhone
+                if (initialContent.toLowerCase().includes("iphone") || initialContent.toLowerCase().includes("apple") || initialContent.toLowerCase().includes("macbook")) {
+                    if (!detectedBrand) detectedBrand = "Apple";
+                    const iphoneMatch = initialContent.match(/(iPhone\s*[0-9]+(?:\s*Pro(?:\s*Max)?)?)/i);
+                    if (iphoneMatch && iphoneMatch[1]) {
+                        detectedModel = iphoneMatch[1].trim();
+                        if (iphoneMatch[1].toLowerCase().includes("iphone")) detectedBrand = "Apple";
+                    }
+                }
+
+                // Detección extra: Samsung
+                if (initialContent.toLowerCase().includes("samsung")) {
+                    if (!detectedBrand) detectedBrand = "Samsung";
+                    const samsungMatch = initialContent.match(/(S[0-9]{2}|A[0-9]{2}|J[0-9]|Note\s*[0-9]+)/i);
+                    if (samsungMatch && samsungMatch[1]) {
+                        if (!detectedModel) detectedModel = samsungMatch[1].trim();
+                    }
+                }
+
+                // Update states
+                if (detectedTitle) setNewTitle(detectedTitle);
+                if (detectedBrand) setNewBrand(detectedBrand);
+                if (detectedModel) setNewModel(detectedModel);
+
+            } catch (e) {
+                console.error("Error auto-parsing Wiki content:", e);
+            }
+
             // Unmount trigger cleanup
             if (onClearInitial) {
                 onClearInitial();
