@@ -12,7 +12,9 @@
     "build": "echo \"$(date +%s)\" > public/version.txt && next build",
     "start": "node .next/standalone/server.js",
     "lint": "eslint",
-    "postinstall": "node scripts/patch-sdk.js"
+    "postinstall": "node scripts/patch-sdk.js",
+    "wiki:sync": "tsx scripts/seed-wiki-from-repairs.ts",
+    "wiki:reindex": "tsx scripts/reindex-repairs.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
