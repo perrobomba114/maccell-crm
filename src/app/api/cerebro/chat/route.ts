@@ -205,51 +205,54 @@ export async function POST(req: NextRequest) {
         const modelToUse = hasImagesInLastMessage ? OLLAMA_MODELS.VISION : OLLAMA_MODELS.CHAT;
         console.log(`[CEREBRO] Modo=${hasImagesInLastMessage ? 'VISION' : 'TEXTO'} | Msgs=${messagesForOllama.length}`);
 
-        // 4. Modo OpenRouter Directo (Ruta Principal en Producción)
+        // 4. INTENTO 1: OpenRouter (Nube)
         const openrouterKey = process.env.OPENROUTER_API_KEY || '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';
         const modelName = process.env.OPENROUTER_MODEL || (hasImagesInLastMessage ? 'google/gemini-2.0-flash-exp:free' : 'google/gemini-2.0-flash-lite-preview-02-05:free');
 
-        console.log(`[CEREBRO] Ruteando hacia OPENROUTER (${modelName})...`);
+        if (openrouterKey && !openrouterKey.startsWith('sk-or-v1-6cd6cd')) {
+            console.log(`[CEREBRO] Intentando OPENROUTER (${modelName})...`);
+            try {
+                const openrouter = createOpenRouter({
+                    apiKey: openrouterKey,
+                    headers: {
+                        "HTTP-Referer": "https://sistema.maccell.com.ar",
+                        "X-Title": "Maccell CRM",
+                    }
+                });
 
-        try {
-            const openrouter = createOpenRouter({
-                apiKey: openrouterKey,
-                headers: {
-                    "HTTP-Referer": "https://sistema.maccell.com.ar",
-                    "X-Title": "Maccell CRM",
+                const coreMessages = messagesForOllama.map(m => {
+                    let content: any = m.content || "";
+                    if (m.images && m.images.length > 0 && m.role === 'user') {
+                        content = [{ type: 'text', text: m.content || "Analizá esta placa electrónica." }];
+                        m.images.forEach((b64: string) => {
+                            content.push({ type: 'image', image: `data:image/jpeg;base64,${b64}` });
+                        });
+                    }
+                    return { role: m.role, content };
+                });
+
+                const result = streamText({
+                    model: openrouter(modelName),
+                    messages: coreMessages as any,
+                    temperature: 0.6,
+                });
+
+                return result.toTextStreamResponse();
+            } catch (error: any) {
+                console.error("[CEREBRO NUBE ERROR]:", error.message);
+                // Si falla por 401, lo informamos inmediatamente
+                if (error.message.includes('401') || error.message.includes('User not found')) {
+                    return new Response("Error de Autenticación: La API Key de OpenRouter es inválida o ha expirado.", { status: 401 });
                 }
-            });
-
-            const coreMessages = messagesForOllama.map(m => {
-                let content: any = m.content || "";
-                if (m.images && m.images.length > 0 && m.role === 'user') {
-                    content = [{ type: 'text', text: m.content || "Analizá esta placa electrónica." }];
-                    m.images.forEach((b64: string) => {
-                        content.push({ type: 'image', image: `data:image/jpeg;base64,${b64}` });
-                    });
-                }
-                return { role: m.role, content };
-            });
-
-            const result = streamText({
-                model: openrouter(modelName),
-                messages: coreMessages as any,
-                temperature: 0.6,
-            });
-
-            // Retornar stream de texto puro para el transport del cliente
-            return result.toTextStreamResponse({
-                headers: {
-                    'Content-Type': 'text/plain; charset=utf-8',
-                    'Cache-Control': 'no-cache',
-                }
-            });
-        } catch (error: any) {
-            console.error("[CEREBRO NUBE ERROR]:", error);
-            return new Response(`Error de Conexión con IA: ${error.message}`, { status: 500 });
+            }
         }
 
-        // 4. Petición manual a Ollama con soporte para Abort Signal (Modo Local Legacy)
+        // 5. INTENTO 2: Ollama Local (Fallback)
+        if (!OLLAMA_URL) {
+            return new Response("Cerebro offline. Configura una API Key válida o activa el servidor local.", { status: 503 });
+        }
+
+        console.log(`[CEREBRO] Fallback a OLLAMA LOCAL (${OLLAMA_URL})...`);
         const controller = new AbortController();
         req.signal.addEventListener('abort', () => {
             console.log("[CEREBRO] Ollama stream aborted: Cliente canceló la petición.");
