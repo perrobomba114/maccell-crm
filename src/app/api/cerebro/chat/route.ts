@@ -55,15 +55,17 @@ const SYSTEM_PROMPT = `Eres "Cerebro", el núcleo de inteligencia técnica de MA
 
 NUNCA HAGAS PREGUNTAS BÁSICAS (ej. "¿cambiaste el cable?"). Conversas con técnicos que tienen la placa en el microscopio.
 
-🚨 PROTOCOLO DE DIAGNÓSTICO OBLIGATORIO (Antes de sugerir calor o Reballing):
-1. **Consumo en Fuente:** Antes de tocar un IC, solicita siempre el consumo en la fuente de poder (Ej: con 4V, ¿cuánto consume al darle power? ¿Consumo inicial antes de power?).
-2. **Mediciones Pasivas:** Prioriza Caída de Tensión (Modo Diodo) para detectar líneas abiertas (OL) o fugas.
-3. **Inyección de Voltaje:** Solo si hay un corto franco (< 0.010 en diodo) en líneas principales (VCC_MAIN, VDD_MAIN, VDD_BOOST).
-4. **NO REBALLING PREMATURO:** Está PROHIBIDO sugerir reballing de CPU o PMIC sin haber descartado antes condensadores en corto, OVP dañados, o filtrado de líneas. El Reballing es el ÚLTIMO recurso.
+🚨 REGLA DE ORO DE IDENTIFICACIÓN DE DISPOSITIVO:
+- **PROHIBICIÓN:** Está terminantemente PROHIBIDO asumir que el equipo es un iPhone a menos que el usuario lo diga explícitamente o el Ticket lo confirme.
+- **DETECCIÓN POR SERIE:** 
+    * Modelos "A" (A10, A20, A53), "S" (S20, S22), "J", "Note" → SON SAMSUNG.
+    * Modelos "G" (G32, G24), "E", "One Fusion", "Edge" → SON MOTOROLA.
+    * Modelos "Redmi", "Poco", "Mi" → SON XIAOMI.
+- **TERMINOLOGÍA PROHIBIDA EN ANDROID:** Nunca uses "Tristar", "Hydra", "Tigris", "iTunes", "DFU" o "iCloud" en equipos que no sean Apple.
 
 IDENTIFICACIÓN PRECISA POR MARCA:
-- **APPLE (iPhone/iPad):** Usa: Tristar (U2), Hydra, Tigris, Kraken, Chestnut, Meson, Boost cap.
-- **ANDROID (Samsung/Moto/Xiaomi):** NUNCA digas Tristar/Hydra. Usa: IF PMIC (SMB), Sub PMIC, OVP, Línea VBUS, VPH_PWR, VBAT.
+- **APPLE (iPhone/iPad):** Usa: Tristar (U2), Hydra, Tigris, Kraken, Chestnut, Meson, Boost cap, VCC_MAIN.
+- **ANDROID (Samsung/Moto/Xiaomi):** Usa: IF PMIC (SMB), Sub PMIC, OVP, Línea VBUS, VPH_PWR, VBAT, VCC_MAIN (a veces llamado VDD_MAIN o SYS).
 🚨 ERROR COMÚN: No existe el "iPhone A10". Si el usuario dice "A10", es un Samsung A10S/F. No alucines componentes de Apple en este modelo.
 
 FORMATO DE RESPUESTA:
@@ -161,12 +163,21 @@ export async function POST(req: NextRequest) {
             });
             if (repairData) {
                 console.log(`[CEREBRO] Ticket detectado: ${ticketNo}`);
+                const brandForce = repairData.deviceBrand.toUpperCase() === 'IPHONE' || repairData.deviceBrand.toUpperCase() === 'APPLE' ? 'APPLE' : 'ANDROID';
                 systemPrompt += `\n\n### 📝 INFO DEL TICKET ${ticketNo}:
+- **MARCA CONFIRMADA:** ${repairData.deviceBrand.toUpperCase()} (ESTO ES UN ${brandForce})
 - **Equipo:** ${repairData.deviceBrand} ${repairData.deviceModel}
 - **Falla reportada por recepción:** ${repairData.problemDescription}
 - **Observaciones técnicas previas:** ${repairData.diagnosis || 'Ninguna'}
-- **Estado:** ${repairData.statusId === 1 ? 'Ingresado' : 'En proceso'}
-⚠️ Cerebro: El técnico está trabajando en ESTE equipo. Ajusta tu diagnóstico a esta descripción.`;
+⚠️ Cerebro: MARCA OBLIGATORIA: ${repairData.deviceBrand}. Cualquier término de iPhone en este equipo Samsung/Motorola resultará en error de sistema.`;
+            }
+        } else {
+            // Detección manual de marca por keywords en caso de no haber ticket
+            const lowerText = fullText.toLowerCase();
+            if (lowerText.includes('samsung') || /a\d0|s\d2/i.test(lowerText)) {
+                systemPrompt += `\n\n[SISTEMA: CUIDADO - La consulta parece referirse a un SAMSUNG. No uses términos de iPhone.]`;
+            } else if (lowerText.includes('moto') || lowerText.includes('motorola')) {
+                systemPrompt += `\n\n[SISTEMA: CUIDADO - La consulta parece referirse a un MOTOROLA. No uses términos de iPhone.]`;
             }
         }
     } catch (e) {
