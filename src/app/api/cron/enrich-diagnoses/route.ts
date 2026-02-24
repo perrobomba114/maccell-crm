@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db as prisma } from "@/lib/db";
 import { generateText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { OLLAMA_MODELS, ENRICH_DIAGNOSIS_SYSTEM_PROMPT, CRON_MAX_TICKETS } from "@/config/ai-models";
-
-const OLLAMA_URL = process.env.OLLAMA_BASE_URL;
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { AI_MODELS, ENRICH_DIAGNOSIS_SYSTEM_PROMPT, CRON_MAX_TICKETS } from "@/config/ai-models";
 
 export async function GET(req: NextRequest) {
-    // Verificar auth (opcional para cron interno, pero bueno tener un secreto)
+    // Auth check
     const authHeader = req.headers.get('authorization');
     if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        // return new Response('Unauthorized', { status: 401 });
+        return new Response('Unauthorized', { status: 401 });
     }
 
     try {
@@ -29,9 +27,12 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ message: "No hay diagnósticos para enriquecer." });
         }
 
-        const ollama = createOpenAI({
-            baseURL: OLLAMA_URL ? `${OLLAMA_URL}/v1` : undefined,
-            apiKey: "ollama",
+        const openrouter = createOpenRouter({
+            apiKey: process.env.OPENROUTER_API_KEY || "",
+            headers: {
+                "HTTP-Referer": "https://sistema.maccell.com.ar",
+                "X-Title": "Maccell CRM Cron",
+            }
         });
 
         let enrichedCount = 0;
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
         for (const repair of repairs) {
             try {
                 const { text } = await generateText({
-                    model: ollama(OLLAMA_MODELS.ENHANCER),
+                    model: openrouter(AI_MODELS.CHAT),
                     system: ENRICH_DIAGNOSIS_SYSTEM_PROMPT,
                     prompt: `Diagnóstico original del técnico: "${repair.diagnosis}"\nDispositivo: ${repair.deviceBrand} ${repair.deviceModel}`,
                     temperature: 0.2,
@@ -60,7 +61,8 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
             success: true,
             processed: repairs.length,
-            enriched: enrichedCount
+            enriched: enrichedCount,
+            model: AI_MODELS.CHAT
         });
 
     } catch (error: any) {

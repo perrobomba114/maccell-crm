@@ -1,12 +1,12 @@
 "use client";
 
 import { useChat, UIMessage } from "@ai-sdk/react";
-import { TextStreamChatTransport } from "ai";
+import { DefaultChatTransport } from "ai";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon, LogIn } from "lucide-react";
+import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon } from "lucide-react";
 import { saveMessagesToDbAction, updateConversationTitleAction, generateGeminiPromptAction } from "@/actions/cerebro-actions";
 import { toast } from "sonner";
 
@@ -21,41 +21,30 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isGenerating, setIsGenerating] = useState(false);
 
-    // Login Settings and State
-    const [technicianName, setTechnicianName] = useState("");
-    const [loginNameInput, setLoginNameInput] = useState("");
-
-    useEffect(() => {
-        const techMatch = document.cookie.match(new RegExp('(^| )techName=([^;]+)'));
-        if (techMatch) setTechnicianName(techMatch[2]);
-    }, []);
-
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (loginNameInput.trim().length > 2) {
-            document.cookie = `techName=${loginNameInput}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
-            setTechnicianName(loginNameInput);
-        }
-    };
 
     const { messages, sendMessage, stop, status, error } = useChat({
         id: conversationId,
         messages: initialMessages,
-        transport: new TextStreamChatTransport({
-            api: "/api/cerebro/chat",
-        }),
+        transport: new DefaultChatTransport({ api: "/api/cerebro/chat" }),
         onFinish: async ({ message, messages: allMessages }: any) => {
             try {
                 if (allMessages && allMessages.length > 0) {
                     await saveMessagesToDbAction(conversationId, allMessages.map((m: any) => {
-                        // Extraer imágenes de las partes para guardar como mediaUrls
+                        // En AI SDK v6 el texto está en parts, no en m.content
+                        const textContent = m.parts
+                            ?.filter((p: any) => p.type === 'text')
+                            .map((p: any) => p.text || '')
+                            .join('') || m.content || m.text || '';
+
+                        // Extraer imágenes de las partes
                         const mediaUrls = m.parts
-                            ?.filter((p: any) => p.type === 'file' && (p.file.url || p.file.data))
-                            .map((p: any) => p.file.url || (p.file.data ? `data:${p.file.type};base64,${p.file.data}` : '')) || [];
+                            ?.filter((p: any) => p.type === 'file')
+                            .map((p: any) => p.url || p.file?.url || '')
+                            .filter(Boolean) || [];
 
                         return {
                             role: m.role as "user" | "assistant",
-                            content: m.content || m.text || '',
+                            content: textContent,
                             mediaUrls
                         };
                     }));
@@ -63,8 +52,12 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                     if (allMessages.length <= 2) {
                         const firstUserMessage = allMessages.find((m: any) => m.role === 'user');
                         if (firstUserMessage) {
-                            const rawContent = firstUserMessage.content || firstUserMessage.text || '';
-                            const cleanTitle = rawContent.substring(0, 30).trim() + (rawContent.length > 30 ? "..." : "");
+                            // Extraer texto del primer mensaje del usuario
+                            const rawContent = firstUserMessage.parts
+                                ?.filter((p: any) => p.type === 'text')
+                                .map((p: any) => p.text || '')
+                                .join('') || firstUserMessage.content || firstUserMessage.text || '';
+                            const cleanTitle = rawContent.substring(0, 40).trim() + (rawContent.length > 40 ? "..." : "");
                             if (cleanTitle) {
                                 await updateConversationTitleAction(conversationId, cleanTitle);
                             }
@@ -88,9 +81,6 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
             setInput('');
             setFiles([]);
 
-            const userPrefix = `[Técnico ${technicianName}]: `;
-
-            // Format files as expected by ai sdk FileUIPart if they are browser File objects
             const fileParts = await Promise.all(currentFiles.map(async (file) => {
                 const dataUrl = await new Promise<string>((resolve) => {
                     const reader = new FileReader();
@@ -106,7 +96,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
             }));
 
             sendMessage({
-                text: userPrefix + currentInput,
+                text: currentInput,
                 files: fileParts.length > 0 ? fileParts : undefined
             });
         }
@@ -133,30 +123,6 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
         }
     }, [messages, status]);
 
-    if (!technicianName) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full bg-slate-900 border border-slate-800 rounded-xl m-4 p-8">
-                <BrainCircuit size={64} className="mb-6 text-violet-500/50" />
-                <h2 className="text-2xl font-bold text-white mb-2">Ingreso de Personal</h2>
-                <p className="text-slate-400 mb-8 text-center max-w-sm">
-                    Para usar el asistente virtual gratuito adentro del chat, por favor ingresá tu nombre. Cada consulta quedará registrada bajo tu usuario.
-                </p>
-                <form onSubmit={handleLogin} className="w-full max-w-xs space-y-4">
-                    <Input
-                        value={loginNameInput}
-                        onChange={e => setLoginNameInput(e.target.value)}
-                        placeholder="Ej. David..."
-                        className="bg-slate-950 border-slate-700 text-center h-12"
-                        required
-                    />
-                    <Button type="submit" className="w-full h-12 bg-violet-600 hover:bg-violet-500 font-bold">
-                        <LogIn className="w-4 h-4 mr-2" />
-                        Acceder a CEREBRO
-                    </Button>
-                </form>
-            </div>
-        );
-    }
 
     return (
         <div className="flex flex-col h-full bg-slate-900 overflow-hidden relative">
@@ -171,11 +137,6 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                         <p className="text-slate-400 text-xs text-violet-300">Conectado a BD MACCELL</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
-                        Técnico: <span className="text-white font-bold">{technicianName}</span>
-                    </div>
-                </div>
             </div>
 
             {/* Chat Area */}
@@ -186,7 +147,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                             <BrainCircuit size={64} className="mb-4 text-violet-500/50" />
                             <h3 className="text-lg font-bold text-slate-200 mb-2">Asistente Virtual Disponible</h3>
                             <p className="text-center max-w-md mb-6 text-slate-400">
-                                Hola <b>{technicianName}</b>. Escribí el síntoma del dispositivo en la barra de abajo y te daré diagnósticos cruzados con la base de datos de MACCELL sin salir del sistema.
+                                Escribí el síntoma del dispositivo y te daré diagnósticos cruzados con la base de datos de MACCELL.
                             </p>
                         </div>
                     )}

@@ -1,16 +1,11 @@
 /**
- * MACCELL Cerebro RAG — Búsqueda Semántica de Reparaciones
+ * MACCELL Cerebro RAG — Búsqueda Semántica de Reparaciones (Cloud Ready)
  *
- * Usa pgvector para encontrar reparaciones históricas similares
- * al problema actual y las inyecta como contexto en el prompt de Cerebro.
- *
- * NOTA: Este módulo NO lleva "use server" — es un módulo de server-side puro
- * importado desde API Routes, no desde componentes de cliente.
+ * NOTA: Actualmente requiere un proveedor de embeddings (Ollama o Cloud).
+ * Se ha desactivado temporalmente la conexión local para cumplir con la migración a la nube.
  */
 
 import pg from 'pg';
-
-const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 
 // Pool de conexión reutilizable (singleton)
 let pool: pg.Pool | null = null;
@@ -22,22 +17,12 @@ function getPool() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Vectorizar una consulta con nomic-embed-text
+// Vectorizar una consulta
 // ─────────────────────────────────────────────────────────────────────────────
 async function embedQuery(text: string): Promise<number[] | null> {
-    try {
-        const res = await fetch(`${OLLAMA_URL}/api/embed`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'nomic-embed-text', input: text }),
-            signal: AbortSignal.timeout(5000),
-        });
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data.embeddings?.[0] ?? null;
-    } catch {
-        return null;
-    }
+    // TODO: Implementar embeddings vía Gemini API o OpenAI vía OpenRouter si estuviera disponible.
+    // Por ahora, devolvemos null para evitar errores de conexión local.
+    return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,11 +64,7 @@ export async function findSimilarRepairs(
         );
         return result.rows;
     } catch (err: any) {
-        if (err.message?.includes('vector') || err.message?.includes('repair_embeddings')) {
-            console.warn('[RAG] pgvector no está disponible aún. Cerebro funciona sin RAG.');
-        } else {
-            console.error('[RAG] Error en búsqueda semántica:', err.message);
-        }
+        console.error('[RAG] Error en búsqueda semántica:', err.message);
         return [];
     }
 }

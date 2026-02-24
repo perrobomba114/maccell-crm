@@ -1,16 +1,11 @@
 /**
- * MACCELL Cerebro — Indexador Incremental de Reparaciones
+ * MACCELL Cerebro — Indexador Incremental de Reparaciones (Cloud Ready)
  *
- * Usado por:
- * 1. instrumentation.ts → al arrancar el servidor (indexa pendientes)
- * 2. cerebro-actions.ts → cuando un técnico guarda un diagnóstico (indexa esa reparación)
- * 3. index-repairs-full.js → script manual de indexación completa
+ * NOTA: La generación de embeddings requiere un proveedor (Cloud o Local).
+ * Actualmente configurado para saltar la generación si no hay un servicio activo.
  */
 
 import pg from 'pg';
-
-const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'http://100.110.53.47:11434';
-const EMBED_MODEL = 'nomic-embed-text';
 
 // Pool singleton para reutilizar conexiones
 let _pool: pg.Pool | null = null;
@@ -20,22 +15,12 @@ function getPool() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Generar embedding con nomic-embed-text
+// Generar embedding
 // ─────────────────────────────────────────────────────────────────────────────
 async function embed(text: string): Promise<number[] | null> {
-    try {
-        const res = await fetch(`${OLLAMA_URL}/api/embed`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: EMBED_MODEL, input: text }),
-            signal: AbortSignal.timeout(10_000),
-        });
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data.embeddings?.[0] ?? null;
-    } catch {
-        return null;
-    }
+    // TODO: Implementar Cloud Embeddings (ej: Google Text Embedding API)
+    // Se deshabilita Ollama local.
+    return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,6 +37,10 @@ export async function indexRepair(repair: {
     observations?: Array<{ content: string }>;
     parts?: Array<{ sparePart: { name: string; brand: string } }>;
 }): Promise<boolean> {
+    // Si no hay embedding, no podemos guardar en pgvector
+    const embedding = await embed("...");
+    if (!embedding) return false;
+
     // Construir documento
     const lines = [
         `TICKET: ${repair.ticketNumber}`,
@@ -67,12 +56,6 @@ export async function indexRepair(repair: {
         lines.push(`REPUESTOS: ${repair.parts.map(p => `${p.sparePart.name} (${p.sparePart.brand})`).join(', ')}`);
     }
     const document = lines.join('\n');
-
-    const embedding = await embed(document);
-    if (!embedding) {
-        console.warn(`[CEREBRO_INDEXER] No se pudo generar embedding para ${repair.ticketNumber}`);
-        return false;
-    }
 
     try {
         const vectorStr = `[${embedding.join(',')}]`;
@@ -90,60 +73,33 @@ export async function indexRepair(repair: {
         console.log(`[CEREBRO_INDEXER] ✅ Indexado: ${repair.ticketNumber}`);
         return true;
     } catch (err: any) {
-        // Si pgvector no está disponible, falla silencioso
-        if (err.message?.includes('vector') || err.message?.includes('repair_embeddings')) {
-            console.warn('[CEREBRO_INDEXER] pgvector no disponible — RAG deshabilitado');
-        } else {
-            console.error(`[CEREBRO_INDEXER] Error guardando ${repair.ticketNumber}:`, err.message);
-        }
+        console.error(`[CEREBRO_INDEXER] Error guardando ${repair.ticketNumber}:`, err.message);
         return false;
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Indexar reparaciones pendientes (llamado desde instrumentation.ts al arrancar)
+// Indexar reparaciones pendientes
 // ─────────────────────────────────────────────────────────────────────────────
 export async function indexPendingRepairs(): Promise<void> {
-    // Importar Prisma aquí para evitar problemas con los module boundaries de Next.js
     const { db } = await import('@/lib/db');
-
-    console.log('[CEREBRO_INDEXER] 🔍 Verificando reparaciones sin indexar...');
+    console.log('[CEREBRO_INDEXER] 🔍 Verificación de reparaciones...');
 
     try {
-        // Obtener IDs que ya están indexados
         const existingRes = await getPool().query('SELECT "repairId" FROM repair_embeddings');
         const existingIds = new Set(existingRes.rows.map((r: any) => r.repairId));
 
-        // Buscar reparaciones con diagnóstico que aún no están en la base vectorial
         const pending = await db.repair.findMany({
             where: {
                 diagnosis: { not: null },
                 id: { notIn: existingIds.size > 0 ? [...existingIds] : ['_none_'] }
             },
-            include: {
-                observations: { select: { content: true } },
-                parts: { include: { sparePart: { select: { name: true, brand: true } } } },
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 200, // Máximo 200 por arranque para no demorar
+            take: 10,
         });
 
-        if (pending.length === 0) {
-            console.log('[CEREBRO_INDEXER] ✅ Base de conocimiento actualizada — sin pendientes');
-            return;
-        }
+        if (pending.length === 0) return;
 
-        console.log(`[CEREBRO_INDEXER] 📋 ${pending.length} reparaciones para indexar...`);
-        let indexed = 0;
-
-        for (const repair of pending) {
-            const ok = await indexRepair(repair);
-            if (ok) indexed++;
-            // Pequeña pausa entre requests para no saturar Ollama
-            await new Promise(r => setTimeout(r, 200));
-        }
-
-        console.log(`[CEREBRO_INDEXER] 🎉 ${indexed}/${pending.length} reparaciones indexadas`);
+        console.log(`[CEREBRO_INDEXER] Deshabilitado temporalmente (Sin Cloud Embedding Provider)`);
     } catch (err: any) {
         console.error('[CEREBRO_INDEXER] Error:', err.message);
     }

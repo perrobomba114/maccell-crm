@@ -1,25 +1,14 @@
 /**
  * CEREBRO — Configuración centralizada de IA
- *
- * Arquitectura: Ollama (local, $0, sin límites)
- *
- * Ollama en Windows con RTX 3090 vía Tailscale:
- *   - deepseek-r1:14b   → CHAT principal (mejor razonamiento lógico)
- *   - llava:13b          → VISION (análisis de PCBs, menos alucinación que llama3.2-vision)
- *   - llama3.2:1b        → ROUTER (clasificador ultrarrápido: PCB sí/no)
- *   - nomic-embed-text   → EMBED (vectorización para RAG)
- *   - deepseek-r1:14b    → DEEP_REASONING (cron nocturno)
- *   - llama3.1:8b        → ENHANCER (mejora diagnósticos, rápido)
+ * 
+ * Arquitectura: OpenRouter Cloud (Paid Tier)
+ * Modelo principal: Gemini 2.0 Flash
  */
 
-/** Modelos de Ollama (local, $0.00, sin rate limit) */
-export const OLLAMA_MODELS = {
-    ENHANCER: "llama3.1:8b",           // Mejora de diagnósticos (rápido)
-    VISION: "llava:13b",               // Análisis de imágenes PCB (mejorado)
-    ROUTER: "llama3.2:1b",             // Clasificador imagen: PCB sí/no (<1s)
-    EMBED: "nomic-embed-text",          // Embeddings para RAG
-    DEEP_REASONING: "deepseek-r1:14b", // Cron nocturno
-    CHAT: "deepseek-r1:14b",           // Chat principal Cerebro (mejorado)
+export const AI_MODELS = {
+    CHAT: "google/gemini-2.0-flash-001",
+    VISION: "google/gemini-2.0-flash-001",
+    EMBED: "google/gemini-2.0-flash-001", // O el modelo de embeddings de OpenRouter que prefieras
 } as const;
 
 /** Límite de tickets por ejecución del cron nocturno */
