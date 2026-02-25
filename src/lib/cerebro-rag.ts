@@ -1,5 +1,13 @@
 /**
- * MACCELL Cerebro RAG — Búsqueda Semántica Optimizada
+ * MACCELL Cerebro RAG — Búsqueda Híbrida
+ *
+ * Fase 1.2: Combina búsqueda semántica (pgvector) + keyword (ILIKE)
+ * con Reciprocal Rank Fusion para resultados más robustos.
+ *
+ * Por qué híbrida:
+ *  - Semántica: entiende contexto y sinónimos ("se queda colgado" ≈ "freezing")
+ *  - Keyword: exacta en términos técnicos ("PMIC A10", "U2 iPhone 13")
+ *    que el vector puede no capturar bien si son muy específicos.
  */
 
 import { db } from '@/lib/db';
@@ -11,149 +19,228 @@ export interface SimilarRepair {
     deviceModel: string;
     contentText: string;
     similarity: number;
+    source?: 'semantic' | 'keyword' | 'hybrid' | 'wiki';
 }
 
-/**
- * Divide un texto largo en pedazos (chunks) para mejor procesamiento de embeddings
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Utilidades
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function chunkText(text: string, chunkSize = 800, overlap = 80): string[] {
     if (text.length <= chunkSize) return [text];
-
     const chunks: string[] = [];
     let start = 0;
-
     while (start < text.length) {
-        const end = start + chunkSize;
-        chunks.push(text.slice(start, end));
+        chunks.push(text.slice(start, start + chunkSize));
         start += (chunkSize - overlap);
     }
-
     return chunks;
 }
 
 /**
- * Búsqueda semántica principal — pgvector (Optimizado con Dot Product en SQL)
+ * Reciprocal Rank Fusion — fusiona dos listas de resultados rankeadas.
+ * k=60 es el estándar de la literatura académica.
  */
-export async function findSimilarRepairs(
-    userMessage: string,
-    limit = 5,
-    minSimilarity = 0.65
+function rrfMerge(
+    semanticResults: SimilarRepair[],
+    keywordResults: SimilarRepair[],
+    k = 60
+): SimilarRepair[] {
+    const scores = new Map<string, { item: SimilarRepair; score: number }>();
+
+    const addList = (list: SimilarRepair[]) => {
+        list.forEach((item, rank) => {
+            const key = item.ticketNumber;
+            const rrfScore = 1 / (k + rank + 1);
+            if (scores.has(key)) {
+                scores.get(key)!.score += rrfScore;
+                scores.get(key)!.item.source = 'hybrid';
+            } else {
+                scores.set(key, { item: { ...item }, score: rrfScore });
+            }
+        });
+    };
+
+    addList(semanticResults);
+    addList(keywordResults);
+
+    return Array.from(scores.values())
+        .sort((a, b) => b.score - a.score)
+        .map(({ item, score }) => ({
+            ...item,
+            similarity: Math.min(1, score * k) // normalizar a 0-1 aproximado
+        }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Búsqueda semántica — pgvector
+// ─────────────────────────────────────────────────────────────────────────────
+async function semanticSearch(
+    embedding: number[],
+    limit: number,
+    minSimilarity: number
 ): Promise<SimilarRepair[]> {
-
-    const embedding = await generateEmbedding(userMessage);
-    if (!embedding) {
-        console.warn('[RAG] No se pudo generar embedding.');
-        return [];
-    }
-
-    // ── Intento 1: pgvector ──────────────────────────────────────────────────
     try {
-        if (!db) throw new Error("Database client not initialized");
-
         const vectorStr = `[${embedding.join(',')}]`;
         const rows = await db.$queryRawUnsafe<any[]>(
-            `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", (1 - (embedding <=> $1::vector)) as similarity FROM "repair_embeddings" WHERE 1 - (embedding <=> $1::vector) >= $2 ORDER BY embedding <=> $1::vector ASC LIMIT $3`,
-            vectorStr,
-            minSimilarity,
-            limit
+            `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText",
+                    (1 - (embedding <=> $1::vector)) as similarity
+             FROM "repair_embeddings"
+             WHERE 1 - (embedding <=> $1::vector) >= $2
+             ORDER BY embedding <=> $1::vector ASC
+             LIMIT $3`,
+            vectorStr, minSimilarity, limit
         );
 
-        if (rows && rows.length > 0) {
-            console.log(`[RAG] 🎯 pgvector: ${rows.length} hallados.`);
+        if (rows?.length > 0) {
+            console.log(`[RAG] 🧠 Semántica: ${rows.length} resultados`);
             return rows.map(r => ({
                 ticketNumber: r.ticketNumber,
                 deviceBrand: r.deviceBrand,
                 deviceModel: r.deviceModel,
                 contentText: r.contentText,
-                similarity: Number(r.similarity)
+                similarity: Number(r.similarity),
+                source: r.ticketNumber.startsWith('wiki_') ? 'wiki' as const : 'semantic' as const
             }));
         }
     } catch (err: any) {
-        console.warn(`[RAG] pgvector falló: ${err.message}`);
-        // ── Intento 2: Fallback In-Memory sobre la tabla de embeddings ───────
+        console.warn(`[RAG] pgvector error: ${err.message.slice(0, 80)}`);
+    }
+    return [];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Búsqueda por keyword — ILIKE en repair_embeddings
+// ─────────────────────────────────────────────────────────────────────────────
+async function keywordSearch(
+    query: string,
+    limit: number
+): Promise<SimilarRepair[]> {
+    try {
+        // Extraemos términos con >2 chars, filtramos stopwords básicas
+        const STOPWORDS = new Set(['que', 'con', 'del', 'los', 'las', 'una', 'por', 'para', 'como', 'this', 'the']);
+        const terms = query
+            .toLowerCase()
+            .replace(/[^\w\sáéíóúñü]/g, ' ')
+            .split(/\s+/)
+            .filter(t => t.length > 2 && !STOPWORDS.has(t))
+            .slice(0, 6); // máx 6 términos para no saturar
+
+        if (terms.length === 0) return [];
+
+        // Construimos una condición ILIKE para cada término
+        // Buscamos en contentText (que incluye síntoma + diagnóstico + repuestos)
+        const conditions = terms.map((_, i) => `"contentText" ILIKE $${i + 1}`).join(' OR ');
+        const params = terms.map(t => `%${t}%`);
+
+        const rows = await db.$queryRawUnsafe<any[]>(
+            `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText"
+             FROM "repair_embeddings"
+             WHERE ${conditions}
+             LIMIT ${limit}`,
+            ...params
+        );
+
+        if (rows?.length > 0) {
+            console.log(`[RAG] 🔑 Keyword: ${rows.length} resultados (terms: ${terms.join(', ')})`);
+            return rows.map(r => ({
+                ticketNumber: r.ticketNumber,
+                deviceBrand: r.deviceBrand,
+                deviceModel: r.deviceModel,
+                contentText: r.contentText,
+                similarity: 0.7, // score fijo — el rango real lo da RRF
+                source: 'keyword' as const
+            }));
+        }
+    } catch (err: any) {
+        console.warn(`[RAG] keyword error: ${err.message.slice(0, 80)}`);
+    }
+    return [];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FUNCIÓN PRINCIPAL — Búsqueda híbrida
+// ─────────────────────────────────────────────────────────────────────────────
+export async function findSimilarRepairs(
+    userMessage: string,
+    limit = 5,
+    minSimilarity = 0.60
+): Promise<SimilarRepair[]> {
+
+    // Generar embedding una sola vez — se usa en ambas estrategias
+    const embedding = await generateEmbedding(userMessage);
+
+    // Las dos búsquedas corren en PARALELO para minimizar latencia
+    const [semanticResults, keywordResults] = await Promise.allSettled([
+        embedding ? semanticSearch(embedding, limit + 3, minSimilarity) : Promise.resolve([]),
+        keywordSearch(userMessage, limit + 3)
+    ]);
+
+    const semantic = semanticResults.status === 'fulfilled' ? semanticResults.value : [];
+    const keyword = keywordResults.status === 'fulfilled' ? keywordResults.value : [];
+
+    // ── Caso 1: ambas tienen resultados → RRF merge ──────────────────────────
+    if (semantic.length > 0 && keyword.length > 0) {
+        const merged = rrfMerge(semantic, keyword);
+        console.log(`[RAG] ⚡ Híbrida RRF: ${merged.slice(0, limit).length} resultados`);
+        return merged.slice(0, limit);
+    }
+
+    // ── Caso 2: solo semántica ───────────────────────────────────────────────
+    if (semantic.length > 0) {
+        console.log(`[RAG] 🧠 Solo semántica: ${Math.min(semantic.length, limit)} resultados`);
+        return semantic.slice(0, limit);
+    }
+
+    // ── Caso 3: solo keyword ─────────────────────────────────────────────────
+    if (keyword.length > 0) {
+        console.log(`[RAG] 🔑 Solo keyword: ${Math.min(keyword.length, limit)} resultados`);
+        return keyword.slice(0, limit);
+    }
+
+    // ── Caso 4: fallback in-memory (si pgvector no está disponible) ──────────
+    if (embedding) {
         try {
             const rows = await db.$queryRawUnsafe<any[]>(
-                `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding" FROM "repair_embeddings" LIMIT 500`
+                `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding"
+                 FROM "repair_embeddings" LIMIT 500`
             );
-
-            if (rows && rows.length > 0) {
-                const results: SimilarRepair[] = rows.map((row: any): SimilarRepair => {
-                    const rowEmbedding = typeof row.embedding === 'string'
-                        ? JSON.parse(row.embedding)
-                        : row.embedding;
-
-                    return {
+            if (rows?.length > 0) {
+                const results = rows
+                    .map((row: any): SimilarRepair => ({
                         ticketNumber: row.ticketNumber,
                         deviceBrand: row.deviceBrand,
                         deviceModel: row.deviceModel,
                         contentText: row.contentText,
-                        similarity: calculateSimilarity(embedding, rowEmbedding)
-                    };
-                })
-                    .filter((r: SimilarRepair) => r.similarity >= minSimilarity)
-                    .sort((a: SimilarRepair, b: SimilarRepair) => b.similarity - a.similarity)
+                        similarity: calculateSimilarity(embedding, typeof row.embedding === 'string' ? JSON.parse(row.embedding) : row.embedding),
+                        source: 'semantic'
+                    }))
+                    .filter(r => r.similarity >= minSimilarity)
+                    .sort((a, b) => b.similarity - a.similarity)
                     .slice(0, limit);
 
-                if (results.length > 0) return results;
-            }
-        } catch (memErr: any) {
-            console.warn('[RAG] Fallback memoria falló:', memErr.message);
-        }
-
-        // ── Fallback: Brute-force en memoria (Optimizado con Producto Punto) ──────
-        try {
-            // Traemos los últimos registros de conocimiento para comparar
-            const knowledgeItems = await (db as any).repairKnowledge.findMany({
-                take: 100,
-                orderBy: { createdAt: 'desc' },
-            });
-
-            if (knowledgeItems && knowledgeItems.length > 0) {
-                const results: SimilarRepair[] = [];
-                for (const item of knowledgeItems) {
-                    const itemText = `${item.deviceBrand} ${item.deviceModel} ${item.title} ${item.content}`;
-                    const chunks = chunkText(itemText, 600, 60);
-
-                    let bestSim = 0;
-                    for (const chunk of chunks) {
-                        const itemEmbed = await generateEmbedding(chunk);
-                        if (!itemEmbed) continue;
-                        const sim = calculateSimilarity(embedding, itemEmbed);
-                        if (sim > bestSim) bestSim = sim;
-                    }
-
-                    if (bestSim >= minSimilarity) {
-                        results.push({
-                            ticketNumber: item.id,
-                            deviceBrand: item.deviceBrand,
-                            deviceModel: item.deviceModel,
-                            contentText: `${item.title}\n${item.content}`,
-                            similarity: bestSim,
-                        });
-                    }
-                }
                 if (results.length > 0) {
-                    return results.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
+                    console.log(`[RAG] 📦 Fallback in-memory: ${results.length} resultados`);
+                    return results;
                 }
             }
         } catch (err: any) {
-            console.error('[RAG] Fallback brute-force falló:', err.message);
+            console.warn('[RAG] fallback in-memory error:', err.message);
         }
     }
 
+    console.log('[RAG] Sin resultados.');
     return [];
 }
 
-
-/**
- * Búsqueda rápida por texto (Complementaria)
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Búsqueda rápida por texto (usada desde route.ts para wiki)
+// ─────────────────────────────────────────────────────────────────────────────
 export async function findKnowledgeByText(
     terms: string[],
     limit = 3
 ): Promise<{ brand: string; model: string; title: string; content: string }[]> {
     try {
-        const { db } = await import('@/lib/db');
         const conditions = terms.filter(t => t.length > 2).map(term => ({
             OR: [
                 { title: { contains: term, mode: 'insensitive' as const } },
@@ -172,34 +259,35 @@ export async function findKnowledgeByText(
         });
 
         return rows.map((r: any) => ({
-            brand: r.deviceBrand,
-            model: r.deviceModel,
-            title: r.title,
-            content: r.content,
+            brand: r.deviceBrand, model: r.deviceModel,
+            title: r.title, content: r.content,
         }));
-    } catch (err: any) {
+    } catch {
         return [];
     }
 }
 
-/**
- * Formateador de contexto para el prompt
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Formateador de contexto para el prompt
+// ─────────────────────────────────────────────────────────────────────────────
 export function formatRAGContext(repairs: SimilarRepair[]): string {
     if (repairs.length === 0) return '';
 
-    const lines = repairs.map((r, i) =>
-        `[REFERENCIA TÉCNICA #${i + 1}]
+    const lines = repairs.map((r, i) => {
+        const isWiki = r.ticketNumber.startsWith('wiki_') || r.source === 'wiki';
+        const label = isWiki ? '📘 WIKI TÉCNICA' : '🔧 REPARACIÓN PREVIA';
+        const ref = isWiki ? r.ticketNumber.replace('wiki_', 'WIKI-') : r.ticketNumber;
+        return `[${label} #${i + 1} — ${ref}]
 Equipo: ${r.deviceBrand} ${r.deviceModel}
-Historial: ${r.contentText}
-Confianza: ${Math.round(r.similarity * 100)}%`
-    );
+Contenido: ${r.contentText.slice(0, 500)}
+Confianza: ${Math.round(r.similarity * 100)}%`;
+    });
 
     return `\n\n### 📂 CONOCIMIENTO TÉCNICO PROPIO (MACCELL)
-Cerebro: Los siguientes casos son reparaciones REALES realizadas anteriormente en este local. 
-👉 DEBES mencionar estos casos específicos en tu respuesta para que el técnico sepa que hay antecedentes.
+Cerebro: Los siguientes casos son reparaciones y documentos REALES de este taller.
+👉 MENCIONÁ estos casos en tu respuesta para que el técnico sepa que hay antecedentes.
 
 ${lines.join('\n\n')}
 
-⚠️ INSTRUCCIÓN: Si el "Confianza" es mayor al 70%, utiliza esta información como la base principal de tu diagnóstico.`;
+⚠️ INSTRUCCIÓN: Si la Confianza es >70%, usá esta información como base principal del diagnóstico.`;
 }

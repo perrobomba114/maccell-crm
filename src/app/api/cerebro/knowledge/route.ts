@@ -1,7 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db as prisma } from "@/lib/db";
+import { generateEmbedding } from "@/lib/local-embeddings";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Indexa un artículo de wiki en repair_embeddings con source='wiki'.
+ * Los artículos de wiki tienen MAYOR PESO en el RAG que las reparaciones crudas.
+ * Fire-and-forget — no bloquea la respuesta al técnico.
+ */
+async function indexWikiInRAG(knowledge: {
+    id: string;
+    title: string;
+    content: string;
+    deviceBrand: string;
+    deviceModel: string;
+}): Promise<void> {
+    try {
+        // Documento rico: título + contenido completo (wiki tiene más contexto que raw repair)
+        const document = `[WIKI] ${knowledge.title}\n${knowledge.deviceBrand} ${knowledge.deviceModel}\n\n${knowledge.content}`;
+        const embedding = await generateEmbedding(document);
+        if (!embedding) {
+            console.warn('[KNOWLEDGE_INDEX] ⚠️ No se pudo generar embedding para wiki:', knowledge.id);
+            return;
+        }
+
+        const vectorStr = `[${embedding.join(',')}]`;
+
+        // Usamos repairId = "wiki_<id>" para no colisionar con reparaciones reales
+        await prisma.$executeRawUnsafe(`
+            INSERT INTO repair_embeddings
+                (id, "repairId", "ticketNumber", "deviceBrand", "deviceModel", "contentText", embedding, "createdAt", "updatedAt")
+            VALUES
+                (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6::vector, now(), now())
+            ON CONFLICT ("repairId") DO UPDATE SET
+                "contentText" = EXCLUDED."contentText",
+                embedding     = EXCLUDED.embedding,
+                "updatedAt"   = now()
+        `,
+            `wiki_${knowledge.id}`,
+            `WIKI: ${knowledge.title.slice(0, 60)}`,
+            knowledge.deviceBrand,
+            knowledge.deviceModel,
+            document,
+            vectorStr
+        );
+
+        console.log(`[KNOWLEDGE_INDEX] ✅ Wiki indexada en RAG: "${knowledge.title.slice(0, 50)}"`);
+    } catch (err: any) {
+        // No interrumpir el flujo principal
+        console.warn('[KNOWLEDGE_INDEX] ⚠️ Error indexando wiki en RAG:', err.message);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET: Buscar soluciones en la base de conocimiento
+// ─────────────────────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
@@ -39,7 +95,9 @@ export async function GET(req: NextRequest) {
     }
 }
 
-// POST: Crear una nueva solución técnica
+// ─────────────────────────────────────────────────────────────────────────────
+// POST: Crear una nueva solución técnica → también indexar en RAG
+// ─────────────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
@@ -61,6 +119,9 @@ export async function POST(req: NextRequest) {
             }
         });
 
+        // 🧠 Indexar en RAG (background, no bloquea la respuesta)
+        indexWikiInRAG(newKnowledge).catch(() => { });
+
         return NextResponse.json(newKnowledge);
     } catch (error: any) {
         console.error("[KNOWLEDGE_POST] Error:", error);
@@ -68,7 +129,9 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// PATCH: Actualizar una solución existente
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH: Actualizar solución → re-indexar en RAG con contenido nuevo
+// ─────────────────────────────────────────────────────────────────────────────
 export async function PATCH(req: NextRequest) {
     try {
         const body = await req.json();
@@ -95,6 +158,9 @@ export async function PATCH(req: NextRequest) {
             where: { id },
             data: dataToUpdate
         });
+
+        // 🧠 Re-indexar con contenido actualizado (background)
+        indexWikiInRAG(updated).catch(() => { });
 
         return NextResponse.json(updated);
     } catch (error: any) {
