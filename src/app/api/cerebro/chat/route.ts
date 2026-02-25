@@ -345,23 +345,36 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // ── RAG + Diagnóstico en paralelo ────────────────────────────────────
+        // ── Todo en paralelo: classify + RAG directo + schematic + diagnóstico ─
         let finalSystemPrompt = SYSTEM_PROMPT;
 
-        // Fase 1.3: clasificar síntoma para RAG más preciso + resto en paralelo
-        const ragQuery = lastUserText.length > 3
-            ? await withTimeout(classifySymptom(lastUserText, groq), 3000, lastUserText)
-            : lastUserText;
-
-        const [ragResult, diagResult, schemResult] = await Promise.allSettled([
-            ragQuery.length > 3
-                ? withTimeout(findSimilarRepairs(ragQuery, 3, 0.6), 4000, [])
+        const [classifyResult, ragDirectResult, schemResult, diagResult] = await Promise.allSettled([
+            // Fase 1.3: clasificar síntoma (corre en paralelo, no bloquea)
+            lastUserText.length > 8
+                ? withTimeout(classifySymptom(lastUserText, groq), 2500, lastUserText)
+                : Promise.resolve(lastUserText),
+            // RAG directo con el texto original (sin esperar classify)
+            lastUserText.length > 3
+                ? withTimeout(findSimilarRepairs(lastUserText, 3, 0.6), 4000, [])
                 : Promise.resolve([]),
-            withTimeout(extractDiagnosticState(messages, groq), 5000, ''),
-            withTimeout(findSchematic(lastUserText), 3000, null)
+            // Fase 4: schematic auto-lookup
+            withTimeout(findSchematic(lastUserText), 3000, null),
+            // Fase 2: estado del diagnóstico (solo desde turno 3+)
+            withTimeout(extractDiagnosticState(messages, groq), 5000, '')
         ]);
 
-        const similar = ragResult.status === 'fulfilled' ? ragResult.value : [];
+        let similar = ragDirectResult.status === 'fulfilled' ? ragDirectResult.value : [];
+        const classifiedQuery = classifyResult.status === 'fulfilled' ? classifyResult.value : lastUserText;
+
+        // Si RAG directo no encontró nada Y classify generó una query mejor → 2do intento
+        if (similar.length === 0 && classifiedQuery !== lastUserText && classifiedQuery.length > 3) {
+            const ragFallback = await withTimeout(findSimilarRepairs(classifiedQuery, 3, 0.6), 3000, []);
+            if (ragFallback.length > 0) {
+                similar = ragFallback;
+                console.log(`[CEREBRO] 🏷️ RAG mejorado por classify: ${similar.length} casos`);
+            }
+        }
+
         if (similar.length > 0) {
             finalSystemPrompt += formatRAGContext(similar);
             console.log(`[CEREBRO] 🧠 RAG: ${similar.length} casos`);
