@@ -1,7 +1,6 @@
 /**
  * MACCELL Cerebro — Schematic Library (Fase 4)
- * Busca schematics pre-indexados por marca/modelo detectados en el mensaje.
- * Usa Prisma para persistencia correcta entre reinicios del servidor.
+ * Raw SQL para máxima robustez — no depende del cliente Prisma generado.
  */
 
 import { db } from '@/lib/db';
@@ -13,9 +12,6 @@ interface SchematicMatch {
     text: string;
 }
 
-/**
- * Extrae menciones de marcas y modelos del texto del usuario.
- */
 function extractDeviceHints(text: string): { brands: string[]; models: string[] } {
     const lower = text.toLowerCase();
 
@@ -26,50 +22,51 @@ function extractDeviceHints(text: string): { brands: string[]; models: string[] 
     ];
 
     const brands = BRANDS.filter(b => lower.includes(b));
-
-    // Modelos: a10, a52, s21, note 10, iphone 13 pro, etc.
     const modelRegex = /\b(a\d{1,2}s?|a\d{2}s?|s\d{1,2}(\+|ultra|fe)?|note\s?\d{1,2}|iphone\s?\d{1,2}(\s?pro(\s?max)?|\s?plus|\s?mini)?|redmi\s?\w+|poco\s?\w+|\d{1,2}t|\d{1,2}[a-z]?)\b/gi;
     const models = [...new Set((text.match(modelRegex) || []).map(m => m.trim().toLowerCase()))];
 
     return { brands, models };
 }
 
-/**
- * Busca en cerebro_schematics el schematic más relevante para el mensaje.
- * Usa Prisma para persistencia segura.
- */
 export async function findSchematic(userMessage: string): Promise<SchematicMatch | null> {
     try {
         const { brands, models } = extractDeviceHints(userMessage);
         if (brands.length === 0 && models.length === 0) return null;
 
-        // Construimos condiciones OR para buscar por marca y/o modelo
-        const conditions: any[] = [];
+        const conditions: string[] = [];
+        const params: string[] = [];
+        let i = 1;
 
         for (const brand of brands) {
-            conditions.push({ deviceBrand: { contains: brand, mode: 'insensitive' } });
+            conditions.push(`lower(device_brand) LIKE $${i}`);
+            params.push(`%${brand}%`);
+            i++;
         }
         for (const model of models) {
-            conditions.push({ deviceModel: { contains: model, mode: 'insensitive' } });
+            conditions.push(`lower(device_model) LIKE $${i}`);
+            params.push(`%${model}%`);
+            i++;
         }
 
-        if (conditions.length === 0) return null;
+        const sql = `
+            SELECT device_brand, device_model, filename, extracted_text
+            FROM cerebro_schematics
+            WHERE ${conditions.join(' OR ')}
+            ORDER BY created_at DESC
+            LIMIT 1
+        `;
 
-        const row = await (db as any).cerebroSchematic.findFirst({
-            where: { OR: conditions },
-            orderBy: { createdAt: 'desc' },
-            select: { deviceBrand: true, deviceModel: true, filename: true, extractedText: true }
-        });
+        const rows = await db.$queryRawUnsafe<any[]>(sql, ...params);
+        if (!rows || rows.length === 0) return null;
 
-        if (!row) return null;
-
-        console.log(`[CEREBRO] 📋 Schematic encontrado: ${row.deviceBrand} ${row.deviceModel} (${row.filename})`);
+        const row = rows[0];
+        console.log(`[CEREBRO] 📋 Schematic encontrado: ${row.device_brand} ${row.device_model}`);
 
         return {
-            brand: row.deviceBrand,
-            model: row.deviceModel,
+            brand: row.device_brand,
+            model: row.device_model,
             filename: row.filename,
-            text: row.extractedText
+            text: row.extracted_text
         };
     } catch (err: any) {
         console.warn('[CEREBRO] ⚠️ findSchematic error:', err.message?.slice(0, 80));
@@ -77,9 +74,6 @@ export async function findSchematic(userMessage: string): Promise<SchematicMatch
     }
 }
 
-/**
- * Formatea el contexto del schematic para inyectar en el system prompt.
- */
 export function formatSchematicContext(match: SchematicMatch): string {
     return `\n\n### 📋 SCHEMATIC PRE-INDEXADO: ${match.brand} ${match.model} (${match.filename})\nUsá esta información del schematic EXCLUSIVAMENTE para el síntoma específico preguntado.\nNombrá los componentes reales, sus valores y testpoints.\n\n${match.text.slice(0, 4000)}`;
 }

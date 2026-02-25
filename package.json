@@ -10,7 +10,7 @@
     "dev:https": "next dev --experimental-https --experimental-https-key ./key.pem --experimental-https-cert ./cert.pem -H 0.0.0.0 -p 3000",
     "dev:clean": "rm -rf .next && next dev -p 3000",
     "build": "echo \"$(date +%s)\" > public/version.txt && prisma generate && next build",
-    "start": "prisma migrate deploy && node .next/standalone/server.js",
+    "start": "prisma migrate deploy; node .next/standalone/server.js",
     "lint": "eslint",
     "postinstall": "node scripts/patch-sdk.js",
     "wiki:sync": "npx tsx scripts/seed-wiki-from-repairs.ts",
