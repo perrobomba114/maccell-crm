@@ -502,6 +502,21 @@ model CerebroConversation {
   @@map("cerebro_conversations")
 }
 
+/// Schematics técnicos pre-indexados para inyección automática en Cerebro
+model CerebroSchematic {
+  id            String   @id @default(cuid())
+  deviceBrand   String
+  deviceModel   String
+  filename      String
+  extractedText String
+  uploadedBy    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([deviceBrand, deviceModel])
+  @@map("cerebro_schematics")
+}
+
 /// Mensajes individuales dentro de una conversación de Cerebro
 model CerebroMessage {
   id             String              @id @default(cuid())
