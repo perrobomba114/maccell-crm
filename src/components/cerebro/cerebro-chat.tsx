@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon, Plus, Loader2, Paperclip, FileText } from "lucide-react";
+import { Bot, Send, User, BrainCircuit, RefreshCw, Image as ImageIcon, X, FileIcon, Plus, Loader2, Paperclip, FileText, Microscope } from "lucide-react";
 import { saveMessagesToDbAction, saveUserMessageAction, updateConversationTitleAction, generateGeminiPromptAction } from "@/actions/cerebro-actions";
 import { toast } from "sonner";
 
@@ -59,6 +59,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     const [tokenUsage, setTokenUsage] = useState<{
         used: number; limit: number; remaining: number; percentage: number; resetAt: string;
     } | null>(null);
+    const [guidedMode, setGuidedMode] = useState(false); // Fase 5
 
     // Polling de tokens cada 30 segundos
     useEffect(() => {
@@ -75,7 +76,10 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     const { messages, sendMessage, stop, status, error } = useChat({
         id: conversationId,
         messages: initialMessages,
-        transport: new DefaultChatTransport({ api: "/api/cerebro/chat" }),
+        transport: new DefaultChatTransport({
+            api: "/api/cerebro/chat",
+            body: { guidedMode }, // Fase 5: enviamos el modo al backend
+        }),
         onFinish: async ({ message, messages: allMessages }: any) => {
             try {
                 if (allMessages && allMessages.length > 0) {
@@ -229,21 +233,33 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                             <div className="w-20 h-1 bg-slate-800 rounded-full overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-500 ${tokenUsage.percentage >= 80 ? 'bg-red-500'
-                                            : tokenUsage.percentage >= 50 ? 'bg-amber-500'
-                                                : 'bg-emerald-500'
+                                        : tokenUsage.percentage >= 50 ? 'bg-amber-500'
+                                            : 'bg-emerald-500'
                                         }`}
                                     style={{ width: `${tokenUsage.percentage}%` }}
                                 />
                             </div>
                             <span className={`text-[10px] font-semibold tabular-nums ${tokenUsage.percentage >= 80 ? 'text-red-400'
-                                    : tokenUsage.percentage >= 50 ? 'text-amber-400'
-                                        : 'text-emerald-400'
+                                : tokenUsage.percentage >= 50 ? 'text-amber-400'
+                                    : 'text-emerald-400'
                                 }`}>
                                 {tokenUsage.remaining.toLocaleString()} tkn restantes
                             </span>
                         </div>
                     )}
                 </div>
+                {/* Fase 5: Botón Modo Guiado */}
+                <button
+                    onClick={() => setGuidedMode(g => !g)}
+                    title={guidedMode ? "Modo Guiado activo — click para desactivar" : "Activar Modo Diagnóstico Guiado (paso a paso)"}
+                    className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border ${guidedMode
+                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.3)]'
+                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                        }`}
+                >
+                    <Microscope size={13} />
+                    <span className="hidden sm:inline">{guidedMode ? 'Guiado ✓' : 'Guiado'}</span>
+                </button>
             </div>
 
 

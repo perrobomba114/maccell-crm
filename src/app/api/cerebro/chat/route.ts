@@ -206,6 +206,43 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Pro
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// FASE 1.3 — Clasificador de síntomas previo a RAG
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Extrae marca, modelo y síntomas del mensaje del técnico con llama-3.1-8b.
+ * Retorna una query enriquecida para el RAG, más precisa que el texto crudo.
+ * Ejemplo: "galaxy a52 se queda colgado" → "Samsung A52 reinicio freezing"
+ */
+async function classifySymptom(
+    text: string,
+    groq: ReturnType<typeof createGroq>
+): Promise<string> {
+    if (text.length < 8) return text;
+    try {
+        const { text: result } = await generateText({
+            model: groq(DIAG_EXTRACT_MODEL),
+            temperature: 0,
+            maxOutputTokens: 80,
+            prompt: `Extraé marca, modelo y síntomas técnicos de este texto. Respondé SOLO con JSON, sin markdown:
+{"brand":"Samsung","model":"A52","symptoms":["reinicio","no carga"]}
+Si no hay info, usá vacíos.
+
+Texto: "${text.slice(0, 200)}"`
+        });
+        const match = result.match(/\{[\s\S]*\}/);
+        if (!match) return text;
+        const c = JSON.parse(match[0]);
+        const parts = [c.brand, c.model, ...(c.symptoms || [])].filter(Boolean);
+        if (parts.length === 0) return text;
+        const enriched = parts.join(' ');
+        console.log(`[CEREBRO] 🏷️ Síntoma clasificado: "${enriched}"`);
+        return enriched;
+    } catch {
+        return text; // fallback al texto original
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FASE 2 — Extractor de estado de diagnóstico
 // ─────────────────────────────────────────────────────────────────────────────
 /**
@@ -284,6 +321,7 @@ export async function POST(req: NextRequest) {
 
         const body = await req.json();
         const messages = body.messages || [];
+        const guidedMode = body.guidedMode === true; // Fase 5
         if (!messages.length) return new Response("No messages provided", { status: 400 });
 
         const groq = createGroq({ apiKey: groqKey });
@@ -310,9 +348,14 @@ export async function POST(req: NextRequest) {
         // ── RAG + Diagnóstico en paralelo ────────────────────────────────────
         let finalSystemPrompt = SYSTEM_PROMPT;
 
+        // Fase 1.3: clasificar síntoma para RAG más preciso + resto en paralelo
+        const ragQuery = lastUserText.length > 3
+            ? await withTimeout(classifySymptom(lastUserText, groq), 3000, lastUserText)
+            : lastUserText;
+
         const [ragResult, diagResult, schemResult] = await Promise.allSettled([
-            lastUserText.length > 3
-                ? withTimeout(findSimilarRepairs(lastUserText, 3, 0.6), 4000, [])
+            ragQuery.length > 3
+                ? withTimeout(findSimilarRepairs(ragQuery, 3, 0.6), 4000, [])
                 : Promise.resolve([]),
             withTimeout(extractDiagnosticState(messages, groq), 5000, ''),
             withTimeout(findSchematic(lastUserText), 3000, null)
@@ -333,6 +376,19 @@ export async function POST(req: NextRequest) {
             console.log(`[CEREBRO] 📋 Schematic auto-inyectado: ${schematic.brand} ${schematic.model}`);
         }
 
+        // Fase 5: Modo Diagnóstico Guiado
+        if (guidedMode) {
+            finalSystemPrompt += `
+
+### 🔬 MODO DIAGNÓSTICO GUIADO ACTIVO
+REGLA CRÍTICA: Hacé UNA SOLA pregunta específica por turno.
+NO des el diagnóstico completo junto. Esperá la respuesta del técnico antes de continuar.
+Ejemplo correcto:
+  Turno 1: "Conectá alimentación externa. ¿Cuánto mA drena?"
+  Turno 2: (técnico responde 350mA) → "Corto confirmado. Medí con cámara térmica la zona del PMIC. ¿Encontrás algo caliente?"
+Seguí este flujo hasta identificar el componente exacto.`;
+            console.log('[CEREBRO] 🔬 Modo Guiado activo');
+        }
 
         // ── Ticket lookup ─────────────────────────────────────────────────────
         const ticketMatch = lastUserText.match(/MAC\d*-\d+/gi);
