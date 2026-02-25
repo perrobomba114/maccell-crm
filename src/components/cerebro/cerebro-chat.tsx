@@ -219,51 +219,50 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     return (
         <div className="flex flex-col h-full bg-slate-900 overflow-hidden relative">
             {/* Header */}
-            <div className="flex items-center p-3 border-b border-slate-800 bg-slate-950/50 shrink-0 gap-2">
-                {/* Izquierda: ícono + título */}
-                <div className="p-2 rounded-lg bg-violet-600/20 text-violet-400 shrink-0">
-                    <BrainCircuit size={18} />
+            <div className="flex flex-col border-b border-slate-800 bg-slate-950/50 shrink-0">
+                {/* Fila 1: título + tokens */}
+                <div className="flex items-center px-3 pt-2.5 pb-1 gap-2">
+                    <div className="p-1.5 rounded-lg bg-violet-600/20 text-violet-400 shrink-0">
+                        <BrainCircuit size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-white font-bold text-sm leading-tight">Cerebro AI</h2>
+                        <p className="text-violet-300 text-[10px] leading-tight">BD MACCELL</p>
+                    </div>
+                    {tokenUsage && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="w-14 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-500 ${tokenUsage.percentage >= 80 ? 'bg-red-500'
+                                            : tokenUsage.percentage >= 50 ? 'bg-amber-500'
+                                                : 'bg-emerald-500'
+                                        }`}
+                                    style={{ width: `${tokenUsage.percentage}%` }}
+                                />
+                            </div>
+                            <span className={`text-[10px] font-semibold tabular-nums whitespace-nowrap ${tokenUsage.percentage >= 80 ? 'text-red-400'
+                                    : tokenUsage.percentage >= 50 ? 'text-amber-400'
+                                        : 'text-emerald-400'
+                                }`}>
+                                {tokenUsage.remaining.toLocaleString()} tkn
+                            </span>
+                        </div>
+                    )}
                 </div>
-                <div className="min-w-0">
-                    <h2 className="text-white font-bold text-sm leading-tight">Cerebro AI</h2>
-                    <p className="text-violet-300 text-[10px] leading-tight">BD MACCELL</p>
-                </div>
-
-                {/* Centro: Botón Modo Guiado — siempre visible */}
-                <div className="flex-1 flex justify-center">
+                {/* Fila 2: botón Modo Guiado centrado */}
+                <div className="flex justify-center pb-2 px-3">
                     <button
                         onClick={() => setGuidedMode(g => !g)}
-                        title={guidedMode ? "Modo Guiado activo — click para desactivar" : "Activar Modo Diagnóstico Guiado (paso a paso)"}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border ${guidedMode
+                        title={guidedMode ? "Modo Guiado activo — click para desactivar" : "Activar Modo Diagnóstico Guiado"}
+                        className={`flex items-center gap-1.5 px-4 py-1 rounded-full text-xs font-semibold transition-all duration-200 border ${guidedMode
                                 ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.3)]'
-                                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                                : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
                             }`}
                     >
-                        <Microscope size={13} />
-                        <span>{guidedMode ? '🔬 Guiado ✓' : '🔬 Guiado'}</span>
+                        <Microscope size={12} />
+                        <span>{guidedMode ? '🔬 Modo Guiado  ON' : '🔬 Modo Guiado'}</span>
                     </button>
                 </div>
-
-                {/* Derecha: Token gauge */}
-                {tokenUsage && (
-                    <div className="flex flex-col items-end gap-0.5 shrink-0">
-                        <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden">
-                            <div
-                                className={`h-full rounded-full transition-all duration-500 ${tokenUsage.percentage >= 80 ? 'bg-red-500'
-                                    : tokenUsage.percentage >= 50 ? 'bg-amber-500'
-                                        : 'bg-emerald-500'
-                                    }`}
-                                style={{ width: `${tokenUsage.percentage}%` }}
-                            />
-                        </div>
-                        <span className={`text-[9px] font-semibold tabular-nums ${tokenUsage.percentage >= 80 ? 'text-red-400'
-                            : tokenUsage.percentage >= 50 ? 'text-amber-400'
-                                : 'text-emerald-400'
-                            }`}>
-                            {tokenUsage.remaining.toLocaleString()} tkn
-                        </span>
-                    </div>
-                )}
             </div>
 
 

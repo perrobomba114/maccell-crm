@@ -1,4 +1,5 @@
 import { CerebroLayout } from "@/components/cerebro/cerebro-layout";
+import { SchematicUploadPanel } from "@/components/cerebro/schematic-upload-panel";
 import { getUserData } from "@/actions/get-user";
 import { redirect } from "next/navigation";
 import { BrainCircuit } from "lucide-react";
@@ -20,8 +21,20 @@ export default async function AdminCerebroPage() {
                     <p className="text-[10px] md:text-xs text-zinc-500 line-clamp-1">Panel de administración Cerebro</p>
                 </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-hidden relative">
-                <CerebroLayout userId={user.id} />
+
+            {/* Layout principal: chat a la izquierda, panel de schematics a la derecha */}
+            <div className="flex-1 min-h-0 overflow-hidden flex gap-0">
+                {/* Chat / historial */}
+                <div className="flex-1 min-w-0 overflow-hidden relative">
+                    <CerebroLayout userId={user.id} />
+                </div>
+
+                {/* Panel de Schematics — solo visible en pantallas medianas+ */}
+                <div className="hidden lg:flex w-72 xl:w-80 shrink-0 border-l border-zinc-800 bg-zinc-900/40 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto p-3">
+                        <SchematicUploadPanel userId={user.id} />
+                    </div>
+                </div>
             </div>
         </div>
     );

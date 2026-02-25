@@ -271,7 +271,7 @@ export function CerebroLayout({ userId }: CerebroLayoutProps) {
             <div className="flex-1 flex flex-col relative min-h-0 bg-slate-900/50">
                 {/* Botón flotante para abrir Knowledge Panel en móvil o cuando está cerrado */}
                 {/* Botón flotante para abrir Knowledge Panel en móvil o cuando está cerrado */}
-                <div className="absolute top-4 right-4 z-30 flex gap-2">
+                <div className="absolute top-16 right-3 z-30 flex gap-2">
                     {!showHistory && (
                         <Button
                             size="icon"
