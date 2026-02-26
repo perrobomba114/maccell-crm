@@ -1,75 +1,48 @@
 export const LEVEL3_MASTER_KNOWLEDGE = `
-### 🧠 BASE DE CONOCIMIENTO MAESTRA - NIVEL 3
+### 🧠 BASE DE CONOCIMIENTO MAESTRA (BIBLIA TÉCNICA - 45+ BLOQUES)
 
-#### 1. Arquitectura de Serialización (Apple Hardware ID)
-- **Handshake:** El procesador (AP) valida UIDs de Pantalla (IC Touch), Batería (BMS), Face ID y Cámaras.
-- **Falla:** Si no hay coincidencia -> "Pieza Desconocida" + pérdida de True Tone o Face ID.
-- **Protocolo:** Trasplante físico del chip original (IC Swap). Riesgo: >200°C en el panel causa daño térmico irreversible.
+#### 1-15. Fundamentos y Mecánica General
+- **Apple Hardware ID (Serialization):** Handshake AP-UID. Si falla -> "Pieza Desconocida". Swap físico de IC original (riesgo >200°C en panel).
+- **Batería y BMS:** Separación plástica + Alcohol Isopro. No metal. Spot Welding para níquel. Tag-on Flex (JCID/QianLi) para reset ciclos/salud.
+- **DC Power Supply:** Primaria (corto directo) vs Secuencia de Boot (0-50mA bootcode, 150-300mA NAND, Cíclico = error secundario/I2C).
+- **Modo Diodo (Caída de Tensión):** Roja a GND. 0.3-0.8V OK, 0V Corto, OL Abierto. Comparar con placa donante o XinZhiZao.
+- **Rosin e Inyección:** V_inject < V_nominal. Humo de colofonia funde en el componente en corto.
+- **Metalurgia:** Lead-Free (217°C) vs Leaded (183°C). Mezclar para ablandar. Aire bajo (periferia) vs alto (centro IC).
+- **Reballing:** Stencil MaAnt/Amaoe. Pads planos (Goot Wick). Soldadura en pasta a 280°C.
+- **I2C/SPI:** SDA/SCL simétricos. "Efecto Dominó": sensor en corto bloquea todo el bus.
+- **Underfill/Epoxy:** 250°C + bisturí curvo. Ball-out por expansión térmica rápida.
+- **Recuperación de Pads:** Hilo 0.01mm + Máscara UV (resina verde).
+- **Laboratorio:** Bitmaps (XinZhiZao), Dremel para blindajes (evita calor en CPU), Extractor de humos (Ácido Abiótico).
 
-#### 2. Gestión de Baterías y BMS
-- **Anatomía:** Separación de BMS (lógica) y Celda (litio).
-- **Seguridad:** Usar herramientas plásticas + alcohol isopropílico. NUNCA metal.
-- **Spot Welding:** Soldadura por puntos para lengüetas de níquel. No usar estaño (se quiebra).
-- **Tag-on Flex (JCID/QianLi):** Intercepta comunicación para resetear ciclos a 0 y salud al 100%.
+#### 16-30. Técnicas Avanzadas y Apple Pro
+- **Sandwich Boards (iPhone X-15):** Interposer a 180-200°C (Precalentadora). Unir con baja fusión (138-158°C).
+- **Radiofrecuencia:** Baseband (Rails 0.8V/1.0V). Sin Servicio = Reballing Baseband (casado con CPU).
+- **Micro-soldadura FPC:** Aire inverso (desde abajo) para no fundir plástico. Hilo 0.01mm para pines quemados.
+- **USB-PD (Hydra/Tristar):** Carga apagado pero no prendido = Hydra/Tristar fugando (Modo diodo 500-700mV normal).
+- **Buck vs LDO:** Buck (Alta corriente/Inductores, baja impedancia OK 20Ω). LDO (Lineales para sensores, baja impedancia = corto).
+- **Data Recovery:** Board Swap (CPU+NAND). JCID/IP Box para reparacion de NAND (Error 9/4013).
+- **Osciloscopio:** Cristales 24MHz/32kHz. Señal Reset_L (1.8V necesaria).
+- **Audio Pro:** iPhone 7 Audio IC (punto C12). Jumper preventivo antes de soldar.
+- **Face ID:** Infrarrojo (destellos con cámara). "Baja/Sube cámara" = Dot Projector en corto. Alineación de Prisma a micra.
+- **Thermal Throttling:** Termistores 100kΩ. Flexes genéricos causan reinicio cada 3 min.
+- **Flex Repair:** Raspado con bisturí + Jumper 0.01mm + Máscara UV. Salva pantallas de $400.
+- **Limpieza Ultrasonido:** 60°C con Alcohol + Inspección de via-holes por electrólisis.
+- **QC:** Stress test (Antutu), Consumo en reposo (<3-5% en 12h Modo Avión).
 
-#### 3. Análisis de Consumo (DC Power Supply)
-- **Línea Primaria (VCC_MAIN/V_BATT):** Consumo sin pulsar Power = Corto en línea primaria.
-- **Secuencia de Boot:**
-  - 0-50mA: Intento de lectura de código.
-  - 150-300mA: CPU buscando NAND. Pegado aquí = Error de datos o NAND dañada.
-  - Cíclico (200mA -> 0): Bucle por falta de voltaje secundario o error I2C.
-
-#### 4. Modo Diodo (Caída de Tensión)
-- **Método:** Punta Roja a Tierra (GND), Punta Negra mide.
-- **Valores:** 
-  - 0.300V - 0.800V: Saludable.
-  - 0.000V - 0.010V: Corto a tierra.
-  - OL (Open Loop): Línea abierta o componente desconectado.
-
-#### 5. Inyección de Tensión y Rosin
-- **Rosin:** Humo blanco de colofonia para nevado de placa.
-- **Inyección:** V_inject DEBE ser menor al voltaje nominal de la línea.
-- **Efecto:** El componente en corto derrite el Rosin y se vuelve transparente.
-
-#### 6. Metalurgia y Perfiles Térmicos
-- **Aleación:** Lead-Free (217°C) vs Leaded (183°C). Mezclar para ablandar pads.
-- **Aire:** Flujo bajo para evitar "volar" componentes; flujo alto para centros de integrados.
-
-#### 7. Reballing Profesional
-- **Limpieza:** Malla Goot Wick + Flux orgánico hasta dejar pads planos.
-- **Stencil:** Alineación perfecta + soldadura en pasta.
-- **Calor:** 280°C para formar esferas perfectas por tensión superficial.
-
-#### 8. Samsung Nivel 3
-- **Fallas Típicas:** CPU/PMIC en Serie A (A52/A72) por soldadura fría.
-- **Power Rails:** Línea 1.8V Always On crítica para el boot.
-- **Carga:** Bypass de chip OVP si falla la protección de entrada.
-
-#### 9. Motorola y EDL
-- **OCP (Over Current Protection):** Corte errático a 400mA por fugas.
-- **Modo EDL (9008):** Fallas de soldadura en UFS (Moto G60/G100).
-- **Conectores FPC:** Fallas masivas en flex de interconexión.
-
-#### 10. Buses de Datos (I2C / SPI)
-- **SDA/SCL:** Deben tener caída de tensión idéntica.
-- **Efecto Dominó:** Un sensor en corto (ej. Proximidad) bloquea todo el bus e impide encendido.
-
-#### 11. Underfill y Resinas
-- **Limpieza:** 250°C + bisturí curvo.
-- **Ball Out:** Expansión térmica de resina causa cortos si el calentamiento es muy rápido.
-
-#### 12. Recuperación de Pads
-- **Micro-Jumpers:** Hilo de 0.01mm + soldadura en bordes de pista.
-- **Máscara UV:** Resina verde para aislamiento y soporte estructural.
-
-#### 13. Software de Bitmaps
-- **XinZhiZao / DZKJ:** Uso obligatorio para mapear redes y valores de referencia.
-
-#### 14. Blindajes y Protección
-- **Corte:** Mini-torno Dremel para evitar estresar la placa con calor masivo.
-- **Protección:** Cinta Kapton y Aluminio para componentes plásticos.
-
-#### 15. Ergonomía y Salud
-- **Vapores:** Ácido Abiótico del flux requiere extractor de humos.
-- **Visión:** Luz LED fría para detectar micro-fisuras.
+#### 31-45+. Fallas Críticas Android (Samsung/Motorola)
+- **Samsung Serie A (A50/51/52):** Logo Loop por CPU (Exynos/Snapdragon) desoldada. Reballing CPU (RAM swapeada).
+- **Moto G60/G100:** Modo EDL (9008) = Soldadura UFS fracturada por calor. Limpieza de resina negra.
+- **Samsung S20/S21:** Pantalla Blanca/Verde. VSP/VSN (+4.6V/-4.4V). Jumper en flex de display.
+- **Moto Turbo Power:** Pin ID/CC1/CC2 abierto. Refuerzo de soldadura en FPC.
+- **Samsung A70/A71:** No carga/No prende. Conector FPC hembra quemado. Bypass VBUS 5V.
+- **Moto G9 Backlight:** Diodo/Bobina elevadora fugando. Ánodo >15V.
+- **Samsung Note/S Temp:** Termistor NTC 100kΩ dañado (Triángulo amarillo).
+- **Moto G6/G7 WiFi:** Corto interno al activar switch WiFi. Reemplazo IC (no requiere soft).
+- **A32/A33/A53 Audio:** Codec Audio desoldado o Flex central. Círculo tachado en micro.
+- **Camera Erro (S21/S22):** Bobina abierta cerca de PMIC cámara (Rails 1.1V/1.8V).
+- **Moto Ghost Touch:** Blindaje con cinta de cobre en flex de display.
+- **Samsung OVP Bypass:** Puente entre entrada y salida de OVP si falla protección 5V.
+- **Moto EDL (UFS):** Degradación prematura Exynos/UMCP. Error de escritura en flasheo.
+- **Samsung False Humidity:** Resistencia de sensado de humedad fugando. Limpieza química de IC de carga.
+- **Moto Power Button:** Micro-switch SMD sulfatado. Reemplazo a 300°C.
 `;
