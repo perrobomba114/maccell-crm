@@ -79,7 +79,7 @@ export function GlobalFinancials({ globalStats, repairStats }: GlobalFinancialsP
                 <MetricCard
                     title="Ganancia Estimada"
                     value={fmtMoney(globalStats.profitThisMonth)}
-                    subtext="Margen operativo"
+                    subtext={`${globalStats.okCount || 0} OK | ${globalStats.noRepairCount || 0} No Rep.`}
                     trend={{ value: 0 }} // Assuming profit growth isn't calc'd separately here yet
                     accentColor="emerald"
                     icon={Wallet}

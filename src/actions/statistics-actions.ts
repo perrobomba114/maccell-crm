@@ -40,7 +40,8 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
             deliveredCountCurrent, // We only use the current month count now
             partsUsed,
             repairSalesItems,
-            shifts
+            shifts,
+            deliveredHistory
         ] = await Promise.all([
             // 1. Total Sales Volume (All Time Metadata)
             prisma.sale.aggregate({
@@ -114,6 +115,15 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
                     startTime: { gte: firstDayOfMonth, lte: lastDayOfMonth }
                 },
                 _sum: { bonusTotal: true }
+            }),
+            // 9. Status History for OK vs No Reparado breakdown
+            prisma.repairStatusHistory.findMany({
+                where: {
+                    toStatusId: 10, // Entregado
+                    createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                    repair: whereClause
+                },
+                select: { fromStatusId: true }
             })
         ]);
 
@@ -170,7 +180,9 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
             sparePartsCost,
             repairProfit,
             deliveredCount: deliveredCountCurrent,
-            bonusesPaid
+            bonusesPaid,
+            okCount: deliveredHistory.filter(h => h.fromStatusId === 5).length,
+            noRepairCount: deliveredHistory.filter(h => h.fromStatusId === 6).length
         };
     } catch (error) {
         console.error("Error in getGlobalStats:", error);
@@ -184,7 +196,9 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
             sparePartsCost: 0,
             repairProfit: 0,
             deliveredCount: 0,
-            bonusesPaid: 0
+            bonusesPaid: 0,
+            okCount: 0,
+            noRepairCount: 0
         };
     }
 }
