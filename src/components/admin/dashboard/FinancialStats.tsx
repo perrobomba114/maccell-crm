@@ -107,7 +107,6 @@ export function FinancialStats({ stats }: { stats: any }) {
                     value={stock.okCount || 0}
                     accentColor="orange"
                     icon={CheckCircle2}
-                    trend={{ value: "Éxito", positive: true }}
                     subtext={`${stock.noRepairCount || 0} Equipos No Reparados`}
                     href="/admin/statistics"
                 />

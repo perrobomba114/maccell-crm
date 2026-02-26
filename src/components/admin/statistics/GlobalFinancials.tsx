@@ -83,7 +83,6 @@ export function GlobalFinancials({ globalStats, repairStats }: GlobalFinancialsP
                     title="Equipos Entregados OK"
                     value={globalStats.okCount || 0}
                     subtext={`${globalStats.noRepairCount || 0} Sin Reparación`}
-                    trend={{ value: 0 }}
                     accentColor="orange"
                     icon={Wrench}
                 />
