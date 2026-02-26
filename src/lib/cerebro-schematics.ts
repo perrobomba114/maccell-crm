@@ -172,5 +172,11 @@ export function formatSchematicContext(match: SchematicMatch, userQuery = ''): s
             '\n[...truncado por longitud...]';
     }
 
-    return `\n\n### 📋 SCHEMATIC PRE-INDEXADO: ${match.brand} ${match.model} (${match.filename})\nUsá esta información del schematic EXCLUSIVAMENTE para el síntoma específico preguntado.\nNombrá los componentes reales, sus valores y testpoints.\n\n${extracted}`;
+    return `\n\n### 📋 DATOS TÉCNICOS DEL ESQUEMA: ${match.brand} ${match.model} (${match.filename})
+⚠️ INSTRUCCIÓN NIVEL 3: No des consejos genéricos. 
+1. Identificá los ICs involucrados (ej: U3300/Tigris, U2700/PMIC).
+2. Buscá las líneas de alimentación principales (VBUS, VCC_MAIN, VDD).
+3. Entregá valores exactos de Voltaje (V) y Caída de Tensión (mV) de los test points (TP) o pines visibles abajo.
+
+${extracted}`;
 }
