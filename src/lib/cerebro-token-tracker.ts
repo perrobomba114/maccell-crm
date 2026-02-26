@@ -38,24 +38,23 @@ async function ensureTable(): Promise<void> {
 // API pública
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Registra tokens consumidos en la DB.
- * Fire-and-forget — nunca bloquea la respuesta al usuario.
- */
-export async function trackTokens(totalTokens: number): Promise<void> {
-    if (!totalTokens || totalTokens <= 0) return;
+export async function trackTokens(totalTokens: any): Promise<void> {
+    const tokens = typeof totalTokens === 'number' ? totalTokens : parseInt(totalTokens);
+    if (isNaN(tokens) || tokens <= 0) return;
+
     try {
         await ensureTable();
         const today = todayUTC();
-        await db.$executeRawUnsafe(`
+
+        // Usamos $executeRaw (template literal) para máxima seguridad y evitar errores de sintaxis
+        await db.$executeRaw`
             INSERT INTO cerebro_daily_tokens (date, tokens_used)
-            VALUES ('${today}', ${totalTokens})
+            VALUES (${today}, ${tokens})
             ON CONFLICT (date) DO UPDATE
               SET tokens_used = cerebro_daily_tokens.tokens_used + EXCLUDED.tokens_used
-        `);
+        `;
     } catch (err: any) {
-        // No bloquear nunca el flujo del chat por un error de tracking
-        console.warn('[TOKEN_TRACKER] ⚠️ No se pudo registrar tokens:', err.message);
+        console.warn('[TOKEN_TRACKER] ⚠️ Fallo al registrar tokens:', err.message);
     }
 }
 
