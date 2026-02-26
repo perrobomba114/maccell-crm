@@ -49,7 +49,7 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon }: a
                 )}
                 <span className={cn(
                     "font-medium truncate",
-                    title.includes("OK") ? "text-sm text-white font-bold" : "text-xs text-white/70"
+                    (title.includes("OK") || title === "Equipos Entregados") ? "text-sm text-white font-bold" : "text-xs text-white/70"
                 )}>{subtext}</span>
             </div>
         </div>
@@ -122,7 +122,7 @@ export function GlobalFinancials({ globalStats, repairStats }: GlobalFinancialsP
                 <MetricCard
                     title="Equipos Entregados"
                     value={globalStats.deliveredCount || 0}
-                    subtext="Finalizados y Entregados"
+                    subtext={`${globalStats.deliveredCount > 0 ? Math.round((globalStats.okCount / globalStats.deliveredCount) * 100) : 0}% Eficiencia de Reparación`}
                     accentColor="blue"
                     icon={Wallet}
                 />
