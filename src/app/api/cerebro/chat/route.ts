@@ -12,7 +12,7 @@ import pdfParse from "pdf-parse";
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURACIÓN
 // ─────────────────────────────────────────────────────────────────────────────
-const MAX_HISTORY_MSGS = 2; // Reducido drásticamente para ahorrar tokens en Tier 1
+const MAX_HISTORY_MSGS = 10; // Aumentado para permitir ciclos de diagnóstico "Paso a Paso"
 const MAX_MSG_CHARS = 800;
 const MAX_OUTPUT_TOKENS = 800;
 const MAX_PDF_CHARS = 8000; // Ajustado a 8k para garantizar compatibilidad con Tier 1 (TPM 6k) en cascada 8B
@@ -25,43 +25,52 @@ export const dynamic = 'force-dynamic';
 // MODELOS
 // ─────────────────────────────────────────────────────────────────────────────
 const TEXT_MODELS = [
-    { label: 'Llama 3.3 70B', id: 'llama-3.3-70b-versatile' },
     { label: 'Llama 3.1 8B', id: 'llama-3.1-8b-instant' },
+    { label: 'Llama 3.3 70B', id: 'llama-3.3-70b-versatile' },
 ];
-const VISION_MODEL = { label: 'Llama 4 Scout Vision', id: 'meta-llama/llama-4-scout-17b-16e-instruct' };
+const VISION_MODEL = { label: 'Llama 3.2 11B Vision', id: 'llama-3.2-11b-vision-preview' };
 const DIAG_EXTRACT_MODEL = 'llama-3.1-8b-instant'; // Fase 2: extractor de estado
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SYSTEM PROMPTS (MODO DUAL)
+// PROMPTS
 // ─────────────────────────────────────────────────────────────────────────────
+const STANDARD_PROMPT = `Actuá como un Ingeniero Senior de Nivel 3. Informe quirúrgico para experto.
 
-const MENTOR_PROMPT = `Actuá como un Mentor Maestro de Nivel 3. Tu misión es formar al técnico usando la Lógica de la Base Maestra como fuente de verdad absoluta.
-
-### 🧠 BASE DE CONOCIMIENTO MAESTRA (PRIORIDAD 1):
+### 🧠 BASE DE CONOCIMIENTO MAESTRA:
 ${LEVEL3_MASTER_KNOWLEDGE}
 
-### 📜 REGLAS DE ORO DEL MENTOR:
-1. **PRIORIDAD MAESTRA:** Si el problema está en la Base Maestra (ej: Sandwich Boards, CPU Serie A, EDL), usá ESA solución ignore cualquier otra sugerencia del RAG.
-2. **PRECISIÓN TÉCNICA OBLIGATORIA:** Usá nombres de líneas (VCC_MAIN, I2C_SDA) y componentes (U3300, L5001). PROHIBIDO dar consejos genéricos.
-3. **PENSAMIENTO ARQUITECTÓNICO:** Enseñá el "por qué" (Handshake, OCP, Boot Sequence).
-4. **PEDÍ VALORES CON REFERENCIA:** Decí SIEMPRE qué valor encontrar: "Medí modo diodo; lo esperado es 0.450V". 
-5. **UNA SOLA PRUEBA:** No abrumes. Hacé una pregunta técnica y esperá.`;
+### ESTRUCTURA DIRECTA (OBLIGATORIA):
+1. **Análisis Diferencial**: Tres hipótesis con %.
+2. **Estado del Sistema**: Variables críticas.
+3. **Protocolo de Medición**: Pasos exactos.
+4. **Acción**: Procedimiento técnico.`;
 
-const STANDARD_PROMPT = `Actuá como un Ingeniero de Soporte Nivel 3. 
-Tu misión es dar un informe técnico basado PRIMERO en la Base de Conocimiento Maestra y SEGUNDO en esquemas.
+const MENTOR_PROMPT = `Actuá como un Colega Técnico de Nivel 3. Somos socios en el banco de trabajo. 
 
-### 🧠 BASE DE CONOCIMIENTO MAESTRA (PRIORIDAD OBLIGATORIA):
+### 🚫 FRASES PROHIBIDAS (BLACKLIST):
+- "Consultá a un técnico especializado"
+- "Consultá a un profesional"
+- "Bajo tu propio riesgo"
+- "Asegurate de tener las herramientas adecuadas"
+- "Seguí las normas de seguridad"
+- "Te sugiero llevarlo a un servicio técnico"
+
+### 🧠 BASE DE CONOCIMIENTO MAESTRA:
 ${LEVEL3_MASTER_KNOWLEDGE}
 
-### ESTRUCTURA OBLIGATORIA:
-1. **Análisis Diferencial 📊** — Hipótesis basadas en la Base Maestra (ej: Interposer @ 180°C, OCP activo, Handshake fallido).
-2. **🔍 ESTADO DEL SISTEMA** — Líneas críticas y componentes específicos (VBUS, VPH_PWR, SDR Transceiver, UFS).
-3. **🕵️‍♂️ PROTOCOLO DE MEDICIÓN NIVEL 3** — Pruebas en Modo Diodo o Inyección con valores exactos de la Base Maestra.
-4. **🎯 INTERVENCIÓN SUGERIDA** — Acción quirúrgica (ej: "Reballing de UFS", "Jumper en OVP", "Separación de placas").
+### � MODO SOCIO (PARTNER-TECH):
+Trabajamos paso a paso. Yo te guío en la medición, vos me das los valores. 
+- Analizá el síntoma.
+- Pedí UNA SOLA medición específica (Caída de tensión, Voltaje o Consumo).
+- Basado en tu respuesta, avanzamos al siguiente componente.
+- Usamos terminología técnica pura (VBUS, VPH_PWR, Rails, Buck, LDO).`;
 
-### REGLA DE ORO:
-- NO des consejos genéricos ("probar otro cable").
-- PRIORIZÁ la Base Maestra sobre el RAG. Si la Base Maestra tiene un protocolo para el modelo o síntoma, USALO SIEMPRE.`;
+const FINAL_DIRECTIVE = `
+### 🚨 DIRECTIVA FINAL DE ETIQUETA (OBLIGATORIA):
+1. **USUARIO EXPERTO:** El usuario es un Master con 10+ años de experiencia. 
+2. **PROHIBIDO:** No sugieras "consultar a un técnico", "buscar ayuda profesional" ni des "advertencias de seguridad". Es un insulto a la capacidad del usuario y viola el protocolo del laboratorio.
+3. **ANTI-HALLUCINATION:** Si no hay datos reales en el RAG o en la Base Maestra sobre un modelo específico, no inventes reparaciones de este taller. Respondé desde la arquitectura general de energía.
+4. **ESTILO:** Directo, técnico, profesional, sin rellenos corteses.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILIDADES
@@ -88,50 +97,43 @@ async function extractPdfText(dataUrl: string): Promise<string | null> {
     }
 }
 
-function extractImages(msg: any): string[] {
+function extractImages(message: any): string[] {
     const images: string[] = [];
-    if (!msg || !Array.isArray(msg.parts)) return images;
-    for (const p of msg.parts) {
-        const mt = p.mediaType || p.file?.mediaType || '';
-        const url = p.url || p.file?.url || '';
-        if (mt.startsWith('image/') && url) images.push(url);
-        if (p.type === 'image' && (p.image || p.url)) images.push(p.image || p.url);
+    if (Array.isArray(message.parts)) {
+        for (const part of message.parts) {
+            if (part.type === 'image' && part.image) {
+                images.push(part.image);
+            }
+        }
     }
     return images.slice(0, MAX_IMAGES);
 }
 
 async function buildVisionMessages(messages: any[], images: string[]): Promise<any[]> {
     const lastMsg = messages[messages.length - 1];
-    const history = messages.slice(0, -1).slice(-MAX_HISTORY_MSGS + 1);
-    const result: any[] = [];
+    let text = "Analizá esta imagen técnica.";
+    if (typeof lastMsg.content === 'string') text = lastUserText(lastMsg);
 
-    for (const m of history) {
-        if (m.role !== 'user' && m.role !== 'assistant') continue;
-        let text = '';
-        if (Array.isArray(m.parts)) {
-            text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join(' ');
-        } else if (typeof m.content === 'string') {
-            text = m.content;
-        }
-        result.push({ role: m.role, content: truncate(text.trim()) || '[mensaje vacío]' });
+    const content: any[] = [{ type: 'text', text }];
+    for (const img of images) {
+        content.push({ type: 'image', image: img });
     }
+    return [{ role: 'user', content }];
+}
 
-    let userText = '';
-    if (Array.isArray(lastMsg.parts)) {
-        userText = lastMsg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join(' ');
-    } else if (typeof lastMsg.content === 'string') {
-        userText = lastMsg.content;
+function lastUserText(message: any): string {
+    if (typeof message.content === 'string') return message.content;
+    if (Array.isArray(message.parts)) {
+        return message.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
     }
+    return "";
+}
 
-    const contentParts: any[] = [
-        { type: 'text', text: truncate(userText.trim()) || '¿Podés analizar esta imagen de placa?' }
-    ];
-    for (const imgUrl of images) {
-        contentParts.push({ type: 'image', image: imgUrl });
-    }
-
-    result.push({ role: 'user', content: contentParts });
-    return result;
+async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+    ]);
 }
 
 async function toCoreMsgs(messages: any[]): Promise<any[]> {
@@ -141,27 +143,16 @@ async function toCoreMsgs(messages: any[]): Promise<any[]> {
         const result: any[] = [];
 
         for (const m of history) {
-            if (m.role !== 'user' && m.role !== 'assistant') continue;
             let textContent = '';
-            if (Array.isArray(m.parts)) {
-                for (const p of m.parts) {
-                    if (p.type === 'text' && p.text) textContent += p.text + ' ';
-                    if (p.type === 'file') {
-                        const mt = p.mediaType || p.file?.mediaType || '';
-                        const url = p.url || p.file?.url || '';
-                        if (mt === 'application/pdf' && url) {
-                            const pdf = await extractPdfText(url);
-                            if (pdf) textContent += `\n\n📄 [PDF ADJUNTO EN HISTORIAL]:\n${pdf}\n`;
-                        }
-                    }
-                }
-            }
             if (typeof m.content === 'string' && m.content.trim()) textContent = m.content;
+            if (Array.isArray(m.parts)) {
+                textContent = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
+            }
             if (Array.isArray(m.content)) {
                 textContent = m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
             }
             const finalText = truncate(textContent.trim());
-            result.push({ role: m.role, content: finalText || '[mensaje vacío]' });
+            result.push({ role: m.role, content: finalText || (m.role === 'user' ? 'Medición solicitada' : '...') });
         }
 
         {
@@ -191,7 +182,7 @@ async function toCoreMsgs(messages: any[]): Promise<any[]> {
                     const pdfBlock = pdfTexts.map((t, i) => `\n\n📄 [SCHEMATIC/PDF #${i + 1}]:\n${t}`).join('\n');
                     textContent = textContent + pdfBlock;
                 }
-                result.push({ role: m.role, content: textContent || '[mensaje vacío]' });
+                result.push({ role: m.role, content: textContent || (m.role === 'user' ? 'Analizar' : '...') });
             }
         }
         return result;
@@ -201,66 +192,44 @@ async function toCoreMsgs(messages: any[]): Promise<any[]> {
     }
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-    return Promise.race([
-        promise,
-        new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
-    ]);
+// ─────────────────────────────────────────────────────────────────────────────
+// FASES DE IA (CLASIFICACIÓN Y ESTADO)
+// ─────────────────────────────────────────────────────────────────────────────
+async function runAuxTask<T>(keys: string[], task: (g: any) => Promise<T>, fallback: T): Promise<T> {
+    for (const key of keys) {
+        try {
+            const groq = createGroq({ apiKey: key });
+            return await task(groq);
+        } catch (e) {
+            continue;
+        }
+    }
+    return fallback;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FASE 1.3 — Clasificador de síntomas previo a RAG
-// ─────────────────────────────────────────────────────────────────────────────
-/**
- * Extrae marca, modelo y síntomas del mensaje del técnico con llama-3.1-8b.
- * Retorna una query enriquecida para el RAG, más precisa que el texto crudo.
- * Ejemplo: "galaxy a52 se queda colgado" → "Samsung A52 reinicio freezing"
- */
-async function classifySymptom(
-    text: string,
-    groq: ReturnType<typeof createGroq>
-): Promise<string> {
-    if (text.length < 8) return text;
+async function classifySymptom(text: string, groq: ReturnType<typeof createGroq>): Promise<string> {
     try {
         const { text: result } = await generateText({
-            model: groq(DIAG_EXTRACT_MODEL),
-            temperature: 0,
+            model: groq('llama-3.1-8b-instant'),
             maxOutputTokens: 80,
+            temperature: 0,
             prompt: `Extraé marca, modelo y síntomas técnicos de este texto. Respondé SOLO con JSON, sin markdown:
 {"brand":"Samsung","model":"A52","symptoms":["reinicio","no carga"]}
-Si no hay info, usá vacíos.
-
 Texto: "${text.slice(0, 200)}"`
         });
-        const match = result.match(/\{[\s\S]*\}/);
-        if (!match) return text;
-        const c = JSON.parse(match[0]);
-        const parts = [c.brand, c.model, ...(c.symptoms || [])].filter(Boolean);
-        if (parts.length === 0) return text;
-        const enriched = parts.join(' ');
-        console.log(`[CEREBRO] 🏷️ Síntoma clasificado: "${enriched}"`);
-        return enriched;
+        const json = JSON.parse(result.trim());
+        return `${json.brand} ${json.model} ${json.symptoms.join(' ')}`;
     } catch {
-        return text; // fallback al texto original
+        return text;
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FASE 2 — Extractor de estado de diagnóstico
-// ─────────────────────────────────────────────────────────────────────────────
-/**
- * Analiza el historial de conversación con llama-3.1-8b (rápido) y extrae
- * en JSON qué se midió, qué se descartó y cuál es la sospecha actual.
- * El resultado se inyecta en el system prompt del modelo 70B para que
- * NO repita mediciones ya realizadas por el técnico.
- * Solo se activa desde el 3er turno de la conversación.
- */
 async function extractDiagnosticState(
     messages: any[],
     groq: ReturnType<typeof createGroq>
 ): Promise<string> {
     const turns = messages.filter(m => m.role === 'user' || m.role === 'assistant');
-    if (turns.length < 3) return ''; // Sin historial útil todavía
+    if (turns.length < 3) return '';
 
     try {
         const conversationText = turns
@@ -268,20 +237,15 @@ async function extractDiagnosticState(
             .map(m => {
                 let text = '';
                 if (typeof m.content === 'string') text = m.content;
-                else if (Array.isArray(m.parts)) {
-                    // Solo tomamos texto, ignoramos PDF pesado para no saturar tokens en esta fase
-                    text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join(' ');
-                }
-                // Limpiamos menciones de PDF previo para que el extractor no se confunda
-                text = text.replace(/📄 \[PDF ADJUNTO[\s\S]*?\n/g, '');
+                else if (Array.isArray(m.parts)) text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
                 return `[${m.role.toUpperCase()}]: ${text.slice(0, 500)}`;
             })
             .join('\n');
 
-        const { text } = await generateText({
+        const { text: result } = await generateText({
             model: groq(DIAG_EXTRACT_MODEL),
-            temperature: 0,
             maxOutputTokens: 300,
+            temperature: 0,
             prompt: `Eres un asistente técnico de electrónica. Analizá esta conversación y respondé SOLO con un JSON (sin markdown).
 
 CONVERSACIÓN:
@@ -291,94 +255,55 @@ JSON requerido:
 {"device":"equipo o vacío","symptoms":["síntoma1"],"checked":["ya medido/verificado"],"ruledOut":["descartado"],"suspected":"componente o vacío"}`
         });
 
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) return '';
-        const state = JSON.parse(jsonMatch[0]);
-
-        const hasInfo = (state.checked?.length > 0) || (state.ruledOut?.length > 0) || state.suspected;
-        if (!hasInfo) return '';
-
-        const lines: string[] = [];
-        if (state.device) lines.push(`Equipo: ${state.device}`);
-        if (state.symptoms?.length) lines.push(`Síntomas: ${state.symptoms.join(', ')}`);
-        if (state.checked?.length) lines.push(`Ya verificado: ${state.checked.join(' · ')}`);
-        if (state.ruledOut?.length) lines.push(`Descartado: ${state.ruledOut.join(', ')}`);
-        if (state.suspected) lines.push(`Sospecha actual: ${state.suspected}`);
-
-        console.log('[CEREBRO] 🧪 Estado diagnóstico:', JSON.stringify(state));
-        return `\n\n### 🧪 ESTADO DEL DIAGNÓSTICO (NO REPETIR)\n${lines.join('\n')}\n⚠️ NO repitas mediciones ya realizadas. Continuá desde donde quedó el técnico.`;
-    } catch (err: any) {
-        console.warn('[CEREBRO] ⚠️ extractDiagnosticState falló:', err.message?.slice(0, 80));
+        const diag = JSON.parse(result.trim());
+        return `
+### 🕵️ ESTADO DEL DIAGNÓSTICO:
+- **Dispositivo**: ${diag.device || 'Desconocido'}
+- **Síntomas**: ${diag.symptoms.join(', ')}
+- **Verificado**: ${diag.checked.join(', ') || 'Nada aún'}
+- **Descartado**: ${diag.ruledOut.join(', ') || 'Nada aún'}
+- **Sospecha**: ${diag.suspected || 'No determinada'}`;
+    } catch {
         return '';
     }
 }
 
-// Helper para tareas auxiliares (classify, extract) que prueba todas las llaves
-async function runAuxTask<T>(
-    keys: string[],
-    task: (groq: ReturnType<typeof createGroq>) => Promise<T>,
-    fallback: T
-): Promise<T> {
-    for (const key of keys) {
-        try {
-            const groq = createGroq({ apiKey: key });
-            return await task(groq);
-        } catch (err: any) {
-            console.warn(`[CEREBRO] Tarea auxiliar falló con llave ${key.slice(-4)}: ${err.message}`);
-        }
-    }
-    return fallback;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HANDLER
-// ─────────────────────────────────────────────────────────────────────────────
-function createFallbackModel(
-    models: { instance: any; label: string; keyId: string }[],
-    successCallback: (info: { label: string; keyId: string }) => void
-): any {
+function createFallbackModel(configs: any[], onSelect: (info: any) => void) {
+    if (configs.length === 0) throw new Error("No model configs provided");
     return {
-        specificationVersion: "v3",
-        provider: "cerebro-fallback",
-        modelId: "cerebro-fallback",
-        defaultObjectGenerationMode: models[0]?.instance.defaultObjectGenerationMode,
-        defaultTextGenerationMode: models[0]?.instance.defaultTextGenerationMode, // just in case
-        async doGenerate(options: any) {
-            let lastError: any;
-            for (const { instance, label, keyId } of models) {
+        doGenerate: async (params: any) => {
+            let lastErr;
+            for (const config of configs) {
                 try {
-                    const result = await instance.doGenerate(options);
-                    successCallback({ label, keyId });
-                    return result;
-                } catch (err: any) {
-                    lastError = err;
-                    console.warn(`[CEREBRO] ⚠️ Fallback en doGenerate (${label}):`, err?.message?.slice(0, 150) || err);
+                    onSelect(config);
+                    return await config.instance.doGenerate(params);
+                } catch (e) {
+                    lastErr = e;
+                    continue;
                 }
             }
-            throw lastError;
+            throw lastErr;
         },
-        async doStream(options: any) {
-            let lastError: any;
-            for (const [i, { instance, label, keyId }] of models.entries()) {
+        doStream: async (params: any) => {
+            let lastErr;
+            for (const config of configs) {
                 try {
-                    const result = await instance.doStream(options);
-                    console.log(`[CEREBRO] ✅ Provider aceptado en intento ${i + 1} (${label})`);
-                    successCallback({ label, keyId });
-                    return result;
-                } catch (err: any) {
-                    lastError = err;
-                    console.warn(`[CEREBRO] ⚠️ Provider rechazado en intento ${i + 1} (${label} ${keyId}):`, err?.message?.slice(0, 150) || err);
+                    onSelect(config);
+                    return await config.instance.doStream(params);
+                } catch (e) {
+                    lastErr = e;
+                    continue;
                 }
             }
-            console.error(`[CEREBRO] ❌ Todos los providers fallaron.`);
-            throw lastError;
+            throw lastErr;
         }
     };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HANDLER PRINCIPAL
+// ─────────────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-    console.log("[CEREBRO] 🚀 Petición iniciada");
-
     try {
         const keys = [
             process.env.GROQ_API_KEY,
@@ -395,13 +320,10 @@ export async function POST(req: NextRequest) {
         const guidedMode = body.guidedMode === true;
         if (!messages.length) return new Response("No messages provided", { status: 400 });
 
-        // No creamos un groqAux fijo, usaremos runAuxTask
-
         // ── Detectar imágenes ─────────────────────────────────────────────────
         const lastUserMsg = messages.findLast((m: any) => m.role === 'user');
         const images = lastUserMsg ? extractImages(lastUserMsg) : [];
         const hasImages = images.length > 0;
-        console.log(`[CEREBRO] 📸 Imágenes: ${images.length} | Modo: ${hasImages ? 'VISION' : 'TEXT'}`);
 
         // ── Extraer texto del usuario para RAG ───────────────────────────────
         let lastUserText = '';
@@ -417,7 +339,6 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Selección de Prompt Base (Modo Dual) ──────────────────────────────
-        // Prioridad: 1. Palabra clave en el mensaje, 2. Flag del body, 3. Standard por defecto
         let activeBasePrompt = STANDARD_PROMPT;
         const msgLower = lastUserText.toLowerCase();
 
@@ -430,61 +351,40 @@ export async function POST(req: NextRequest) {
         let finalSystemPrompt = activeBasePrompt;
 
         const [classifyResult, ragDirectResult, schemResult, diagResult] = await Promise.allSettled([
-            // Fase 1.3: clasificar síntoma
             lastUserText.length > 8
-                ? withTimeout(runAuxTask(keys, (g: ReturnType<typeof createGroq>) => classifySymptom(lastUserText.slice(0, 3000), g), lastUserText), 2500, lastUserText)
+                ? withTimeout(runAuxTask(keys, (g) => classifySymptom(lastUserText.slice(0, 3000), g), lastUserText), 2500, lastUserText)
                 : Promise.resolve(lastUserText),
-            // RAG directo
             lastUserText.length > 3
                 ? withTimeout(findSimilarRepairs(lastUserText, 1, 0.6), 4000, [])
                 : Promise.resolve([]),
-            // Fase 4: schematic auto-lookup
             withTimeout(findSchematic(lastUserText), 3000, null),
-            // Fase 2: estado del diagnóstico
-            withTimeout(runAuxTask(keys, (g: ReturnType<typeof createGroq>) => extractDiagnosticState(messages, g), ''), 5000, ''),
+            withTimeout(runAuxTask(keys, (g) => extractDiagnosticState(messages, g), ''), 5000, ''),
         ]);
 
         let similar = ragDirectResult.status === 'fulfilled' ? ragDirectResult.value : [];
         const classifiedQuery = classifyResult.status === 'fulfilled' ? classifyResult.value : lastUserText;
 
-        // Si RAG directo no encontró nada Y classify generó una query mejor → 2do intento
         if (similar.length === 0 && classifiedQuery !== lastUserText && classifiedQuery.length > 3) {
             const ragFallback = await withTimeout(findSimilarRepairs(classifiedQuery, 1, 0.6), 3000, []);
-            if (ragFallback.length > 0) {
-                similar = ragFallback;
-                console.log(`[CEREBRO] 🏷️ RAG mejorado por classify: ${similar.length} casos`);
-            }
+            if (ragFallback.length > 0) similar = ragFallback;
         }
 
-        if (similar.length > 0) {
-            finalSystemPrompt += formatRAGContext(similar);
-            console.log(`[CEREBRO] 🧠 RAG: ${similar.length} casos`);
-        }
-
+        if (similar.length > 0) finalSystemPrompt += formatRAGContext(similar);
         const diagBlock = diagResult.status === 'fulfilled' ? diagResult.value : '';
         if (diagBlock) finalSystemPrompt += diagBlock;
 
         const schematicMatch = schemResult.status === 'fulfilled' ? schemResult.value : null;
-        if (schematicMatch) {
-            finalSystemPrompt += formatSchematicContext(schematicMatch, lastUserText);
-            console.log(`[CEREBRO] 📚 Datos de esquema inyectados: ${schematicMatch.brand} ${schematicMatch.model} (Búsqueda inteligente: ${lastUserText.slice(0, 30)}...)`);
-        }
+        if (schematicMatch) finalSystemPrompt += formatSchematicContext(schematicMatch, lastUserText);
 
-        // Fase 5: Modo Diagnóstico Guiado
         if (activeBasePrompt === MENTOR_PROMPT) {
             finalSystemPrompt += `
 
 ### 🔬 MODO DIAGNÓSTICO GUIADO ACTIVO
 REGLA CRÍTICA: Hacé UNA SOLA pregunta específica por turno.
 NO des el diagnóstico completo junto. Esperá la respuesta del técnico antes de continuar.
-Ejemplo correcto:
-  Turno 1: "Conectá alimentación externa. ¿Cuánto mA drena?"
-  Turno 2: (técnico responde 350mA) → "Corto confirmado. Medí con cámara térmica la zona del PMIC. ¿Encontrás algo caliente?"
 Seguí este flujo hasta identificar el componente exacto.`;
-            console.log('[CEREBRO] 🔬 Modo Guiado activo');
         }
 
-        // ── Ticket lookup ─────────────────────────────────────────────────────
         const ticketMatch = lastUserText.match(/MAC\d*-\d+/gi);
         if (ticketMatch) {
             const repair = await withTimeout(
@@ -497,57 +397,41 @@ Seguí este flujo hasta identificar el componente exacto.`;
             }
         }
 
+        finalSystemPrompt += FINAL_DIRECTIVE;
+
         const onFinishCb = ({ usage }: any) => {
-            if (usage?.totalTokens) {
-                trackTokens(usage.totalTokens);
-                console.log(`[CEREBRO] 🪙 Tokens: ${usage.totalTokens} (in: ${usage.inputTokens}, out: ${usage.outputTokens})`);
-            }
+            if (usage?.totalTokens) trackTokens(usage.totalTokens);
         };
 
-        // ── MODO VISIÓN ───────────────────────────────────────────────────────
         if (hasImages) {
-            console.log(`[CEREBRO] 🔭 Iniciando modo Visión...`);
             const visionModels = keys.map(key => ({
                 instance: createGroq({ apiKey: key })(VISION_MODEL.id),
                 label: VISION_MODEL.label,
                 keyId: key.slice(-4)
             }));
-
             let usedLabel = VISION_MODEL.label;
             let usedKey = '';
-
             const cerebroVisionModel = createFallbackModel(visionModels, (info) => {
                 usedLabel = info.label;
                 usedKey = info.keyId;
             });
 
-            try {
-                const visionMessages = await buildVisionMessages(messages, images);
-                const result = await streamText({
-                    model: cerebroVisionModel as any,
-                    system: finalSystemPrompt,
-                    messages: visionMessages,
-                    maxOutputTokens: MAX_OUTPUT_TOKENS,
-                    temperature: 0.2,
-                    onFinish: onFinishCb,
-                    maxRetries: 0,
-                });
-                return result.toUIMessageStreamResponse({
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'X-Cerebro-Provider': usedLabel,
-                        'X-Cerebro-Key': usedKey
-                    }
-                });
-            } catch (visionErr: any) {
-                console.warn(`[CEREBRO] ⚠️ Vision mode fallback cascade failed:`, visionErr.message);
-            }
+            const visionMessages = await buildVisionMessages(messages, images);
+            const result = await streamText({
+                model: cerebroVisionModel as any,
+                system: finalSystemPrompt,
+                messages: visionMessages,
+                maxOutputTokens: MAX_OUTPUT_TOKENS,
+                temperature: 0.2,
+                onFinish: onFinishCb,
+                maxRetries: 0,
+            });
+            return result.toUIMessageStreamResponse({
+                headers: { 'X-Cerebro-Provider': usedLabel, 'X-Cerebro-Key': usedKey }
+            });
         }
 
-        // ── MODO TEXTO — cascada 70B → 8B ────────────────────────────────────
         const coreMessages = await toCoreMsgs(messages);
-        console.log(`[CEREBRO] 📨 Mensajes: ${coreMessages.length} | Prompt length: ${finalSystemPrompt.length}`);
-
         const textModelsConfig = [];
         for (const m of TEXT_MODELS) {
             for (const key of keys) {
@@ -561,34 +445,23 @@ Seguí este flujo hasta identificar el componente exacto.`;
 
         let usedLabel = 'Unknown';
         let usedKey = '';
-
         const cerebroTextModel = createFallbackModel(textModelsConfig, (info) => {
             usedLabel = info.label;
             usedKey = info.keyId;
         });
 
-        try {
-            const result = await streamText({
-                model: cerebroTextModel as any,
-                system: finalSystemPrompt,
-                messages: coreMessages,
-                maxOutputTokens: MAX_OUTPUT_TOKENS,
-                temperature: 0.2,
-                onFinish: onFinishCb,
-                maxRetries: 0,
-            });
-            return result.toUIMessageStreamResponse({
-                headers: {
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'X-Cerebro-Provider': usedLabel,
-                    'X-Cerebro-Key': usedKey
-                }
-            });
-        } catch (err: any) {
-            console.warn(`[CEREBRO] ⚠️ Text mode fallback cascade failed:`, err.message);
-        }
-
-        return new Response("Todos los modelos Groq fallaron.", { status: 503 });
+        const result = await streamText({
+            model: cerebroTextModel as any,
+            system: finalSystemPrompt,
+            messages: coreMessages,
+            maxOutputTokens: MAX_OUTPUT_TOKENS,
+            temperature: 0.2,
+            onFinish: onFinishCb,
+            maxRetries: 0,
+        });
+        return result.toUIMessageStreamResponse({
+            headers: { 'X-Cerebro-Provider': usedLabel, 'X-Cerebro-Key': usedKey }
+        });
 
     } catch (error: any) {
         console.error("[CEREBRO] ❌ ERROR FATAL:", error);

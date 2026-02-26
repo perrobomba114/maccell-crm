@@ -290,31 +290,26 @@ export async function findKnowledgeByText(
 // Formateador de contexto para el prompt
 // ─────────────────────────────────────────────────────────────────────────────
 export function formatRAGContext(repairs: SimilarRepair[]): string {
-    if (repairs.length === 0) return '';
+    const validRepairs = repairs.filter(r => r.similarity >= 0.75); // Filtro de calidad más estricto
+    if (validRepairs.length === 0) return '';
 
-    const lines = repairs.map((r, i) => {
+    const lines = validRepairs.map((r, i) => {
         const isWiki = r.ticketNumber.startsWith('wiki_') || r.source === 'wiki';
         const status = r.status?.toLowerCase() || '';
 
-        let label = '🔧 REPARACIÓN PREVIA';
-        if (isWiki) label = '📘 WIKI TÉCNICA';
-        else if (status.includes('ok')) label = '✅ SOLUCIÓN VERIFICADA';
-        else if (status.includes('entregado')) label = '📦 CASO ENTREGADO';
+        let label = '🔧 REFERENCIA';
+        if (isWiki) label = '📘 WIKI';
+        else if (status.includes('ok')) label = '✅ CASO ÉXITO';
 
         const ref = isWiki ? r.ticketNumber.replace('wiki_', 'WIKI-') : r.ticketNumber;
-        const statusBadge = r.status ? ` [Estado: ${r.status}]` : '';
 
-        return `[${label} #${i + 1} — ${ref}${statusBadge}]
+        return `[${label} #${i + 1} — Ref: ${ref}]
 Equipo: ${r.deviceBrand} ${r.deviceModel}
 Contenido: ${r.contentText.slice(0, 350)}
 Confianza: ${Math.round(r.similarity * 100)}%`;
     });
 
-    return `\n\n### 📂 CONOCIMIENTO TÉCNICO PROPIO (MACCELL)
-Cerebro: Los siguientes casos son reparaciones y documentos REALES de este taller.
-👉 MENCIONÁ estos casos en tu respuesta para que el técnico sepa que hay antecedentes.
-
-${lines.join('\n\n')}
-
-⚠️ INSTRUCCIÓN CRÍTICA: Priorizá siempre las '✅ SOLUCIÓN VERIFICADA' (estado OK/Entregado), ya que son casos donde la reparación funcionó realmente en este taller.`;
+    return `\n\n### 📂 REFERENCIAS TÉCNICAS EXTERNAS (RAG)
+Usa estos casos SOLO si son altamente relevantes para el problema actual.
+${lines.join('\n\n')}\n`;
 }
