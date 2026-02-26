@@ -54,9 +54,10 @@ function rrfMerge(
             const key = item.ticketNumber;
             let rrfScore = 1 / (k + rank + 1);
 
-            // Boost para casos exitosos (OK o Entregado)
-            const isSuccess = item.status?.toLowerCase().includes('ok') || item.status?.toLowerCase().includes('entregado');
-            if (isSuccess) rrfScore *= 1.25;
+            // Solo damos boost a lo que está marcado explícitamente como OK
+            // 'Entregado' puede ser un equipo que se retiró sin solución
+            const isVerifiedSuccess = item.status?.toLowerCase().includes('ok');
+            if (isVerifiedSuccess) rrfScore *= 1.30;
 
             if (scores.has(key)) {
                 scores.get(key)!.score += rrfScore;
@@ -289,8 +290,8 @@ export function formatRAGContext(repairs: SimilarRepair[]): string {
 
     const lines = repairs.map((r, i) => {
         const isWiki = r.ticketNumber.startsWith('wiki_') || r.source === 'wiki';
-        const isSuccess = r.status?.toLowerCase().includes('ok') || r.status?.toLowerCase().includes('entregado');
-        const label = isWiki ? '📘 WIKI TÉCNICA' : (isSuccess ? '✅ SOLUCIÓN VERIFICADA' : '🔧 REPARACIÓN PREVIA');
+        const isVerified = r.status?.toLowerCase().includes('ok');
+        const label = isWiki ? '📘 WIKI TÉCNICA' : (isVerified ? '✅ SOLUCIÓN VERIFICADA' : '🔧 REPARACIÓN PREVIA');
         const ref = isWiki ? r.ticketNumber.replace('wiki_', 'WIKI-') : r.ticketNumber;
         const statusBadge = r.status ? ` [Estado: ${r.status}]` : '';
 
