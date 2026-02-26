@@ -127,7 +127,8 @@ export function formatSchematicContext(match: SchematicMatch, userQuery = ''): s
         'memoria': ['memory', 'ram', 'nand', 'emmc', 'ufs', 'storage', 'vdd_mem', 'e0321'],
         'procesador': ['cpu', 'processor', 'soc', 'gpu', 'core', 'vcore', 'vdd_cpu', 'ap_cpu'],
         'huella': ['fingerprint', 'touch_id', 'fprint', 'biometric', 'sensor_id'],
-        'bateria': ['battery', 'batt', 'vbat', 'gauge', 'ntc', 'thermal', 'vbat_con', 'fuel_gauge'],
+        'bateria': ['battery', 'batt', 'vbat', 'gauge', 'ntc', 'thermal', 'vbat_con', 'fuel_gauge', 'bat_therm', 'btemp', 'battery_swi'],
+        'termistor': ['ntc', 'thermistor', 'th100', 'th200', 'vr', 'rt', 'thermal', 'temp', 'vchg_th', 'bat_th', 'ntc_bat', 'vtemp'],
     };
 
     // Expandir términos de búsqueda usando el diccionario
