@@ -19,6 +19,7 @@ export interface SimilarRepair {
     deviceModel: string;
     contentText: string;
     similarity: number;
+    status?: string;
     source?: 'semantic' | 'keyword' | 'hybrid' | 'wiki';
 }
 
@@ -51,7 +52,12 @@ function rrfMerge(
     const addList = (list: SimilarRepair[]) => {
         list.forEach((item, rank) => {
             const key = item.ticketNumber;
-            const rrfScore = 1 / (k + rank + 1);
+            let rrfScore = 1 / (k + rank + 1);
+
+            // Boost para casos exitosos (OK o Entregado)
+            const isSuccess = item.status?.toLowerCase().includes('ok') || item.status?.toLowerCase().includes('entregado');
+            if (isSuccess) rrfScore *= 1.25;
+
             if (scores.has(key)) {
                 scores.get(key)!.score += rrfScore;
                 scores.get(key)!.item.source = 'hybrid';
@@ -83,11 +89,14 @@ async function semanticSearch(
     try {
         const vectorStr = `[${embedding.join(',')}]`;
         const rows = await db.$queryRawUnsafe<any[]>(
-            `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText",
-                    (1 - (embedding <=> $1::vector)) as similarity
-             FROM "repair_embeddings"
-             WHERE 1 - (embedding <=> $1::vector) >= $2
-             ORDER BY embedding <=> $1::vector ASC
+            `SELECT re."ticketNumber", re."deviceBrand", re."deviceModel", re."contentText",
+                    (1 - (re.embedding <=> $1::vector)) as similarity,
+                    rs.name as status
+             FROM "repair_embeddings" re
+             LEFT JOIN repairs r ON re."repairId" = r.id
+             LEFT JOIN repair_statuses rs ON r."statusId" = rs.id
+             WHERE 1 - (re.embedding <=> $1::vector) >= $2
+             ORDER BY re.embedding <=> $1::vector ASC
              LIMIT $3`,
             vectorStr, minSimilarity, limit
         );
@@ -100,6 +109,7 @@ async function semanticSearch(
                 deviceModel: r.deviceModel,
                 contentText: r.contentText,
                 similarity: Number(r.similarity),
+                status: r.status,
                 source: r.ticketNumber.startsWith('wiki_') ? 'wiki' as const : 'semantic' as const
             }));
         }
@@ -130,12 +140,15 @@ async function keywordSearch(
 
         // Construimos una condición ILIKE para cada término
         // Buscamos en contentText (que incluye síntoma + diagnóstico + repuestos)
-        const conditions = terms.map((_, i) => `"contentText" ILIKE $${i + 1}`).join(' OR ');
+        const conditions = terms.map((_, i) => `re."contentText" ILIKE $${i + 1}`).join(' OR ');
         const params = terms.map(t => `%${t}%`);
 
         const rows = await db.$queryRawUnsafe<any[]>(
-            `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText"
-             FROM "repair_embeddings"
+            `SELECT re."ticketNumber", re."deviceBrand", re."deviceModel", re."contentText",
+                    rs.name as status
+             FROM "repair_embeddings" re
+             LEFT JOIN repairs r ON re."repairId" = r.id
+             LEFT JOIN repair_statuses rs ON r."statusId" = rs.id
              WHERE ${conditions}
              LIMIT ${limit}`,
             ...params
@@ -149,6 +162,7 @@ async function keywordSearch(
                 deviceModel: r.deviceModel,
                 contentText: r.contentText,
                 similarity: 0.7, // score fijo — el rango real lo da RRF
+                status: r.status,
                 source: 'keyword' as const
             }));
         }
@@ -275,9 +289,12 @@ export function formatRAGContext(repairs: SimilarRepair[]): string {
 
     const lines = repairs.map((r, i) => {
         const isWiki = r.ticketNumber.startsWith('wiki_') || r.source === 'wiki';
-        const label = isWiki ? '📘 WIKI TÉCNICA' : '🔧 REPARACIÓN PREVIA';
+        const isSuccess = r.status?.toLowerCase().includes('ok') || r.status?.toLowerCase().includes('entregado');
+        const label = isWiki ? '📘 WIKI TÉCNICA' : (isSuccess ? '✅ SOLUCIÓN VERIFICADA' : '🔧 REPARACIÓN PREVIA');
         const ref = isWiki ? r.ticketNumber.replace('wiki_', 'WIKI-') : r.ticketNumber;
-        return `[${label} #${i + 1} — ${ref}]
+        const statusBadge = r.status ? ` [Estado: ${r.status}]` : '';
+
+        return `[${label} #${i + 1} — ${ref}${statusBadge}]
 Equipo: ${r.deviceBrand} ${r.deviceModel}
 Contenido: ${r.contentText.slice(0, 500)}
 Confianza: ${Math.round(r.similarity * 100)}%`;
@@ -289,5 +306,5 @@ Cerebro: Los siguientes casos son reparaciones y documentos REALES de este talle
 
 ${lines.join('\n\n')}
 
-⚠️ INSTRUCCIÓN: Si la Confianza es >70%, usá esta información como base principal del diagnóstico.`;
+⚠️ INSTRUCCIÓN CRÍTICA: Priorizá siempre las '✅ SOLUCIÓN VERIFICADA' (estado OK/Entregado), ya que son casos donde la reparación funcionó realmente en este taller.`;
 }

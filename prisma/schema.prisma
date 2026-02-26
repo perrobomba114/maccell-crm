@@ -474,17 +474,18 @@ model RepairKnowledge {
 /// Embeddings vectoriales de reparaciones para búsqueda semántica RAG
 /// Requiere extensión pgvector: CREATE EXTENSION IF NOT EXISTS vector;
 model RepairEmbedding {
-  id          String   @id @default(cuid())
-  repairId    String   @unique
+  id           String                 @id @default(dbgenerated("(gen_random_uuid())::text"))
+  repairId     String                 @unique
   ticketNumber String
-  deviceBrand String
-  deviceModel String
+  deviceBrand  String
+  deviceModel  String
   /// Campo vectorial — manejado manualmente con SQL raw (pgvector no soportado por Prisma natively)
-  contentText String   // Texto indexado: problema + diagnóstico
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  contentText  String
+  createdAt    DateTime?              @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime?              @default(now()) @updatedAt @db.Timestamptz(6)
+  embedding    Unsupported("vector")?
 
-  @@index([deviceBrand, deviceModel])
+  @@index([deviceBrand, deviceModel], map: "repair_embeddings_device_idx")
   @@map("repair_embeddings")
 }
 
@@ -535,6 +536,25 @@ model SparePartHistory {
   @@map("spare_part_history")
 }
 
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model CerebroSchematic {
+  id            String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  deviceBrand   String   @map("device_brand")
+  deviceModel   String   @map("device_model")
+  filename      String
+  extractedText String   @map("extracted_text")
+  uploadedBy    String?  @map("uploaded_by")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("cerebro_schematics")
+}
+
+model cerebro_daily_tokens {
+  date        String @id
+  tokens_used Int    @default(0)
+}
+
 enum Role {
   ADMIN
   VENDOR
@@ -563,18 +583,4 @@ enum ReturnStatus {
   PENDING
   ACCEPTED
   REJECTED
-}
-
-model CerebroSchematic {
-  id            String   @id @default(cuid())
-  deviceBrand   String   @map("device_brand")
-  deviceModel   String   @map("device_model")
-  filename      String
-  extractedText String   @map("extracted_text")
-  uploadedBy    String?  @map("uploaded_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @map("updated_at")
-
-  @@index([deviceBrand, deviceModel])
-  @@map("cerebro_schematics")
 }
