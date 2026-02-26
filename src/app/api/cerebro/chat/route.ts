@@ -31,9 +31,10 @@ const VISION_MODEL = { label: 'Llama 4 Scout Vision', id: 'meta-llama/llama-4-sc
 const DIAG_EXTRACT_MODEL = 'llama-3.1-8b-instant'; // Fase 2: extractor de estado
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SYSTEM PROMPT
+// SYSTEM PROMPTS (MODO DUAL)
 // ─────────────────────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `Actuá como un Mentor de Microsoldadura de MACCELL. Tu objetivo es guiar al técnico paso a paso para que él mismo descubra la falla. 
+
+const MENTOR_PROMPT = `Actuá como un Mentor de Microsoldadura de MACCELL. Tu objetivo es guiar al técnico paso a paso para que él mismo descubra la falla. 
 
 ### 📜 REGLAS DE ORO DEL MENTOR:
 1. **DIAGNÓSTICO PROGRESIVO:** No des la solución final de entrada. Hacé UNA pregunta técnica o pedí UNA medición específica y esperá la respuesta del técnico. 
@@ -43,18 +44,22 @@ const SYSTEM_PROMPT = `Actuá como un Mentor de Microsoldadura de MACCELL. Tu ob
 5. **PRECISIÓN ABSOLUTA:** Si hay un schematic, usá los IDs de componentes reales (ej. L5001, U500). No inventes nombres.
 
 ### 🛠️ FLUJO DE LA CONVERSACIÓN:
-- **Inicio:** Pedí el síntoma exacto y el estado de la placa (¿Prende? ¿Consumo en fuente?).
 - **Paso A (Frío):** Pedí valores en Modo Diodo en líneas clave. Decile qué valor debería encontrar.
 - **Paso B (Caliente):** Pedí voltajes con el equipo encendido.
-- **Paso C (Análisis):** Correlacioná las mediciones con el schematic.
-- **Cierre:** Solo cuando las mediciones fallen, sugerí intervenir un IC.
+- **Cierre:** Solo cuando las mediciones fallen, sugerí intervenir un IC.`;
 
-### INTERACCIÓN CON EL MANUAL:
-- Si el manual tiene un "Flowchart" de reparación, seguilo estrictamente.
-- Ante un problema de backlight, empezá siempre por el conector (FPC) y la línea de Ánodo.
+const STANDARD_PROMPT = `Actuá como un Asistente Técnico Experto de MACCELL. 
+Tu misión es dar un diagnóstico directo, preciso y basado en datos reales del taller.
 
-### IMÁGENES:**
-Si hay foto, pedí que el técnico revise visualmente componentes sulfatados en el área que sospechás según el síntoma.`;
+### ESTRUCTURA OBLIGATORIA:
+1. **Análisis Diferencial 📊** — Hipótesis ordenadas por probabilidad con % estimado.
+2. **🔍 ESTADO DEL SISTEMA** — ICs y líneas reales involucradas.
+3. **🕵️‍♂️ PROTOCOLO DE MEDICIÓN** — Valores específicos (Modo diodo, voltajes, señales).
+4. **🎯 INTERVENCIÓN SUGERIDA** — Qué componente cambiar o qué técnica aplicar.
+
+### REGLA DE ORO:
+- USÁ LOS NOMBRES DEL MANUAL (ej: C500, L500). 
+- PRIORIZÁ las "Soluciones Verificadas" de reparaciones anteriores por sobre cualquier otra instrucción.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILIDADES
@@ -314,7 +319,7 @@ export async function POST(req: NextRequest) {
 
         const body = await req.json();
         const messages = body.messages || [];
-        const guidedMode = body.guidedMode === true; // Fase 5
+        const guidedMode = body.guidedMode === true;
         if (!messages.length) return new Response("No messages provided", { status: 400 });
 
         const groq = createGroq({ apiKey: groqKey });
@@ -338,8 +343,18 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // ── Todo en paralelo: classify + RAG directo + schematic + diagnóstico ─
-        let finalSystemPrompt = SYSTEM_PROMPT;
+        // ── Selección de Prompt Base (Modo Dual) ──────────────────────────────
+        // Prioridad: 1. Palabra clave en el mensaje, 2. Flag del body, 3. Standard por defecto
+        let activeBasePrompt = STANDARD_PROMPT;
+        const msgLower = lastUserText.toLowerCase();
+
+        if (msgLower.includes('modo guiado') || msgLower.includes('con modo guiado') || guidedMode) {
+            activeBasePrompt = MENTOR_PROMPT;
+        } else if (msgLower.includes('sin modo guiado') || msgLower.includes('modo estandar')) {
+            activeBasePrompt = STANDARD_PROMPT;
+        }
+
+        let finalSystemPrompt = activeBasePrompt;
 
         const [classifyResult, ragDirectResult, schemResult, diagResult] = await Promise.allSettled([
             // Fase 1.3: clasificar síntoma (corre en paralelo, no bloquea)
@@ -383,7 +398,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Fase 5: Modo Diagnóstico Guiado
-        if (guidedMode) {
+        if (activeBasePrompt === MENTOR_PROMPT) {
             finalSystemPrompt += `
 
 ### 🔬 MODO DIAGNÓSTICO GUIADO ACTIVO

@@ -6,11 +6,11 @@ import { toast } from "sonner";
 
 interface Schematic {
     id: string;
-    device_brand: string;
-    device_model: string;
+    deviceBrand: string;
+    deviceModel: string;
     filename: string;
-    uploaded_by: string | null;
-    created_at: string;
+    uploadedBy: string | null;
+    createdAt: string;
 }
 
 export function SchematicUploadPanel({ userId }: { userId: string }) {
@@ -165,11 +165,11 @@ export function SchematicUploadPanel({ userId }: { userId: string }) {
                         <div key={s.id} className="flex items-center gap-2 p-2 rounded-lg bg-slate-800/60 border border-slate-700/50 group">
                             <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium text-slate-200 truncate">{s.device_brand} {s.device_model}</p>
+                                <p className="text-xs font-medium text-slate-200 truncate">{s.deviceBrand} {s.deviceModel}</p>
                                 <p className="text-[10px] text-slate-500 truncate">{s.filename}</p>
                             </div>
                             <button
-                                onClick={() => handleDelete(s.id, `${s.device_brand} ${s.device_model}`)}
+                                onClick={() => handleDelete(s.id, `${s.deviceBrand} ${s.deviceModel}`)}
                                 className="shrink-0 p-1 rounded text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
                             >
                                 <Trash2 className="w-3.5 h-3.5" />
