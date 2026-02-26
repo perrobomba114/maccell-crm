@@ -271,6 +271,9 @@ JSON requerido:
 function createFallbackModel(configs: any[], onSelect: (info: any) => void) {
     if (configs.length === 0) throw new Error("No model configs provided");
     return {
+        specificationVersion: 'v2',
+        provider: 'cerebro-fallback',
+        modelId: 'fallback-logic',
         doGenerate: async (params: any) => {
             let lastErr;
             for (const config of configs) {
