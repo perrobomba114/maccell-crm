@@ -111,8 +111,31 @@ export function formatSchematicContext(match: SchematicMatch, userQuery = ''): s
         .split(/\s+/)
         .filter(t => t.length > 3);
 
+    // Diccionario técnico: mapeamos términos en español a inglés técnico de esquemáticos
+    const TECHNICAL_DICTIONARY: Record<string, string[]> = {
+        'carga': ['charge', 'charger', 'charging', 'vbus', 'vcc_main', 'usb', 'dock', 'hydra', 'tristar', 'tigris'],
+        'encendido': ['power', 'pmu', 'boot', 'vcc', 'button', 'swi', 'buck', 'ldo'],
+        'imagen': ['display', 'lcd', 'mipi', 'vcc_display', 'image', 'video'],
+        'pantalla': ['display', 'lcd', 'backlight', 'touch', 'panel'],
+        'luz': ['backlight', 'led', 'bl_', 'anode', 'cathode'],
+        'sonido': ['audio', 'speaker', 'codec', 'mic', 'earpiece', 'amplifier'],
+        'señal': ['rf', 'antenna', 'pa', 'wtr', 'baseband', 'transceiver', 'gsm', 'lte'],
+        'corto': ['short', 'vcc', 'main', 'gnd', 'leakage', 'low resistance'],
+        'mojado': ['water', 'corrosion', 'fluid', 'liquid'],
+        'wifi': ['wlan', 'bluetooth', 'bt', 'antenna'],
+        'camara': ['camera', 'cam', 'isp', 'csi', 'mipi'],
+    };
+
+    // Expandir términos de búsqueda usando el diccionario
+    const searchTerms = [...queryTerms];
+    queryTerms.forEach((t: string) => {
+        if (TECHNICAL_DICTIONARY[t]) {
+            searchTerms.push(...TECHNICAL_DICTIONARY[t]);
+        }
+    });
+
     let foundIndex = -1;
-    for (const term of queryTerms) {
+    for (const term of searchTerms) {
         const idx = match.text.toLowerCase().indexOf(term);
         if (idx !== -1) {
             foundIndex = idx;
