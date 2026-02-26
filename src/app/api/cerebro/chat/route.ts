@@ -14,7 +14,7 @@ import pdfParse from "pdf-parse";
 const MAX_HISTORY_MSGS = 6;
 const MAX_MSG_CHARS = 1200;
 const MAX_OUTPUT_TOKENS = 1200;
-const MAX_PDF_CHARS = 12000; // Aumentado para leer manuales completos
+const MAX_PDF_CHARS = 8000; // Aumentado para leer manuales completos
 const MAX_IMAGES = 4; // Groq max 5, usamos 4 por seguridad
 
 export const maxDuration = 60;
