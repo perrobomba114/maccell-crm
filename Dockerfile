@@ -1,8 +1,5 @@
 FROM node:20-slim AS base
-
-# Install dependencies only when needed
-FROM base AS deps
-RUN apt-get update && apt-get install -y libc6-dev tzdata openssl libssl3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl libssl3 tzdata libc6-dev && rm -rf /var/lib/apt/lists/*
 ENV TZ="America/Argentina/Buenos_Aires"
 WORKDIR /app
 
@@ -35,11 +32,9 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-# Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN apt-get update && apt-get install -y tzdata postgresql-client openssl && rm -rf /var/lib/apt/lists/*
-ENV TZ="America/Argentina/Buenos_Aires"
+RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 -g nodejs nextjs

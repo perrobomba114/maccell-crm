@@ -564,3 +564,16 @@ enum ReturnStatus {
   ACCEPTED
   REJECTED
 }
+
+model CerebroSchematic {
+  id          String   @id @default(cuid())
+  deviceBrand String   @map("device_brand")
+  deviceModel String   @map("device_model")
+  filename    String
+  contentText String   @map("content_text")
+  uploadedBy  String?  @map("uploaded_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([deviceBrand, deviceModel])
+  @@map("cerebro_schematics")
+}
