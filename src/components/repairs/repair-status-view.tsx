@@ -42,6 +42,7 @@ interface RepairData {
     };
     isWet?: boolean;
     deviceImages?: string[];
+    statusHistory?: any[];
 }
 
 interface RepairStatusViewProps {
@@ -135,6 +136,12 @@ export function RepairStatusView({ repair }: RepairStatusViewProps) {
                                     </p>
                                 </div>
                                 <RepairStatusBadge statusId={repair.statusId} className="text-xs font-black px-6 py-3 rounded-full uppercase tracking-widest ring-8 ring-white/[0.03] shadow-2xl scale-110 md:scale-100" />
+                                {repair.statusHistory && repair.statusHistory[0] && (
+                                    <div className="md:absolute md:top-24 md:right-10 flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5 backdrop-blur-sm mt-4 md:mt-2">
+                                        <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Prev:</span>
+                                        <span className="text-[10px] font-black text-white/70 uppercase italic">{repair.statusHistory[0].fromStatus?.name || 'Recibido'}</span>
+                                    </div>
+                                )}
                             </div>
                         </CardHeader>
 

@@ -491,10 +491,22 @@ export async function processPosSale(data: {
                 } else if (item.type === "REPAIR") {
                     // Update Repair Status
                     // WARNING: Hardcoded Status ID 10. Ensure this exists in DB.
+                    const oldRepair = await tx.repair.findUnique({
+                        where: { id: item.id },
+                        select: { statusId: true }
+                    });
+
                     await tx.repair.update({
                         where: { id: item.id },
                         data: {
                             statusId: 10, // Delivered/Paid
+                            statusHistory: {
+                                create: {
+                                    fromStatusId: oldRepair?.statusId,
+                                    toStatusId: 10,
+                                    userId: data.vendorId
+                                }
+                            }
                         }
                     });
 

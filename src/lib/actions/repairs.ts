@@ -239,6 +239,12 @@ export async function createRepairAction(formData: FormData) {
                         quantity: 1
                     }))
                 },
+                statusHistory: {
+                    create: {
+                        toStatusId: 1,
+                        userId
+                    }
+                },
                 ...(observationText ? {
                     observations: {
                         create: {
@@ -254,6 +260,10 @@ export async function createRepairAction(formData: FormData) {
                 status: true,
                 parts: {
                     include: { sparePart: true }
+                },
+                statusHistory: {
+                    orderBy: { createdAt: 'desc' },
+                    include: { fromStatus: true, toStatus: true }
                 }
             }
         });
@@ -332,6 +342,10 @@ export async function getActiveRepairsAction(branchId: string, statusIds?: numbe
                 branch: true,
                 parts: {
                     include: { sparePart: true }
+                },
+                statusHistory: {
+                    orderBy: { createdAt: 'desc' },
+                    include: { fromStatus: true, toStatus: true }
                 }
             },
             orderBy: {
@@ -384,6 +398,10 @@ export async function getRepairHistoryAction(branchId: string, query: string = "
                 branch: true,
                 parts: {
                     include: { sparePart: true }
+                },
+                statusHistory: {
+                    orderBy: { createdAt: 'desc' },
+                    include: { fromStatus: true, toStatus: true }
                 }
             },
             orderBy: {
@@ -444,9 +462,23 @@ export async function takeRepairAction(
             }
 
             // 1. Assign to Technician and Update Status
+            const oldRepair = await tx.repair.findUnique({
+                where: { id: repairId },
+                select: { statusId: true }
+            });
+
             await tx.repair.update({
                 where: { id: repairId },
-                data: updateData
+                data: {
+                    ...updateData,
+                    statusHistory: {
+                        create: {
+                            fromStatusId: oldRepair?.statusId,
+                            toStatusId: updateData.statusId,
+                            userId: userId
+                        }
+                    }
+                }
             });
 
             // 2. Add Parts
@@ -554,6 +586,10 @@ export async function getAllRepairsForAdminAction(query: string = "") {
                 branch: true,
                 parts: {
                     include: { sparePart: true }
+                },
+                statusHistory: {
+                    orderBy: { createdAt: 'desc' },
+                    include: { fromStatus: true, toStatus: true }
                 }
             },
             orderBy: {
@@ -596,6 +632,10 @@ export async function getRepairByIdAction(repairId: string) {
                 observations: {
                     orderBy: { createdAt: 'desc' },
                     include: { user: true }
+                },
+                statusHistory: {
+                    orderBy: { createdAt: 'desc' },
+                    include: { fromStatus: true, toStatus: true }
                 }
             }
         });
@@ -658,6 +698,9 @@ export async function updateRepairAction(formData: FormData) {
         });
 
         // Update Repair
+        const statusIdNum = statusId ? parseInt(statusId.toString()) : undefined;
+        const statusChanged = statusIdNum !== undefined && statusIdNum !== existingRepair.statusId;
+
         await db.repair.update({
             where: { id: repairId },
             data: {
@@ -670,7 +713,16 @@ export async function updateRepairAction(formData: FormData) {
                 isWet,
                 assignedUserId,
                 diagnosis,
-                ...(statusId ? { statusId } : {}),
+                ...(statusIdNum ? { statusId: statusIdNum } : {}),
+                ...(statusChanged ? {
+                    statusHistory: {
+                        create: {
+                            fromStatusId: existingRepair.statusId,
+                            toStatusId: statusIdNum,
+                            userId: (await getCurrentUser())?.id
+                        }
+                    }
+                } : {})
             }
         });
 

@@ -13,13 +13,19 @@ import { getTechnicianPerformance, TechnicianPerformance } from "@/actions/repai
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function TechnicianStatsCards() {
-    const [date, setDate] = useState<Date>(new Date());
+    const [date, setDate] = useState<Date | undefined>(undefined);
     const [stats, setStats] = useState<TechnicianPerformance[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
     useEffect(() => {
-        loadStats();
+        setDate(new Date());
+    }, []);
+
+    useEffect(() => {
+        if (date) {
+            loadStats();
+        }
     }, [date]);
 
     const loadStats = async () => {
@@ -54,7 +60,7 @@ export function TechnicianStatsCards() {
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "PPP", { locale: es }) : <span>Seleccionar fecha</span>}
+                            {date ? format(date, "PPP", { locale: es }) : <Skeleton className="h-4 w-32" />}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -85,9 +91,9 @@ export function TechnicianStatsCards() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold"><Skeleton className="h-10 w-16 mb-2" /></div>
-                                <p className="text-xs text-muted-foreground mt-1">
+                                <div className="text-xs text-muted-foreground mt-1">
                                     <Skeleton className="h-4 w-40" />
-                                </p>
+                                </div>
                             </CardContent>
                         </Card>
                     ))

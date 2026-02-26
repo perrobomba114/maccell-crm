@@ -35,6 +35,10 @@ export async function GET(request: Request) {
                         }
                     },
                     status: true,
+                    statusHistory: {
+                        orderBy: { createdAt: 'desc' },
+                        include: { fromStatus: true, toStatus: true }
+                    }
                 }
             });
         }
@@ -53,6 +57,10 @@ export async function GET(request: Request) {
                         }
                     },
                     status: true,
+                    statusHistory: {
+                        orderBy: { createdAt: 'desc' },
+                        include: { fromStatus: true, toStatus: true }
+                    }
                 }
             });
         }
@@ -78,7 +86,8 @@ export async function GET(request: Request) {
             statusId: repair.statusId,
             branch: repair.branch,
             isWet: (repair as any).isWet,
-            deviceImages: (repair as any).deviceImages || [] // Cast to any until prisma client regenerates fully or just rely on JS runtime if type isn't updated? Prisma client SHOULD be updated by db push.
+            deviceImages: (repair as any).deviceImages || [],
+            statusHistory: (repair as any).statusHistory || []
         });
 
         console.timeEnd("API_TOTAL_DURATION");

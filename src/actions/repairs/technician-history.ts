@@ -35,8 +35,10 @@ export async function getTechnicianHistory(userId: string, page: number = 1, pag
             include: {
                 customer: true,
                 status: true,
-                // deviceBrand is a scalar, no need to include
-
+                statusHistory: {
+                    orderBy: { createdAt: 'desc' },
+                    include: { fromStatus: true, toStatus: true }
+                }
             },
             orderBy: {
                 updatedAt: 'desc'

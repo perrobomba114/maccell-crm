@@ -365,6 +365,11 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
                                                 <Badge variant="outline" className={cn("font-extrabold border-2 shadow-sm px-3 uppercase text-[10px]", colorClass)}>
                                                     {repair.status.name}
                                                 </Badge>
+                                                {repair.statusHistory && repair.statusHistory[0] && (
+                                                    <div className="text-[9px] text-muted-foreground mt-1 tabular-nums font-bold uppercase tracking-tighter">
+                                                        Prev: <span className="text-blue-500/80">{repair.statusHistory[0].fromStatus?.name || 'Registro'}</span>
+                                                    </div>
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-base tabular-nums pr-6">
                                                 {repair.estimatedPrice > 0 ? currencyFormatter.format(repair.estimatedPrice) : "—"}

@@ -284,7 +284,9 @@ model RepairStatus {
   color     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  repairs   Repair[]
+  repairs           Repair[]
+  statusHistoryFrom RepairStatusHistory[] @relation("FromStatus")
+  statusHistoryTo   RepairStatusHistory[] @relation("ToStatus")
 
   @@map("repair_statuses")
 }
@@ -323,6 +325,7 @@ model Repair {
   originalRepair     Repair?             @relation("WarrantyRelation", fields: [originalRepairId], references: [id])
   warrantyRepairs    Repair[]            @relation("WarrantyRelation")
   status             RepairStatus        @relation(fields: [statusId], references: [id])
+  statusHistory      RepairStatusHistory[]
   createdBy          User                @relation("CreatedRepairs", fields: [userId], references: [id])
   returnRequests     ReturnRequest[]
   saleItems          SaleItem[]
@@ -583,4 +586,20 @@ enum ReturnStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+model RepairStatusHistory {
+  id           String   @id @default(cuid())
+  repairId     String
+  fromStatusId Int?
+  toStatusId   Int
+  userId       String?
+  createdAt    DateTime @default(now())
+  
+  repair       Repair   @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  fromStatus   RepairStatus? @relation("FromStatus", fields: [fromStatusId], references: [id])
+  toStatus     RepairStatus  @relation("ToStatus", fields: [toStatusId], references: [id])
+
+  @@index([repairId])
+  @@map("repair_status_history")
 }

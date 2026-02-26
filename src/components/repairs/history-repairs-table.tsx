@@ -254,9 +254,17 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
                                         </TableCell>
 
                                         <TableCell className="text-center">
-                                            <Badge className={`font-black rounded-lg px-3 py-1 text-[10px] uppercase tracking-wider border-2 ${colorClass}`}>
-                                                {repair.status.name}
-                                            </Badge>
+                                            <div className="flex flex-col items-center gap-1.5">
+                                                <Badge className={`font-black rounded-lg px-3 py-1 text-[10px] uppercase tracking-wider border-2 ${colorClass}`}>
+                                                    {repair.status.name}
+                                                </Badge>
+
+                                                {repair.statusHistory && repair.statusHistory[0] && (
+                                                    <div className="text-[9px] text-muted-foreground mt-1 tabular-nums font-bold uppercase tracking-tighter">
+                                                        Prev: <span className="text-blue-500/80">{repair.statusHistory[0].fromStatus?.name || 'Registro'}</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <div className="flex items-center justify-center gap-1.5 h-7">

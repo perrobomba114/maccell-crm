@@ -7,7 +7,7 @@ import { es } from "date-fns/locale";
 import { Image, Smartphone, User, Calendar, DollarSign, FileText, Clock, ImageOff, Plus, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { ImagePreviewModal } from "./image-preview-modal";
-import { getImgUrl, isValidImg } from "@/lib/utils";
+import { cn, getImgUrl, isValidImg } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createSinglePartReturnAction } from "@/actions/repairs/technician-actions";
@@ -69,6 +69,7 @@ function RepairImage({ url, index, onClick }: { url: string; index: number; onCl
 }
 
 export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, onAddPart }: RepairDetailsDialogProps) {
+    const router = useRouter();
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
 
@@ -80,8 +81,6 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
         setViewerIndex(index);
         setViewerOpen(true);
     };
-
-    const router = useRouter();
     const handleReturnPart = async (partId: string) => {
         if (!currentUserId) return;
 
@@ -124,6 +123,12 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     <Badge className={`font-black border-2 rounded-md px-3 py-1 shadow-lg uppercase text-[10px] sm:text-xs ${colorClass}`}>
                                         {repair.status.name}
                                     </Badge>
+                                    {repair.statusHistory && repair.statusHistory[0] && (
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/10 border border-white/10 backdrop-blur-sm">
+                                            <span className="text-[9px] font-black text-white/50 uppercase tracking-tighter">Previo:</span>
+                                            <span className="text-[10px] font-black text-white uppercase italic">{repair.statusHistory[0].fromStatus?.name || 'Registro inicial'}</span>
+                                        </div>
+                                    )}
                                 </div>
                                 {repair.branch && (
                                     <div className="flex items-center gap-2 text-xs sm:text-sm text-white/70 font-bold uppercase tracking-widest">
@@ -340,6 +345,41 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                                                 onClick={() => handleImageClick(idx)}
                                                             />
                                                         ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Status History Section */}
+                                        {repair.statusHistory && repair.statusHistory.length > 0 && (
+                                            <div className="space-y-3 pt-4 border-t border-slate-800">
+                                                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">HISTORIAL DE ESTADOS</h3>
+                                                <div className="space-y-2">
+                                                    {repair.statusHistory.map((history: any, idx: number) => (
+                                                        <div key={idx} className="flex items-center gap-3 bg-slate-900 shadow-lg border border-white/[0.03] p-3 rounded-xl hover:border-blue-500/20 transition-colors duration-300">
+                                                            <div className="flex flex-col items-center shrink-0 min-w-[55px] border-r border-white/5 pr-3">
+                                                                <span className="text-[10px] font-black text-white italic tracking-tighter leading-none">{format(new Date(history.createdAt), "dd/MM")}</span>
+                                                                <span className="text-[9px] font-black text-slate-500 uppercase mt-1 leading-none">{format(new Date(history.createdAt), "HH:mm")}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 flex-1 min-w-0 px-1">
+                                                                {history.fromStatus && (
+                                                                    <>
+                                                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter truncate max-w-[90px] italic">{history.fromStatus.name}</span>
+                                                                        <div className="flex-shrink-0 w-2 h-2 rounded-full bg-slate-800 flex items-center justify-center">
+                                                                            <div className="w-0.5 h-0.5 rounded-full bg-slate-600" />
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                                <Badge variant="outline" className={cn("text-[9px] font-black px-2 py-0 uppercase border-2 shadow-sm rounded-md", statusColorMap[history.toStatus.color] || "bg-slate-800 text-white border-slate-700")}>
+                                                                    {history.toStatus.name}
+                                                                </Badge>
+                                                            </div>
+                                                            {history.userId && (
+                                                                <div className="bg-slate-800/50 px-2 py-0.5 rounded-full border border-white/5">
+                                                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">OP: {history.userId.slice(-4)}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         )}

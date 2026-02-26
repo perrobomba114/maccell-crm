@@ -23,11 +23,23 @@ export async function takeRepairAction(repairId: string, technicianId: string) {
         }
 
         // 1. takeRepairAction: REMOVE assignedUserId
+        const oldRepair = await db.repair.findUnique({
+            where: { id: repairId },
+            select: { statusId: true }
+        });
+
         await db.repair.update({
             where: { id: repairId },
             data: {
                 // assignedUserId: technicianId, // REMOVED as per request
-                statusId: 2 // Tomado por Técnico
+                statusId: 2, // Tomado por Técnico
+                statusHistory: {
+                    create: {
+                        fromStatusId: oldRepair?.statusId,
+                        toStatusId: 2,
+                        userId: technicianId
+                    }
+                }
             }
         });
 
@@ -91,6 +103,11 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
         const targetStatusId = (updatePromisedDate || isReactivation) ? 3 : 4;
 
         await db.$transaction(async (tx) => {
+            const oldRepair = await tx.repair.findUnique({
+                where: { id: repairId },
+                select: { statusId: true }
+            });
+
             await tx.repair.update({
                 where: { id: repairId },
                 data: {
@@ -101,7 +118,14 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
                     startedAt: targetStatusId === 3 ? new Date() : undefined,
                     // CRITICAL FIX: Clear finishedAt because we are reopening the repair
                     finishedAt: null,
-                    ...(newPromisedAt ? { promisedAt: newPromisedAt } : {})
+                    ...(newPromisedAt ? { promisedAt: newPromisedAt } : {}),
+                    statusHistory: {
+                        create: {
+                            fromStatusId: oldRepair?.statusId,
+                            toStatusId: targetStatusId,
+                            userId: technicianId
+                        }
+                    }
                 }
             });
 
@@ -187,7 +211,14 @@ export async function startRepairAction(repairId: string, technicianId: string, 
         const now = new Date();
         const dataToUpdate: any = {
             status: { connect: { id: 3 } }, // En Proceso
-            startedAt: now
+            startedAt: now,
+            statusHistory: {
+                create: {
+                    fromStatusId: repair.statusId,
+                    toStatusId: 3,
+                    userId: technicianId
+                }
+            }
         };
 
         const estimatedMinutes = newEstimatedTime || repair.estimatedTime || 60; // Fallback 60
@@ -261,12 +292,21 @@ export async function pauseRepairAction(repairId: string, technicianId: string) 
             remainingMinutes = Math.max(0, (repair.estimatedTime || 0) - elapsedMinutes);
         }
 
+        const oldStatusId = repair.statusId;
+
         await db.repair.update({
             where: { id: repairId },
             data: {
                 status: { connect: { id: 4 } }, // Pausado
                 startedAt: null, // Clear startedAt since it's paused
-                estimatedTime: remainingMinutes // Persist the remaining time
+                estimatedTime: remainingMinutes, // Persist the remaining time
+                statusHistory: {
+                    create: {
+                        fromStatusId: oldStatusId,
+                        toStatusId: 4,
+                        userId: technicianId
+                    }
+                }
             } as any
         });
 
@@ -317,6 +357,7 @@ export async function finishRepairAction(formData: FormData) {
                 ticketNumber: true,
                 assignedUserId: true,
                 userId: true,
+                statusId: true,
                 deviceImages: true,
                 startedAt: true,
                 finishedAt: true,
@@ -349,10 +390,18 @@ export async function finishRepairAction(formData: FormData) {
         }
 
         // PREPARE UPDATE DATA
+        const oldRepairStatusId = repair.statusId;
         const dataToUpdate: any = {
             statusId: statusId,
             diagnosis: diagnosis,
-            deviceImages: [...currentImages, ...newImages].filter(img => img && img.length > 5 && img.includes('/') && !img.includes('undefined') && !img.includes('null'))
+            deviceImages: [...currentImages, ...newImages].filter(img => img && img.length > 5 && img.includes('/') && !img.includes('undefined') && !img.includes('null')),
+            statusHistory: {
+                create: {
+                    fromStatusId: oldRepairStatusId,
+                    toStatusId: statusId,
+                    userId: technicianId
+                }
+            }
         };
 
         // If Pausing (Status 4) -> Calculate Remaining Time
