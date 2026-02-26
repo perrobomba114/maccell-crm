@@ -9,9 +9,7 @@ import { ENHANCE_DIAGNOSIS_SYSTEM_PROMPT } from "@/config/ai-models";
  * Utiliza GROQ + Llama 3.3 para una respuesta instantánea y técnica.
  */
 
-const groq = createGroq({
-    apiKey: process.env.GROQ_API_KEY,
-});
+import { runWithGroqFallback } from "@/lib/groq";
 
 export async function POST(req: NextRequest) {
     try {
@@ -34,12 +32,12 @@ TEXTO DEL TÉCNICO A PROFESIONALIZAR:
 RECUERDA: Solo responde con el texto profesionalizado. No agregues saludos ni explicaciones.
 `;
 
-        const { text } = await generateText({
+        const { text } = await runWithGroqFallback((groq) => generateText({
             model: groq("llama-3.3-70b-versatile"),
             prompt: prompt,
             temperature: 0.3,
             maxOutputTokens: 500,
-        });
+        }));
 
         if (text) {
             return NextResponse.json({

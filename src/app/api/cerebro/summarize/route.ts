@@ -8,9 +8,7 @@ import { generateText } from "ai";
  * Convierte el historial de chat en un reporte técnico estructurado para la Wiki.
  */
 
-const groq = createGroq({
-    apiKey: process.env.GROQ_API_KEY,
-});
+import { runWithGroqFallback } from "@/lib/groq";
 
 export async function POST(req: NextRequest) {
     try {
@@ -42,12 +40,12 @@ REGLAS CRÍTICAS:
 - Ignora charlas irrelevantes o comentarios casuales.
 - Usa lenguaje técnico (ej: "línea PP_VCC_MAIN", "consumo en escala de mA", "reballing de IC de carga").`;
 
-        const { text } = await generateText({
+        const { text } = await runWithGroqFallback((groq) => generateText({
             model: groq("llama-3.1-8b-instant"), // Usamos 8b para que sea ultra rápido el resumen
             system: systemPrompt,
             prompt: `HISTORIAL DE LA CONVERSACIÓN:\n\n${conversationText}\n\nRESUMEN TÉCNICO ESTRUCTURADO:`,
             temperature: 0.1,
-        });
+        }));
 
         if (text) {
             return NextResponse.json({ summary: text.trim() });

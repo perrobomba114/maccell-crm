@@ -7,6 +7,7 @@ import { findSimilarRepairs, formatRAGContext } from "@/lib/cerebro-rag";
 import { findSchematic, formatSchematicContext } from "@/lib/cerebro-schematics";
 import { LEVEL3_MASTER_KNOWLEDGE } from "@/lib/master-protocols";
 import pdfParse from "pdf-parse";
+import { getGroqKeys } from "@/lib/groq";
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -399,11 +400,7 @@ function createFallbackModel(configs: any[], onSelect: (info: any) => void) {
 export async function POST(req: NextRequest) {
     console.log("[CEREBRO] 📥 Incoming request...");
     try {
-        const keys = [
-            process.env.GROQ_API_KEY,
-            process.env.GROQ_API_KEY_2,
-            process.env.GROQ_API_KEY_3
-        ].filter((k): k is string => !!k && k.length > 10);
+        const keys = getGroqKeys();
 
         if (keys.length === 0) {
             console.error("[CEREBRO] ❌ No Groq keys found.");
