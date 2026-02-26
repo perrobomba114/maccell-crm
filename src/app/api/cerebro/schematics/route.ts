@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db as prisma } from "@/lib/db";
 import pdfParse from "pdf-parse";
 
-const MAX_SCHEMATIC_CHARS = 50000; // Sincronizado con el límite de contexto del chat (50k)
+const MAX_SCHEMATIC_CHARS = 100000; // Indexado profundo (local/gratis), el prompt del chat seguirá en 8k por seguridad
 
 // La tabla ya es gestionada por Prisma schema
 
