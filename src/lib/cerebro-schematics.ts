@@ -62,25 +62,25 @@ export async function findSchematic(userMessage: string): Promise<SchematicMatch
 
         if (conditions.length === 0) return null;
 
-        const rows = await db.$queryRawUnsafe<any[]>(
-            `SELECT device_brand, device_model, filename, extracted_text
-             FROM cerebro_schematics
-             WHERE ${conditions.join(' OR ')}
-             ORDER BY created_at DESC
-             LIMIT 1`,
-            ...params
-        );
+        const row = await db.cerebroSchematic.findFirst({
+            where: {
+                OR: [
+                    ...brands.map(b => ({ deviceBrand: { contains: b, mode: 'insensitive' as const } })),
+                    ...models.map(m => ({ deviceModel: { contains: m, mode: 'insensitive' as const } }))
+                ]
+            },
+            orderBy: { createdAt: 'desc' }
+        });
 
-        if (!rows || rows.length === 0) return null;
+        if (!row) return null;
 
-        const row = rows[0];
-        console.log(`[CEREBRO] 📋 Schematic encontrado: ${row.device_brand} ${row.device_model} (${row.filename})`);
+        console.log(`[CEREBRO] 📋 Schematic encontrado: ${row.deviceBrand} ${row.deviceModel} (${row.filename})`);
 
         return {
-            brand: row.device_brand,
-            model: row.device_model,
+            brand: row.deviceBrand,
+            model: row.deviceModel,
             filename: row.filename,
-            text: row.extracted_text
+            text: row.extractedText
         };
     } catch (err: any) {
         // La tabla puede no existir todavía si nadie subió schematics

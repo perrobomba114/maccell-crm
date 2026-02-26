@@ -4,39 +4,24 @@ import pdfParse from "pdf-parse";
 
 const MAX_SCHEMATIC_CHARS = 8000;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Tabla cerebro_schematics (auto-creada en primera llamada)
-// ─────────────────────────────────────────────────────────────────────────────
-async function ensureTable() {
-    await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS cerebro_schematics (
-            id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-            device_brand  TEXT NOT NULL,
-            device_model  TEXT NOT NULL,
-            filename      TEXT NOT NULL,
-            extracted_text TEXT NOT NULL,
-            uploaded_by   TEXT,
-            created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-            updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-        )
-    `);
-    await prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS idx_schematics_model
-        ON cerebro_schematics (lower(device_brand), lower(device_model))
-    `);
-}
+// La tabla ya es gestionada por Prisma schema
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET: listar schematics disponibles
 // ─────────────────────────────────────────────────────────────────────────────
 export async function GET() {
     try {
-        await ensureTable();
-        const rows = await prisma.$queryRawUnsafe<any[]>(`
-            SELECT id, device_brand, device_model, filename, uploaded_by, created_at
-            FROM cerebro_schematics
-            ORDER BY created_at DESC
-        `);
+        const rows = await prisma.cerebroSchematic.findMany({
+            orderBy: { createdAt: 'desc' },
+            select: {
+                id: true,
+                deviceBrand: true,
+                deviceModel: true,
+                filename: true,
+                uploadedBy: true,
+                createdAt: true
+            }
+        });
         return NextResponse.json(rows);
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });
@@ -48,8 +33,6 @@ export async function GET() {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
     try {
-        await ensureTable();
-
         const body = await req.json();
         const { deviceBrand, deviceModel, filename, pdfDataUrl, uploadedBy } = body;
 
@@ -74,12 +57,15 @@ export async function POST(req: NextRequest) {
             extractedText = extractedText.slice(0, MAX_SCHEMATIC_CHARS) + '\n[...truncado...]';
         }
 
-        await prisma.$executeRawUnsafe(`
-            INSERT INTO cerebro_schematics
-                (device_brand, device_model, filename, extracted_text, uploaded_by)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT DO NOTHING
-        `, deviceBrand.trim(), deviceModel.trim(), filename.trim(), extractedText, uploadedBy || null);
+        await prisma.cerebroSchematic.create({
+            data: {
+                deviceBrand: deviceBrand.trim(),
+                deviceModel: deviceModel.trim(),
+                filename: filename.trim(),
+                extractedText: extractedText,
+                uploadedBy: uploadedBy || null
+            }
+        });
 
         return NextResponse.json({
             ok: true,
@@ -101,8 +87,9 @@ export async function DELETE(req: NextRequest) {
     try {
         const { id } = await req.json();
         if (!id) return NextResponse.json({ error: "ID requerido." }, { status: 400 });
-        await ensureTable();
-        await prisma.$executeRawUnsafe(`DELETE FROM cerebro_schematics WHERE id = $1`, id);
+        await prisma.cerebroSchematic.delete({
+            where: { id }
+        });
         return NextResponse.json({ ok: true });
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });
