@@ -29,8 +29,8 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon }: a
         <div className={cn("relative overflow-hidden rounded-2xl p-6 border flex flex-col justify-between h-full min-h-[140px] transition-all shadow-sm hover:shadow-md", containerStyle)}>
             <div className="flex justify-between items-start z-10 relative">
                 <div>
-                    <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-2 group-hover:text-white transition-colors">{title}</p>
-                    <h3 className="text-3xl font-bold text-white tracking-tight">{value}</h3>
+                    <p className="text-white/80 text-[10px] font-bold uppercase tracking-wider mb-1 group-hover:text-white transition-colors min-h-[2rem] flex items-center">{title}</p>
+                    <h3 className="text-3xl font-bold text-white tracking-tight leading-none">{value}</h3>
                 </div>
                 <div className={cn("p-2.5 rounded-xl flex-shrink-0 flex items-center justify-center backdrop-blur-sm", iconStyle)}>
                     <Icon size={20} strokeWidth={2} />
@@ -47,7 +47,10 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon }: a
                         <span>{Math.abs(trend.value)}%</span>
                     </div>
                 )}
-                <span className="text-xs text-white/70 font-medium truncate">{subtext}</span>
+                <span className={cn(
+                    "font-medium truncate",
+                    title.includes("OK") ? "text-sm text-white font-bold" : "text-xs text-white/70"
+                )}>{subtext}</span>
             </div>
         </div>
     );

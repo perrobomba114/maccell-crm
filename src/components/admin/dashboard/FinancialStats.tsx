@@ -22,8 +22,8 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, hre
         <>
             {/* Background Glow removed for solid style */}
 
-            <div className="flex justify-between items-start z-10 relative mb-4">
-                <p className="text-white/80 text-xs font-bold uppercase tracking-wider group-hover:text-white transition-colors mt-1">{title}</p>
+            <div className="flex justify-between items-start z-10 relative mb-2">
+                <p className="text-white/80 text-[10px] font-bold uppercase tracking-wider group-hover:text-white transition-colors min-h-[2.5rem] flex items-center">{title}</p>
                 <div className={cn("p-2 rounded-lg flex-shrink-0 flex items-center justify-center backdrop-blur-sm",
                     accentColor === 'emerald' ? "bg-emerald-500" :
                         accentColor === 'blue' ? "bg-blue-500" :
@@ -34,8 +34,8 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, hre
                 </div>
             </div>
 
-            <div className="z-10 relative mb-4 flex-grow">
-                <h3 className="text-2xl lg:text-3xl font-bold text-white tracking-tight truncate" title={String(value)}>
+            <div className="z-10 relative mb-3 flex-grow h-8 flex items-end">
+                <h3 className="text-2xl lg:text-3xl font-bold text-white tracking-tight truncate leading-none" title={String(value)}>
                     {value}
                 </h3>
             </div>
@@ -49,7 +49,10 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, hre
                         {trend.positive ? "↑" : (accentColor === 'orange' ? "•" : "↓")} {trend.value}
                     </span>
                 )}
-                <span className="text-xs text-white/70 font-medium truncate group-hover:text-white transition-colors">{subtext}</span>
+                <span className={cn(
+                    "font-medium truncate group-hover:text-white transition-colors",
+                    title.includes("OK") ? "text-sm text-white font-bold" : "text-xs text-white/70"
+                )}>{subtext}</span>
             </div>
         </>
     );
