@@ -3,11 +3,6 @@
  *
  * Fase 1.2: Combina búsqueda semántica (pgvector) + keyword (ILIKE)
  * con Reciprocal Rank Fusion para resultados más robustos.
- *
- * Por qué híbrida:
- *  - Semántica: entiende contexto y sinónimos ("se queda colgado" ≈ "freezing")
- *  - Keyword: exacta en términos técnicos ("PMIC A10", "U2 iPhone 13")
- *    que el vector puede no capturar bien si son muy específicos.
  */
 
 import { db } from '@/lib/db';
@@ -40,7 +35,6 @@ export function chunkText(text: string, chunkSize = 800, overlap = 80): string[]
 
 /**
  * Reciprocal Rank Fusion — fusiona dos listas de resultados rankeadas.
- * k=60 es el estándar de la literatura académica.
  */
 function rrfMerge(
     semanticResults: SimilarRepair[],
@@ -56,7 +50,6 @@ function rrfMerge(
 
             const status = item.status?.toLowerCase() || '';
 
-            // Ambos son valiosos, OK tiene prioridad máxima
             if (status.includes('ok')) {
                 rrfScore *= 1.35;
             } else if (status.includes('entregado')) {
@@ -79,7 +72,7 @@ function rrfMerge(
         .sort((a, b) => b.score - a.score)
         .map(({ item, score }) => ({
             ...item,
-            similarity: Math.min(1, score * k) // normalizar a 0-1 aproximado
+            similarity: Math.min(1, score * k)
         }));
 }
 
@@ -132,19 +125,16 @@ async function keywordSearch(
     limit: number
 ): Promise<SimilarRepair[]> {
     try {
-        // Extraemos términos con >2 chars, filtramos stopwords básicas
         const STOPWORDS = new Set(['que', 'con', 'del', 'los', 'las', 'una', 'por', 'para', 'como', 'this', 'the']);
         const terms = query
             .toLowerCase()
             .replace(/[^\w\sáéíóúñü]/g, ' ')
             .split(/\s+/)
             .filter(t => t.length > 2 && !STOPWORDS.has(t))
-            .slice(0, 6); // máx 6 términos para no saturar
+            .slice(0, 6);
 
         if (terms.length === 0) return [];
 
-        // Construimos una condición ILIKE para cada término
-        // Priorizamos matches en brand/model sobre el texto general
         const modelConditions = terms.map((_, i) => `re."deviceModel" ILIKE $${i + 1}`).join(' OR ');
         const brandConditions = terms.map((_, i) => `re."deviceBrand" ILIKE $${i + 1}`).join(' OR ');
         const contentConditions = terms.map((_, i) => `re."contentText" ILIKE $${i + 1}`).join(' OR ');
@@ -174,7 +164,7 @@ async function keywordSearch(
                 deviceBrand: r.deviceBrand,
                 deviceModel: r.deviceModel,
                 contentText: r.contentText,
-                similarity: 0.7 + (Number(r.search_score) / 10), // Boost similarity based on score
+                similarity: 0.7 + (Number(r.search_score) / 10),
                 status: r.status,
                 source: 'keyword' as const
             }));
@@ -193,11 +183,8 @@ export async function findSimilarRepairs(
     limit = 5,
     minSimilarity = 0.60
 ): Promise<SimilarRepair[]> {
-
-    // Generar embedding una sola vez — se usa en ambas estrategias
     const embedding = await generateEmbedding(userMessage);
 
-    // Las dos búsquedas corren en PARALELO para minimizar latencia
     const [semanticResults, keywordResults] = await Promise.allSettled([
         embedding ? semanticSearch(embedding, limit + 3, minSimilarity) : Promise.resolve([]),
         keywordSearch(userMessage, limit + 3)
@@ -206,26 +193,22 @@ export async function findSimilarRepairs(
     const semantic = semanticResults.status === 'fulfilled' ? semanticResults.value : [];
     const keyword = keywordResults.status === 'fulfilled' ? keywordResults.value : [];
 
-    // ── Caso 1: ambas tienen resultados → RRF merge ──────────────────────────
     if (semantic.length > 0 && keyword.length > 0) {
         const merged = rrfMerge(semantic, keyword);
         console.log(`[RAG] ⚡ Híbrida RRF: ${merged.slice(0, limit).length} resultados`);
         return merged.slice(0, limit);
     }
 
-    // ── Caso 2: solo semántica ───────────────────────────────────────────────
     if (semantic.length > 0) {
         console.log(`[RAG] 🧠 Solo semántica: ${Math.min(semantic.length, limit)} resultados`);
         return semantic.slice(0, limit);
     }
 
-    // ── Caso 3: solo keyword ─────────────────────────────────────────────────
     if (keyword.length > 0) {
         console.log(`[RAG] 🔑 Solo keyword: ${Math.min(keyword.length, limit)} resultados`);
         return keyword.slice(0, limit);
     }
 
-    // ── Caso 4: fallback in-memory (si pgvector no está disponible) ──────────
     if (embedding) {
         try {
             const rows = await db.$queryRawUnsafe<any[]>(
@@ -261,44 +244,10 @@ export async function findSimilarRepairs(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Búsqueda rápida por texto (usada desde route.ts para wiki)
-// ─────────────────────────────────────────────────────────────────────────────
-export async function findKnowledgeByText(
-    terms: string[],
-    limit = 3
-): Promise<{ brand: string; model: string; title: string; content: string }[]> {
-    try {
-        const conditions = terms.filter(t => t.length > 2).map(term => ({
-            OR: [
-                { title: { contains: term, mode: 'insensitive' as const } },
-                { content: { contains: term, mode: 'insensitive' as const } },
-                { deviceModel: { contains: term, mode: 'insensitive' as const } },
-                { deviceBrand: { contains: term, mode: 'insensitive' as const } },
-            ]
-        }));
-
-        if (conditions.length === 0) return [];
-
-        const rows = await (db as any).repairKnowledge.findMany({
-            where: { OR: conditions },
-            orderBy: { createdAt: 'desc' },
-            take: limit,
-        });
-
-        return rows.map((r: any) => ({
-            brand: r.deviceBrand, model: r.deviceModel,
-            title: r.title, content: r.content,
-        }));
-    } catch {
-        return [];
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Formateador de contexto para el prompt
 // ─────────────────────────────────────────────────────────────────────────────
 export function formatRAGContext(repairs: SimilarRepair[]): string {
-    const validRepairs = repairs.filter(r => r.similarity >= 0.65); // Umbral optimizado
+    const validRepairs = repairs.filter(r => r.similarity >= 0.65);
     if (validRepairs.length === 0) return '';
 
     const lines = validRepairs.map((r, i) => {
@@ -311,13 +260,13 @@ export function formatRAGContext(repairs: SimilarRepair[]): string {
 
         const ref = isWiki ? r.ticketNumber.replace('wiki_', 'WIKI-') : r.ticketNumber;
 
-        return `[${label} #${i + 1} — Ref: ${ref}]
+        return `[${label} — Ref: ${ref}]
 Equipo: ${r.deviceBrand} ${r.deviceModel}
-Contenido: ${r.contentText.slice(0, 350)}
+Historia: ${r.contentText.slice(0, 800)}
 Confianza: ${Math.round(r.similarity * 100)}%`;
     });
 
-    return `\n\n### 📂 REFERENCIAS TÉCNICAS EXTERNAS (RAG)
-Usa estos casos SOLO si son altamente relevantes para el problema actual.
+    return `\n\n### 📚 HISTORIAL DE REPARACIONES REALES (WIKI/Maccell)
+Usa esta sección como tu fuente de VERDAD técnica. Si un componente ID o solución aparece aquí, incorporalo en tu respuesta. Menciona el ticket Ref si lo usas.
 ${lines.join('\n\n')}\n`;
 }
