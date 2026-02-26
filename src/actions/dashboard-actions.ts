@@ -151,7 +151,8 @@ export async function getSalesAnalytics(branchId?: string) {
                 alerts: stockAlerts,
                 topSold: topProducts,
                 okCount: deliveredHistory.filter(h => h.fromStatusId === 5).length,
-                noRepairCount: deliveredHistory.filter(h => h.fromStatusId === 6).length
+                noRepairCount: deliveredHistory.filter(h => h.fromStatusId === 6).length,
+                deliveredCount: deliveredHistory.length
             }
         };
 
