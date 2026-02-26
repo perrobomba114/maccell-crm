@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, Wallet, Wrench, TrendingUp, TrendingDown } from "lucide-react";
+import { DollarSign, Wallet, Wrench, TrendingUp, TrendingDown, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // --- Metric Card Component (Inline for now to avoid cross-module mess, or reuse if exported) ---
@@ -49,7 +49,7 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon }: a
                 )}
                 <span className={cn(
                     "font-medium truncate",
-                    (title.includes("OK") || title === "Equipos Entregados") ? "text-sm text-white font-bold" : "text-xs text-white/70"
+                    (title.includes("OK") || title === "Equipos Entregados" || title.includes("Eficiencia")) ? "text-sm text-white font-bold" : "text-xs text-white/70"
                 )}>{subtext}</span>
             </div>
         </div>
@@ -80,11 +80,12 @@ export function GlobalFinancials({ globalStats, repairStats }: GlobalFinancialsP
                     icon={DollarSign}
                 />
                 <MetricCard
-                    title="Equipos Entregados OK"
-                    value={globalStats.okCount || 0}
-                    subtext={`${globalStats.noRepairCount || 0} Sin Reparación`}
-                    accentColor="orange"
-                    icon={Wrench}
+                    title="Ganancia Estimada"
+                    value={fmtMoney(globalStats.profitThisMonth)}
+                    subtext="Margen Operativo"
+                    trend={{ value: 0 }}
+                    accentColor="emerald"
+                    icon={Wallet}
                 />
                 <MetricCard
                     title="Equipos en Taller"
@@ -120,18 +121,37 @@ export function GlobalFinancials({ globalStats, repairStats }: GlobalFinancialsP
                     icon={TrendingUp}
                 />
                 <MetricCard
-                    title="Equipos Entregados"
-                    value={globalStats.deliveredCount || 0}
-                    subtext={`${globalStats.deliveredCount > 0 ? Math.round((globalStats.okCount / globalStats.deliveredCount) * 100) : 0}% Eficiencia de Reparación`}
-                    accentColor="blue"
-                    icon={Wallet}
-                />
-                <MetricCard
                     title="Premios Pagados"
                     value={fmtMoney(globalStats.bonusesPaid || 0)}
                     subtext="Comisiones a vendedores"
                     accentColor="pink"
                     icon={DollarSign}
+                />
+                <MetricCard
+                    title="Ventas Totales"
+                    value={globalStats.totalSalesCount || 0}
+                    subtext="Volumen de tickets"
+                    accentColor="blue"
+                    icon={CheckCircle2}
+                />
+            </div>
+
+            {/* ROW 3: Repair Volume Analysis */}
+            <h3 className="text-zinc-400 text-sm font-semibold uppercase tracking-wider pl-1">Análisis de Volumen de Taller</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <MetricCard
+                    title="Equipos Entregados OK"
+                    value={globalStats.okCount || 0}
+                    subtext={`${globalStats.noRepairCount || 0} Sin Reparación`}
+                    accentColor="orange"
+                    icon={Wrench}
+                />
+                <MetricCard
+                    title="Eficiencia de Reparación"
+                    value={`${globalStats.deliveredCount > 0 ? Math.round((globalStats.okCount / globalStats.deliveredCount) * 100) : 0}%`}
+                    subtext={`${globalStats.deliveredCount || 0} Equipos Entregados en total`}
+                    accentColor="blue"
+                    icon={CheckCircle2}
                 />
             </div>
         </div>

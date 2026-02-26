@@ -103,11 +103,12 @@ export function FinancialStats({ stats }: { stats: any }) {
                     href="/admin/sales"
                 />
                 <MetricCard
-                    title="Equipos Entregados OK"
-                    value={stock.okCount || 0}
-                    accentColor="orange"
+                    title="Ganancia Neta"
+                    value={fmtMoney(financials.profit)}
+                    accentColor="emerald"
                     icon={CheckCircle2}
-                    subtext={`${stock.noRepairCount || 0} Equipos No Reparados`}
+                    trend={{ value: `+${financials.profitMargin.toFixed(1)}%`, positive: true }}
+                    subtext="Margen real"
                     href="/admin/statistics"
                 />
                 <MetricCard
@@ -120,13 +121,12 @@ export function FinancialStats({ stats }: { stats: any }) {
                     href="/admin/repairs"
                 />
                 <MetricCard
-                    title="Garantías del Mes"
-                    value={stock.criticalCount} // Using recycled field
-                    accentColor="pink"
-                    icon={Wrench} // Or RotateCcw/ShieldAlert if imported
-                    trend={{ value: "Reingresos", positive: false }}
-                    subtext="Equipos reingresados por garantía"
-                    href="/admin/repairs"
+                    title="Equipos Entregados OK"
+                    value={stock.okCount || 0}
+                    accentColor="orange"
+                    icon={CheckCircle2}
+                    subtext={`${stock.deliveredCount || 0} Total | ${stock.noRepairCount || 0} No Rep. | ${stock.deliveredCount > 0 ? Math.round((stock.okCount / stock.deliveredCount) * 100) : 0}% Efic.`}
+                    href="/admin/statistics"
                 />
             </div>
         </div>
