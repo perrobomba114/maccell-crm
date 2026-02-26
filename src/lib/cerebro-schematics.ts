@@ -62,11 +62,14 @@ export async function findSchematic(userMessage: string): Promise<SchematicMatch
 
         if (conditions.length === 0) return null;
 
+        // Búsqueda más agresiva: buscamos cada término del modelo y la marca por separado
+        const searchTerms = [...new Set([...brands, ...models])];
+
         const row = await db.cerebroSchematic.findFirst({
             where: {
                 OR: [
-                    ...brands.map(b => ({ deviceBrand: { contains: b, mode: 'insensitive' as const } })),
-                    ...models.map(m => ({ deviceModel: { contains: m, mode: 'insensitive' as const } }))
+                    ...searchTerms.map(term => ({ deviceBrand: { contains: term, mode: 'insensitive' as const } })),
+                    ...searchTerms.map(term => ({ deviceModel: { contains: term, mode: 'insensitive' as const } }))
                 ]
             },
             orderBy: { createdAt: 'desc' }
