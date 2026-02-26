@@ -14,7 +14,7 @@ import pdfParse from "pdf-parse";
 const MAX_HISTORY_MSGS = 2; // Reducido drásticamente para ahorrar tokens en Tier 1
 const MAX_MSG_CHARS = 800;
 const MAX_OUTPUT_TOKENS = 800;
-const MAX_PDF_CHARS = 50000; // Aumentado a 50k para permitir schematics completos (soportado por Llama 3.3 128k context)
+const MAX_PDF_CHARS = 8000; // Ajustado a 8k para garantizar compatibilidad con Tier 1 (TPM 6k) en cascada 8B
 const MAX_IMAGES = 4; // Groq max 5, usamos 4 por seguridad
 
 export const maxDuration = 60;
@@ -266,9 +266,12 @@ async function extractDiagnosticState(
                 let text = '';
                 if (typeof m.content === 'string') text = m.content;
                 else if (Array.isArray(m.parts)) {
+                    // Solo tomamos texto, ignoramos PDF pesado para no saturar tokens en esta fase
                     text = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join(' ');
                 }
-                return `[${m.role.toUpperCase()}]: ${text.slice(0, 300)}`;
+                // Limpiamos menciones de PDF previo para que el extractor no se confunda
+                text = text.replace(/📄 \[PDF ADJUNTO[\s\S]*?\n/g, '');
+                return `[${m.role.toUpperCase()}]: ${text.slice(0, 500)}`;
             })
             .join('\n');
 
@@ -426,7 +429,7 @@ export async function POST(req: NextRequest) {
         const [classifyResult, ragDirectResult, schemResult, diagResult] = await Promise.allSettled([
             // Fase 1.3: clasificar síntoma
             lastUserText.length > 8
-                ? withTimeout(runAuxTask(keys, (g: ReturnType<typeof createGroq>) => classifySymptom(lastUserText, g), lastUserText), 2500, lastUserText)
+                ? withTimeout(runAuxTask(keys, (g: ReturnType<typeof createGroq>) => classifySymptom(lastUserText.slice(0, 3000), g), lastUserText), 2500, lastUserText)
                 : Promise.resolve(lastUserText),
             // RAG directo
             lastUserText.length > 3
@@ -435,7 +438,7 @@ export async function POST(req: NextRequest) {
             // Fase 4: schematic auto-lookup
             withTimeout(findSchematic(lastUserText), 3000, null),
             // Fase 2: estado del diagnóstico
-            withTimeout(runAuxTask(keys, (g: ReturnType<typeof createGroq>) => extractDiagnosticState(messages, g), ''), 5000, '')
+            withTimeout(runAuxTask(keys, (g: ReturnType<typeof createGroq>) => extractDiagnosticState(messages, g), ''), 5000, ''),
         ]);
 
         let similar = ragDirectResult.status === 'fulfilled' ? ragDirectResult.value : [];
@@ -540,7 +543,7 @@ Seguí este flujo hasta identificar el componente exacto.`;
 
         // ── MODO TEXTO — cascada 70B → 8B ────────────────────────────────────
         const coreMessages = await toCoreMsgs(messages);
-        console.log(`[CEREBRO] 📨 Mensajes: ${coreMessages.length}`);
+        console.log(`[CEREBRO] 📨 Mensajes: ${coreMessages.length} | Prompt length: ${finalSystemPrompt.length}`);
 
         const textModelsConfig = [];
         for (const m of TEXT_MODELS) {
