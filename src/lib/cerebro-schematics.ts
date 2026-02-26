@@ -97,5 +97,5 @@ export async function findSchematic(userMessage: string): Promise<SchematicMatch
  * Se incluye solo el texto relevante (no el PDF completo).
  */
 export function formatSchematicContext(match: SchematicMatch): string {
-    return `\n\n### 📋 SCHEMATIC PRE-INDEXADO: ${match.brand} ${match.model} (${match.filename})\nUsá esta información del schematic EXCLUSIVAMENTE para el síntoma específico preguntado.\nNombrá los componentes reales, sus valores y testpoints.\n\n${match.text.slice(0, 8000)}`;
+    return `\n\n### 📋 SCHEMATIC PRE-INDEXADO: ${match.brand} ${match.model} (${match.filename})\nUsá esta información del schematic EXCLUSIVAMENTE para el síntoma específico preguntado.\nNombrá los componentes reales, sus valores y testpoints.\n\n${match.text.slice(0, 50000)}`;
 }

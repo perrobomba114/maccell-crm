@@ -11,10 +11,10 @@ import pdfParse from "pdf-parse";
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURACIÓN
 // ─────────────────────────────────────────────────────────────────────────────
-const MAX_HISTORY_MSGS = 6;
-const MAX_MSG_CHARS = 1200;
-const MAX_OUTPUT_TOKENS = 1200;
-const MAX_PDF_CHARS = 8000; // Aumentado para leer manuales completos
+const MAX_HISTORY_MSGS = 2; // Reducido drásticamente para ahorrar tokens en Tier 1
+const MAX_MSG_CHARS = 800;
+const MAX_OUTPUT_TOKENS = 800;
+const MAX_PDF_CHARS = 50000; // Aumentado a 50k para permitir schematics completos (soportado por Llama 3.3 128k context)
 const MAX_IMAGES = 4; // Groq max 5, usamos 4 por seguridad
 
 export const maxDuration = 60;
@@ -140,13 +140,16 @@ async function toCoreMsgs(messages: any[]): Promise<any[]> {
         for (const m of history) {
             if (m.role !== 'user' && m.role !== 'assistant') continue;
             let textContent = '';
-            let hadPdf = false;
             if (Array.isArray(m.parts)) {
                 for (const p of m.parts) {
                     if (p.type === 'text' && p.text) textContent += p.text + ' ';
                     if (p.type === 'file') {
                         const mt = p.mediaType || p.file?.mediaType || '';
-                        if (mt === 'application/pdf') hadPdf = true;
+                        const url = p.url || p.file?.url || '';
+                        if (mt === 'application/pdf' && url) {
+                            const pdf = await extractPdfText(url);
+                            if (pdf) textContent += `\n\n📄 [PDF ADJUNTO EN HISTORIAL]:\n${pdf}\n`;
+                        }
                     }
                 }
             }
@@ -154,7 +157,7 @@ async function toCoreMsgs(messages: any[]): Promise<any[]> {
             if (Array.isArray(m.content)) {
                 textContent = m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
             }
-            const finalText = truncate(textContent.trim()) + (hadPdf ? ' [schematic PDF adjunto]' : '');
+            const finalText = truncate(textContent.trim());
             result.push({ role: m.role, content: finalText || '[mensaje vacío]' });
         }
 
@@ -304,16 +307,81 @@ JSON requerido:
     }
 }
 
+// Helper para tareas auxiliares (classify, extract) que prueba todas las llaves
+async function runAuxTask<T>(
+    keys: string[],
+    task: (groq: ReturnType<typeof createGroq>) => Promise<T>,
+    fallback: T
+): Promise<T> {
+    for (const key of keys) {
+        try {
+            const groq = createGroq({ apiKey: key });
+            return await task(groq);
+        } catch (err: any) {
+            console.warn(`[CEREBRO] Tarea auxiliar falló con llave ${key.slice(-4)}: ${err.message}`);
+        }
+    }
+    return fallback;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HANDLER
 // ─────────────────────────────────────────────────────────────────────────────
+function createFallbackModel(
+    models: { instance: any; label: string; keyId: string }[],
+    successCallback: (info: { label: string; keyId: string }) => void
+): any {
+    return {
+        specificationVersion: "v3",
+        provider: "cerebro-fallback",
+        modelId: "cerebro-fallback",
+        defaultObjectGenerationMode: models[0]?.instance.defaultObjectGenerationMode,
+        defaultTextGenerationMode: models[0]?.instance.defaultTextGenerationMode, // just in case
+        async doGenerate(options: any) {
+            let lastError: any;
+            for (const { instance, label, keyId } of models) {
+                try {
+                    const result = await instance.doGenerate(options);
+                    successCallback({ label, keyId });
+                    return result;
+                } catch (err: any) {
+                    lastError = err;
+                    console.warn(`[CEREBRO] ⚠️ Fallback en doGenerate (${label}):`, err?.message?.slice(0, 150) || err);
+                }
+            }
+            throw lastError;
+        },
+        async doStream(options: any) {
+            let lastError: any;
+            for (const [i, { instance, label, keyId }] of models.entries()) {
+                try {
+                    const result = await instance.doStream(options);
+                    console.log(`[CEREBRO] ✅ Provider aceptado en intento ${i + 1} (${label})`);
+                    successCallback({ label, keyId });
+                    return result;
+                } catch (err: any) {
+                    lastError = err;
+                    console.warn(`[CEREBRO] ⚠️ Provider rechazado en intento ${i + 1} (${label} ${keyId}):`, err?.message?.slice(0, 150) || err);
+                }
+            }
+            console.error(`[CEREBRO] ❌ Todos los providers fallaron.`);
+            throw lastError;
+        }
+    };
+}
+
 export async function POST(req: NextRequest) {
     console.log("[CEREBRO] 🚀 Petición iniciada");
 
     try {
-        const groqKey = process.env.GROQ_API_KEY;
-        if (!groqKey || groqKey.length < 10) {
-            return new Response("Error: GROQ_API_KEY no configurada.", { status: 500 });
+        const keys = [
+            process.env.GROQ_API_KEY,
+            process.env.GROQ_API_KEY_2,
+            process.env.GROQ_API_KEY_3
+        ].filter((k): k is string => !!k && k.length > 10);
+
+        if (keys.length === 0) {
+            return new Response("Error: No hay llaves de API de Groq configuradas.", { status: 500 });
         }
 
         const body = await req.json();
@@ -321,7 +389,7 @@ export async function POST(req: NextRequest) {
         const guidedMode = body.guidedMode === true;
         if (!messages.length) return new Response("No messages provided", { status: 400 });
 
-        const groq = createGroq({ apiKey: groqKey });
+        // No creamos un groqAux fijo, usaremos runAuxTask
 
         // ── Detectar imágenes ─────────────────────────────────────────────────
         const lastUserMsg = messages.findLast((m: any) => m.role === 'user');
@@ -356,18 +424,18 @@ export async function POST(req: NextRequest) {
         let finalSystemPrompt = activeBasePrompt;
 
         const [classifyResult, ragDirectResult, schemResult, diagResult] = await Promise.allSettled([
-            // Fase 1.3: clasificar síntoma (corre en paralelo, no bloquea)
+            // Fase 1.3: clasificar síntoma
             lastUserText.length > 8
-                ? withTimeout(classifySymptom(lastUserText, groq), 2500, lastUserText)
+                ? withTimeout(runAuxTask(keys, (g: ReturnType<typeof createGroq>) => classifySymptom(lastUserText, g), lastUserText), 2500, lastUserText)
                 : Promise.resolve(lastUserText),
-            // RAG directo con el texto original (sin esperar classify)
+            // RAG directo
             lastUserText.length > 3
-                ? withTimeout(findSimilarRepairs(lastUserText, 3, 0.6), 4000, [])
+                ? withTimeout(findSimilarRepairs(lastUserText, 1, 0.6), 4000, [])
                 : Promise.resolve([]),
             // Fase 4: schematic auto-lookup
             withTimeout(findSchematic(lastUserText), 3000, null),
-            // Fase 2: estado del diagnóstico (solo desde turno 3+)
-            withTimeout(extractDiagnosticState(messages, groq), 5000, '')
+            // Fase 2: estado del diagnóstico
+            withTimeout(runAuxTask(keys, (g: ReturnType<typeof createGroq>) => extractDiagnosticState(messages, g), ''), 5000, '')
         ]);
 
         let similar = ragDirectResult.status === 'fulfilled' ? ragDirectResult.value : [];
@@ -375,7 +443,7 @@ export async function POST(req: NextRequest) {
 
         // Si RAG directo no encontró nada Y classify generó una query mejor → 2do intento
         if (similar.length === 0 && classifiedQuery !== lastUserText && classifiedQuery.length > 3) {
-            const ragFallback = await withTimeout(findSimilarRepairs(classifiedQuery, 3, 0.6), 3000, []);
+            const ragFallback = await withTimeout(findSimilarRepairs(classifiedQuery, 1, 0.6), 3000, []);
             if (ragFallback.length > 0) {
                 similar = ragFallback;
                 console.log(`[CEREBRO] 🏷️ RAG mejorado por classify: ${similar.length} casos`);
@@ -432,25 +500,41 @@ Seguí este flujo hasta identificar el componente exacto.`;
 
         // ── MODO VISIÓN ───────────────────────────────────────────────────────
         if (hasImages) {
-            console.log(`[CEREBRO] 🔭 ${VISION_MODEL.label}`);
+            console.log(`[CEREBRO] 🔭 Iniciando modo Visión...`);
+            const visionModels = keys.map(key => ({
+                instance: createGroq({ apiKey: key })(VISION_MODEL.id),
+                label: VISION_MODEL.label,
+                keyId: key.slice(-4)
+            }));
+
+            let usedLabel = VISION_MODEL.label;
+            let usedKey = '';
+
+            const cerebroVisionModel = createFallbackModel(visionModels, (info) => {
+                usedLabel = info.label;
+                usedKey = info.keyId;
+            });
+
             try {
                 const visionMessages = await buildVisionMessages(messages, images);
                 const result = await streamText({
-                    model: groq(VISION_MODEL.id),
+                    model: cerebroVisionModel as any,
                     system: finalSystemPrompt,
                     messages: visionMessages,
                     maxOutputTokens: MAX_OUTPUT_TOKENS,
                     temperature: 0.2,
                     onFinish: onFinishCb,
+                    maxRetries: 0,
                 });
                 return result.toUIMessageStreamResponse({
                     headers: {
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'X-Cerebro-Provider': VISION_MODEL.label,
+                        'X-Cerebro-Provider': usedLabel,
+                        'X-Cerebro-Key': usedKey
                     }
                 });
             } catch (visionErr: any) {
-                console.warn(`[CEREBRO] ⚠️ Vision falló: ${visionErr.message} — fallback texto`);
+                console.warn(`[CEREBRO] ⚠️ Vision mode fallback cascade failed:`, visionErr.message);
             }
         }
 
@@ -458,27 +542,44 @@ Seguí este flujo hasta identificar el componente exacto.`;
         const coreMessages = await toCoreMsgs(messages);
         console.log(`[CEREBRO] 📨 Mensajes: ${coreMessages.length}`);
 
+        const textModelsConfig = [];
         for (const m of TEXT_MODELS) {
-            try {
-                console.log(`[CEREBRO] 🤖 ${m.label}...`);
-                const result = await streamText({
-                    model: groq(m.id),
-                    system: finalSystemPrompt,
-                    messages: coreMessages,
-                    maxOutputTokens: MAX_OUTPUT_TOKENS,
-                    temperature: 0.2,
-                    onFinish: onFinishCb,
+            for (const key of keys) {
+                textModelsConfig.push({
+                    instance: createGroq({ apiKey: key })(m.id),
+                    label: m.label,
+                    keyId: key.slice(-4)
                 });
-                return result.toUIMessageStreamResponse({
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'X-Cerebro-Provider': m.label,
-                    }
-                });
-            } catch (err: any) {
-                console.warn(`[CEREBRO] ⚠️ ${m.label} falló: ${err.message}`);
-                if (m === TEXT_MODELS[TEXT_MODELS.length - 1]) throw err;
             }
+        }
+
+        let usedLabel = 'Unknown';
+        let usedKey = '';
+
+        const cerebroTextModel = createFallbackModel(textModelsConfig, (info) => {
+            usedLabel = info.label;
+            usedKey = info.keyId;
+        });
+
+        try {
+            const result = await streamText({
+                model: cerebroTextModel as any,
+                system: finalSystemPrompt,
+                messages: coreMessages,
+                maxOutputTokens: MAX_OUTPUT_TOKENS,
+                temperature: 0.2,
+                onFinish: onFinishCb,
+                maxRetries: 0,
+            });
+            return result.toUIMessageStreamResponse({
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'X-Cerebro-Provider': usedLabel,
+                    'X-Cerebro-Key': usedKey
+                }
+            });
+        } catch (err: any) {
+            console.warn(`[CEREBRO] ⚠️ Text mode fallback cascade failed:`, err.message);
         }
 
         return new Response("Todos los modelos Groq fallaron.", { status: 503 });

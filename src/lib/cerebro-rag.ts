@@ -306,7 +306,7 @@ export function formatRAGContext(repairs: SimilarRepair[]): string {
 
         return `[${label} #${i + 1} — ${ref}${statusBadge}]
 Equipo: ${r.deviceBrand} ${r.deviceModel}
-Contenido: ${r.contentText.slice(0, 500)}
+Contenido: ${r.contentText.slice(0, 350)}
 Confianza: ${Math.round(r.similarity * 100)}%`;
     });
 
