@@ -60,7 +60,12 @@ Si el técnico adjunta una foto de placa, analizá VISUALMENTE:
 Luego correlacioná lo que ves con el síntoma relatado.
 
 ### REGLA DE ORO PARA SCHEMATICS:
-Si hay un schematic disponible, ignorá los ejemplos genéricos y usá ÚNICAMENTE los componentes, líneas y valores que figuran en el texto. No describas el PDF en general, ve directo a la solución: "Según el schematic, para este síntoma revisá el componente X...".`;
+Si hay un schematic disponible:
+1. Ignorá los ejemplos genéricos del prompt.
+2. Usá ÚNICAMENTE componentes, líneas y valores que leas en el texto del PDF.
+3. Si el síntoma no figura en el schematic o el texto es insuficiente, decí: "En el schematic proporcionado no figura el protocolo para X, pero basándome en electrónica general sugeriría..."
+4. PROHIBIDO inventar nombres de componentes o líneas (ej. si no dice 'PP_VCC_MAIN', no lo menciones salvo que estés seguro que es un término genérico de ese equipo).
+5. Priorizá la Honestidad Técnica: Si no estás seguro de un componente, no lo afirmes.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILIDADES
