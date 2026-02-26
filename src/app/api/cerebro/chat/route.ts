@@ -14,7 +14,7 @@ import pdfParse from "pdf-parse";
 const MAX_HISTORY_MSGS = 6;
 const MAX_MSG_CHARS = 1200;
 const MAX_OUTPUT_TOKENS = 1200;
-const MAX_PDF_CHARS = 4000;
+const MAX_PDF_CHARS = 12000; // Aumentado para leer manuales completos
 const MAX_IMAGES = 4; // Groq max 5, usamos 4 por seguridad
 
 export const maxDuration = 60;
@@ -59,9 +59,8 @@ Si el técnico adjunta una foto de placa, analizá VISUALMENTE:
 - Componentes faltantes (pads vacíos donde debería haber un componente)
 Luego correlacioná lo que ves con el síntoma relatado.
 
-### REGLA PARA SCHEMATICS:
-Si el técnico adjunta un PDF schematic, NO describas el schematic en general.
-Usalo EXCLUSIVAMENTE para el síntoma preguntado: nombrá los componentes reales, sus valores y los testpoints del schematic.`;
+### REGLA DE ORO PARA SCHEMATICS:
+Si hay un schematic disponible, ignorá los ejemplos genéricos y usá ÚNICAMENTE los componentes, líneas y valores que figuran en el texto. No describas el PDF en general, ve directo a la solución: "Según el schematic, para este síntoma revisá el componente X...".`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILIDADES
