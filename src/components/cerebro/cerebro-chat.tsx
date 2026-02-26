@@ -121,6 +121,10 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
             } catch (err) {
                 console.error("Error saving messages/updating title:", err);
             }
+        },
+        onError: (err: any) => {
+            console.error("⛔ [CEREBRO_CLIENT_ERROR]:", err);
+            toast.error("Error de conexión: " + (err.message || "Ver consola para detalles"));
         }
     } as any);
 
@@ -234,15 +238,15 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                             <div className="w-14 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-500 ${tokenUsage.percentage >= 80 ? 'bg-red-500'
-                                            : tokenUsage.percentage >= 50 ? 'bg-amber-500'
-                                                : 'bg-emerald-500'
+                                        : tokenUsage.percentage >= 50 ? 'bg-amber-500'
+                                            : 'bg-emerald-500'
                                         }`}
                                     style={{ width: `${tokenUsage.percentage}%` }}
                                 />
                             </div>
                             <span className={`text-[10px] font-semibold tabular-nums whitespace-nowrap ${tokenUsage.percentage >= 80 ? 'text-red-400'
-                                    : tokenUsage.percentage >= 50 ? 'text-amber-400'
-                                        : 'text-emerald-400'
+                                : tokenUsage.percentage >= 50 ? 'text-amber-400'
+                                    : 'text-emerald-400'
                                 }`}>
                                 {tokenUsage.remaining.toLocaleString()} tkn
                             </span>
@@ -255,8 +259,8 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                         onClick={() => setGuidedMode(g => !g)}
                         title={guidedMode ? "Modo Guiado activo — click para desactivar" : "Activar Modo Diagnóstico Guiado"}
                         className={`flex items-center gap-1.5 px-4 py-1 rounded-full text-xs font-semibold transition-all duration-200 border ${guidedMode
-                                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.3)]'
-                                : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.3)]'
+                            : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
                             }`}
                     >
                         <Microscope size={12} />

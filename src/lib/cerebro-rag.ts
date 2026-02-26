@@ -144,17 +144,25 @@ async function keywordSearch(
         if (terms.length === 0) return [];
 
         // Construimos una condición ILIKE para cada término
-        // Buscamos en contentText (que incluye síntoma + diagnóstico + repuestos)
-        const conditions = terms.map((_, i) => `re."contentText" ILIKE $${i + 1}`).join(' OR ');
+        // Priorizamos matches en brand/model sobre el texto general
+        const modelConditions = terms.map((_, i) => `re."deviceModel" ILIKE $${i + 1}`).join(' OR ');
+        const brandConditions = terms.map((_, i) => `re."deviceBrand" ILIKE $${i + 1}`).join(' OR ');
+        const contentConditions = terms.map((_, i) => `re."contentText" ILIKE $${i + 1}`).join(' OR ');
         const params = terms.map(t => `%${t}%`);
 
         const rows = await db.$queryRawUnsafe<any[]>(
             `SELECT re."ticketNumber", re."deviceBrand", re."deviceModel", re."contentText",
-                    rs.name as status
+                    rs.name as status,
+                    (
+                        CASE WHEN (${modelConditions}) THEN 2.0 ELSE 0.0 END +
+                        CASE WHEN (${brandConditions}) THEN 1.0 ELSE 0.0 END +
+                        CASE WHEN (${contentConditions}) THEN 0.5 ELSE 0.0 END
+                    ) as search_score
              FROM "repair_embeddings" re
              LEFT JOIN repairs r ON re."repairId" = r.id
              LEFT JOIN repair_statuses rs ON r."statusId" = rs.id
-             WHERE ${conditions}
+             WHERE (${modelConditions}) OR (${brandConditions}) OR (${contentConditions})
+             ORDER BY search_score DESC
              LIMIT ${limit}`,
             ...params
         );
@@ -166,7 +174,7 @@ async function keywordSearch(
                 deviceBrand: r.deviceBrand,
                 deviceModel: r.deviceModel,
                 contentText: r.contentText,
-                similarity: 0.7, // score fijo — el rango real lo da RRF
+                similarity: 0.7 + (Number(r.search_score) / 10), // Boost similarity based on score
                 status: r.status,
                 source: 'keyword' as const
             }));
@@ -290,7 +298,7 @@ export async function findKnowledgeByText(
 // Formateador de contexto para el prompt
 // ─────────────────────────────────────────────────────────────────────────────
 export function formatRAGContext(repairs: SimilarRepair[]): string {
-    const validRepairs = repairs.filter(r => r.similarity >= 0.75); // Filtro de calidad más estricto
+    const validRepairs = repairs.filter(r => r.similarity >= 0.65); // Umbral optimizado
     if (validRepairs.length === 0) return '';
 
     const lines = validRepairs.map((r, i) => {

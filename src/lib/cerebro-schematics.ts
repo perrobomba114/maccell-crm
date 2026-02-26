@@ -63,7 +63,11 @@ export async function findSchematic(userMessage: string): Promise<SchematicMatch
         if (conditions.length === 0) return null;
 
         // Búsqueda más agresiva: buscamos cada término del modelo y la marca por separado
-        const searchTerms = [...new Set([...brands, ...models])];
+        const searchTerms = [...new Set([
+            ...brands,
+            ...models,
+            ...models.flatMap(m => m.split(/\s+/)).filter(t => t.length > 1) // Split "iPhone 12 Pro Max" -> ["iPhone", "12", "Pro", "Max"]
+        ])];
 
         const row = await db.cerebroSchematic.findFirst({
             where: {
