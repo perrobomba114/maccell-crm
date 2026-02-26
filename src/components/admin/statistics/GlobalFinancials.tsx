@@ -77,12 +77,12 @@ export function GlobalFinancials({ globalStats, repairStats }: GlobalFinancialsP
                     icon={DollarSign}
                 />
                 <MetricCard
-                    title="Ganancia Estimada"
-                    value={fmtMoney(globalStats.profitThisMonth)}
-                    subtext={`${globalStats.okCount || 0} OK | ${globalStats.noRepairCount || 0} No Rep.`}
-                    trend={{ value: 0 }} // Assuming profit growth isn't calc'd separately here yet
-                    accentColor="emerald"
-                    icon={Wallet}
+                    title="Equipos Entregados OK"
+                    value={globalStats.okCount || 0}
+                    subtext={`${globalStats.noRepairCount || 0} Sin Reparación`}
+                    trend={{ value: 0 }}
+                    accentColor="orange"
+                    icon={Wrench}
                 />
                 <MetricCard
                     title="Equipos en Taller"

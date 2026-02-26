@@ -21,7 +21,7 @@ export async function getSalesAnalytics(branchId?: string) {
         const { start: lastMonthStart, end: lastMonthEnd } = getMonthlyRange(lastMonthStr);
 
         // 1. Parallel Data Fetching
-        const [salesCurrentMonth, revenueAgg, salesLastMonth, stockAlertsRaw] = await Promise.all([
+        const [salesCurrentMonth, revenueAgg, salesLastMonth, stockAlertsRaw, deliveredHistory] = await Promise.all([
             // Sales for Analysis
             prisma.sale.findMany({
                 where: {
@@ -61,6 +61,15 @@ export async function getSalesAnalytics(branchId?: string) {
                 include: { product: { select: { name: true } }, branch: { select: { name: true } } },
                 take: 10,
                 orderBy: { quantity: 'asc' }
+            }),
+            // 5. Success/NoRepair counts from History (Current Month)
+            prisma.repairStatusHistory.findMany({
+                where: {
+                    toStatusId: 10, // Entregado
+                    createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                    repair: branchFilter
+                },
+                select: { fromStatusId: true }
             })
         ]);
 
@@ -140,7 +149,9 @@ export async function getSalesAnalytics(branchId?: string) {
                 health: totalRepairPartsCost,
                 criticalCount: warrantiesCount, // Repurposing criticalCount for Warranties Count
                 alerts: stockAlerts,
-                topSold: topProducts
+                topSold: topProducts,
+                okCount: deliveredHistory.filter(h => h.fromStatusId === 5).length,
+                noRepairCount: deliveredHistory.filter(h => h.fromStatusId === 6).length
             }
         };
 
