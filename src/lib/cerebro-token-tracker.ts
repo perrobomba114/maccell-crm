@@ -49,10 +49,10 @@ export async function trackTokens(totalTokens: number): Promise<void> {
         const today = todayUTC();
         await db.$executeRawUnsafe(`
             INSERT INTO cerebro_daily_tokens (date, tokens_used)
-            VALUES ($1, $2)
+            VALUES ('${today}', ${totalTokens})
             ON CONFLICT (date) DO UPDATE
               SET tokens_used = cerebro_daily_tokens.tokens_used + EXCLUDED.tokens_used
-        `, today, totalTokens);
+        `);
     } catch (err: any) {
         // No bloquear nunca el flujo del chat por un error de tracking
         console.warn('[TOKEN_TRACKER] ⚠️ No se pudo registrar tokens:', err.message);
