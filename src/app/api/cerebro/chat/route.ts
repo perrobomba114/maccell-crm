@@ -461,10 +461,10 @@ export async function POST(req: NextRequest) {
         const diagBlock = diagResult.status === 'fulfilled' ? diagResult.value : '';
         if (diagBlock) finalSystemPrompt += diagBlock;
 
-        const schematic = schemResult.status === 'fulfilled' ? schemResult.value : null;
-        if (schematic) {
-            finalSystemPrompt += formatSchematicContext(schematic);
-            console.log(`[CEREBRO] 📋 Schematic auto-inyectado: ${schematic.brand} ${schematic.model}`);
+        const schematicMatch = schemResult.status === 'fulfilled' ? schemResult.value : null;
+        if (schematicMatch) {
+            finalSystemPrompt += formatSchematicContext(schematicMatch, lastUserText);
+            console.log(`[CEREBRO] 📚 Datos de esquema inyectados: ${schematicMatch.brand} ${schematicMatch.model} (Búsqueda inteligente: ${lastUserText.slice(0, 30)}...)`);
         }
 
         // Fase 5: Modo Diagnóstico Guiado

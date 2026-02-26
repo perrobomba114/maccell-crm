@@ -94,8 +94,55 @@ export async function findSchematic(userMessage: string): Promise<SchematicMatch
 
 /**
  * Formatea el contexto del schematic para inyectar en el system prompt.
- * Se incluye solo el texto relevante (no el PDF completo).
+ * 
+ * MEJORA: Búsqueda de Ventana Inteligente.
+ * Si el texto es muy largo, buscamos palabras clave del usuario dento de los 100k 
+ * para extraer la 'ventana' más relevante, no solo los primeros 8k.
  */
-export function formatSchematicContext(match: SchematicMatch): string {
-    return `\n\n### 📋 SCHEMATIC PRE-INDEXADO: ${match.brand} ${match.model} (${match.filename})\nUsá esta información del schematic EXCLUSIVAMENTE para el síntoma específico preguntado.\nNombrá los componentes reales, sus valores y testpoints.\n\n${match.text.slice(0, 8000)}`;
+export function formatSchematicContext(match: SchematicMatch, userQuery = ''): string {
+    const limit = 8000;
+    if (match.text.length <= limit) {
+        return `\n\n### 📋 SCHEMATIC PRE-INDEXADO: ${match.brand} ${match.model} (${match.filename})\n\n${match.text}`;
+    }
+
+    // Buscar fragmento relevante
+    const queryTerms = userQuery.toLowerCase()
+        .replace(/[^\w\s]/g, '')
+        .split(/\s+/)
+        .filter(t => t.length > 3);
+
+    let foundIndex = -1;
+    for (const term of queryTerms) {
+        const idx = match.text.toLowerCase().indexOf(term);
+        if (idx !== -1) {
+            foundIndex = idx;
+            break;
+        }
+    }
+
+    // Si no encontramos término, buscamos "Charging", "Power", "Display" como fallback
+    if (foundIndex === -1) {
+        const generalTerms = ['charge', 'pmu', 'power', 'vcc', 'display', 'image', 'backlight', 'audio'];
+        for (const term of generalTerms) {
+            const idx = match.text.toLowerCase().indexOf(term);
+            if (idx !== -1) {
+                foundIndex = idx;
+                break;
+            }
+        }
+    }
+
+    let extracted = '';
+    if (foundIndex === -1) {
+        // Fallback: principio
+        extracted = match.text.slice(0, limit) + '\n[...truncado por longitud...]';
+    } else {
+        // Ventana centrada o inicio desde el match
+        const start = Math.max(0, foundIndex - 500);
+        extracted = `[...Fragmento extraído de la sección relevante...]\n\n` +
+            match.text.slice(start, start + limit) +
+            '\n[...truncado por longitud...]';
+    }
+
+    return `\n\n### 📋 SCHEMATIC PRE-INDEXADO: ${match.brand} ${match.model} (${match.filename})\nUsá esta información del schematic EXCLUSIVAMENTE para el síntoma específico preguntado.\nNombrá los componentes reales, sus valores y testpoints.\n\n${extracted}`;
 }
