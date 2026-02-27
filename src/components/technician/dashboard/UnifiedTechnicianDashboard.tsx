@@ -24,46 +24,42 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 // --- Standard Metrics Component ---
-function TechMetric({ title, value, icon: Icon, color, subtext, href }: any) {
-    const strategies: any = {
-        violet: { bg: "bg-violet-600", text: "text-white", icon: "bg-violet-500", border: "border-violet-400" },
-        blue: { bg: "bg-blue-600", text: "text-white", icon: "bg-blue-500", border: "border-blue-400" },
-        emerald: { bg: "bg-emerald-600", text: "text-white", icon: "bg-emerald-500", border: "border-emerald-400" },
-        orange: { bg: "bg-orange-600", text: "text-white", icon: "bg-orange-500", border: "border-orange-400" },
+function TechMetric({ title, value, icon: Icon, color, subtext, trend, href }: any) {
+    const colors: any = {
+        emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+        blue: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+        violet: "bg-violet-500/10 text-violet-500 border-violet-500/20",
+        orange: "bg-orange-500/10 text-orange-500 border-orange-500/20",
     };
 
-    const style = strategies[color] || strategies.blue;
-
     return (
-        <Link href={href || "#"} className={cn(
-            "group relative p-6 rounded-2xl transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between overflow-hidden border-2 shadow-lg",
-            style.bg,
-            style.border
-        )}>
-            <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Icon size={120} />
+        <Link href={href || "#"} className="group relative p-6 rounded-2xl bg-[#18181b] border border-zinc-800/50 hover:border-zinc-700 hover:bg-zinc-900/50 transition-all flex flex-col justify-between overflow-hidden">
+            <div className={cn("absolute top-0 right-0 p-3 opacity-20 -mr-2 -mt-2 rounded-bl-3xl transition-transform group-hover:scale-110 duration-500", colors[color])}>
+                <Icon size={40} />
             </div>
 
             <div className="relative z-10">
                 <div className="flex justify-between items-start mb-4">
-                    <div className={cn("p-2 rounded-lg border border-white/20 shadow-inner", style.icon)}>
-                        <Icon size={20} className="text-white" />
+                    <div className={cn("p-2 rounded-lg inline-flex", colors[color])}>
+                        <Icon size={20} />
                     </div>
+                    {trend && (
+                        <div className="flex items-center gap-1 text-[10px] font-bold bg-zinc-900 px-2 py-1 rounded-full border border-zinc-800 text-emerald-500">
+                            {trend}
+                        </div>
+                    )}
                 </div>
                 <div>
-                    <h3 className="text-3xl font-black text-white tracking-tighter mb-0.5 tabular-nums">{value}</h3>
-                    <p className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em]">{title}</p>
+                    <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1 group-hover:text-zinc-400 transition-colors">{title}</p>
+                    <h3 className="text-3xl font-black text-white tracking-tight tabular-nums">{value}</h3>
                 </div>
             </div>
-
-            {subtext && (
-                <div className="mt-4 pt-3 border-t border-white/10">
-                    <div className="text-[10px] text-white/80 font-bold uppercase tracking-wider italic flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                        {subtext}
-                    </div>
-                </div>
-            )}
+            {subtext && <div className="mt-4 pt-3 border-t border-zinc-800/50">
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider group-hover:text-zinc-400 transition-colors flex items-center gap-2">
+                    <div className={cn("w-1.5 h-1.5 rounded-full", color === 'emerald' ? 'bg-emerald-500' : color === 'blue' ? 'bg-blue-500' : color === 'orange' ? 'bg-orange-500' : 'bg-violet-500')} />
+                    {subtext}
+                </p>
+            </div>}
         </Link>
     );
 }
@@ -255,13 +251,13 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
             {/* Metrics Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <TechMetric title="En Mesa" value={stats.activeRepairs} subtext="En Proceso" icon={PlayCircle} color="blue" href="/technician/repairs" />
-                <TechMetric title="En Cola" value={stats.pendingTickets} subtext="Pendientes" icon={ListTodo} color="orange" href="/technician/tickets" />
-                <TechMetric title="Finalizados" value={stats.completedToday} subtext="Turno Hoy" icon={CheckCircle2} color="emerald" href="/technician/history" />
+                <TechMetric title="En Cola" value={stats.pendingTickets} subtext="Pendientes" icon={ListTodo} color="emerald" href="/technician/tickets" />
+                <TechMetric title="Finalizados" value={stats.completedToday} subtext="Turno Hoy" icon={CheckCircle2} color="orange" href="/technician/history" />
                 <TechMetric title="Eficiencia" value={stats.avgRepairTime} subtext="Tiempo Promedio" icon={Timer} color="violet" href="/technician/history" />
 
-                <TechMetric title="Calidad" value={`${stats.qualityScore || 100}%`} subtext="Sin Garantías" icon={ShieldCheck} color="emerald" href="/technician/profile" />
+                <TechMetric title="Calidad" value={`${stats.qualityScore || 100}%`} subtext="Sin Garantías" icon={ShieldCheck} color="orange" href="/technician/profile" />
                 <TechMetric title="Puntualidad" value={`${stats.onTimeRate || 100}%`} subtext="Entregas OK" icon={CalendarCheck} color="blue" href="/technician/profile" />
-                <TechMetric title="Producción" value={stats.completedMonth} subtext="Mensual" icon={Calendar} color="violet" href="/technician/history" />
+                <TechMetric title="Producción" value={stats.completedMonth} subtext="Mensual" icon={Calendar} color="emerald" href="/technician/history" />
                 {(() => {
                     const current = stats.completedMonth || 0;
                     const last = stats.completedLastMonth || 0;
@@ -270,7 +266,15 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                     else if (current > 0) growth = 100;
                     const sign = growth > 0 ? "+" : "";
                     return (
-                        <TechMetric title="Crecimiento" value={`${sign}${growth}%`} subtext="vs Mes Anterior" icon={ArrowUpRight} color={growth >= 0 ? "emerald" : "orange"} href="/technician/profile" />
+                        <TechMetric
+                            title="Crecimiento"
+                            value={`${sign}${growth}%`}
+                            subtext="vs Mes Anterior"
+                            icon={ArrowUpRight}
+                            color={growth >= 0 ? "emerald" : "orange"}
+                            trend={growth !== 0 ? `${sign}${growth}%` : undefined}
+                            href="/technician/profile"
+                        />
                     );
                 })()}
             </div>
