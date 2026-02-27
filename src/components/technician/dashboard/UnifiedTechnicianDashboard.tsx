@@ -56,7 +56,7 @@ function TechMetric({ title, value, icon: Icon, color, subtext, trend, href }: a
             </div>
             {subtext && <div className="mt-4 pt-3 border-t border-zinc-800/50">
                 <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider group-hover:text-zinc-400 transition-colors flex items-center gap-2">
-                    <div className={cn("w-1.5 h-1.5 rounded-full", color === 'emerald' ? 'bg-emerald-500' : color === 'blue' ? 'bg-blue-500' : color === 'orange' ? 'bg-orange-500' : 'bg-violet-500')} />
+                    <span className={cn("w-1.5 h-1.5 rounded-full", color === 'emerald' ? 'bg-emerald-500' : color === 'blue' ? 'bg-blue-500' : color === 'orange' ? 'bg-orange-500' : 'bg-violet-500')} />
                     {subtext}
                 </p>
             </div>}
