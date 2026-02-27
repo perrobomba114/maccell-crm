@@ -57,10 +57,6 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
             {/* Header - Static/Client */}
             <DashboardHeader />
 
-            {/* Smart Insights - Streaming */}
-            <Suspense fallback={<div className="h-20 mb-8" />}>
-                <SmartInsightsWidget salesPromise={salesPromise} />
-            </Suspense>
 
             {/* Filters - Static Data (Branches fetched fast) */}
             <div className="mb-8">
