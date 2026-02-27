@@ -33,38 +33,50 @@ interface UnifiedVendorDashboardProps {
 
 // --- KPI Card (Standardized & Clickable) ---
 function VendorMetric({ title, value, icon: Icon, color, subtext, trend, href }: any) {
-    const colors: any = {
-        emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-        blue: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-        violet: "bg-violet-500/10 text-violet-500 border-violet-500/20",
-        orange: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+    const strategies: any = {
+        violet: { bg: "bg-violet-600", text: "text-white", icon: "bg-violet-500", border: "border-violet-400" },
+        blue: { bg: "bg-blue-600", text: "text-white", icon: "bg-blue-500", border: "border-blue-400" },
+        emerald: { bg: "bg-emerald-600", text: "text-white", icon: "bg-emerald-500", border: "border-emerald-400" },
+        orange: { bg: "bg-orange-600", text: "text-white", icon: "bg-orange-500", border: "border-orange-400" },
     };
 
+    const style = strategies[color] || strategies.emerald;
+
     return (
-        <Link href={href || "#"} className="group relative p-6 rounded-2xl bg-[#18181b] border border-zinc-800/50 hover:border-zinc-700 hover:bg-zinc-900/50 transition-all flex flex-col justify-between overflow-hidden">
-            <div className={cn("absolute top-0 right-0 p-3 opacity-20 -mr-2 -mt-2 rounded-bl-3xl transition-transform group-hover:scale-110 duration-500", colors[color])}>
-                <Icon size={40} />
+        <Link href={href || "#"} className={cn(
+            "group relative p-6 rounded-2xl transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between overflow-hidden border-2 shadow-lg",
+            style.bg,
+            style.border
+        )}>
+            <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Icon size={120} />
             </div>
 
             <div className="relative z-10">
                 <div className="flex justify-between items-start mb-4">
-                    <div className={cn("p-2 rounded-lg inline-flex", colors[color])}>
+                    <div className={cn("p-2 rounded-lg border border-white/20 shadow-inner text-white", style.icon)}>
                         <Icon size={20} />
                     </div>
                     {trend && (
-                        <div className="flex items-center gap-1 text-[10px] font-bold bg-zinc-900 px-2 py-1 rounded-full border border-zinc-800 text-zinc-400">
+                        <div className="flex items-center gap-1 text-[10px] font-bold bg-white/20 px-2 py-1 rounded-full border border-white/20 text-white">
                             {trend}
                         </div>
                     )}
                 </div>
                 <div>
-                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-1 group-hover:text-zinc-400 transition-colors">{title}</p>
-                    <h3 className="text-3xl font-bold text-white tracking-tight">{value}</h3>
+                    <h3 className="text-3xl font-black text-white tracking-tighter mb-0.5 tabular-nums leading-none">{value}</h3>
+                    <p className="text-[10px] font-black text-white/90 uppercase tracking-[0.2em]">{title}</p>
                 </div>
             </div>
-            {subtext && <div className="mt-4 pt-3 border-t border-zinc-800/50">
-                <p className="text-xs text-zinc-500 font-medium group-hover:text-zinc-400 transition-colors">{subtext}</p>
-            </div>}
+
+            {subtext && (
+                <div className="mt-4 pt-3 border-t border-white/10">
+                    <div className="text-[10px] text-white font-bold uppercase tracking-wider flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        {subtext}
+                    </div>
+                </div>
+            )}
         </Link>
     );
 }
