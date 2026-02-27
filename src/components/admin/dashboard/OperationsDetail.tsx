@@ -20,13 +20,13 @@ export function OperationsDetail({ stats, branchStats }: OperationsDetailProps) 
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Monthly Status Distribution Chart */}
-                <div className="h-[450px]">
+                <div className="h-[580px]">
                     <RepairsByStatusChart data={repairs.monthlyStatusDistribution} />
                 </div>
 
                 {/* Pending by Branch (If available) */}
                 {branchStats && (
-                    <div className="min-h-[450px]">
+                    <div className="h-[580px]">
                         <BranchUndeliveredChart
                             data={branchStats.undeliveredChartData}
                             keys={branchStats.statusKeys}

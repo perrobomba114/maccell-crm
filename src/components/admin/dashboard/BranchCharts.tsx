@@ -12,7 +12,7 @@ import {
     YAxis,
     ReferenceLine,
     PieChart,
-    Pie,
+    Pie
 } from "recharts";
 import { TrendingUp, TrendingDown, ArrowRight, LayoutList, AlertCircle, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -239,7 +239,7 @@ export function BranchUndeliveredChart({ data, keys }: { data: any[], keys?: { n
             </CardHeader>
 
             <CardContent className="flex-1 pb-6 relative min-h-0 pl-0">
-                <div className="w-full" style={{ height: Math.max(300, data.length * 80) }}>
+                <div className="w-full" style={{ height: Math.max(400, data.length * 100) }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                             data={data}
@@ -330,16 +330,16 @@ export function RepairsByStatusChart({ data }: { data: any[] }) {
                     Distribución de reparaciones (Mes Actual)
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col md:flex-row items-center justify-center gap-8 px-6 pb-6">
-                <div className="h-[200px] w-[200px] shrink-0 relative">
+            <CardContent className="flex-1 flex flex-col items-center justify-center gap-12 px-6 pb-6">
+                <div className="h-[280px] w-[280px] shrink-0 relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
                                 data={data}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={60}
-                                outerRadius={80}
+                                innerRadius={85}
+                                outerRadius={115}
                                 paddingAngle={5}
                                 dataKey="value"
                                 animationDuration={1000}

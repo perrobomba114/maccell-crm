@@ -21,7 +21,7 @@ export async function getSalesAnalytics(branchId?: string) {
         const { start: lastMonthStart, end: lastMonthEnd } = getMonthlyRange(lastMonthStr);
 
         // 1. Parallel Data Fetching
-        const [salesCurrentMonth, revenueAgg, salesLastMonth, stockAlertsRaw, deliveredHistory] = await Promise.all([
+        const [salesCurrentMonth, revenueAgg, salesLastMonth, stockAlertsRaw, repairOutput] = await Promise.all([
             // Sales for Analysis
             prisma.sale.findMany({
                 where: {
@@ -62,16 +62,26 @@ export async function getSalesAnalytics(branchId?: string) {
                 take: 10,
                 orderBy: { quantity: 'asc' }
             }),
-            // 5. Success/NoRepair counts from History (Current Month)
-            prisma.repairStatusHistory.findMany({
+            // 5. Success/NoRepair counts from Repairs directly (Finished This Month)
+            prisma.repair.findMany({
                 where: {
-                    toStatusId: 10, // Entregado
-                    createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
-                    repair: branchFilter
+                    ...branchFilter,
+                    finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                    statusId: { in: [5, 6, 10] }
                 },
-                select: { fromStatusId: true }
+                select: { statusId: true }
             })
         ]);
+
+        const deliveredTotal = await prisma.repairStatusHistory.count({
+            where: {
+                toStatusId: 10,
+                createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                repair: branchFilter
+            }
+        });
+
+
 
         // Fetch Warranties Count (New Requirement)
         const warrantiesCount = await prisma.repair.count({
@@ -142,12 +152,13 @@ export async function getSalesAnalytics(branchId?: string) {
             quantity: s.quantity
         }));
 
-        const okCount = deliveredHistory.filter(h => h.fromStatusId === 5).length;
-        const noRepairCount = deliveredHistory.filter(h => h.fromStatusId === 6).length;
-        // Efficiency calculation: (Successful Repairs - Warranties) / Total Finalized
-        // This penalizes warranties as they represent "bad repairs"
-        const efficiency = (okCount + noRepairCount) > 0
-            ? Math.max(0, Math.round(((okCount - warrantiesCount) / (okCount + noRepairCount)) * 100))
+        const okCountCount = (repairOutput as any[]).filter(r => r.statusId === 5 || r.statusId === 10).length;
+        const noRepairCountCount = (repairOutput as any[]).filter(r => r.statusId === 6).length;
+
+        // Efficiency calculation: (Successful Repairs) / (Total Finalized)
+        const totalFinalized = okCountCount + noRepairCountCount;
+        const efficiency = totalFinalized > 0
+            ? Math.round((okCountCount / totalFinalized) * 100)
             : 0;
 
         return {
@@ -159,9 +170,9 @@ export async function getSalesAnalytics(branchId?: string) {
                 efficiency,
                 alerts: stockAlerts,
                 topSold: topProducts,
-                okCount,
-                noRepairCount,
-                deliveredCount: deliveredHistory.length,
+                okCount: okCountCount,
+                noRepairCount: noRepairCountCount,
+                deliveredCount: deliveredTotal,
                 totalSalesCount: salesCurrentMonth.length
             }
         };

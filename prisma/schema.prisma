@@ -279,54 +279,54 @@ model Customer {
 }
 
 model RepairStatus {
-  id        Int      @id @default(autoincrement())
-  name      String
-  color     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  repairs           Repair[]
+  id                Int                   @id @default(autoincrement())
+  name              String
+  color             String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
   statusHistoryFrom RepairStatusHistory[] @relation("FromStatus")
   statusHistoryTo   RepairStatusHistory[] @relation("ToStatus")
+  repairs           Repair[]
 
   @@map("repair_statuses")
 }
 
 model Repair {
-  id                 String              @id @default(cuid())
-  ticketNumber       String              @unique
+  id                 String                @id @default(cuid())
+  ticketNumber       String                @unique
   branchId           String
   customerId         String
   userId             String
   assignedUserId     String?
-  statusId           Int                 @default(1)
+  statusId           Int                   @default(1)
   deviceBrand        String
   deviceModel        String
   problemDescription String
   deviceImages       String[]
   estimatedPrice     Float?
   promisedAt         DateTime
-  isWarranty         Boolean             @default(false)
+  isWarranty         Boolean               @default(false)
   originalRepairId   String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
   diagnosis          String?
   estimatedTime      Int?
   finishedAt         DateTime?
   startedAt          DateTime?
-  isWet              Boolean             @default(false)
-  dataQualityScore   Int                 @default(0)
+  isWet              Boolean               @default(false)
+  dataQualityScore   Int                   @default(0)
   diagnosisEnriched  String?
   diagnosticJson     Json?
   observations       RepairObservation[]
   parts              RepairPart[]
-  assignedTo         User?               @relation("AssignedRepairs", fields: [assignedUserId], references: [id])
-  branch             Branch              @relation(fields: [branchId], references: [id])
-  customer           Customer            @relation(fields: [customerId], references: [id])
-  originalRepair     Repair?             @relation("WarrantyRelation", fields: [originalRepairId], references: [id])
-  warrantyRepairs    Repair[]            @relation("WarrantyRelation")
-  status             RepairStatus        @relation(fields: [statusId], references: [id])
   statusHistory      RepairStatusHistory[]
-  createdBy          User                @relation("CreatedRepairs", fields: [userId], references: [id])
+  assignedTo         User?                 @relation("AssignedRepairs", fields: [assignedUserId], references: [id])
+  branch             Branch                @relation(fields: [branchId], references: [id])
+  customer           Customer              @relation(fields: [customerId], references: [id])
+  originalRepair     Repair?               @relation("WarrantyRelation", fields: [originalRepairId], references: [id])
+  warrantyRepairs    Repair[]              @relation("WarrantyRelation")
+  status             RepairStatus          @relation(fields: [statusId], references: [id])
+  createdBy          User                  @relation("CreatedRepairs", fields: [userId], references: [id])
   returnRequests     ReturnRequest[]
   saleItems          SaleItem[]
 
@@ -558,6 +558,21 @@ model cerebro_daily_tokens {
   tokens_used Int    @default(0)
 }
 
+model RepairStatusHistory {
+  id           String        @id @default(cuid())
+  repairId     String
+  fromStatusId Int?
+  toStatusId   Int
+  userId       String?
+  createdAt    DateTime      @default(now())
+  fromStatus   RepairStatus? @relation("FromStatus", fields: [fromStatusId], references: [id])
+  repair       Repair        @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  toStatus     RepairStatus  @relation("ToStatus", fields: [toStatusId], references: [id])
+
+  @@index([repairId])
+  @@map("repair_status_history")
+}
+
 enum Role {
   ADMIN
   VENDOR
@@ -586,20 +601,4 @@ enum ReturnStatus {
   PENDING
   ACCEPTED
   REJECTED
-}
-
-model RepairStatusHistory {
-  id           String   @id @default(cuid())
-  repairId     String
-  fromStatusId Int?
-  toStatusId   Int
-  userId       String?
-  createdAt    DateTime @default(now())
-  
-  repair       Repair   @relation(fields: [repairId], references: [id], onDelete: Cascade)
-  fromStatus   RepairStatus? @relation("FromStatus", fields: [fromStatusId], references: [id])
-  toStatus     RepairStatus  @relation("ToStatus", fields: [toStatusId], references: [id])
-
-  @@index([repairId])
-  @@map("repair_status_history")
 }
