@@ -1,0 +1,18 @@
+export const TECHNICAL_DICTIONARY: Record<string, string[]> = {
+    'carga': ['charge', 'charger', 'charging', 'vbus', 'vchg', 'usb', 'dock', 'hydra', 'tristar', 'tigris', 'v_usb', 'pmu_chg', 'vbat'],
+    'encendido': ['power', 'pmu', 'pmic', 'boot', 'vcc', 'button', 'swi', 'buck', 'ldo', 'pwr_key', 'vph_pwr', 'vcore', 'vdd'],
+    'imagen': ['display', 'lcd', 'mipi', 'vcc_display', 'image', 'video', 'oled', 'digitizer', 'dsi', 'refresh'],
+    'pantalla': ['display', 'lcd', 'backlight', 'touch', 'panel', 'ips', 'screen', 'digitizer', 'bl_', 'led_anode'],
+    'luz': ['backlight', 'led', 'bl_', 'anode', 'cathode', 'wled', 'driver_led', 'pwm'],
+    'sonido': ['audio', 'speaker', 'codec', 'mic', 'earpiece', 'amplifier', 'buzzer', 'hp_l', 'hp_r'],
+    'señal': ['rf', 'antenna', 'pa', 'wtr', 'baseband', 'transceiver', 'gsm', 'lte', '5g', '4g', 'fem', 'lna', 'saw', 'rfi', 'signal'],
+    'corto': ['short', 'vcc', 'main', 'gnd', 'leakage', 'resistance', 'ground', 'cap_short'],
+    'mojado': ['water', 'corrosion', 'fluid', 'liquid', 'humidity', 'oxid'],
+    'wifi': ['wlan', 'bluetooth', 'bt', 'antenna', 'radio', '2.4g', '5g', 'wifi_ant'],
+    'camara': ['camera', 'cam', 'isp', 'csi', 'mipi', 'focus', 'lens', 'vcc_cam'],
+    'memoria': ['memory', 'ram', 'nand', 'emmc', 'ufs', 'storage', 'vdd_mem', 'e0321'],
+    'procesador': ['cpu', 'processor', 'soc', 'gpu', 'core', 'vcore', 'vdd_cpu', 'ap_cpu'],
+    'huella': ['fingerprint', 'touch_id', 'fprint', 'biometric', 'sensor_id'],
+    'bateria': ['battery', 'batt', 'vbat', 'gauge', 'ntc', 'thermal', 'vbat_con', 'fuel_gauge', 'bat_therm', 'btemp', 'battery_swi'],
+    'termistor': ['ntc', 'thermistor', 'th100', 'th200', 'vr', 'rt', 'thermal', 'temp', 'vchg_th', 'bat_th', 'ntc_bat', 'vtemp'],
+};

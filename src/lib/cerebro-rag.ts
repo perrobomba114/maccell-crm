@@ -68,11 +68,17 @@ function rrfMerge(
     addList(semanticResults);
     addList(keywordResults);
 
-    return Array.from(scores.values())
+    const scoreValues = Array.from(scores.values());
+    if (scoreValues.length === 0) return [];
+
+    // Normalizar relativo al score máximo para mantener discriminación
+    const maxScore = Math.max(...scoreValues.map(v => v.score));
+
+    return scoreValues
         .sort((a, b) => b.score - a.score)
         .map(({ item, score }) => ({
             ...item,
-            similarity: Math.min(1, score * k)
+            similarity: score / maxScore
         }));
 }
 
@@ -140,6 +146,8 @@ async function keywordSearch(
         const contentConditions = terms.map((_, i) => `re."contentText" ILIKE $${i + 1}`).join(' OR ');
         const params = terms.map(t => `%${t}%`);
 
+        const safeLimitKeyword = Math.min(Math.max(1, Math.floor(Number(limit))), 20);
+
         const rows = await db.$queryRawUnsafe<any[]>(
             `SELECT re."ticketNumber", re."deviceBrand", re."deviceModel", re."contentText",
                     rs.name as status,
@@ -153,7 +161,7 @@ async function keywordSearch(
              LEFT JOIN repair_statuses rs ON r."statusId" = rs.id
              WHERE (${modelConditions}) OR (${brandConditions}) OR (${contentConditions})
              ORDER BY search_score DESC
-             LIMIT ${limit}`,
+             LIMIT ${safeLimitKeyword}`,
             ...params
         );
 
@@ -210,10 +218,21 @@ export async function findSimilarRepairs(
     }
 
     if (embedding) {
+        // Retry semantic search con un umbral más bajo si pgvector falla pero no devuelve vacio,
+        // esto evita un fallback enorme a RAM innecesariamente si la base de datos está funcinal.
+        const retryThreshold = 0.45;
+        if (minSimilarity > retryThreshold) {
+            const retry = await semanticSearch(embedding, limit, retryThreshold);
+            if (retry.length > 0) {
+                console.log(`[RAG] 🧠 Semántica (Retry threshold): ${retry.length} resultados`);
+                return retry;
+            }
+        }
+
         try {
             const rows = await db.$queryRawUnsafe<any[]>(
                 `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding"
-                 FROM "repair_embeddings" LIMIT 500`
+                 FROM "repair_embeddings" LIMIT 100` // Limitado a 100
             );
             if (rows?.length > 0) {
                 const results = rows
@@ -225,7 +244,7 @@ export async function findSimilarRepairs(
                         similarity: calculateSimilarity(embedding, typeof row.embedding === 'string' ? JSON.parse(row.embedding) : row.embedding),
                         source: 'semantic'
                     }))
-                    .filter(r => r.similarity >= minSimilarity)
+                    .filter(r => r.similarity >= retryThreshold)
                     .sort((a, b) => b.similarity - a.similarity)
                     .slice(0, limit);
 

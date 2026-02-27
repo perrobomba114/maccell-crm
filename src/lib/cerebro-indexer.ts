@@ -7,15 +7,7 @@
  *  2. repair_embeddings   → vector 384-dims para pgvector (si disponible)
  */
 
-import pg from 'pg';
 import { generateEmbedding } from '@/lib/local-embeddings';
-
-// Pool singleton para reutilizar conexiones
-let _pool: pg.Pool | null = null;
-function getPool() {
-    if (!_pool) _pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-    return _pool;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Indexar una reparación individual
@@ -63,7 +55,7 @@ export async function indexRepair(repair: {
         if (embedding) {
             const vectorStr = `[${embedding.join(',')}]`;
             try {
-                await getPool().query(`
+                await db.$executeRawUnsafe(`
                     INSERT INTO repair_embeddings
                         (id, "repairId", "ticketNumber", "deviceBrand", "deviceModel", "contentText", embedding, "createdAt", "updatedAt")
                     VALUES
@@ -72,7 +64,7 @@ export async function indexRepair(repair: {
                         "contentText" = EXCLUDED."contentText",
                         embedding     = EXCLUDED.embedding,
                         "updatedAt"   = now()
-                `, [repair.id, repair.ticketNumber, repair.deviceBrand, repair.deviceModel, document, vectorStr]);
+                `, repair.id, repair.ticketNumber, repair.deviceBrand, repair.deviceModel, document, vectorStr);
                 console.log(`[CEREBRO_INDEXER] ✅ RAG indexado: ${repair.ticketNumber}`);
             } catch (pgErr: any) {
                 console.warn(`[CEREBRO_INDEXER] ⚠️ pgvector no disponible: ${pgErr.message.slice(0, 80)}`);
@@ -100,8 +92,8 @@ export async function indexPendingRepairs(): Promise<void> {
         // Obtener IDs ya indexados en pgvector (si está disponible)
         let existingIds = new Set<string>();
         try {
-            const existingRes = await getPool().query('SELECT "repairId" FROM repair_embeddings');
-            existingIds = new Set(existingRes.rows.map((r: any) => r.repairId));
+            const existingRes = await db.$queryRawUnsafe<any[]>('SELECT "repairId" FROM repair_embeddings');
+            existingIds = new Set(existingRes.map(r => r.repairId));
             console.log(`[CEREBRO_INDEXER] Ya indexadas en pgvector: ${existingIds.size}`);
         } catch {
             console.warn('[CEREBRO_INDEXER] pgvector no disponible, indexando todo en wiki text.');
@@ -129,9 +121,11 @@ export async function indexPendingRepairs(): Promise<void> {
         console.log(`[CEREBRO_INDEXER] ⚙️ Indexando ${pending.length} reparaciones...`);
 
         let success = 0;
-        for (const repair of pending) {
-            const ok = await indexRepair(repair as any);
-            if (ok) success++;
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+            const batch = pending.slice(i, i + BATCH_SIZE);
+            const results = await Promise.allSettled(batch.map(r => indexRepair(r as any)));
+            success += results.filter(r => r.status === 'fulfilled' && r.value).length;
         }
 
         console.log(`[CEREBRO_INDEXER] ✅ Completado: ${success}/${pending.length} reparaciones indexadas.`);

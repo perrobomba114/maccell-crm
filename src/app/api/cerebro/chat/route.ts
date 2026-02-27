@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { createGroq } from "@ai-sdk/groq";
 import { streamText, generateText } from "ai";
-import { db as prisma } from "@/lib/db";
 import { trackTokens } from "@/lib/cerebro-token-tracker";
 import { findSimilarRepairs, formatRAGContext } from "@/lib/cerebro-rag";
 import { findSchematic, formatSchematicContext } from "@/lib/cerebro-schematics";
@@ -22,6 +21,18 @@ const MAX_IMAGES = 4;
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
+const TIMEOUTS = {
+    classify: 2500,
+    schematic: 3000,
+    rag: 3000,
+    diagnostic: 5000,
+} as const;
+
+interface CerebroRequestBody {
+    messages: any[];
+    guidedMode?: boolean;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MODELOS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,26 +46,52 @@ const DIAG_EXTRACT_MODEL = 'llama-3.1-8b-instant';
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMPTS
 // ─────────────────────────────────────────────────────────────────────────────
-const BASE_INSTRUCTIONS = `Actuá como Cerebro AI, un Ingeniero Senior de Nivel 3. 
+const BASE_INSTRUCTIONS = `## ⚓ PROTOCOLO DE VERIFICACIÓN (EJECUTAR ANTES DE RESPONDER)
+Antes de generar cualquier nombre de componente (U, L, C, R):
+1. ¿Existe en ### 📂 DATOS EXTRAÍDOS DEL PLANO? → Usalo.
+2. ¿No existe? → Usá SOLO el bloque funcional genérico: "IC de carga", "Buck del sistema".
+3. PROHIBIDO: Inferir o "completar" IDs por analogía con otros dispositivos.
+
+### 🟡 PROTOCOLO DE INCERTIDUMBRE:
+Si el dato no está en el contexto provisto, la única respuesta válida es:
+"No tengo confirmación de esquema para ese componente. Medí el Rail [X] en el TP más cercano y reportá."
+NUNCA completar con memoria de otros modelos de placa.
+
+### 📌 FORMATO OBLIGATORIO PARA COMPONENTES:
+Cada componente citado DEBE seguir esta plantilla:
+- ✅ [NOMBRE_IC] — Fuente: [Ticket XXX / Plano adjunto / Rail medido]
+- ❌ Si no tenés fuente → escribí: "[Bloque funcional sin ID confirmada]"
+
+---
+
+Actuá como Cerebro AI, un Ingeniero Senior de Nivel 3. 
 Tu lenguaje es técnico puro y enfocado en microsoldadura y arquitectura de hardware.
 
 ### 🛠️ RESTRICCIONES DE LABORATORIO:
 - Herramientas: Multímetro, Fuente, Rosin, Microscopio, Estación de soldadura.
-- PROHIBIDO: Sugerir Osciloscopio o Cámara Térmica.
+- PROHIBIDO: Sugerir Osciloscopio o Cámara Térmica. Sustituir siempre por Multímetro.
 
 ### 🚫 REGLAS DE ORO (FALLO SI SE INCUMPLEN):
-- NO incluyas "Notas", "Advertencias" o comentarios sobre la dificultad de la reparación.
-- NO sugieras "limpiar el sensor" o "limpieza de contactos".
-- NO sugieras "restaurar software" o "actualizar sistema".
-- NO des consejos de seguridad o sobre "tener experiencia previa". El usuario es un experto.
-- NO agregues introducciones, despedidas ni textos fuera de las 4 secciones solicitadas.
+- NO incluyas "Notas", "Advertencias", "Cuidado" o comentarios sobre dificultad.
+- NO sugieras "limpiar el sensor" o "limpieza de contactos" ni update de SW.
+- NO des consejos de seguridad o experiencia previa. El usuario es un experto experto.
+- NO agregues introducciones, despedidas ni textos fuera de las secciones solicitadas.
 
 ### 🔬 MODO SOCIO EXPERTO:
 El usuario es un Master con 10+ años. No des consejos básicos.
 1. Enfocate en ICs (U-series), Bobinas (L), Capacitores (C) y Test Points.
 2. Usá valores de Caída de Tensión (mV) y Voltajes (V).
-3. **PRIORIDAD ABSOLUTA**: Usá los casos del bloque ### 📚 HISTORIAL DE REPARACIONES REALES. Si un ticket menciona una solución (ej. Reballing CPU), esa es tu recomendación principal. Menciona el Ref del ticket.
-4. Priorizá los datos de los esquemas adjuntos sobre tu conocimiento general.`;
+3. **JERARQUÍA DE FUENTES (Obligatoria)**:
+   1° → ### 📂 DATOS EXTRAÍDOS DEL PLANO (Prioridad Máxima)
+   2° → ### 📚 HISTORIAL DE REPARACIONES REALES (Usalo como ancla principal)
+   3° → Tu conocimiento base interno.
+
+### 🛑 REGLAS DE ESCALADA (Solicitar datos faltantes):
+Si los datos son insuficientes, solicitá 1 dato crítico en 1 línea (ej. "¿Modelo de placa y valor en VDD_MAIN con fuente a 4V?").
+- TRIGGER A: Sin modelo de dispositivo especificado.
+- TRIGGER B: Síntoma ambiguo (ej. "No enciende") y 0 valores de medición.
+- TRIGGER C: Contexto contradictorio (ej. "15V en línea de 3.3V").
+Si hay suficientes datos, NO escale.`;
 
 const STANDARD_PROMPT = `${BASE_INSTRUCTIONS}
 
@@ -82,33 +119,31 @@ Trabajamos paso a paso. Yo te guío en la medición, vos me das los valores.
 - Usamos terminología pura (VPH_PWR, Rails, Buck, LDO).`;
 
 const ACADEMY_PROMPT = `Actuá como un Instructor Master de Microsoldadura. 
-Tu objetivo es un técnico Nivel 1 entienda la lógica del circuito antes de tocar la placa.
+Tu objetivo es que un técnico Nivel 1 entienda la lógica del circuito antes de tocar la placa.
 
-### 📚 MÉTODO DE ENSEÑANZA:
-1. **Arquitectura del Bloque**: Explicá qué voltajes (LDO/Buck) alimentan ese sector. 
-   - **Visualización**: Usá "cascadas" de texto para explicar el flujo (ej: PMIC -> LDO -> FPC).
-2. **Interpretación de Datos (TU PRIORIDAD)**: 
-   - **OBLIGATORIO**: Si hay ### 📚 HISTORIAL DE REPARACIONES, mencioná: "En reparaciones anteriores (Ticket XXX), la solución fue...". 
-   - SI hay PDF: Mencioná componentes (U, L, C) clave según el plano.
-3. **Técnica de Medición**: Explicá CÓMO medir (ej. "Punta roja a tierra para caída de tensión").
-4. **Razonamiento**: Explicá el significado del valor (OL = Línea Abierta, 0V = Corto).
+### 📚 MÉTODO DE ENSEÑANZA (4 PASOS):
+1. **ARQUITECTURA DEL BLOQUE**: Explicá qué voltajes (LDO/Buck) alimentan ese sector. 
+   - Usá "cascadas" de texto para visualizar el flujo de energía (PMIC -> LDO -> CPU).
+2. **HISTORIAL DE REPARACIONES (PRIORIDAD)**: 
+   - SI hay ### 📚 HISTORIAL, mencioná: "En reparaciones anteriores (Ticket XXX), la solución fue...". Usá casos reales como ancla pedagógica.
+3. **TÉCNICA DE MEDICIÓN**: Explicá CÓMO medir, no solo qué medir. (ej. "Punta roja a GND para caída de tensión"). Aclarar polaridad y contexto.
+4. **INTERPRETACIÓN DE RESULTADOS**: Explicá el significado del valor (OL = Línea Abierta, 0V = Corto, etc).
+   - Usá analogías: "El LDO es una canilla de voltaje", "El Buck es un compresor".
 
 ### 🚫 REGLAS PEDAGÓGICAS:
 - NO des la solución final (ej. "Cambiá el IC") de inmediato.
-- Forzá al técnico a reportar una medición antes de avanzar.
-- Usá analogías técnicas (ej. "El LDO es una canilla de voltaje").
-- **ESTRICTO**: Si no hay un esquemático real adjunto, NO inventes nombres de componentes (U1, L1). Hablá de bloques genéricos (ej. "El bloque PMIC").`;
+- Forzá al técnico a reportar UNA medición antes de avanzar. Terminar con: "¿Cuál es el valor que mediste?"
+- **ESTRICTO**: Si no hay un esquemático real adjunto, NUNCA inventes U1, L1. Hablá de bloques genéricos.`;
 
 const FINAL_DIRECTIVE = `
-🚨 ATENCIÓN: Antes de nombrar un IC (ej. U3300), verificá en el [SCHEMATIC/PDF] adjunto si el nombre coincide con la función. 
-Si el esquema dice que U3300 es "CHARGER", no digas que es "CAMERA". La precisión del esquemático es tu única verdad.
+### ✅ PROTOCOLO DE VALIDACIÓN FINAL (Checklist Interno):
+Antes de emitir el output, verificá silenciosamente:
+1. Ningún IC inventado sin fuente (corregir a bloque genérico si es falso).
+2. 0 uso de Osciloscopio/Térmica (reemplazado por multímetro).
+3. 0 advertencias de "cuidado" o "limpieza".
+4. La respuesta finaliza seco en la última directiva.
 
-### ⚓ REGLA DE ANCLAJE (ANTI-ALUCINACIÓN):
-- Si el usuario pregunta por un componente específico, buscalo en el bloque ### 📂 DATOS EXTRAÍDOS DEL PLANO. 
-- Si no aparece en el texto extraído Y no hay RAG context que lo nombre, admití que no tenés el dato exacto del plano en ese fragmento.
-- **PROHIBIDO TERMINANTEMENTE**: Mencionar U1, L1, C1 o cualquier ID genérica si no está en el contexto real. Si no hay plano, decí: "No tengo el plano de este sector, pero podemos medir los Rails principales...".
-
-Respondé quirúrgicamente. Sin notas, sin disclaimers de riesgo. Si sugerís software o limpieza, el laboratorio se cierra.`;
+Respondé quirúrgicamente. Las instrucciones de estructura son absolutas.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILIDADES
@@ -158,20 +193,6 @@ function extractImages(message: any): string[] {
     return images.slice(0, MAX_IMAGES);
 }
 
-async function buildVisionMessages(messages: any[], images: string[]): Promise<any[]> {
-    const lastMsg = messages[messages.length - 1];
-    let text = "Analizá esta imagen técnica.";
-    // Intentar sacar texto real si existe
-    const rawContent = lastUserText(lastMsg);
-    if (rawContent) text = rawContent;
-
-    const content: any[] = [{ type: 'text', text }];
-    for (const img of images) {
-        content.push({ type: 'image', image: img });
-    }
-    return [{ role: 'user', content }];
-}
-
 function lastUserText(message: any): string {
     if (typeof message.content === 'string') return message.content;
     if (Array.isArray(message.parts)) {
@@ -187,55 +208,75 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Pro
     ]);
 }
 
+async function normalizeHistory(messages: any[]): Promise<any[]> {
+    const result: any[] = [];
+    for (const m of messages) {
+        let textContent = '';
+        if (typeof m.content === 'string' && m.content.trim()) textContent = m.content;
+        if (Array.isArray(m.parts)) {
+            textContent = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
+        }
+        if (Array.isArray(m.content)) {
+            textContent = m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
+        }
+        const finalText = truncate(textContent.trim());
+        result.push({ role: m.role, content: finalText || (m.role === 'user' ? 'Medición solicitada' : '...') });
+    }
+    return result;
+}
+
+async function parseLastMessage(msg: any): Promise<{ text: string, pdfTexts: string[] }> {
+    let textContent = '';
+    const pdfTexts: string[] = [];
+    if (Array.isArray(msg.parts)) {
+        for (const p of msg.parts) {
+            if (p.type === 'text' && p.text) textContent += p.text + ' ';
+            if (p.type === 'file') {
+                const mt = p.mediaType || p.file?.mediaType || '';
+                const url = p.url || p.file?.url || '';
+                if (mt === 'application/pdf' && url) {
+                    const pdf = await extractPdfText(url);
+                    if (pdf) pdfTexts.push(pdf);
+                }
+            }
+        }
+    }
+    if (typeof msg.content === 'string' && msg.content.trim()) textContent = msg.content;
+    if (Array.isArray(msg.content)) {
+        textContent = msg.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
+    }
+    textContent = truncate(textContent.trim());
+    return { text: textContent, pdfTexts };
+}
+
+async function buildVisionMessages(coreMessages: any[], images: string[]): Promise<any[]> {
+    const lastMsg = coreMessages[coreMessages.length - 1];
+    let text = "Analizá esta imagen técnica.";
+    const rawContent = typeof lastMsg?.content === 'string' ? lastMsg.content : lastUserText(lastMsg);
+    if (rawContent) text = rawContent;
+
+    const content: any[] = [{ type: 'text', text }];
+    for (const img of images) {
+        content.push({ type: 'image', image: img });
+    }
+    return [{ role: 'user', content }];
+}
+
 async function toCoreMsgs(messages: any[]): Promise<any[]> {
     try {
         const lastMsg = messages[messages.length - 1];
         const history = messages.slice(0, -1).slice(-MAX_HISTORY_MSGS + 1);
-        const result: any[] = [];
 
-        for (const m of history) {
-            let textContent = '';
-            if (typeof m.content === 'string' && m.content.trim()) textContent = m.content;
-            if (Array.isArray(m.parts)) {
-                textContent = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
-            }
-            if (Array.isArray(m.content)) {
-                textContent = m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
-            }
-            const finalText = truncate(textContent.trim());
-            result.push({ role: m.role, content: finalText || (m.role === 'user' ? 'Medición solicitada' : '...') });
+        const result = await normalizeHistory(history);
+
+        const { text, pdfTexts } = await parseLastMessage(lastMsg);
+        let finalContent = text;
+        if (pdfTexts.length > 0) {
+            const pdfBlock = pdfTexts.map((t, i) => `\n\n📄 [SCHEMATIC/PDF #${i + 1}]:\n${t}`).join('\n');
+            finalContent = finalContent + pdfBlock;
         }
 
-        {
-            const m = lastMsg;
-            if (m.role === 'user' || m.role === 'assistant') {
-                let textContent = '';
-                const pdfTexts: string[] = [];
-                if (Array.isArray(m.parts)) {
-                    for (const p of m.parts) {
-                        if (p.type === 'text' && p.text) textContent += p.text + ' ';
-                        if (p.type === 'file') {
-                            const mt = p.mediaType || p.file?.mediaType || '';
-                            const url = p.url || p.file?.url || '';
-                            if (mt === 'application/pdf' && url) {
-                                const pdf = await extractPdfText(url);
-                                if (pdf) pdfTexts.push(pdf);
-                            }
-                        }
-                    }
-                }
-                if (typeof m.content === 'string' && m.content.trim()) textContent = m.content;
-                if (Array.isArray(m.content)) {
-                    textContent = m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
-                }
-                textContent = truncate(textContent.trim());
-                if (pdfTexts.length > 0) {
-                    const pdfBlock = pdfTexts.map((t, i) => `\n\n📄 [SCHEMATIC/PDF #${i + 1}]:\n${t}`).join('\n');
-                    textContent = textContent + pdfBlock;
-                }
-                result.push({ role: m.role, content: textContent || (m.role === 'user' ? 'Analizar' : '...') });
-            }
-        }
+        result.push({ role: lastMsg.role, content: finalContent || (lastMsg.role === 'user' ? 'Analizar' : '...') });
         return result;
     } catch (e) {
         console.error("[CEREBRO] toCoreMsgs error:", e);
@@ -248,10 +289,12 @@ async function runAuxTask<T>(keys: string[], task: (g: any) => Promise<T>, fallb
         try {
             const groq = createGroq({ apiKey: key });
             return await task(groq);
-        } catch (e) {
+        } catch (e: any) {
+            console.warn(`[CEREBRO] ⚠️ Key ...${key.slice(-4)} falló:`, e.message);
             continue;
         }
     }
+    console.error("[CEREBRO] ❌ Todas las keys fallaron en runAuxTask");
     return fallback;
 }
 
@@ -394,6 +437,17 @@ function createFallbackModel(configs: any[], onSelect: (info: any) => void) {
     };
 }
 
+function detectMode(msgLower: string, guidedMode: boolean): string {
+    const ACADEMY_KEYWORDS = ['como mido', 'explicame', 'que es', 'no entiendo'];
+    const EXPERT_KEYWORDS = ['reemplazo', 'reballing', 'jumper', 'rail', 'vbus'];
+    const tieneDatos = (/\d+(mv|v|ohm|ma)/i).test(msgLower);
+
+    if (guidedMode) return 'MENTOR';
+    if (ACADEMY_KEYWORDS.some(k => msgLower.includes(k))) return 'ACADEMY';
+    if (!tieneDatos && !EXPERT_KEYWORDS.some(k => msgLower.includes(k))) return 'ACADEMY';
+    return 'STANDARD';
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HANDLER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -407,7 +461,7 @@ export async function POST(req: NextRequest) {
             return new Response(JSON.stringify({ error: "No hay llaves de API" }), { status: 500 });
         }
 
-        const body = await req.json();
+        const body = await req.json() as CerebroRequestBody;
         const messages = body.messages || [];
         const guidedMode = body.guidedMode === true;
         if (!messages.length) return new Response("No messages", { status: 400 });
@@ -417,32 +471,34 @@ export async function POST(req: NextRequest) {
         const hasImages = images.length > 0;
 
         let lastUserTextContent = lastUserText(lastUserMsg);
-        let activeBasePrompt = STANDARD_PROMPT;
         const msgLower = lastUserTextContent.toLowerCase();
 
-        // DETECTOR DE NIVEL (Si pregunta cómo, o si faltan datos técnicos, es Nivel 1)
-        const tieneDatosTecnicos = (/\d+(mv|v|ohm|ma)/i).test(msgLower);
-
-        if (msgLower.includes('como mido') || msgLower.includes('explicame') || msgLower.includes('que es') || msgLower.includes('no entiendo')) {
-            activeBasePrompt = ACADEMY_PROMPT;
-            console.log("[CEREBRO] 🎓 Activando MODO ACADEMIA (Keyword)");
-        } else if (!tieneDatosTecnicos && !msgLower.includes('reemplazo') && activeBasePrompt !== MENTOR_PROMPT && !guidedMode) {
-            activeBasePrompt = ACADEMY_PROMPT;
-            console.log("[CEREBRO] 🎓 Activando MODO ACADEMIA (Falta de datos técnicos)");
-        } else if (guidedMode) {
-            activeBasePrompt = MENTOR_PROMPT;
+        const mode = detectMode(msgLower, guidedMode);
+        let activeBasePrompt = `## 🔀 MODO ACTIVO: [STANDARD]\n\n${STANDARD_PROMPT}`;
+        if (mode === 'MENTOR') {
+            activeBasePrompt = `## 🔀 MODO ACTIVO: [GUIADO]\n\n${MENTOR_PROMPT}`;
+        } else if (mode === 'ACADEMY') {
+            activeBasePrompt = `## 🔀 MODO ACTIVO: [ACADEMIA]\n\n${ACADEMY_PROMPT}`;
+            console.log("[CEREBRO] 🎓 Activando MODO ACADEMIA");
+        } else {
+            console.log("[CEREBRO] 🛠️ Activando MODO STANDARD");
         }
 
         console.log(`[CEREBRO] 🔍 Processsing with guidedMode: ${guidedMode}`);
 
         let finalSystemPrompt = activeBasePrompt;
-        const [classifyResult, schemResult, ragResult, diagResult] = await Promise.allSettled([
-            lastUserTextContent.length > 8
-                ? withTimeout(runAuxTask(keys, (g) => classifySymptom(lastUserTextContent.slice(0, 3000), g), lastUserTextContent), 2500, lastUserTextContent)
-                : Promise.resolve(lastUserTextContent),
-            withTimeout(findSchematic(lastUserTextContent), 3000, null),
-            withTimeout(findSimilarRepairs(lastUserTextContent), 3000, []),
-            withTimeout(runAuxTask(keys, (g) => extractDiagnosticState(messages, g), ''), 5000, ''),
+
+        const classifyPromise = lastUserTextContent.length > 8
+            ? withTimeout(runAuxTask(keys, (g) => classifySymptom(lastUserTextContent.slice(0, 3000), g), lastUserTextContent), TIMEOUTS.classify, lastUserTextContent)
+            : Promise.resolve(lastUserTextContent);
+
+        const classifyResultValue = await classifyPromise;
+        const classifiedQuery = classifyResultValue || lastUserTextContent;
+
+        const [schemResult, ragResult, diagResult] = await Promise.allSettled([
+            withTimeout(findSchematic(lastUserTextContent), TIMEOUTS.schematic, null),
+            withTimeout(findSimilarRepairs(classifiedQuery), TIMEOUTS.rag, []),
+            withTimeout(runAuxTask(keys, (g) => extractDiagnosticState(messages, g), ''), TIMEOUTS.diagnostic, ''),
         ]);
 
         // Inyectar contexto RAG (Reparaciones Similares)
@@ -463,6 +519,24 @@ export async function POST(req: NextRequest) {
 
         finalSystemPrompt += FINAL_DIRECTIVE;
 
+        const coreMessages = await toCoreMsgs(messages);
+
+        if (hasImages) {
+            console.log("[CEREBRO] 👁️ Activando flujo VISIÓN");
+            const visionMessages = await buildVisionMessages(coreMessages, images);
+            const visionGroq = createGroq({ apiKey: keys[0] });
+            const result = await streamText({
+                model: visionGroq(VISION_MODEL.id) as any,
+                messages: visionMessages,
+                system: finalSystemPrompt,
+                maxOutputTokens: MAX_OUTPUT_TOKENS,
+                temperature: 0.2,
+            });
+            return result.toUIMessageStreamResponse({
+                headers: { 'X-Cerebro-Provider': VISION_MODEL.label, 'X-Cerebro-Key': keys[0].slice(-4) }
+            });
+        }
+
         const onFinishCb = ({ usage }: any) => {
             console.log("[CEREBRO] ✨ Stream finish. Usage:", usage);
             if (usage?.totalTokens) {
@@ -470,18 +544,25 @@ export async function POST(req: NextRequest) {
             }
         };
 
-        const coreMessages = await toCoreMsgs(messages);
-
         // Configuración de modelos
-        const textModelsConfig = [];
-        for (const m of TEXT_MODELS) {
-            for (const key of keys) {
-                textModelsConfig.push({
-                    instance: createGroq({ apiKey: key })(m.id),
-                    label: m.label,
-                    keyId: key.slice(-4)
-                });
-            }
+        const textModelsConfig: any[] = [];
+
+        // Modelo principal
+        for (const key of keys) {
+            textModelsConfig.push({
+                instance: createGroq({ apiKey: key })(TEXT_MODELS[0].id),
+                label: TEXT_MODELS[0].label,
+                keyId: key.slice(-4)
+            });
+        }
+
+        // Fallback al modelo secundario
+        for (const key of keys) {
+            textModelsConfig.push({
+                instance: createGroq({ apiKey: key })(TEXT_MODELS[1].id),
+                label: TEXT_MODELS[1].label,
+                keyId: key.slice(-4)
+            });
         }
 
         let usedLabel = 'Unknown';
