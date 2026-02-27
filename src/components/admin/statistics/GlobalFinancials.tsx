@@ -5,51 +5,60 @@ import { cn } from "@/lib/utils";
 
 // --- Metric Card Component ---
 function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon }: any) {
-    const colorMap: any = {
-        emerald: "bg-emerald-600 border-emerald-500 text-white",
-        blue: "bg-blue-600 border-blue-500 text-white",
-        violet: "bg-violet-600 border-violet-500 text-white",
-        orange: "bg-orange-600 border-orange-500 text-white",
-        pink: "bg-pink-600 border-pink-500 text-white",
-        red: "bg-red-600 border-red-500 text-white",
+    const strategies: any = {
+        violet: { bg: "bg-violet-600", text: "text-white", icon: "bg-violet-500", border: "border-violet-400" },
+        blue: { bg: "bg-blue-600", text: "text-white", icon: "bg-blue-500", border: "border-blue-400" },
+        emerald: { bg: "bg-emerald-600", text: "text-white", icon: "bg-emerald-500", border: "border-emerald-400" },
+        orange: { bg: "bg-orange-600", text: "text-white", icon: "bg-orange-500", border: "border-orange-400" },
+        pink: { bg: "bg-pink-600", text: "text-white", icon: "bg-pink-500", border: "border-pink-400" },
+        red: { bg: "bg-red-600", text: "text-white", icon: "bg-red-500", border: "border-red-400" },
     };
 
-    const containerStyle = colorMap[accentColor] || colorMap.blue;
-    const iconStyle = accentColor === "emerald" ? "bg-emerald-500 text-white" :
-        accentColor === "blue" ? "bg-blue-500 text-white" :
-            accentColor === "violet" ? "bg-violet-500 text-white" :
-                accentColor === "orange" ? "bg-orange-500 text-white" :
-                    accentColor === "red" ? "bg-red-500 text-white" :
-                        "bg-pink-500 text-white";
-
+    const style = strategies[accentColor] || strategies.blue;
     const isPositive = trend?.value >= 0;
 
     return (
-        <div className={cn("relative overflow-hidden rounded-2xl p-6 border flex flex-col justify-between h-full min-h-[140px] transition-all shadow-sm hover:shadow-md", containerStyle)}>
-            <div className="flex justify-between items-start z-10 relative">
-                <div>
-                    <p className="text-white/80 text-[10px] font-bold uppercase tracking-wider mb-1 group-hover:text-white transition-colors min-h-[2rem] flex items-center">{title}</p>
-                    <h3 className="text-3xl font-bold text-white tracking-tight leading-none">{value}</h3>
-                </div>
-                <div className={cn("p-2.5 rounded-xl flex-shrink-0 flex items-center justify-center backdrop-blur-sm", iconStyle)}>
-                    <Icon size={20} strokeWidth={2} />
-                </div>
+        <div className={cn(
+            "group relative p-6 rounded-2xl transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between overflow-hidden border-2 shadow-lg min-h-[140px]",
+            style.bg,
+            style.border
+        )}>
+            <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Icon size={120} />
             </div>
 
-            <div className="flex items-center gap-3 mt-4 z-10 relative">
-                {trend && (
-                    <div className={cn(
-                        "flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md",
-                        isPositive ? "bg-emerald-500/20 text-white" : "bg-red-500/20 text-white"
-                    )}>
-                        {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                        <span>{Math.abs(trend.value)}%</span>
+            <div className="relative z-10 h-full flex flex-col justify-between">
+                <div>
+                    <div className="flex justify-between items-start mb-4">
+                        <div className={cn("p-2 rounded-lg border border-white/20 shadow-inner text-white", style.icon)}>
+                            <Icon size={20} />
+                        </div>
+                        {trend && (
+                            <div className={cn(
+                                "flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full border border-white/20 text-white",
+                                "bg-white/20"
+                            )}>
+                                {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                <span>{Math.abs(trend.value)}%</span>
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                        <h3 className="text-3xl font-black text-white tracking-tighter mb-0.5 tabular-nums leading-none">
+                            {value}
+                        </h3>
+                        <p className="text-[10px] font-black text-white/90 uppercase tracking-[0.2em]">{title}</p>
+                    </div>
+                </div>
+
+                {subtext && (
+                    <div className="mt-4 pt-3 border-t border-white/10">
+                        <div className="text-[10px] text-white font-bold uppercase tracking-wider flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                            <span className="truncate">{subtext}</span>
+                        </div>
                     </div>
                 )}
-                <span className={cn(
-                    "font-medium truncate",
-                    (title.includes("OK") || title.includes("Reparación") || title.includes("Eficiencia")) ? "text-sm text-white font-bold" : "text-xs text-white/70"
-                )}>{subtext}</span>
             </div>
         </div>
     );
