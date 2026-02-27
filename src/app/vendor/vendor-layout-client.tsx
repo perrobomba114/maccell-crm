@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { getUserData } from "@/actions/get-user";
 import { PresenceHeartbeat } from "@/components/shared/presence-heartbeat";
+import { getTechniciansWorkload } from "@/actions/dashboard-actions";
 
 interface LinkItem {
     href: string;
@@ -69,8 +70,6 @@ export function VendorLayoutClient({
                 setUserId(user.id);
 
                 // Fetch technicians workload
-                const { getTechniciansWorkload } = await import("@/actions/dashboard-actions");
-
                 // Initial fetch (Global - No branch filter - or filter by user branch if implemented)
                 // Assuming vendors are viewing GLOBAL technicians for now as per "Time Global" context
                 const workload = await getTechniciansWorkload(user.branch?.id);

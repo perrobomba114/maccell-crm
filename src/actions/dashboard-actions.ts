@@ -152,13 +152,25 @@ export async function getSalesAnalytics(branchId?: string) {
                 topSold: topProducts,
                 okCount: deliveredHistory.filter(h => h.fromStatusId === 5).length,
                 noRepairCount: deliveredHistory.filter(h => h.fromStatusId === 6).length,
-                deliveredCount: deliveredHistory.length
+                deliveredCount: deliveredHistory.length,
+                totalSalesCount: salesCurrentMonth.length
             }
         };
 
     } catch (e) {
         console.error("getSalesAnalytics error", e);
-        return { financials: {}, categoryShare: { segments: [] }, stock: { alerts: [], topSold: [] } };
+        return {
+            financials: { revenue: 0, profit: 0, salesGrowth: 0, profitMargin: 0 },
+            categoryShare: { segments: [] },
+            stock: {
+                alerts: [],
+                topSold: [],
+                okCount: 0,
+                noRepairCount: 0,
+                deliveredCount: 0,
+                totalSalesCount: 0
+            }
+        };
     }
 }
 
