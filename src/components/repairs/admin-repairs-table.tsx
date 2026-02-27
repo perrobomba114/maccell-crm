@@ -111,9 +111,46 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
             const matchesBranch = selectedBranchId === "ALL" || repair.branchId === selectedBranchId;
             const matchesWarranty = showOnlyWarranty ? repair.isWarranty : true;
 
-            return matchesSearch && matchesBranch && matchesWarranty;
+            // New Filter: Technician name (from URL param 'tech')
+            const techParam = searchParams.get('tech');
+            const matchesTech = !techParam || (repair.assignedTo?.name || "SIN ASIGNAR") === techParam;
+
+            // New Filter: Date (from URL param 'date')
+            // Match exactly the selected day, taking timezone strings into account
+            const dateParam = searchParams.get('date');
+            let matchesDate = true;
+            if (dateParam) {
+                const targetDate = new Date(dateParam);
+
+                // Helper to check if a DB date string matches targetDate in Local Browser Time
+                const isSameDay = (dStr: string | Date | null) => {
+                    if (!dStr) return false;
+                    const d = new Date(dStr);
+                    return targetDate.getFullYear() === d.getFullYear() &&
+                        targetDate.getMonth() === d.getMonth() &&
+                        targetDate.getDate() === d.getDate();
+                };
+
+                const isCreatedToday = isSameDay(repair.createdAt);
+                const isFinishedToday = isSameDay(repair.finishedAt);
+                const isKPIStatus = [5, 6, 7, 10].includes(repair.statusId);
+
+                if (techParam) {
+                    // Strict KPI Sync: If a tech card is clicked, ONLY show the ones they *finished* today
+                    if (!isFinishedToday || !isKPIStatus) {
+                        matchesDate = false;
+                    }
+                } else {
+                    // General Dashboard: Show what came in today OR what was completed today
+                    if (!isCreatedToday && !isFinishedToday) {
+                        matchesDate = false;
+                    }
+                }
+            }
+
+            return matchesSearch && matchesBranch && matchesWarranty && matchesTech && matchesDate;
         });
-    }, [repairs, localSearchTerm, selectedBranchId, showOnlyWarranty]); // Depend on localSearchTerm
+    }, [repairs, localSearchTerm, selectedBranchId, showOnlyWarranty, searchParams]); // Depend on searchParams
 
     const totalPages = Math.ceil(filteredRepairs.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -270,6 +307,20 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
                     </Button>
                 </div>
             </div>
+
+            {/* Active Tech Filter Badge */}
+            {searchParams.get('tech') && (
+                <div className="flex items-center gap-2 pt-2">
+                    <span className="text-sm font-medium text-muted-foreground">Filtrando por técnico:</span>
+                    <Badge variant="secondary" className="px-3 py-1 text-sm font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors" onClick={() => updateParams({ tech: null })}>
+                        {searchParams.get('tech')}
+                        <span className="sr-only">Quitar filtro</span>
+                        <div className="bg-purple-200 dark:bg-purple-800 rounded-full p-0.5 hover:bg-purple-300 dark:hover:bg-purple-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                        </div>
+                    </Badge>
+                </div>
+            )}
 
             <div className={cn(
                 "relative overflow-hidden border rounded-xl bg-card shadow-lg backdrop-blur-md transition-opacity duration-300",
