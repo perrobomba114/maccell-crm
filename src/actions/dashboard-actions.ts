@@ -142,16 +142,25 @@ export async function getSalesAnalytics(branchId?: string) {
             quantity: s.quantity
         }));
 
+        const okCount = deliveredHistory.filter(h => h.fromStatusId === 5).length;
+        const noRepairCount = deliveredHistory.filter(h => h.fromStatusId === 6).length;
+        // Efficiency calculation: (Successful Repairs - Warranties) / Total Finalized
+        // This penalizes warranties as they represent "bad repairs"
+        const efficiency = (okCount + noRepairCount) > 0
+            ? Math.max(0, Math.round(((okCount - warrantiesCount) / (okCount + noRepairCount)) * 100))
+            : 0;
+
         return {
             financials: { revenue, profit, salesGrowth, profitMargin },
             categoryShare: { total: profit, segments: categoryShare },
             stock: {
                 health: totalRepairPartsCost,
-                criticalCount: warrantiesCount, // Repurposing criticalCount for Warranties Count
+                warrantiesCount,
+                efficiency,
                 alerts: stockAlerts,
                 topSold: topProducts,
-                okCount: deliveredHistory.filter(h => h.fromStatusId === 5).length,
-                noRepairCount: deliveredHistory.filter(h => h.fromStatusId === 6).length,
+                okCount,
+                noRepairCount,
                 deliveredCount: deliveredHistory.length,
                 totalSalesCount: salesCurrentMonth.length
             }
@@ -188,7 +197,7 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
         tomorrow.setDate(tomorrow.getDate() + 1);
 
         // 1. Parallel Fetching (Independent Queries)
-        const [repairsActive, techUsers, partsStats, repairsByStatusRaw, allStatuses] = await Promise.all([
+        const [repairsActive, techUsers, partsStats, repairsByStatusRaw, allStatuses, warrantiesCount] = await Promise.all([
             // Active Repairs
             prisma.repair.findMany({
                 where: { ...branchFilter, statusId: { notIn: [10] } },
@@ -219,7 +228,15 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
                 _count: { _all: true }
             }),
             // Status Names
-            prisma.repairStatus.findMany()
+            prisma.repairStatus.findMany(),
+            // Warranties Count (Monthly)
+            prisma.repair.count({
+                where: {
+                    ...branchFilter,
+                    isWarranty: true,
+                    createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+                }
+            })
         ]);
 
         // 2. Dependent Queries (require results from above)
@@ -276,10 +293,44 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
             return { name: detail?.name || "Unknown", usage: p._count._all, stock: detail?.stockLocal || 0 };
         });
 
+        const colorMap: Record<string, string> = {
+            blue: "#3b82f6",
+            indigo: "#6366f1",
+            yellow: "#eab308",
+            gray: "#71717a",
+            green: "#22c55e",
+            red: "#ef4444",
+            purple: "#a855f7",
+            orange: "#f97316",
+            amber: "#f59e0b",
+            slate: "#3b82f6", // Blue for "Entregados"
+            entregado: "#3b82f6",
+            entregados: "#3b82f6",
+            emerald: "#10b981",
+            pink: "#ec4899",
+            violet: "#8b5cf6"
+        };
+
         const monthlyStatusDistribution = repairsByStatusRaw.map(item => {
             const status = allStatuses.find(s => s.id === item.statusId);
-            return { name: status?.name || `Status ${item.statusId}`, value: item._count._all, color: status?.color || '#888' };
-        }).sort((a, b) => b.value - a.value);
+            const rawColor = status?.color || 'gray';
+            return {
+                name: status?.name || `Status ${item.statusId}`,
+                value: item._count._all,
+                color: colorMap[rawColor as keyof typeof colorMap] || rawColor || '#888'
+            };
+        });
+
+        // Add Warranties as a category
+        if (warrantiesCount > 0) {
+            monthlyStatusDistribution.push({
+                name: "Garantías",
+                value: warrantiesCount,
+                color: colorMap.orange
+            });
+        }
+
+        monthlyStatusDistribution.sort((a, b) => b.value - a.value);
 
         return {
             repairs: {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { DollarSign, CheckCircle2, Wrench, Package } from "lucide-react";
+import { DollarSign, CheckCircle2, Wrench, Package, ShieldAlert, XCircle, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Helper utils
@@ -92,8 +92,8 @@ export function FinancialStats({ stats }: { stats: any }) {
                 <div className="h-px bg-zinc-900 flex-1 ml-4"></div>
             </div>
 
-            {/* Key Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            {/* Financial & General Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
                 <MetricCard
                     title="Ingresos Mensuales"
                     value={fmtMoney(financials.revenue)}
@@ -122,12 +122,49 @@ export function FinancialStats({ stats }: { stats: any }) {
                     href="/admin/repairs"
                 />
                 <MetricCard
-                    title="Equipos Entregados OK"
-                    value={stock.okCount || 0}
+                    title="Total Equipos"
+                    value={stock.deliveredCount || 0}
                     accentColor="orange"
-                    icon={CheckCircle2}
-                    subtext={`${stock.deliveredCount || 0} Total | ${stock.noRepairCount || 0} No Rep. | ${stock.deliveredCount > 0 ? Math.round((stock.okCount / stock.deliveredCount) * 100) : 0}% Efic.`}
+                    icon={Package}
+                    subtext="Entregados este mes"
                     href="/admin/statistics"
+                />
+            </div>
+
+            <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-lg font-bold text-white">Rendimiento Operativo</h2>
+                <div className="h-px bg-zinc-900 flex-1 ml-4"></div>
+            </div>
+
+            {/* Operational Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+                <MetricCard
+                    title="Garantías"
+                    value={stock.warrantiesCount || 0}
+                    accentColor="orange"
+                    icon={ShieldAlert}
+                    subtext="Mes actual"
+                />
+                <MetricCard
+                    title="Equipos OK"
+                    value={stock.okCount || 0}
+                    accentColor="emerald"
+                    icon={CheckCircle2}
+                    subtext="Estado final exitoso"
+                />
+                <MetricCard
+                    title="Equipos No OK"
+                    value={stock.noRepairCount || 0}
+                    accentColor="pink"
+                    icon={XCircle}
+                    subtext="Sin reparación"
+                />
+                <MetricCard
+                    title="Eficiencia"
+                    value={`${stock.efficiency}%`}
+                    accentColor="violet"
+                    icon={Zap}
+                    subtext="Tasa de éxito"
                 />
             </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Trophy, Medal, Timer, TrendingUp } from "lucide-react";
+import { Trophy, Medal, Timer } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -21,89 +21,101 @@ export function TechLeaderboard({ technicians }: TechLeaderboardProps) {
     const maxRepairs = sortedTechs[0]?.repairs || 1;
 
     return (
-        <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 h-full flex flex-col overflow-hidden relative">
+        <div className="bg-[#09090b] rounded-3xl p-7 border border-zinc-900 shadow-2xl h-full flex flex-col overflow-hidden relative group">
+            {/* Ambient Background Glow */}
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-violet-600/20 transition-all duration-1000" />
+            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-600/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-emerald-600/20 transition-all duration-1000" />
+
             {/* Header */}
-            <div className="mb-6 flex justify-between items-start z-10 relative">
+            <div className="mb-8 flex justify-between items-center z-10 relative">
                 <div>
-                    <h3 className="font-bold text-lg text-white mb-1 flex items-center gap-2">
-                        <Trophy className="text-yellow-500" size={20} />
-                        Podio Técnico
-                    </h3>
-                    <p className="text-sm text-zinc-500">Rendimiento y Eficiencia</p>
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-violet-600/20 flex items-center justify-center border border-violet-500/20">
+                            <Trophy className="text-violet-400" size={18} />
+                        </div>
+                        <h3 className="font-black text-xl text-white tracking-tight uppercase italic">
+                            Podio Técnico
+                        </h3>
+                    </div>
+                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-10">Productividad del Taller</p>
                 </div>
             </div>
 
-            <div className="flex-1 space-y-4 flex flex-col justify-center z-10 relative">
+            <div className="flex-1 space-y-3 z-10 relative">
                 {sortedTechs.length === 0 ? (
-                    <div className="text-zinc-500 text-center text-sm py-8">
-                        Sin datos de reparaciones esta semana
+                    <div className="h-full flex flex-col items-center justify-center text-zinc-600 py-12">
+                        <Timer className="mb-2 opacity-20" size={48} />
+                        <p className="text-sm font-medium">Sin actividad registrada</p>
                     </div>
                 ) : (
                     sortedTechs.slice(0, 5).map((tech, index) => {
-                        const isTop3 = index < 3;
-                        const efficiencyScore = tech.repairs > 0 && tech.time > 0
-                            ? Math.round(tech.time / tech.repairs) // minutes per repair (lower is better, but maybe we want a score?)
-                            : 0;
-
-                        // Let's display "Avg Time: X min" for efficiency
+                        const isFirst = index === 0;
                         const avgTime = tech.repairs > 0 ? Math.round(tech.time / tech.repairs) : 0;
 
                         return (
                             <motion.div
                                 key={tech.name}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.1 }}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1, duration: 0.5 }}
                                 className={cn(
-                                    "relative p-3 rounded-xl border transition-all duration-300",
-                                    isTop3 ? "bg-zinc-900/40 border-zinc-800" : "border-transparent hover:bg-zinc-900/20"
+                                    "group/item relative p-4 rounded-2xl border-2 transition-all duration-500",
+                                    isFirst
+                                        ? "bg-gradient-to-br from-violet-600/10 to-transparent border-violet-500/20 shadow-[0_0_20px_rgba(139,92,246,0.05)]"
+                                        : "bg-zinc-900/20 border-transparent hover:border-zinc-800 hover:bg-zinc-900/40"
                                 )}
                             >
                                 <div className="flex items-center gap-4">
-                                    {/* Rank Badge */}
+                                    {/* Rank Badge with Gradient */}
                                     <div className={cn(
-                                        "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-lg",
-                                        index === 0 ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-white ring-2 ring-yellow-500/20" :
-                                            index === 1 ? "bg-gradient-to-br from-gray-300 to-gray-500 text-white ring-2 ring-gray-400/20" :
-                                                index === 2 ? "bg-gradient-to-br from-orange-400 to-orange-600 text-white ring-2 ring-orange-500/20" :
-                                                    "bg-zinc-800 text-zinc-500"
+                                        "w-10 h-10 rounded-xl flex items-center justify-center font-black text-base shadow-xl transition-transform duration-500 group-hover/item:scale-110",
+                                        index === 0 ? "bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 text-white border border-yellow-400/50 shadow-yellow-500/20" :
+                                            index === 1 ? "bg-gradient-to-br from-zinc-300 via-zinc-400 to-zinc-600 text-white border border-zinc-200/30" :
+                                                index === 2 ? "bg-gradient-to-br from-orange-400 via-orange-500 to-orange-700 text-white border border-orange-400/30" :
+                                                    "bg-zinc-800 text-zinc-500 border border-zinc-700/50"
                                     )}>
-                                        {index === 0 ? <Medal size={16} /> : index + 1}
+                                        {index === 0 ? <Medal size={22} className="drop-shadow-md" /> : index + 1}
                                     </div>
 
                                     {/* Tech Info */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className={cn(
-                                                "font-semibold truncate",
-                                                index === 0 ? "text-yellow-500" :
-                                                    index === 1 ? "text-gray-300" :
-                                                        index === 2 ? "text-orange-400" : "text-zinc-300"
-                                            )}>
-                                                {tech.name}
-                                            </span>
-                                            <span className="text-white font-bold">{tech.repairs} <span className="text-zinc-500 text-xs font-normal">rep</span></span>
+                                        <div className="flex justify-between items-end mb-2">
+                                            <div className="flex flex-col">
+                                                <span className={cn(
+                                                    "font-bold text-sm tracking-tight",
+                                                    isFirst ? "text-white" : "text-zinc-300 group-hover/item:text-white transition-colors"
+                                                )}>
+                                                    {tech.name}
+                                                </span>
+                                                <div className="flex items-center gap-1.5 opacity-60">
+                                                    <Timer size={10} className="text-violet-400" />
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">
+                                                        {avgTime > 0 ? `${avgTime} min prom.` : "N/A"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-lg font-black text-white leading-none tracking-tighter tabular-nums">
+                                                    {tech.repairs}
+                                                </span>
+                                                <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Equipos</span>
+                                            </div>
                                         </div>
 
-                                        {/* Progress Bar */}
-                                        <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden mb-1.5">
+                                        {/* Stylized Progress Bar */}
+                                        <div className="h-1.5 w-full bg-zinc-800/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
                                             <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${(tech.repairs / maxRepairs) * 100}%` }}
-                                                transition={{ duration: 1, ease: "easeOut" }}
+                                                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
                                                 className={cn(
-                                                    "h-full rounded-full",
-                                                    index === 0 ? "bg-yellow-500" :
-                                                        index === 1 ? "bg-gray-400" :
-                                                            index === 2 ? "bg-orange-500" : "bg-violet-600"
+                                                    "h-full rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]",
+                                                    index === 0 ? "bg-gradient-to-r from-yellow-400 to-yellow-600" :
+                                                        index === 1 ? "bg-gradient-to-r from-zinc-300 to-zinc-500" :
+                                                            index === 2 ? "bg-gradient-to-r from-orange-400 to-orange-600" :
+                                                                "bg-gradient-to-r from-violet-600 to-violet-800"
                                                 )}
                                             />
-                                        </div>
-
-                                        {/* Efficiency Stat */}
-                                        <div className="flex items-center gap-2 text-xs text-zinc-500">
-                                            <Timer size={12} />
-                                            <span>{avgTime > 0 ? `~${avgTime}m / rep` : "N/A"}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -112,9 +124,6 @@ export function TechLeaderboard({ technicians }: TechLeaderboardProps) {
                     })
                 )}
             </div>
-
-            {/* Background Decor */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full blur-[60px] pointer-events-none" />
         </div>
     );
 }

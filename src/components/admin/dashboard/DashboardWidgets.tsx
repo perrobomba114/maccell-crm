@@ -80,3 +80,4 @@ export async function InteractiveWidget({ salesPromise, repairsPromise, transact
     // Use the Client Component interacting wrapper
     return <InteractiveDashboardSection stats={stats} />;
 }
+

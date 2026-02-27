@@ -10,56 +10,74 @@ import { ReplenishmentTable } from "@/components/admin/dashboard/ReplenishmentTa
 
 function StockAlertsWidget({ alerts, health }: any) {
     return (
-        <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 flex flex-col h-full">
-            <div className="flex justify-between items-start mb-6">
+        <div className="bg-[#09090b] rounded-3xl p-7 border border-zinc-900 shadow-2xl h-[580px] flex flex-col overflow-hidden relative group">
+            {/* Ambient Red Glow for warnings */}
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-red-500/5 rounded-full blur-[100px] pointer-events-none group-hover:bg-red-500/10 transition-all duration-1000" />
+
+            <div className="mb-8 flex justify-between items-center z-10 relative">
                 <div>
-                    <h3 className="font-bold text-lg text-white mb-1">Alertas Criticas</h3>
-                    <p className="text-sm text-zinc-500">Stock por agotarse</p>
-                </div>
-                <div className="bg-red-500/10 p-2 rounded-lg text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                    <AlertTriangle size={18} />
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center border border-red-500/20">
+                            <AlertTriangle className="text-red-400" size={18} />
+                        </div>
+                        <h3 className="font-black text-xl text-white tracking-tight uppercase italic">
+                            Alertas Críticas
+                        </h3>
+                    </div>
+                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-10">Stock por Agotarse</p>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-zinc-800 custom-scrollbar max-h-[350px]">
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-thin scrollbar-thumb-zinc-800 custom-scrollbar z-10 relative">
                 {alerts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-3 py-10">
-                        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-2">
-                            <CheckCircle2 size={24} />
-                        </div>
-                        <span className="text-sm font-medium">Inventario Saludable</span>
+                    <div className="flex flex-col items-center justify-center h-full text-zinc-600 py-12">
+                        <CheckCircle2 className="mb-2 opacity-10 text-emerald-500" size={48} />
+                        <p className="text-sm font-medium">Inventario Protegido</p>
+                        <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-700 mt-1">Sin quiebres de stock</p>
                     </div>
                 ) : (
                     alerts.slice(0, 15).map((item: any, i: number) => {
                         const isCritical = item.quantity <= 1;
-                        const colorClass = isCritical ? "bg-red-500" : "bg-orange-500";
-                        const textClass = isCritical ? "text-red-500" : "text-orange-500";
-                        const borderClass = isCritical ? "border-red-500/20" : "border-orange-500/20";
-                        const bgClass = isCritical ? "bg-red-500/5 hover:bg-red-500/10" : "bg-orange-500/5 hover:bg-orange-500/10";
+                        const accentColor = isCritical ? "text-red-500" : "text-orange-500";
+                        const bgColor = isCritical ? "bg-red-500" : "bg-orange-500";
+                        const ringColor = isCritical ? "ring-red-500/20" : "ring-orange-500/20";
 
                         return (
                             <div key={i} className={cn(
-                                "relative overflow-hidden rounded-xl p-3 border transition-all duration-300 group",
-                                borderClass, bgClass
+                                "group/item relative p-3 rounded-2xl border-2 transition-all duration-500",
+                                isCritical
+                                    ? "bg-red-500/[0.03] border-red-500/10 hover:border-red-500/20"
+                                    : "bg-orange-500/[0.03] border-orange-500/10 hover:border-orange-500/20"
                             )}>
-                                <div className="flex justify-between items-start mb-2 relative z-10">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-zinc-200 group-hover:text-white transition-colors truncate max-w-[150px] lg:max-w-[180px]">
+                                <div className="flex justify-between items-start gap-4 mb-3">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-bold text-zinc-200 group-hover/item:text-white transition-colors leading-snug tracking-tight">
                                             {item.productName}
-                                        </span>
-                                        <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mt-0.5 flex items-center gap-1">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
-                                            {item.branchName}
-                                        </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <div className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-[9px] font-black text-zinc-500 uppercase tracking-wider">
+                                                {item.branchName}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className={cn("px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 shadow-sm", borderClass, "bg-[#18181b]")}>
-                                        <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", colorClass)}></div>
-                                        <span className={textClass}>{item.quantity} un.</span>
+
+                                    <div className={cn(
+                                        "shrink-0 px-3 py-2 rounded-xl border-2 flex flex-col items-center justify-center min-w-[50px] shadow-2xl transition-transform duration-500 group-hover/item:scale-105",
+                                        isCritical ? "bg-red-950/30 border-red-500/30" : "bg-orange-950/30 border-orange-500/30"
+                                    )}>
+                                        <span className={cn("text-lg font-black leading-none tabular-nums", accentColor)}>
+                                            {item.quantity}
+                                        </span>
+                                        <span className="text-[8px] font-black uppercase tracking-tighter text-zinc-500 mt-0.5">unid.</span>
                                     </div>
                                 </div>
 
-                                <div className="h-1 w-full bg-zinc-800/50 rounded-full overflow-hidden mt-1">
-                                    <div className={cn("h-full rounded-full w-[15%]", colorClass)}></div>
+                                {/* Progress track */}
+                                <div className="h-1.5 w-full bg-zinc-900/50 rounded-full overflow-hidden border border-white/5">
+                                    <div
+                                        className={cn("h-full rounded-full transition-all duration-1000", bgColor)}
+                                        style={{ width: `${Math.max(8, (item.quantity / 5) * 100)}%` }}
+                                    />
                                 </div>
                             </div>
                         );
@@ -74,60 +92,89 @@ function PartsTable({ parts }: any) {
     const maxUsage = parts.length > 0 ? parts[0].usage : 1;
 
     return (
-        <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 flex flex-col h-full">
-            <div className="mb-6 flex justify-between items-start">
+        <div className="bg-[#09090b] rounded-3xl p-7 border border-zinc-900 shadow-2xl h-[580px] flex flex-col overflow-hidden relative group">
+            {/* Soft Ambient Glow */}
+            <div className="absolute -top-20 -left-20 w-64 h-64 bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none group-hover:bg-cyan-500/10 transition-all duration-1000" />
+
+            <div className="mb-8 flex justify-between items-center z-10 relative">
                 <div>
-                    <h3 className="font-bold text-lg text-white mb-1">Repuestos Top</h3>
-                    <p className="text-sm text-zinc-500">Mayor rotación en taller</p>
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center border border-cyan-500/20">
+                            <Package className="text-cyan-400" size={18} />
+                        </div>
+                        <h3 className="font-black text-xl text-white tracking-tight uppercase italic">
+                            Top Repuestos
+                        </h3>
+                    </div>
+                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-10">Mayor Rotación en Taller</p>
                 </div>
-                <div className="bg-blue-500/10 p-2 rounded-lg text-blue-500">
-                    <Package size={18} />
+                <div className="bg-zinc-900/50 px-3 py-1 rounded-full border border-zinc-800 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Análisis de Uso
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-thin scrollbar-thumb-zinc-800 max-h-[350px]">
-                {parts.slice(0, 10).map((p: any, i: number) => {
-                    const percent = (p.usage / maxUsage) * 100;
-                    return (
-                        <div key={i} className="group">
-                            <div className="flex justify-between items-center mb-1.5">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className={cn(
-                                        "w-6 h-6 flex items-center justify-center rounded-md text-[10px] font-bold border border-zinc-800",
-                                        i < 3 ? "bg-zinc-800 text-white" : "bg-transparent text-zinc-500"
-                                    )}>
-                                        #{i + 1}
-                                    </div>
-                                    <span className="text-sm text-zinc-300 font-medium truncate group-hover:text-white transition-colors">{p.name}</span>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="text-right">
-                                        <span className="text-xs font-bold text-white block">{p.usage}</span>
-                                        <span className="text-[9px] text-zinc-500 uppercase">Usados</span>
-                                    </div>
-                                </div>
-                            </div>
+            <div className="flex-1 overflow-y-auto pr-2 space-y-5 scrollbar-thin scrollbar-thumb-zinc-800 custom-scrollbar z-10 relative">
+                {parts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-zinc-600 py-12">
+                        <Package className="mb-2 opacity-10" size={48} />
+                        <p className="text-sm font-medium">Sin datos de uso</p>
+                    </div>
+                ) : (
+                    parts.slice(0, 10).map((p: any, i: number) => {
+                        const percent = (p.usage / maxUsage) * 100;
+                        const isLowStock = p.stock <= 2;
 
-                            <div className="relative h-2 w-full bg-zinc-900 rounded-full overflow-hidden">
-                                <div className="absolute inset-0 bg-zinc-800/30"></div>
-                                <div
-                                    className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.3)] transition-all duration-1000"
-                                    style={{ width: `${percent}%` }}
-                                ></div>
-                            </div>
+                        return (
+                            <div key={i} className="group/item relative">
+                                <div className="flex justify-between items-start mb-2.5">
+                                    <div className="flex items-center gap-4 overflow-hidden">
+                                        {/* Rank Badge with metallic feel */}
+                                        <div className={cn(
+                                            "w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm border-2 shadow-lg transition-transform duration-500 group-hover/item:scale-110",
+                                            i === 0 ? "bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-600 border-yellow-400/30 text-white shadow-yellow-500/10" :
+                                                i === 1 ? "bg-gradient-to-br from-zinc-300 via-zinc-400 to-zinc-500 border-zinc-200/20 text-white" :
+                                                    i === 2 ? "bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 border-orange-400/20 text-white" :
+                                                        "bg-zinc-900 border-zinc-800 text-zinc-500"
+                                        )}>
+                                            {i + 1}
+                                        </div>
 
-                            <div className="flex justify-end mt-1">
-                                <span className={cn(
-                                    "text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-1",
-                                    p.stock <= 2 ? "text-red-400 border-red-500/20 bg-red-500/5" : "text-zinc-500 border-zinc-800 bg-zinc-900"
-                                )}>
-                                    {p.stock <= 2 ? <AlertTriangle size={8} /> : <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                                    Stock: {p.stock}
-                                </span>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-sm font-bold text-zinc-200 group-hover/item:text-white transition-colors leading-tight">
+                                                {p.name}
+                                            </span>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className={cn(
+                                                    "text-[9px] font-black px-1.5 py-0.5 rounded-sm flex items-center gap-1 uppercase tracking-tighter",
+                                                    isLowStock ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                )}>
+                                                    Stock: {p.stock} {isLowStock && "¡CRÍTICO!"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-right shrink-0">
+                                        <div className="text-lg font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-md">
+                                            {p.usage}
+                                        </div>
+                                        <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest italic">Salidas</span>
+                                    </div>
+                                </div>
+
+                                {/* Modern Progress Bar */}
+                                <div className="h-2 w-full bg-zinc-900/50 rounded-full overflow-hidden border border-white/5 relative">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-cyan-600 via-blue-500 to-violet-600 shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all duration-[1.5s] ease-out"
+                                        style={{ width: `${percent}%` }}
+                                    >
+                                        <div className="absolute inset-0 bg-white/10 opacity-50 animate-pulse"></div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })
+                )}
             </div>
         </div>
     );

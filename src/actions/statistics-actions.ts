@@ -257,6 +257,67 @@ export async function getProductStats(branchId?: string, date?: Date) {
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
 
+        // Calculate Replenishment based on Top Sellers
+        // 1. Get IDs of products that are actually selling (to avoid "dead" products at zero)
+        const activeSellingProductIds = Array.from(salesMap.keys()).filter(id => id.length > 10); // Simple check for valid ID
+
+        // 2. Fetch stock for these active products across ALL branches
+        const activeProductsStock = await prisma.productStock.findMany({
+            where: {
+                productId: { in: activeSellingProductIds },
+                product: { deletedAt: null }
+            },
+            include: { product: true }
+        });
+
+        // Get total number of branches for target calculation
+        const totalBranches = await prisma.branch.count();
+
+        // 3. Aggregate stock by product
+        const unifiedStockMap = new Map<string, { name: string, totalStock: number, salesVolume: number }>();
+
+        activeProductsStock.forEach(s => {
+            const saleData = salesMap.get(s.productId);
+            const current = unifiedStockMap.get(s.productId) || {
+                name: s.product.name,
+                totalStock: 0,
+                salesVolume: saleData?.quantity || 0
+            };
+            current.totalStock += s.quantity;
+            unifiedStockMap.set(s.productId, current);
+        });
+
+        // 4. Calculate smart replenishment based on product category targets
+        const replenishmentSuggestions = Array.from(unifiedStockMap.values())
+            .map(item => {
+                const lowerName = item.name.toLowerCase();
+                let targetPerBranch = 5; // accesorios o predeterminado
+
+                if (lowerName.includes("templado")) targetPerBranch = 10;
+                else if (lowerName.includes("funda")) targetPerBranch = 10;
+                else if (lowerName.includes("hidrogel")) targetPerBranch = 20;
+
+                const globalTarget = targetPerBranch * totalBranches;
+                const suggestedQuantity = Math.max(0, globalTarget - item.totalStock);
+
+                return {
+                    name: item.name,
+                    branch: "Todas las sucursales", // Unified
+                    quantity: item.totalStock,
+                    suggestedQuantity,
+                    salesVolume: item.salesVolume
+                };
+            })
+            .filter(item => item.suggestedQuantity > 0)
+            .sort((a, b) => {
+                // Urgency Score: combination of "lo que más falta" and "lo que más se vende"
+                const urgencyA = a.suggestedQuantity * (1 + a.salesVolume);
+                const urgencyB = b.suggestedQuantity * (1 + b.salesVolume);
+                return urgencyB - urgencyA;
+            })
+            .slice(0, 40)
+            .map(({ name, branch, quantity, suggestedQuantity }) => ({ name, branch, quantity, suggestedQuantity }));
+
         const profitMap = new Map<string, { name: string, profit: number }>();
         items.forEach(item => {
             if (!item.product) return;
@@ -274,11 +335,7 @@ export async function getProductStats(branchId?: string, date?: Date) {
 
         return {
             topSelling,
-            lowStock: lowStock.map(s => ({
-                name: s.product.name,
-                branch: s.branch.name,
-                quantity: s.quantity
-            })),
+            lowStock: replenishmentSuggestions,
             mostProfitable
         };
 
