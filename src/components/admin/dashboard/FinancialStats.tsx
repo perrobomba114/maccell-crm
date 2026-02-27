@@ -108,7 +108,10 @@ export function FinancialStats({ stats }: { stats: any }) {
                     value={fmtMoney(financials.profit)}
                     accentColor="emerald"
                     icon={CheckCircle2}
-                    trend={{ value: `+${financials.profitMargin.toFixed(1)}%`, positive: true }}
+                    trend={{
+                        value: `${financials.profitGrowth > 0 ? '+' : ''}${financials.profitGrowth.toFixed(1)}%`,
+                        positive: financials.profitGrowth >= 0
+                    }}
                     subtext="Margen real"
                     href="/admin/statistics"
                 />
@@ -123,10 +126,11 @@ export function FinancialStats({ stats }: { stats: any }) {
                 />
                 <MetricCard
                     title="Total Equipos"
-                    value={stock.deliveredCount || 0}
+                    value={stock.totalFinalized || 0}
                     accentColor="orange"
                     icon={Package}
-                    subtext="Entregados este mes"
+                    trend={{ value: `${stock.deliveredCount} Entregados`, positive: true }}
+                    subtext="Resueltos este mes"
                     href="/admin/statistics"
                 />
             </div>
