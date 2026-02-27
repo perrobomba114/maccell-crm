@@ -195,17 +195,17 @@ export function UnifiedVendorDashboard({ stats, user }: UnifiedVendorDashboardPr
                     title="Para Retirar"
                     value={readyForPickup.length}
                     subtext="Equipos finalizados"
-                    icon={Package} // Changed from ShoppingBag to Package
-                    color="orange"
+                    icon={Package}
+                    color="violet"
                     trend="Prioridad"
                     href="/vendor/repairs/active"
                 />
                 <VendorMetric
-                    title="Entregados"
-                    value={(stats as any).repairCountMonth || 0}
-                    subtext="Reparaciones completadas"
+                    title="Equipos Entregados OK"
+                    value={stats.okCount || 0}
+                    subtext={`${stats.deliveredCount || 0} Total | ${stats.noRepairCount || 0} No Rep. | ${stats.deliveredCount > 0 ? Math.round((stats.okCount / stats.deliveredCount) * 100) : 0}% Efic.`}
                     icon={CheckCircle2}
-                    color="violet"
+                    color="orange"
                     href="/vendor/repairs/history"
                 />
             </div>

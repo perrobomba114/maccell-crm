@@ -408,10 +408,19 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
                     createdAt: { gte: lastMonthStart, lte: lastMonthEnd } // <= OJO: el lte
                 },
                 _sum: { total: true }
+            }),
+            // 5. Success/NoRepair counts from History (Current Month)
+            prisma.repairStatusHistory.findMany({
+                where: {
+                    toStatusId: 10, // Entregado
+                    createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                    repair: branchId ? { branchId } : {}
+                },
+                select: { fromStatusId: true }
             })
         ]);
 
-        const [salesMonthCount, salesMonthTotal, salesTodayCount, salesLastMonthTotalAgg] = await salesPromise;
+        const [salesMonthCount, salesMonthTotal, salesTodayCount, salesLastMonthTotalAgg, deliveredHistory] = await salesPromise;
 
         const currentMonthRevenue = salesMonthTotal._sum.total || 0;
         const lastMonthRevenue = salesLastMonthTotalAgg._sum.total || 0;
@@ -641,7 +650,10 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
             recentActivity,
             monthlyStatusDistribution, // Added
             branchUndeliveredData, // Added
-            branchUndeliveredKeys // Added
+            branchUndeliveredKeys, // Added
+            okCount: deliveredHistory.filter(h => h.fromStatusId === 5).length,
+            noRepairCount: deliveredHistory.filter(h => h.fromStatusId === 6).length,
+            deliveredCount: deliveredHistory.length
         };
 
     } catch (error) {
