@@ -15,4 +15,6 @@ export const TECHNICAL_DICTIONARY: Record<string, string[]> = {
     'huella': ['fingerprint', 'touch_id', 'fprint', 'biometric', 'sensor_id'],
     'bateria': ['battery', 'batt', 'vbat', 'gauge', 'ntc', 'thermal', 'vbat_con', 'fuel_gauge', 'bat_therm', 'btemp', 'battery_swi'],
     'termistor': ['ntc', 'thermistor', 'th100', 'th200', 'vr', 'rt', 'thermal', 'temp', 'vchg_th', 'bat_th', 'ntc_bat', 'vtemp'],
+    'módulo': ['display', 'lcd', 'screen', 'oled', 'touch', 'digitizer', 'image', 'imagen'],
+    'módulo de carga': ['usb', 'dock', 'vbus', 'charging', 'charge', 'vchg', 'hydra', 'pin de carga'],
 };

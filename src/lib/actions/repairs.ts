@@ -343,6 +343,10 @@ export async function getActiveRepairsAction(branchId: string, statusIds?: numbe
                 parts: {
                     include: { sparePart: true }
                 },
+                observations: {
+                    orderBy: { createdAt: 'desc' },
+                    include: { user: true }
+                },
                 statusHistory: {
                     orderBy: { createdAt: 'desc' },
                     include: { fromStatus: true, toStatus: true }
@@ -398,6 +402,10 @@ export async function getRepairHistoryAction(branchId: string, query: string = "
                 branch: true,
                 parts: {
                     include: { sparePart: true }
+                },
+                observations: {
+                    orderBy: { createdAt: 'desc' },
+                    include: { user: true }
                 },
                 statusHistory: {
                     orderBy: { createdAt: 'desc' },
@@ -586,6 +594,10 @@ export async function getAllRepairsForAdminAction(query: string = "") {
                 branch: true,
                 parts: {
                     include: { sparePart: true }
+                },
+                observations: {
+                    orderBy: { createdAt: 'desc' },
+                    include: { user: true }
                 },
                 statusHistory: {
                     orderBy: { createdAt: 'desc' },

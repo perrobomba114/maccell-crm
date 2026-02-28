@@ -110,7 +110,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
     return (
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="sm:max-w-4xl p-0 overflow-hidden flex flex-col h-[95dvh] sm:h-auto">
+                <DialogContent className="sm:max-w-4xl lg:max-w-5xl xl:max-w-6xl p-0 overflow-hidden flex flex-col h-[95dvh] sm:h-auto max-h-[90vh]">
                     {/* Header with Solid Color Background */}
                     <DialogHeader className={`p-5 sm:p-7 border-b shrink-0 relative overflow-hidden ${repair.isWet ? "bg-blue-600" : "bg-slate-900"}`}>
                         <div className="absolute inset-0 bg-grid-white/[0.05] pointer-events-none" />
@@ -141,8 +141,8 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                     </DialogHeader>
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto bg-muted/5 dark:bg-muted/10">
-                        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                    <div className="flex-1 overflow-y-auto bg-muted/5 dark:bg-muted/10 custom-scrollbar">
+                        <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
 
                             {/* Top Stats Row - Vibrant Centered Cards */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -187,29 +187,29 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                             </div>
 
                             {/* Main Content Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-                                {/* LEFT COLUMN: Context (Customer + Device) */}
-                                <div className="md:col-span-4 space-y-6">
+                                {/* LEFT COLUMN: Context (Customer + Device) - Sticky on LG */}
+                                <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-0">
                                     {/* Customer Section - Modern Centered */}
-                                    <div className="bg-slate-900 border-2 border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col items-center text-center group">
-                                        <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20">
-                                            <User className="w-5 h-5 text-blue-400" />
+                                    <div className="bg-slate-900 border-2 border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col items-center text-center group transition-all hover:bg-slate-800/80">
+                                        <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20 shadow-inner">
+                                            <User className="w-6 h-6 text-blue-400" />
                                         </div>
                                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1">Cliente</span>
                                         <p className="text-2xl font-black text-white uppercase tracking-tight leading-none mb-3">
                                             {repair.customer.name}
                                         </p>
-                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
-                                            <Smartphone className="w-3.5 h-3.5 text-blue-400" />
-                                            <span className="text-sm font-bold text-slate-300">{repair.customer.phone || "Sin teléfono"}</span>
+                                        <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-full border border-slate-700 shadow-sm">
+                                            <Smartphone className="w-4 h-4 text-blue-400" />
+                                            <span className="text-sm font-bold text-slate-300 tabular-nums">{repair.customer.phone || "Sin teléfono"}</span>
                                         </div>
                                     </div>
 
                                     {/* Device Section - Modern Centered */}
-                                    <div className="bg-slate-900 border-2 border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col items-center text-center group">
-                                        <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20">
-                                            <Smartphone className="w-5 h-5 text-purple-400" />
+                                    <div className="bg-slate-900 border-2 border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col items-center text-center group transition-all hover:bg-slate-800/80">
+                                        <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20 shadow-inner">
+                                            <Smartphone className="w-6 h-6 text-purple-400" />
                                         </div>
                                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1">Dispositivo</span>
                                         <p className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none">
@@ -222,7 +222,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                 </div>
 
                                 {/* RIGHT COLUMN: Core Info (Problem -> Diagnosis -> Images) */}
-                                <div className="md:col-span-8 space-y-6">
+                                <div className="lg:col-span-8 space-y-8">
 
                                     {/* Status of Work */}
                                     <div className="grid grid-cols-1 gap-6">
@@ -345,6 +345,36 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                                                 onClick={() => handleImageClick(idx)}
                                                             />
                                                         ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Observations Section */}
+                                        {repair.observations && repair.observations.length > 0 && (
+                                            <div className="space-y-3 pt-4 border-t border-slate-800">
+                                                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">NOTAS / OBSERVACIONES</h3>
+                                                <div className="space-y-2">
+                                                    {repair.observations.map((obs: any, idx: number) => (
+                                                        <div key={idx} className="bg-slate-900 shadow-lg border border-white/[0.03] p-3 md:p-4 rounded-xl relative">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
+                                                                        <User className="w-3 h-3 text-slate-400" />
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-white/90">
+                                                                        {obs.user?.name || "Sistema"}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-right flex flex-col items-end">
+                                                                    <span className="text-[9px] md:text-[10px] font-black text-slate-500 italic tracking-tighter">{format(new Date(obs.createdAt), "dd/MM/yy")}</span>
+                                                                    <span className="text-[8px] md:text-[9px] font-bold text-slate-600">{format(new Date(obs.createdAt), "HH:mm")} hs</span>
+                                                                </div>
+                                                            </div>
+                                                            <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap text-white/80">
+                                                                {obs.content}
+                                                            </p>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         )}

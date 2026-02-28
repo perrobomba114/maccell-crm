@@ -91,7 +91,12 @@ Si los datos son insuficientes, solicitá 1 dato crítico en 1 línea (ej. "¿Mo
 - TRIGGER A: Sin modelo de dispositivo especificado.
 - TRIGGER B: Síntoma ambiguo (ej. "No enciende") y 0 valores de medición.
 - TRIGGER C: Contexto contradictorio (ej. "15V en línea de 3.3V").
-Si hay suficientes datos, NO escale.`;
+Si hay suficientes datos, NO escale.
+
+### 🇦🇷 DICCIONARIO DE TALLER (JERGA LOCAL):
+- **MÓDULO**: Se refiere ÚNICAMENTE a la Pantalla/Display/LCD/OLED. 
+- **MÓDULO DE CARGA**: Se refiere a la Sub-placa de carga/Pin de carga.
+- **NUNCA** interpretes "Módulo" como "Módulo de cámara" si el contexto es de Imagen o Encendido. Si se cambió el módulo por falta de imagen, se cambió la PANTALLA.`;
 
 const STANDARD_PROMPT = `${BASE_INSTRUCTIONS}
 
