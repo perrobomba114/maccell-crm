@@ -118,10 +118,14 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
             // New Filter: Date (from URL param 'date')
             // Match exactly the selected day, taking timezone strings into account
             const dateParam = searchParams.get('date');
-            let matchesDate = true;
-            if (dateParam) {
-                const targetDate = new Date(dateParam);
 
+            // Fix: If the calendar wasn't clicked, it didn't push "?date=" to URL.
+            // If the user clicks a Technician, we MUST apply the date filter. Since the cards 
+            // default to "today" when no date is picked, we apply "today" here too.
+            const targetDate = dateParam ? new Date(dateParam) : (techParam ? new Date() : null);
+
+            let matchesDate = true;
+            if (targetDate) {
                 // Helper to check if a DB date string matches targetDate in Local Browser Time
                 const isSameDay = (dStr: string | Date | null) => {
                     if (!dStr) return false;
