@@ -7,6 +7,8 @@ import { ExpensesFilter } from "@/components/expenses/expenses-filter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Receipt } from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
+import { TIMEZONE } from "@/lib/date-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +22,10 @@ export default async function AdminExpensesPage({
 
     const resolvedParams = await searchParams;
 
-    // Default to Today if no date AND not explicitly viewing all
+    // Default to Today in LOCAL time if no date AND not explicitly viewing all
     const isViewAll = resolvedParams.view === "all";
     if (!resolvedParams.date && !isViewAll) {
-        const today = new Date().toISOString().split('T')[0];
+        const today = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
         redirect(`/admin/expenses?date=${today}`);
     }
 
