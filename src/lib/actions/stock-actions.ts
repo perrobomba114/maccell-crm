@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { createNotificationAction } from "./notification-creation";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 // Fetch products for a specific branch
 // CHANGED: Query ProductStock directly to get "All products OF THE BRANCH"
@@ -97,6 +98,8 @@ export async function getBranchProducts(
 // Confirm stock is correct (Green Button)
 export async function confirmStock(stockId: string) {
     if (!stockId) return { success: false, error: "Missing stock ID" };
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, error: "No autorizado" };
 
     try {
         await db.productStock.update({

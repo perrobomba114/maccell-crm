@@ -4,8 +4,11 @@ import { db } from "@/lib/db";
 const prisma = db as any;
 import { revalidatePath } from "next/cache";
 import { findSimilarRepairs, formatRAGContext } from "@/lib/cerebro-rag";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function getConversationsAction(userId: string) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.id !== userId) return { success: false, error: "No autorizado" };
     try {
         const conversations = await prisma.cerebroConversation.findMany({
             where: { userId },
@@ -21,6 +24,8 @@ export async function getConversationsAction(userId: string) {
 }
 
 export async function getConversationMessagesAction(conversationId: string, userId: string) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.id !== userId) return { success: false, error: "No autorizado" };
     try {
         // Verificar que la conversación le pertenezca
         const conv = await prisma.cerebroConversation.findUnique({
@@ -44,6 +49,8 @@ export async function getConversationMessagesAction(conversationId: string, user
 }
 
 export async function createConversationAction(userId: string, title: string = "Nueva Conversación") {
+    const caller = await getCurrentUser();
+    if (!caller || caller.id !== userId) return { success: false, error: "No autorizado" };
     try {
         const conversation = await prisma.cerebroConversation.create({
             data: {
@@ -135,7 +142,14 @@ export async function saveMessagesToDbAction(conversationId: string, messages: {
 
 export async function deleteConversationAction(conversationId: string) {
     console.log("[CEREBRO_DELETE] Iniciando eliminación de conversación:", conversationId);
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, error: "No autorizado" };
     try {
+        // Verify ownership before deleting
+        const conv = await prisma.cerebroConversation.findUnique({ where: { id: conversationId }, select: { userId: true } });
+        if (!conv || (conv.userId !== caller.id && caller.role !== "ADMIN")) {
+            return { success: false, error: "No autorizado" };
+        }
         // Borramos primero los mensajes y luego la conversación
         // Usamos deleteMany porque es más laxo que delete si el registro ya no existe o hay delays
         await prisma.cerebroMessage.deleteMany({

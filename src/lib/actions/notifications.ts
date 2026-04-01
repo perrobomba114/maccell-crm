@@ -163,22 +163,8 @@ async function enforceNotificationLimit(userId: string) {
                 });
 
                 if (lastDateNotification) {
-                    // Delete everything older than the 300th item
-                    await db.notification.deleteMany({
-                        where: {
-                            userId,
-                            createdAt: {
-                                lt: lastDateNotification.createdAt
-                            }
-                            // Edge case: if exact same createdAt, we might keep duplicates, but good enough.
-                            // Better yet: delete using NOT IN if DB supports it efficiently, 
-                            // but deleteMany with NOT IN array of 300 IDs might be heavy.
-                            // Alternative: Delete where id NOT IN (ids).
-                            // Let's use the NOT IN approach for exactness, 300 IDs is small.
-                        }
-                    });
-
-                    // Re-implementing correctly with ID exclusion for safety
+                    // Delete all notifications outside the top 300 using ID exclusion
+                    // (handles edge cases where multiple notifications share the same createdAt)
                     const keepIds = notifications.map(n => n.id);
                     await db.notification.deleteMany({
                         where: {

@@ -4,8 +4,13 @@ import { db } from "@/lib/db";
 import fs from "fs/promises";
 import path from "path";
 import { isValidImg } from "@/lib/utils";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function cleanupCorruptedImagesAction() {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         console.log("Staring Image Cleanup...");
         const allRepairs = await db.repair.findMany({

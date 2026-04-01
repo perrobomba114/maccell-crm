@@ -44,6 +44,7 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
             setResults(data);
         } catch (e) {
             console.error(e);
+            toast.error("Error al buscar repuestos.");
         } finally {
             setLoading(false);
         }

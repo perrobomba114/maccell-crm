@@ -1,6 +1,7 @@
 "use server";
 
 import * as cheerio from "cheerio";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 interface ImeiResult {
     bloqueado: string;
@@ -28,6 +29,14 @@ function getRandomIP() {
 }
 
 export async function checkImei(imei: string) {
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, error: "No autorizado" };
+
+    // Validate IMEI: must be exactly 15 numeric digits
+    if (!imei || !/^\d{15}$/.test(imei)) {
+        return { success: false, error: "El IMEI debe tener exactamente 15 dígitos numéricos" };
+    }
+
     try {
         const userAgent = getRandomUserAgent();
         const fakeIp = getRandomIP();

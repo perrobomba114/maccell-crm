@@ -2,6 +2,7 @@
 
 import net from "net";
 import os from "os";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export type PrinterDiscoveryResult = {
     ip: string;
@@ -15,6 +16,8 @@ import dgram from "dgram";
  * Now scans ALL non-internal IPv4 subnets found on the host.
  */
 export async function scanForPrinters(): Promise<{ success: boolean; printers: PrinterDiscoveryResult[]; error?: string }> {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, printers: [], error: "No autorizado" };
     try {
         const interfaces = os.networkInterfaces();
         const subnetPrefixes: string[] = [];
@@ -143,6 +146,8 @@ function checkPort(ip: string, port: number, timeout: number): Promise<{ ip: str
  * Sends raw ZPL code to the specified printer IP on port 9100.
  */
 export async function printLabelZPL(printerIp: string, zplData: string): Promise<{ success: boolean; error?: string }> {
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, error: "No autorizado" };
     return new Promise((resolve) => {
         const client = new net.Socket();
         const port = 9100;
@@ -179,6 +184,8 @@ import path from "path";
  * This uses the ~DY command to download the file.
  */
 export async function uploadFontToPrinter(printerIp: string): Promise<{ success: boolean; error?: string }> {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
     try {
         const fontPath = path.join(process.cwd(), "public/fonts/maccell.ttf");
 

@@ -75,6 +75,9 @@ export async function calculatePromisedDateAction(startDateIso: string, minutesT
 }
 
 export async function searchSparePartsAction(term: string) {
+    const caller = await getCurrentUser();
+    if (!caller) return [];
+
     // Clean search term (remove leading/trailing whitespace and line breaks)
     const cleanTerm = term?.trim();
 
@@ -166,9 +169,16 @@ export async function searchSparePartsAction(term: string) {
 
 export async function createRepairAction(formData: FormData) {
     try {
+        const caller = await getCurrentUser();
+        if (!caller) return { success: false, error: "No autorizado" };
+
         const ticketNumber = formData.get("ticketNumber") as string;
         const branchId = formData.get("branchId") as string;
         const userId = formData.get("userId") as string;
+
+        if (!ticketNumber || ticketNumber.trim().length === 0) {
+            return { success: false, error: "Número de ticket requerido" };
+        }
 
         // 1. Verify Ticket again
         const ticketCheck = await checkTicketAvailability(ticketNumber, branchId);
@@ -317,6 +327,8 @@ export async function createRepairAction(formData: FormData) {
 }
 
 export async function getActiveRepairsAction(branchId: string, statusIds?: number[]) {
+    const caller = await getCurrentUser();
+    if (!caller) return [];
     // console.log("getActiveRepairsAction called with:", { branchId, statusIds });
 
     const defaultStatuses = [1, 2, 3, 4, 8, 9];
@@ -368,6 +380,8 @@ export async function getActiveRepairsAction(branchId: string, statusIds?: numbe
 
 export async function getRepairHistoryAction(branchId: string, query: string = "") {
     if (!branchId) return [];
+    const caller = await getCurrentUser();
+    if (!caller) return [];
 
     try {
         const whereClause: any = {
@@ -500,6 +514,15 @@ export async function takeRepairAction(
                         }
                     });
 
+                    // Validate stock before decrement
+                    const partStock = await tx.sparePart.findUnique({
+                        where: { id: part.id },
+                        select: { stockLocal: true }
+                    });
+                    if (!partStock || partStock.stockLocal < 1) {
+                        throw new Error(`Sin stock suficiente para el repuesto: ${part.name}`);
+                    }
+
                     // Decrement stock
                     await tx.sparePart.update({
                         where: { id: part.id },
@@ -561,11 +584,14 @@ export async function takeRepairAction(
         return { success: true };
     } catch (error) {
         console.error("Take Repair Error:", error);
-        return { success: false, error: "Error al asignar reparación." };
+        return { success: false, error: error instanceof Error ? error.message : "Error al asignar reparación." };
     }
 }
 
 export async function getAllRepairsForAdminAction(query: string = "") {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return [];
+
     try {
         const whereClause: any = {};
 
@@ -616,6 +642,9 @@ export async function getAllRepairsForAdminAction(query: string = "") {
 }
 
 export async function deleteRepairAction(repairId: string) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
+
     try {
         await db.repair.delete({
             where: { id: repairId }
@@ -631,6 +660,9 @@ export async function deleteRepairAction(repairId: string) {
 
 
 export async function getRepairByIdAction(repairId: string) {
+    const caller = await getCurrentUser();
+    if (!caller) return null;
+
     try {
         const repair = await db.repair.findUnique({
             where: { id: repairId },
@@ -700,6 +732,9 @@ export async function updateRepairAction(formData: FormData) {
 
         if (!existingRepair) return { success: false, error: "Reparación no encontrada" };
 
+        const currentUser = await getCurrentUser();
+        if (!currentUser) return { success: false, error: "No autorizado" };
+
         await db.customer.update({
             where: { id: existingRepair.customerId },
             data: {
@@ -731,7 +766,7 @@ export async function updateRepairAction(formData: FormData) {
                         create: {
                             fromStatusId: existingRepair.statusId,
                             toStatusId: statusIdNum,
-                            userId: (await getCurrentUser())?.id
+                            userId: currentUser?.id
                         }
                     }
                 } : {})
@@ -819,7 +854,6 @@ export async function updateRepairAction(formData: FormData) {
                     });
 
                     // Log History (Increment/Return)
-                    const currentUser = await getCurrentUser();
                     const branchIdToLog = currentUser?.branch?.id || existingRepair.branchId;
 
                     if (currentUser && branchIdToLog) {
@@ -851,7 +885,6 @@ export async function updateRepairAction(formData: FormData) {
                     });
 
                     // Log History (Decrement/Usage)
-                    const currentUser = await getCurrentUser();
                     const branchIdToLog = currentUser?.branch?.id || existingRepair.branchId;
 
                     if (currentUser && branchIdToLog) {

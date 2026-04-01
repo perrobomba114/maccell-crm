@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export type ImportResult = {
     success: boolean;
@@ -10,6 +11,8 @@ export type ImportResult = {
 };
 
 export async function importHistoricalSalesAction(data: any[]): Promise<ImportResult> {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
     try {
         if (!data || data.length === 0) return { success: false, error: "No hay datos para importar" };
 
@@ -106,6 +109,8 @@ export async function importHistoricalSalesAction(data: any[]): Promise<ImportRe
 }
 
 export async function clearAllHistoricalDataAction(): Promise<ImportResult> {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
     try {
         await db.$transaction(async (tx) => {
             // Delete all sales starting with H (Historical)

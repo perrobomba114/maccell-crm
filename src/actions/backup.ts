@@ -1,12 +1,12 @@
 "use server";
 
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import fs from "fs";
 import path from "path";
 import util from "util";
 import { revalidatePath } from "next/cache";
 
-const execAsync = util.promisify(exec);
+const execFileAsync = util.promisify(execFile);
 
 const BACKUP_DIR = path.join(process.cwd(), "backups");
 
@@ -76,9 +76,7 @@ export async function createBackup(): Promise<{ success: boolean; filename?: str
         const cleanDbUrl = url.toString();
 
         const pgDumpPath = resolveBinaryPath("pg_dump");
-        const command = `"${pgDumpPath}" "${cleanDbUrl}" --clean --if-exists --no-owner --no-acl -f "${filepath}"`;
-
-        await execAsync(command);
+        await execFileAsync(pgDumpPath, [cleanDbUrl, "--clean", "--if-exists", "--no-owner", "--no-acl", "-f", filepath]);
 
         revalidatePath("/admin/backups");
         return { success: true, filename };
@@ -103,9 +101,8 @@ export async function restoreBackup(filename: string): Promise<{ success: boolea
         const cleanDbUrl = url.toString();
 
         const psqlPath = resolveBinaryPath("psql");
-        const command = `"${psqlPath}" "${cleanDbUrl}" < "${filepath}"`;
-
-        await execAsync(command);
+        const sqlContent = fs.readFileSync(filepath, "utf-8");
+        await execFileAsync(psqlPath, [cleanDbUrl], { input: sqlContent } as any);
 
         revalidatePath("/admin/backups");
         return { success: true };
@@ -141,12 +138,14 @@ export async function uploadBackup(formData: FormData): Promise<{ success: boole
         const file = formData.get("file") as File;
         if (!file) throw new Error("No se recibió ningún archivo");
 
-        if (!file.name.endsWith(".sql")) {
+        // path.basename strips any directory traversal (e.g. "../../shell.sql" → "shell.sql")
+        const safeFilename = path.basename(file.name);
+        if (!safeFilename.endsWith(".sql")) {
             throw new Error("El archivo debe ser .sql");
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const filepath = path.join(BACKUP_DIR, file.name);
+        const filepath = path.join(BACKUP_DIR, safeFilename);
 
         fs.writeFileSync(filepath, buffer);
 

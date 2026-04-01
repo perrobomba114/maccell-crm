@@ -6,6 +6,7 @@ import { searchSparePartsAction } from "@/lib/actions/repairs";
 import { Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface SmartPriceInputProps {
     value: string;
@@ -72,6 +73,7 @@ export function SmartPriceInput({ value, onChange, error }: SmartPriceInputProps
                     setResults(data);
                 } catch (err) {
                     console.error(err);
+                    toast.error("Error al buscar repuestos.");
                 } finally {
                     setLoading(false);
                 }

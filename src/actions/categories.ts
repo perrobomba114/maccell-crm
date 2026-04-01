@@ -3,6 +3,7 @@
 import { CategoryType } from "@prisma/client";
 import { db as prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function getCategories(type?: CategoryType) {
     try {
@@ -23,6 +24,8 @@ export async function createCategory(data: {
     type: CategoryType;
     description?: string;
 }) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
     try {
         const category = await prisma.category.create({
             data: {
@@ -47,6 +50,8 @@ export async function updateCategory(
         description?: string;
     }
 ) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
     try {
         const category = await prisma.category.update({
             where: { id },
@@ -64,21 +69,20 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(id: string) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
     try {
-        // Unlink products
-        await prisma.product.updateMany({
-            where: { categoryId: id },
-            data: { categoryId: null }
-        });
-
-        // Unlink spare parts
-        await prisma.sparePart.updateMany({
-            where: { categoryId: id },
-            data: { categoryId: null }
-        });
-
-        await prisma.category.delete({
-            where: { id },
+        await prisma.$transaction(async (tx) => {
+            // Unlink products and spare parts before deleting
+            await tx.product.updateMany({
+                where: { categoryId: id },
+                data: { categoryId: null }
+            });
+            await tx.sparePart.updateMany({
+                where: { categoryId: id },
+                data: { categoryId: null }
+            });
+            await tx.category.delete({ where: { id } });
         });
 
         revalidatePath("/admin/categories");

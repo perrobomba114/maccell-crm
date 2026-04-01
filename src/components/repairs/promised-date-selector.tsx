@@ -104,8 +104,8 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                                 aria-label="Minutos de entrega"
                                 inputMode="numeric"
                                 min={0}
-                                max={45}
-                                step={15}
+                                max={59}
+                                step={1}
                                 value={String(date.getMinutes()).padStart(2, '0')}
                                 onChange={(e) => {
                                     const val = parseInt(e.target.value);

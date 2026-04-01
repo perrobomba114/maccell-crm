@@ -124,18 +124,25 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
     const addToCartProduct = (product: PosProduct) => {
         if (!cashShift) return toast.error("Debe abrir la caja para operar.");
-        setCart(prev => {
-            const existing = prev.find(item => item.id === product.id && item.type === "PRODUCT");
-            if (existing) {
-                if (existing.quantity >= product.stock) return (toast.error("Stock insuficiente"), prev);
-                return prev.map(item => item.uniqueId === existing.uniqueId ? { ...item, quantity: item.quantity + 1 } : item);
+        const existing = cart.find(item => item.id === product.id && item.type === "PRODUCT");
+        if (existing) {
+            if (existing.quantity >= product.stock) {
+                toast.warning("Stock agotado — venta en negativo. Se notificará al administrador.");
+            } else {
+                toast.success("Producto agregado");
             }
-            return [...prev, {
+            setCart(prev => prev.map(item => item.uniqueId === existing.uniqueId ? { ...item, quantity: item.quantity + 1 } : item));
+        } else {
+            setCart(prev => [...prev, {
                 uniqueId: `prod-${product.id}`, type: "PRODUCT", id: product.id, name: product.name,
                 details: product.sku, price: product.price, quantity: 1, maxStock: product.stock
-            }];
-        });
-        toast.success("Producto agregado");
+            }]);
+            if (product.stock <= 0) {
+                toast.warning("Sin stock — venta en negativo. Se notificará al administrador.");
+            } else {
+                toast.success("Producto agregado");
+            }
+        }
     };
 
     const addRepairToCart = (repair: PosRepair) => {
@@ -264,11 +271,12 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
             if (searchQuery.trim().length < 2) return setProducts([]);
             setIsSearching(true);
             try {
-                const results = await searchProductsForPos(searchQuery, branchId);
+                const raw = await searchProductsForPos(searchQuery, branchId);
+                const results = raw.filter(p => p.id && p.name && typeof p.price === 'number' && p.price >= 0 && typeof p.stock === 'number');
                 setProducts(results);
                 const exactMatch = results.find(p => p.sku.toLowerCase() === searchQuery.trim().toLowerCase()) || (results.length === 1 ? results[0] : null);
                 if (exactMatch && cashShift) { addToCartProduct(exactMatch); setSearchQuery(""); setProducts([]); }
-            } catch (err) { console.error(err); } finally { setIsSearching(false); }
+            } catch (err) { console.error(err); toast.error("Error al buscar productos."); } finally { setIsSearching(false); }
         }, 300);
         return () => clearTimeout(timer);
     }, [searchQuery, branchId, cashShift]);
@@ -278,7 +286,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
             if (repairQuery.trim().length < 2) return setRepairs([]);
             setIsSearchingRepairs(true);
             try { setRepairs(await searchRepairsForPos(repairQuery, branchId)); }
-            catch (err) { console.error(err); } finally { setIsSearchingRepairs(false); }
+            catch (err) { console.error(err); toast.error("Error al buscar reparaciones."); } finally { setIsSearchingRepairs(false); }
         }, 300);
         return () => clearTimeout(timer);
     }, [repairQuery, branchId]);
@@ -303,13 +311,21 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
         const timer = setTimeout(async () => {
             if (transferSearchQuery.trim().length < 2) return setTransferProducts([]);
             setIsSearchingTransfer(true);
-            searchProductsForPos(transferSearchQuery, branchId).then(setTransferProducts);
-            setIsSearchingTransfer(false);
+            try {
+                const results = await searchProductsForPos(transferSearchQuery, branchId);
+                setTransferProducts(results);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setIsSearchingTransfer(false);
+            }
         }, 300);
         return () => clearTimeout(timer);
     }, [transferSearchQuery, branchId]);
 
     // --- Render ---
+    const cartTotal = cart.reduce((s, i) => s + (i.price * i.quantity), 0);
+
     return (
         <div className="flex flex-col md:flex-row gap-4 p-4 h-[calc(100vh-4rem)] bg-zinc-950 overflow-hidden font-sans">
             <AlertDialog open={showCashConfirm} onOpenChange={setShowCashConfirm}>
@@ -362,22 +378,24 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
             <PosCart
                 cart={cart} cashShift={cashShift}
-                onUpdateQuantity={(uid, delta) => setCart(prev => prev.map(i => {
-                    if (i.uniqueId === uid && i.type === "PRODUCT") {
-                        const newQty = i.quantity + delta;
-                        if (delta > 0 && i.maxStock !== undefined && newQty > i.maxStock) {
-                            toast.error("Alcanzado stock máximo");
-                            return i;
+                onUpdateQuantity={(uid, delta) => {
+                    if (delta > 0) {
+                        const item = cart.find(i => i.uniqueId === uid && i.type === "PRODUCT");
+                        if (item && item.maxStock !== undefined && item.quantity + delta > item.maxStock) {
+                            toast.warning("Stock agotado — venta en negativo. Se notificará al administrador.");
                         }
-                        return { ...i, quantity: Math.max(1, newQty) };
                     }
-                    return i;
-                }))}
+                    setCart(prev => prev.map(i =>
+                        i.uniqueId === uid && i.type === "PRODUCT"
+                            ? { ...i, quantity: Math.max(1, i.quantity + delta) }
+                            : i
+                    ));
+                }}
                 onRemoveFromCart={(uid) => setCart(prev => prev.filter(i => i.uniqueId !== uid))}
                 onItemClick={(item) => { setSelectedCartItem(item); setOverridePrice(item.price.toString()); setOverrideReason(item.priceChangeReason || ""); setIsPriceOverrideModalOpen(true); }}
                 onCheckoutClick={handleCheckoutClick}
-                subtotal={cart.reduce((s, i) => s + (i.price * i.quantity), 0)}
-                total={cart.reduce((s, i) => s + (i.price * i.quantity), 0)}
+                subtotal={cartTotal}
+                total={cartTotal}
             />
 
             <RegisterDialog
@@ -390,15 +408,21 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
 
             <CheckoutDialog
                 isOpen={isCheckoutModalOpen} onClose={() => setIsCheckoutModalOpen(false)}
-                total={cart.reduce((s, i) => s + (i.price * i.quantity), 0)}
-                subtotal={cart.reduce((s, i) => s + (i.price * i.quantity), 0)}
+                total={cartTotal}
+                subtotal={cartTotal}
                 editableTotal={editableTotal} setEditableTotal={setEditableTotal}
                 partialPayments={partialPayments} paymentAmountInput={paymentAmountInput} setPaymentAmountInput={setPaymentAmountInput}
                 onAddPayment={handleAddPayment} onRemovePayment={(idx) => setPartialPayments(prev => prev.filter((_, i) => i !== idx))}
                 isProcessingSale={isProcessingSale} onConfirm={confirmSplitSale}
                 invoiceData={invoiceData} setInvoiceData={setInvoiceData}
                 isInvoiceModalOpen={isInvoiceModalOpen} setIsInvoiceModalOpen={setIsInvoiceModalOpen}
-                onInvoiceConfirm={(data) => { setInvoiceData(data); setIsInvoiceModalOpen(false); toast.success("Factura configurada"); }}
+                onInvoiceConfirm={(data) => {
+                    if (!data.customerName?.trim()) return toast.error("Nombre del cliente requerido");
+                    if (!data.salesPoint || data.salesPoint <= 0) return toast.error("Punto de venta inválido");
+                    setInvoiceData(data);
+                    setIsInvoiceModalOpen(false);
+                    toast.success("Factura configurada");
+                }}
                 branchData={branchData}
             />
 
@@ -429,7 +453,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 onCreateTransfer={async () => {
                     try {
                         const qty = parseInt(transferQty);
-                        if (!selectedTransferProduct || !targetBranchId || isNaN(qty)) return toast.error("Datos incompletos");
+                        if (!selectedTransferProduct || !targetBranchId || isNaN(qty) || qty <= 0) return toast.error("Datos incompletos");
                         const res = await createStockTransfer({ sourceBranchId: branchId, targetBranchId, productId: selectedTransferProduct.id, quantity: qty, notes: transferNotes, userId: vendorId });
                         if (res.success) { 
                             toast.success("Transferencia enviada"); 

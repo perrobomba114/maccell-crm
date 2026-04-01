@@ -36,7 +36,7 @@ export function StockCheckButtons({
             if (result.success) {
                 toast.success("Stock Verificado");
             } else {
-                toast.error("No se pudo guardar el control.");
+                toast.error(result.error || "No se pudo guardar el control.");
             }
         });
     };

@@ -174,8 +174,15 @@ export class BusinessHoursService {
                 minutes += diff;
                 current.setUTCMinutes(current.getUTCMinutes() + diff);
             } else {
-                // Advance 1 min to avoid stuck loop if diff 0
-                current.setUTCMinutes(current.getUTCMinutes() + 1);
+                // diff === 0: currentTime is exactly at a block boundary (e.g. 13:00 or 21:00).
+                // Jump past it instead of advancing 1 min (which would count an extra minute).
+                if (currentTime >= block2End) {
+                    current = this.jumpToNextDayStart(current);
+                } else if (currentTime >= block1End) {
+                    current.setUTCHours(17, 0, 0, 0);
+                } else {
+                    current.setUTCHours(9, 0, 0, 0);
+                }
             }
         }
 

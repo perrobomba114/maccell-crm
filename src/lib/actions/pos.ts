@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { PaymentMethod, Role } from "@prisma/client";
 import { createNotificationAction } from "@/lib/actions/notifications";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export type PosProduct = {
     id: string;
@@ -30,6 +31,8 @@ export type PosRepair = {
  * and optionally checks CategoryType if Products can be parts.
  */
 export async function searchProductsForPos(term: string, branchId: string): Promise<PosProduct[]> {
+    const caller = await getCurrentUser();
+    if (!caller) return [];
     console.log(`[searchProductsForPos] Searching for "${term}" in branch "${branchId}"`);
     if (!term || term.length < 2) return [];
 
@@ -77,6 +80,8 @@ export async function searchProductsForPos(term: string, branchId: string): Prom
  * Returns a list of matches.
  */
 export async function searchRepairsForPos(term: string, branchId: string): Promise<PosRepair[]> {
+    const caller = await getCurrentUser();
+    if (!caller) return [];
     console.log(`[searchRepairsForPos] Searching for "${term}" in branch "${branchId}"`);
     if (!term || term.length < 2) return [];
 
@@ -122,6 +127,8 @@ export async function searchRepairsForPos(term: string, branchId: string): Promi
  * Validates it belongs to the branch (optional strictness).
  */
 export async function getRepairForPos(ticketNumber: string, branchId: string): Promise<{ success: boolean, repair?: PosRepair, error?: string }> {
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, error: "No autorizado" };
     if (!ticketNumber) return { success: false, error: "Ingrese un número de ticket" };
 
     try {
@@ -174,9 +181,10 @@ export async function getRepairForPos(ticketNumber: string, branchId: string): P
 import { createAfipInvoice, getLastVoucher } from "@/lib/afip";
 import { getIvaConditionId } from "@/lib/afip-utils";
 
-// Helper to format date YYYYMMDD
+// Helper to format date YYYYMMDD using Argentina timezone (UTC-3)
 const formatDateAFIP = (date: Date) => {
-    return parseInt(date.toISOString().split('T')[0].replace(/-/g, ''));
+    const argDate = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+    return parseInt(argDate.toISOString().split('T')[0].replace(/-/g, ''));
 };
 
 const formatAmount = (num: number) => Math.round(num * 100) / 100;
@@ -222,8 +230,30 @@ export async function processPosSale(data: {
         invoice: data.invoiceData
     });
 
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, error: "No autorizado" };
+    // Use authenticated user's IDs to prevent client spoofing
+    const safeVendorId = caller.id;
+    const safeBranchId = caller.branch?.id || data.branchId;
+
     if (!data.items || data.items.length === 0) {
         return { success: false, error: "El carrito está vacío." };
+    }
+
+    // Validation: Invoice Data
+    if (data.invoiceData?.generate) {
+        if (!["A", "B"].includes(data.invoiceData.invoiceType)) {
+            return { success: false, error: "Tipo de factura inválido." };
+        }
+        if (!["CUIT", "DNI", "FINAL"].includes(data.invoiceData.docType)) {
+            return { success: false, error: "Tipo de documento inválido." };
+        }
+        if (!data.invoiceData.salesPoint || data.invoiceData.salesPoint <= 0) {
+            return { success: false, error: "Punto de venta inválido." };
+        }
+        if (!data.invoiceData.customerName?.trim()) {
+            return { success: false, error: "Nombre del cliente requerido para la factura." };
+        }
     }
 
     // Validation: Split Payments
@@ -314,7 +344,7 @@ export async function processPosSale(data: {
                 serviceDateTo: data.invoiceData.serviceDateTo,
                 paymentDueDate: data.invoiceData.paymentDueDate,
                 ivaConditionId: getIvaConditionId(data.invoiceData.ivaCondition || ""),
-                branchId: data.branchId // Pass Branch ID for multi-cert support
+                branchId: safeBranchId // Pass Branch ID for multi-cert support
             });
 
             if (!afipRes.success || !afipRes.data) {
@@ -329,21 +359,24 @@ export async function processPosSale(data: {
             const rawCae = caeData.cae || caeData.CAE || (caeData.FECAESolicitarResult ? caeData.FECAESolicitarResult.FeDetReq[0].CAE : undefined);
             const rawCaeFchVto = caeData.caeFchVto || caeData.CAEFchVto || (caeData.FECAESolicitarResult ? caeData.FECAESolicitarResult.FeDetReq[0].CAEFchVto : undefined);
 
-            if (!rawVoucher || !rawCae) {
-                console.error("Critical: Missing Voucher/CAE in response", caeData);
-                throw new Error("AFIP no devolvió CAE ni Número de Comprobante. Revisar Logs.");
+            const voucherStr = rawVoucher ? String(rawVoucher).trim() : '';
+            const caeStr = rawCae ? String(rawCae).trim() : '';
+            if (!voucherStr || !caeStr) {
+                console.error("Critical: Missing or empty Voucher/CAE in response", caeData);
+                throw new Error("AFIP no devolvió CAE ni Número de Comprobante válidos. Revisar Logs.");
             }
 
             afipResult = {
-                cae: rawCae,
-                voucherNumber: rawVoucher
+                cae: caeStr,
+                voucherNumber: voucherStr
             };
 
-            // Format CAEFchVto (YYYYMMDD) to Date
+            // Format CAEFchVto (YYYYMMDD) to Date — convert to string first (AFIP may return number)
             if (rawCaeFchVto) {
-                const y = rawCaeFchVto.slice(0, 4);
-                const m = rawCaeFchVto.slice(4, 6);
-                const d = rawCaeFchVto.slice(6, 8);
+                const raw = String(rawCaeFchVto);
+                const y = raw.slice(0, 4);
+                const m = raw.slice(4, 6);
+                const d = raw.slice(6, 8);
                 caeExpiresAt = new Date(`${y}-${m}-${d}`);
             }
 
@@ -360,6 +393,9 @@ export async function processPosSale(data: {
     }
 
 
+    // Track products sold below available stock for post-transaction admin notification
+    const negativeStockItems: { name: string; available: number; requested: number }[] = [];
+
     try {
         const transactionResult = await db.$transaction(async (tx) => {
             console.log("[processPosSale] Transaction started");
@@ -371,8 +407,8 @@ export async function processPosSale(data: {
                 data: {
                     saleNumber,
                     total: data.total,
-                    vendorId: data.vendorId,
-                    branchId: data.branchId,
+                    vendorId: safeVendorId,
+                    branchId: safeBranchId,
                     paymentMethod: (data.paymentMethod as PaymentMethod) || PaymentMethod.CASH,
                 }
             });
@@ -382,7 +418,7 @@ export async function processPosSale(data: {
             if (afipResult && data.invoiceData) {
                 // Determine Billing Entity based on Branch
                 // Logic mirrors afip.ts prioritization
-                const branch = await tx.branch.findUnique({ where: { id: data.branchId } });
+                const branch = await tx.branch.findUnique({ where: { id: safeBranchId } });
                 const is8Bit = branch?.code === '8BIT' || branch?.name?.toUpperCase().includes('8 BIT');
                 const billingEntity = is8Bit ? '8BIT' : 'MACCELL';
 
@@ -444,7 +480,7 @@ export async function processPosSale(data: {
                         where: {
                             productId_branchId: {
                                 productId: item.id,
-                                branchId: data.branchId
+                                branchId: safeBranchId
                             }
                         }
                     });
@@ -455,11 +491,16 @@ export async function processPosSale(data: {
                     where: {
                         productId_branchId: {
                             productId: item.id,
-                            branchId: data.branchId
+                            branchId: safeBranchId
                         }
                     }
                     */
 
+                    const available = stock?.quantity ?? 0;
+                    if (available < item.quantity) {
+                        // Allow negative — track for admin notification
+                        negativeStockItems.push({ name: item.name, available, requested: item.quantity });
+                    }
                     if (stock) {
                         await tx.productStock.update({
                             where: { id: stock.id },
@@ -467,11 +508,7 @@ export async function processPosSale(data: {
                         });
                     } else {
                         await tx.productStock.create({
-                            data: {
-                                productId: item.id,
-                                branchId: data.branchId,
-                                quantity: -item.quantity
-                            }
+                            data: { productId: item.id, branchId: safeBranchId, quantity: -item.quantity }
                         });
                     }
 
@@ -489,8 +526,6 @@ export async function processPosSale(data: {
                     });
 
                 } else if (item.type === "REPAIR") {
-                    // Update Repair Status
-                    // WARNING: Hardcoded Status ID 10. Ensure this exists in DB.
                     const oldRepair = await tx.repair.findUnique({
                         where: { id: item.id },
                         select: { statusId: true }
@@ -504,7 +539,7 @@ export async function processPosSale(data: {
                                 create: {
                                     fromStatusId: oldRepair?.statusId,
                                     toStatusId: 10,
-                                    userId: data.vendorId
+                                    userId: safeVendorId
                                 }
                             }
                         }
@@ -513,8 +548,8 @@ export async function processPosSale(data: {
                     await tx.repairObservation.create({
                         data: {
                             repairId: item.id,
-                            userId: data.vendorId,
-                            content: `Reparación cobrada en Venta #${saleNumber}. Total: $${item.price}`
+                            userId: safeVendorId,
+                            content: `Reparación cobrada en Venta #${saleNumber}. Total: $${item.price}`.substring(0, 500)
                         }
                     });
 
@@ -561,7 +596,7 @@ export async function processPosSale(data: {
                 if (admins.length > 0) {
                     // Get Vendor Name (we only have ID, fetch name for nice message)
                     const vendor = await db.user.findUnique({
-                        where: { id: data.vendorId },
+                        where: { id: safeVendorId },
                         select: { name: true }
                     });
                     const vendorName = vendor?.name || "Un vendedor";
@@ -589,6 +624,30 @@ export async function processPosSale(data: {
             // Non-blocking error, sale already succeeded
         }
 
+        // 4. Post-Transaction: Notify Admins of Negative Stock Sales
+        if (negativeStockItems.length > 0) {
+            try {
+                const admins = await db.user.findMany({ where: { role: Role.ADMIN }, select: { id: true } });
+                if (admins.length > 0) {
+                    const vendor = await db.user.findUnique({ where: { id: safeVendorId }, select: { name: true, branch: { select: { name: true } } } });
+                    const vendorName = (vendor as any)?.name || "Un vendedor";
+                    const branchName = (vendor as any)?.branch?.name || safeBranchId;
+                    const details = negativeStockItems.map(i =>
+                        `${i.name} (disponible: ${i.available}, vendido: ${i.requested})`
+                    ).join(", ");
+                    await Promise.all(admins.map(admin => createNotificationAction({
+                        userId: admin.id,
+                        title: "⚠️ Venta con Stock Negativo",
+                        message: `${vendorName} (${branchName}) vendió con stock insuficiente en Venta #${transactionResult.saleNumber}: ${details}`,
+                        type: "WARNING",
+                        link: `/admin/sales?search=${transactionResult.saleNumber}`
+                    })));
+                }
+            } catch (negNotifError) {
+                console.error("[processPosSale] Error sending negative stock notifications:", negNotifError);
+            }
+        }
+
         return {
             success: true,
             saleId: transactionResult.saleId,
@@ -609,6 +668,8 @@ export async function processPosSale(data: {
 import { getTaxpayerDetails } from "@/lib/afip";
 
 export async function getAfipPadronData(cuit: string) {
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, error: "No autorizado" };
     // Validate CUIT format roughly
     const cleanCuit = cuit.replace(/\D/g, "");
     if (cleanCuit.length !== 11) {
