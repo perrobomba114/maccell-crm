@@ -170,7 +170,15 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Técnico</span>
                                     </div>
                                     <p className="text-sm font-black text-white uppercase italic leading-tight px-1">
-                                        {repair.assignedTo ? repair.assignedTo.name : "SIN ASIGNAR"}
+                                        {(() => {
+                                            const lastTech = repair.statusHistory?.find((h: any) => h.user?.role === "TECHNICIAN")?.user;
+                                            if (lastTech?.name) return lastTech.name;
+                                            
+                                            const lastUser = repair.statusHistory?.[0]?.user;
+                                            if (lastUser?.name) return lastUser.name;
+
+                                            return repair.assignedTo ? repair.assignedTo.name : "SIN ASIGNAR";
+                                        })()}
                                     </p>
                                 </div>
 
@@ -403,11 +411,15 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                                                     {history.toStatus.name}
                                                                 </Badge>
                                                             </div>
-                                                            {history.userId && (
+                                                            {history.user ? (
+                                                                <div className="bg-slate-800/50 px-2 py-0.5 rounded-full border border-white/5">
+                                                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">OP: {history.user.name.split(" ")[0]}</span>
+                                                                </div>
+                                                            ) : history.userId ? (
                                                                 <div className="bg-slate-800/50 px-2 py-0.5 rounded-full border border-white/5">
                                                                     <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">OP: {history.userId.slice(-4)}</span>
                                                                 </div>
-                                                            )}
+                                                            ) : null}
                                                         </div>
                                                     ))}
                                                 </div>

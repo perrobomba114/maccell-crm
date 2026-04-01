@@ -263,7 +263,7 @@ export async function createRepairAction(formData: FormData) {
                 },
                 statusHistory: {
                     orderBy: { createdAt: 'desc' },
-                    include: { fromStatus: true, toStatus: true }
+                    include: { fromStatus: true, toStatus: true, user: true }
                 }
             }
         });
@@ -349,7 +349,7 @@ export async function getActiveRepairsAction(branchId: string, statusIds?: numbe
                 },
                 statusHistory: {
                     orderBy: { createdAt: 'desc' },
-                    include: { fromStatus: true, toStatus: true }
+                    include: { fromStatus: true, toStatus: true, user: true }
                 }
             },
             orderBy: {
@@ -409,7 +409,7 @@ export async function getRepairHistoryAction(branchId: string, query: string = "
                 },
                 statusHistory: {
                     orderBy: { createdAt: 'desc' },
-                    include: { fromStatus: true, toStatus: true }
+                    include: { fromStatus: true, toStatus: true, user: true }
                 }
             },
             orderBy: {
@@ -601,7 +601,7 @@ export async function getAllRepairsForAdminAction(query: string = "") {
                 },
                 statusHistory: {
                     orderBy: { createdAt: 'desc' },
-                    include: { fromStatus: true, toStatus: true }
+                    include: { fromStatus: true, toStatus: true, user: true }
                 }
             },
             orderBy: {
@@ -647,7 +647,7 @@ export async function getRepairByIdAction(repairId: string) {
                 },
                 statusHistory: {
                     orderBy: { createdAt: 'desc' },
-                    include: { fromStatus: true, toStatus: true }
+                    include: { fromStatus: true, toStatus: true, user: true }
                 }
             }
         });

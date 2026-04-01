@@ -61,6 +61,7 @@ model User {
   sales                 Sale[]
   sparePartHistory      SparePartHistory[]
   stockTransfersCreated StockTransfer[]
+  repairStatusHistory   RepairStatusHistory[]
   branch                Branch?               @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([email])
@@ -568,6 +569,7 @@ model RepairStatusHistory {
   fromStatus   RepairStatus? @relation("FromStatus", fields: [fromStatusId], references: [id])
   repair       Repair        @relation(fields: [repairId], references: [id], onDelete: Cascade)
   toStatus     RepairStatus  @relation("ToStatus", fields: [toStatusId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
 
   @@index([repairId])
   @@map("repair_status_history")
