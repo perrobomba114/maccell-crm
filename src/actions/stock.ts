@@ -101,7 +101,16 @@ export async function removeStockUnitAction(productId: string) {
             return { success: false, error: "Solo vendedores de MACCELL 2 pueden realizar esta acción" };
         }
 
-        // 1. Decrement Stock
+        // 1. Validate stock before decrementing to prevent negative stock
+        const currentPart = await db.sparePart.findUnique({
+            where: { id: productId },
+            select: { stockLocal: true, name: true, sku: true }
+        });
+        if (!currentPart || currentPart.stockLocal < 1) {
+            return { success: false, error: "Sin stock suficiente para dar de baja" };
+        }
+
+        // Decrement Stock
         const part = await db.sparePart.update({
             where: { id: productId },
             data: {
@@ -138,8 +147,6 @@ export async function removeStockUnitAction(productId: string) {
                 link: `/admin/repuestos?query=${part.sku}` // Link corrected to Repuestos page
             })
         );
-
-        await Promise.all(notifyPromises);
 
         await Promise.all(notifyPromises);
 

@@ -1,8 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-
-import { startOfDay, endOfDay } from "date-fns";
+import { getDailyRange } from "@/lib/date-utils";
 
 interface GetPriceOverridesParams {
     page?: number;
@@ -22,10 +21,8 @@ export async function getPriceOverrides({ page = 1, limit = 25, date, branchId }
         const saleConditions: any = {};
 
         if (date) {
-            saleConditions.createdAt = {
-                gte: startOfDay(date),
-                lte: endOfDay(date)
-            };
+            const { start, end } = getDailyRange(date.toISOString().split('T')[0]);
+            saleConditions.createdAt = { gte: start, lte: end };
         }
 
         if (branchId) {

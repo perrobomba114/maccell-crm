@@ -427,21 +427,35 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 branches={branches} transferQty={transferQty} setTransferQty={setTransferQty}
                 transferNotes={transferNotes} setTransferNotes={setTransferNotes}
                 onCreateTransfer={async () => {
-                    const qty = parseInt(transferQty);
-                    if (!selectedTransferProduct || !targetBranchId || isNaN(qty)) return toast.error("Datos incompletos");
-                    const res = await createStockTransfer({ sourceBranchId: branchId, targetBranchId, productId: selectedTransferProduct.id, quantity: qty, notes: transferNotes, userId: vendorId });
-                    if (res.success) { toast.success("Transferencia enviada"); setIsTransferModalOpen(false); }
-                    else toast.error(res.error);
+                    try {
+                        const qty = parseInt(transferQty);
+                        if (!selectedTransferProduct || !targetBranchId || isNaN(qty)) return toast.error("Datos incompletos");
+                        const res = await createStockTransfer({ sourceBranchId: branchId, targetBranchId, productId: selectedTransferProduct.id, quantity: qty, notes: transferNotes, userId: vendorId });
+                        if (res.success) { 
+                            toast.success("Transferencia enviada"); 
+                            setIsTransferModalOpen(false); 
+                        } else {
+                            toast.error(res.error || "Error al crear la transferencia");
+                        }
+                    } catch (error) {
+                        toast.error("Error inesperado al crear transferencia");
+                    }
                 }}
                 onRespondTransfer={async (id, action) => {
-                    const res = await respondToTransfer(id, action, vendorId);
-                    if (res.success) {
-                        toast.success("Respuesta enviada");
-                        getPendingTransfers(branchId).then(r => {
-                            if (r.success && r.transfers) {
-                                setPendingTransfers(r.transfers);
-                            }
-                        });
+                    try {
+                        const res = await respondToTransfer(id, action, vendorId);
+                        if (res.success) {
+                            toast.success("Respuesta enviada");
+                            getPendingTransfers(branchId).then(r => {
+                                if (r.success && r.transfers) {
+                                    setPendingTransfers(r.transfers);
+                                }
+                            });
+                        } else {
+                            toast.error(res.error || "Error al procesar la respuesta a la transferencia");
+                        }
+                    } catch (error) {
+                        toast.error("Error inesperado al responder transferencia");
                     }
                 }}
             />

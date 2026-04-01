@@ -56,14 +56,19 @@ export function CategoriesClient({ initialCategories }: CategoriesClientProps) {
     const confirmDelete = async () => {
         if (!categoryToDelete) return;
 
-        const res = await deleteCategory(categoryToDelete);
-        if (res.success) {
-            toast.success("Categoría eliminada");
-            router.refresh();
-        } else {
-            toast.error(res.error);
+        try {
+            const res = await deleteCategory(categoryToDelete);
+            if (res.success) {
+                toast.success("Categoría eliminada");
+                router.refresh();
+            } else {
+                toast.error(res.error || "Error al eliminar categoría");
+            }
+        } catch (error) {
+            toast.error("Error inesperado al eliminar categoría");
+        } finally {
+            setCategoryToDelete(null);
         }
-        setCategoryToDelete(null);
     };
 
     return (

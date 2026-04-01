@@ -4,6 +4,7 @@ import { db as prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { SparePartCreateInput, SparePartUpdateInput } from "@/types/spare-parts";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { getDailyRange } from "@/lib/date-utils";
 
 export async function getSpareParts(options?: { sort?: string; order?: 'asc' | 'desc' }) {
     try {
@@ -383,6 +384,9 @@ export async function getAllSparePartsForExport() {
 
 export async function replenishSparePart(id: string, quantity: number) {
     try {
+        const user = await getCurrentUser();
+        if (!user) return { success: false, error: "No autorizado" };
+
         const sparePart = await prisma.sparePart.findUnique({
             where: { id }
         });
@@ -391,16 +395,37 @@ export async function replenishSparePart(id: string, quantity: number) {
             return { success: false, error: "Repuesto no encontrado" };
         }
 
+        if (quantity <= 0) {
+            return { success: false, error: "La cantidad debe ser mayor a cero" };
+        }
+
         if (sparePart.stockDepot < quantity) {
             return { success: false, error: "No hay suficiente stock en depósito" };
         }
 
-        await prisma.sparePart.update({
-            where: { id },
-            data: {
-                stockDepot: { decrement: quantity },
-                stockLocal: { increment: quantity }
-            }
+        // Determine branch for history — use user's branch or first available
+        const branchId = user.branch?.id ?? (await prisma.branch.findFirst({ orderBy: { createdAt: 'asc' }, select: { id: true } }))?.id;
+        if (!branchId) return { success: false, error: "No hay sucursal disponible para registrar el movimiento" };
+
+        await prisma.$transaction(async (tx) => {
+            await tx.sparePart.update({
+                where: { id },
+                data: {
+                    stockDepot: { decrement: quantity },
+                    stockLocal: { increment: quantity }
+                }
+            });
+
+            await (tx as any).sparePartHistory.create({
+                data: {
+                    sparePartId: id,
+                    userId: user.id,
+                    branchId,
+                    quantity,
+                    reason: `Reposición desde depósito`,
+                    isChecked: false
+                }
+            });
         });
 
         revalidatePath("/admin/repuestos");
@@ -449,7 +474,7 @@ export async function decrementStockLocal(id: string) {
                         isChecked: false
                     }
                 });
-
+            } else {
                 // FALLBACK for Admins without Branch
                 // We need *some* branch ID to satisfy the DB constraint.
                 // We fetch the first available branch (usually Maccell 1).
@@ -498,35 +523,8 @@ export async function getSparePartsHistory({
         const where: any = {};
 
         if (date) {
-            // Adjust for timezone if needed, or just match the day in general
-            // Date string comes as YYYY-MM-DD
-            const start = new Date(date);
-            // Fix timezone offset issues by treating it as local or UTC?
-            // "date" usually implies local date selected in picker.
-            // Let's assume start of day 00:00 to 23:59 local time (server time).
-            // But server is UTC-3 likely.
-            // If date is "2024-02-03", new Date("2024-02-03") is UTC 00:00.
-            // If we want Argentina time, we need to be careful.
-            // Simplified: Filter by >= date T00:00 and <= date T23:59
-
-            // To ensure we cover the full day regardless of timezone shifts:
-            const startDate = new Date(date);
-            // set to 00:00 UTC?
-            startDate.setUTCHours(0, 0, 0, 0);
-            // Actually, Prisma stores DateTime as UTC. 
-            // If user selects "Today" in Argentina, it matches a range in UTC.
-            // For simplicity, we'll try to match the date string part logic if possible?
-            // No, Prisma doesn't support generic string matching easily on DateTime.
-
-            // Better approach:
-            // Input date "2024-02-03". 
-            // Start: 2024-02-03T00:00:00.000 (Local/UTC?)
-            // We'll construct ranges.
-
-            // If we assume the input is YYYY-MM-DD
-            const startOfDay = new Date(`${date}T00:00:00`);
-            const endOfDay = new Date(`${date}T23:59:59.999`);
-
+            // Use Argentina timezone-aware range to correctly filter the full local day
+            const { start: startOfDay, end: endOfDay } = getDailyRange(date);
             where.createdAt = {
                 gte: startOfDay,
                 lte: endOfDay
@@ -689,10 +687,10 @@ export async function getSparePartsForBuyReport(categoryId: string) {
             }
         });
 
-        // Calculate quantity to buy
+        // Calculate quantity to buy based on the part's own maxStockLocal target
         const reportData = spareParts.map(part => ({
             ...part,
-            quantityToBuy: Math.max(0, 10 - part.stockLocal)
+            quantityToBuy: Math.max(0, part.maxStockLocal - part.stockLocal)
         }));
 
         return { success: true, data: reportData };

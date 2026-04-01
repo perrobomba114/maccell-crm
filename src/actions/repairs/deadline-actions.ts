@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function checkUpcomingDeadlines(userId: string) {
     if (!userId) return [];
@@ -47,6 +48,11 @@ export async function checkUpcomingDeadlines(userId: string) {
 }
 
 export async function extendRepairTime(repairId: string, technicianId: string, minutes: number = 15) {
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, error: "No autorizado" };
+
+    if (minutes <= 0) return { success: false, error: "Los minutos deben ser mayor a 0" };
+
     try {
         const repair = await db.repair.findUnique({
             where: { id: repairId },
@@ -54,6 +60,8 @@ export async function extendRepairTime(repairId: string, technicianId: string, m
         });
 
         if (!repair) return { success: false, error: "Reparación no encontrada" };
+
+        if (!repair.promisedAt) return { success: false, error: "La reparación no tiene fecha prometida" };
 
         const oldPromisedAt = repair.promisedAt;
         const newPromisedAt = new Date(oldPromisedAt.getTime() + minutes * 60000);

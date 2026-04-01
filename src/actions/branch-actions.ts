@@ -2,6 +2,7 @@
 
 import { db as prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function getAllBranches() {
     try {
@@ -34,6 +35,10 @@ export async function createBranch(data: {
     phone?: string;
     imageUrl?: string;
 }) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         // Check if code already exists
         const existingBranch = await prisma.branch.findUnique({
@@ -72,6 +77,10 @@ export async function updateBranch(
         imageUrl?: string;
     }
 ) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         // If code is being updated, check if it's already in use by another branch
         if (data.code) {
@@ -104,6 +113,10 @@ export async function updateBranch(
 }
 
 export async function deleteBranch(id: string) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         await prisma.branch.delete({
             where: { id },

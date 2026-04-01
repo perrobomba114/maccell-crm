@@ -121,6 +121,8 @@ export async function getExpensesAction({
 export async function updateExpenseAction(id: string, data: { amount: number; description: string }) {
     try {
         if (!id) return { success: false, error: "ID de gasto requerido" };
+        if (!data.amount || data.amount <= 0) return { success: false, error: "El monto debe ser mayor a 0" };
+        if (!data.description || data.description.trim().length < 3) return { success: false, error: "Descripción inválida" };
 
         await db.expense.update({
             where: { id },

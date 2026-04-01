@@ -1,7 +1,7 @@
 "use server";
 
 import { db as prisma } from "@/lib/db";
-import { getMonthlyRange } from "@/lib/date-utils";
+import { getMonthlyRange, getArgentinaDate } from "@/lib/date-utils";
 
 
 
@@ -21,9 +21,9 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
         const referenceDateStr = date ? date.toISOString().split('T')[0] : undefined;
         const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange(referenceDateStr);
 
-        // Last Month
-        const refDate = date || new Date();
-        const lastMonthDate = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
+        // Last Month — use AR timezone as reference to avoid UTC boundary issues
+        const refAr = date ? date : getArgentinaDate();
+        const lastMonthDate = new Date(refAr.getFullYear(), refAr.getMonth() - 1, 1);
         const lastMonthStr = lastMonthDate.toISOString().split('T')[0];
         const { start: firstDayOfLastMonth, end: lastDayOfLastMonth } = getMonthlyRange(lastMonthStr);
 
@@ -350,9 +350,9 @@ export async function getBranchStats(branchId?: string, date?: Date) {
         const referenceDateStr = date ? date.toISOString().split('T')[0] : undefined;
         const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange(referenceDateStr);
 
-        // Last Month
-        const refDate = date || new Date();
-        const lastMonthDate = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
+        // Last Month — use AR timezone as reference to avoid UTC boundary issues
+        const refAr = date ? date : getArgentinaDate();
+        const lastMonthDate = new Date(refAr.getFullYear(), refAr.getMonth() - 1, 1);
         const lastMonthStr = lastMonthDate.toISOString().split('T')[0];
         const { start: firstDayOfLastMonth, end: lastDayOfLastMonth } = getMonthlyRange(lastMonthStr);
 

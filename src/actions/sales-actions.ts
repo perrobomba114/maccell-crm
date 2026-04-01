@@ -70,7 +70,7 @@ export async function getSales(filters?: {
                 payments: true,
             },
             orderBy: { createdAt: "desc" },
-            take: 50, // Pagination later if needed
+            take: 500,
         });
 
         console.log(`Found ${sales.length} sales`);
@@ -154,7 +154,7 @@ export async function updateSalePaymentMethod(saleId: string, newMethod: "CASH" 
     }
 }
 
-export async function requestPaymentMethodChange(saleId: string, newMethod: "CASH" | "CARD" | "MERCADOPAGO" | "TRANSFER") {
+export async function requestPaymentMethodChange(saleId: string, newMethod: "CASH" | "CARD" | "MERCADOPAGO") {
     const user = await getCurrentUser();
     if (!user) return { success: false, error: "No autorizado" };
 
@@ -174,8 +174,7 @@ export async function requestPaymentMethodChange(saleId: string, newMethod: "CAS
         const methodLabels: any = {
             "CASH": "Efectivo",
             "CARD": "Tarjeta",
-            "MERCADOPAGO": "MercadoPago",
-            "TRANSFER": "Transferencia"
+            "MERCADOPAGO": "MercadoPago"
         };
         const label = methodLabels[newMethod] || newMethod;
 

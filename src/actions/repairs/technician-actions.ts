@@ -22,12 +22,6 @@ export async function takeRepairAction(repairId: string, technicianId: string) {
             return { success: false, error: "Ya está asignada" };
         }
 
-        // 1. takeRepairAction: REMOVE assignedUserId
-        const oldRepair = await db.repair.findUnique({
-            where: { id: repairId },
-            select: { statusId: true }
-        });
-
         await db.repair.update({
             where: { id: repairId },
             data: {
@@ -35,7 +29,7 @@ export async function takeRepairAction(repairId: string, technicianId: string) {
                 statusId: 2, // Tomado por Técnico
                 statusHistory: {
                     create: {
-                        fromStatusId: oldRepair?.statusId,
+                        fromStatusId: repair.statusId, // reuse already-fetched repair
                         toStatusId: 2,
                         userId: technicianId
                     }
@@ -102,12 +96,10 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
         const isReactivation = repair.statusId === 7 || repair.statusId === 8 || repair.statusId === 9;
         const targetStatusId = (updatePromisedDate || isReactivation) ? 3 : 4;
 
-        await db.$transaction(async (tx) => {
-            const oldRepair = await tx.repair.findUnique({
-                where: { id: repairId },
-                select: { statusId: true }
-            });
+        // Fetch currentUser once before the transaction to avoid N redundant DB calls inside the loop
+        const currentUser = await getCurrentUser();
 
+        await db.$transaction(async (tx) => {
             await tx.repair.update({
                 where: { id: repairId },
                 data: {
@@ -121,7 +113,7 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
                     ...(newPromisedAt ? { promisedAt: newPromisedAt } : {}),
                     statusHistory: {
                         create: {
-                            fromStatusId: oldRepair?.statusId,
+                            fromStatusId: repair.statusId,
                             toStatusId: targetStatusId,
                             userId: technicianId
                         }
@@ -132,6 +124,15 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
             // Handle New Parts
             if (parts.length > 0) {
                 for (const part of parts) {
+                    // Validate stock before decrementing to prevent negative stock
+                    const sparePart = await tx.sparePart.findUnique({
+                        where: { id: part.id },
+                        select: { stockLocal: true }
+                    });
+                    if (!sparePart || sparePart.stockLocal < 1) {
+                        throw new Error(`Sin stock suficiente para el repuesto: ${part.name}`);
+                    }
+
                     await tx.repairPart.create({
                         data: {
                             repairId,
@@ -149,7 +150,6 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
                     });
 
                     // Log History
-                    const currentUser = await getCurrentUser();
                     if (currentUser && currentUser.branch) {
                         await (tx as any).sparePartHistory.create({
                             data: {
@@ -518,7 +518,7 @@ export async function finishRepairAction(formData: FormData) {
                         userId: admin.id,
                         title: "Nueva Devolución de Repuestos",
                         message: `${techName} ha solicitado devolver ${partsSnapshot.length} repuestos de la reparación #${repair.ticketNumber}.`,
-                        type: "INFO",
+                        type: "ACTION_REQUEST",
                         link: "/admin/returns"
                     })
                 ));
@@ -675,7 +675,7 @@ export async function createSinglePartReturnAction(repairPartId: string, technic
                 userId: admin.id,
                 title: "Devolución de Repuesto (Inmediata)",
                 message: `${techName} devolvió ${repairPart.sparePart.name} de la reparación #${repair.ticketNumber}.`,
-                type: "INFO",
+                type: "ACTION_REQUEST",
                 link: "/admin/returns"
             })
         ));
@@ -706,8 +706,20 @@ export async function addPartToRepairAction(repairId: string, technicianId: stri
             return { success: false, error: "No tienes asignada esta reparación" };
         }
 
+        // Fetch currentUser once before the transaction to avoid N redundant DB calls inside the loop
+        const currentUser = await getCurrentUser();
+
         await db.$transaction(async (tx) => {
             for (const part of parts) {
+                // Validate stock before decrementing to prevent negative stock
+                const sparePart = await tx.sparePart.findUnique({
+                    where: { id: part.id },
+                    select: { stockLocal: true }
+                });
+                if (!sparePart || sparePart.stockLocal < 1) {
+                    throw new Error(`Sin stock suficiente para el repuesto: ${part.name}`);
+                }
+
                 // Create RepairPart
                 await tx.repairPart.create({
                     data: {
@@ -726,7 +738,6 @@ export async function addPartToRepairAction(repairId: string, technicianId: stri
                 });
 
                 // Log History
-                const currentUser = await getCurrentUser();
                 if (currentUser && currentUser.branch) {
                     await (tx as any).sparePartHistory.create({
                         data: {

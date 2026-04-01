@@ -1,5 +1,5 @@
-// ... (imports remain)
 import { db } from "@/lib/db";
+import { getMonthlyRange, getDailyRange } from "@/lib/date-utils";
 
 interface GetInvoicesOptions {
     page?: number;
@@ -17,17 +17,15 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
 
     if (date) {
         if (date.length === 7) {
-            // Month Filter: YYYY-MM
-            const [year, month] = date.split('-').map(Number);
-            // Construct Start of Month (Local/GMT-3 consideration: simplified to string)
-            // "2024-02-01T00:00:00"
-            start = new Date(`${date}-01T00:00:00`);
-            // End of Month: Day 0 of next month
-            end = new Date(year, month, 0, 23, 59, 59, 999);
+            // Month Filter: YYYY-MM — use AR timezone-aware monthly range
+            const range = getMonthlyRange(`${date}-01`);
+            start = range.start;
+            end = range.end;
         } else {
-            // Day Filter: YYYY-MM-DD
-            start = new Date(`${date}T00:00:00-03:00`);
-            end = new Date(`${date}T23:59:59.999-03:00`);
+            // Day Filter: YYYY-MM-DD — use AR timezone-aware daily range
+            const range = getDailyRange(date);
+            start = range.start;
+            end = range.end;
         }
 
         // Validate

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { startOfDay, endOfDay } from "date-fns";
+import { getDailyRange, getArgentinaDate } from "@/lib/date-utils";
 
 export interface TechnicianPerformance {
     id: string;
@@ -10,10 +10,12 @@ export interface TechnicianPerformance {
     avgTime: string;
 }
 
-export async function getTechnicianPerformance(date: Date = new Date()) {
+export async function getTechnicianPerformance(date: Date = getArgentinaDate()) {
     try {
-        const start = startOfDay(date);
-        const end = endOfDay(date);
+        // Use AR timezone-aware range so day boundaries match Argentina local time
+        const { start, end } = getDailyRange(
+            date.toISOString().split('T')[0]
+        );
 
         // Fetch technicians (Role: TECHNICIAN)
         const techs = await db.user.findMany({

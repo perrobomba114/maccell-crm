@@ -3,9 +3,16 @@
 import { db as prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import * as bcrypt from "bcryptjs";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function updateUserPassword(userId: string, currentPassword: string, newPassword: string) {
     try {
+        const caller = await getCurrentUser();
+        // Only the user themselves or an admin can change a password
+        if (!caller || (caller.id !== userId && caller.role !== "ADMIN")) {
+            return { success: false, error: "No autorizado" };
+        }
+
         const user = await prisma.user.findUnique({
             where: { id: userId },
         });
@@ -29,8 +36,6 @@ export async function updateUserPassword(userId: string, currentPassword: string
             },
         });
 
-        // revalidatePath needed? Not strictly since it's auth/profile state.
-
         return { success: true };
     } catch (error) {
         console.error("Update password error:", error);
@@ -40,6 +45,12 @@ export async function updateUserPassword(userId: string, currentPassword: string
 
 export async function updateUserImage(userId: string, imageUrl: string) {
     try {
+        const caller = await getCurrentUser();
+        // Only the user themselves or an admin can change a profile image
+        if (!caller || (caller.id !== userId && caller.role !== "ADMIN")) {
+            return { success: false, error: "No autorizado" };
+        }
+
         await prisma.user.update({
             where: { id: userId },
             data: {

@@ -4,8 +4,13 @@ import { Role } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { db as prisma } from "@/lib/db";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function getAllUsers() {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         const users = await prisma.user.findMany({
             include: {
@@ -57,6 +62,10 @@ export async function createUser(data: {
     role: Role;
     branchId?: string | null;
 }) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         // Validate that vendors must have a branch
         if (data.role === "VENDOR" && !data.branchId) {
@@ -113,6 +122,10 @@ export async function updateUser(
         branchId?: string | null;
     }
 ) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         // Get current user data
         const currentUser = await prisma.user.findUnique({
@@ -188,6 +201,10 @@ export async function updateUser(
 }
 
 export async function deleteUser(id: string) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         await prisma.user.delete({
             where: { id },

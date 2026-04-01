@@ -257,14 +257,19 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
     const confirmDelete = async () => {
         if (!productToDelete) return;
 
-        const res = await deleteProduct(productToDelete);
-        if (res.success) {
-            toast.success("Producto eliminado");
-            router.refresh();
-        } else {
-            toast.error(res.error);
+        try {
+            const res = await deleteProduct(productToDelete);
+            if (res.success) {
+                toast.success("Producto eliminado");
+                router.refresh();
+            } else {
+                toast.error(res.error || "Error al eliminar producto");
+            }
+        } catch (error) {
+            toast.error("Error inesperado al eliminar producto");
+        } finally {
+            setProductToDelete(null);
         }
-        setProductToDelete(null);
     };
 
     const handleCreate = () => {

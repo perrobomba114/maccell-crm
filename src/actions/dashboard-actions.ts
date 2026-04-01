@@ -2,6 +2,7 @@
 
 import { db as prisma } from "@/lib/db";
 import { getDailyRange, getMonthlyRange, getLastDaysRange, getArgentinaDate } from "@/lib/date-utils";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 // Admin Dashboard Stats - Unified Executive Version
 // --- Granular Data Fetching for Streaming ---
@@ -24,7 +25,7 @@ export async function getSalesAnalytics(branchId?: string) {
         const [salesCurrentMonth, revenueAgg, salesLastMonthAgg, stockAlertsRaw, repairOutput, salesLastMonthDetailed] = await Promise.all([
             // Sales for Analysis
             prisma.sale.findMany({
-                where: { ...branchFilter, createdAt: { gte: firstDayOfMonth } },
+                where: { ...branchFilter, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
                 include: {
                     items: {
                         include: {
@@ -35,7 +36,7 @@ export async function getSalesAnalytics(branchId?: string) {
                 }
             }),
             // Revenue Current Month
-            prisma.sale.aggregate({ where: { ...branchFilter, createdAt: { gte: firstDayOfMonth } }, _sum: { total: true } }),
+            prisma.sale.aggregate({ where: { ...branchFilter, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } }, _sum: { total: true } }),
             // Revenue Last Month Aggregate (for basic ref)
             prisma.sale.aggregate({ where: { ...branchFilter, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } }, _sum: { total: true } }),
             // Stock Alerts
@@ -198,7 +199,11 @@ export async function getSalesAnalytics(branchId?: string) {
 
 export async function getRepairAnalytics(branchId?: string, date?: Date) {
     try {
-        const branchFilter = branchId ? { branchId } : {};
+        const caller = await getCurrentUser();
+        if (!caller || (caller.role !== "ADMIN" && caller.role !== "VENDOR")) return { repairs: { active: 0, technicians: [], frequentParts: [], monthlyStatusDistribution: [] } };
+        // Vendors can only see their own branch
+        const resolvedBranchId = caller.role === "VENDOR" ? (caller.branch?.id ?? branchId) : branchId;
+        const branchFilter = resolvedBranchId ? { branchId: resolvedBranchId } : {};
 
         // Handle optional input date for "Reference Month"
         // If date is provided, use it to get that month's range. Else current month.
@@ -438,7 +443,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
                         { vendorId },
                         { branchId, saleNumber: { startsWith: 'H' } }
                     ],
-                    createdAt: { gte: firstDayOfMonth }
+                    createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
                 }
             }),
             // Total Revenue (Month)
@@ -448,7 +453,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
                         { vendorId },
                         { branchId, saleNumber: { startsWith: 'H' } }
                     ],
-                    createdAt: { gte: firstDayOfMonth }
+                    createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
                 },
                 _sum: { total: true }
             }),
@@ -508,7 +513,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
         const repairSales = await prisma.sale.findMany({
             where: {
                 vendorId, // Sold by this vendor
-                createdAt: { gte: firstDayOfMonth },
+                createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
                 items: {
                     some: {
                         repairId: { not: null }
@@ -572,7 +577,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
                         { vendorId },
                         { branchId, saleNumber: { startsWith: 'H' } }
                     ],
-                    createdAt: { gte: firstDayOfMonth }
+                    createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
                 },
                 productId: { not: null } // Only products, not repairs
             },
@@ -741,9 +746,20 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
 
 export async function getTechnicianStats(technicianId: string) {
     try {
+        const caller = await getCurrentUser();
+        if (!caller) return null;
+        // Only the technician themselves or an admin can view these stats
+        if (caller.role !== "ADMIN" && caller.id !== technicianId) return null;
+
         const { start: todayStart } = getDailyRange();
         const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange();
         const { start: sevenDaysStart } = getLastDaysRange(6);
+
+        // Last month range using AR timezone (same pattern as getSalesAnalytics)
+        const nowAr = getArgentinaDate();
+        const lastMonthAr = new Date(nowAr.getFullYear(), nowAr.getMonth() - 1, 1);
+        const lastMonthStr = lastMonthAr.toISOString().split('T')[0];
+        const { start: lastMonthStart, end: lastMonthEnd } = getMonthlyRange(lastMonthStr);
 
         // 1. Fetch Key Counts and Distributions
         const [pendingRepairsCount, activeRepairsCount, completedToday, completedMonth, statusDist, finishedLast30, completedLastMonth] = await Promise.all([
@@ -766,16 +782,12 @@ export async function getTechnicianStats(technicianId: string) {
                     warrantyRepairs: { select: { id: true } } // Check if it generated warranties
                 }
             }),
-            // NEW: Completed Last Month for comparison
-            // Use same lastMonth logic as above
+            // Completed Last Month for comparison — AR timezone-aware range
             prisma.repair.count({
                 where: {
                     assignedUserId: technicianId,
                     statusId: { in: [5, 6, 7, 10] },
-                    finishedAt: {
-                        gte: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), // Naive rough estimation for now or ideally use getMonthlyRange w/ date
-                        lt: firstDayOfMonth
-                    }
+                    finishedAt: { gte: lastMonthStart, lte: lastMonthEnd }
                 }
             })
         ]);

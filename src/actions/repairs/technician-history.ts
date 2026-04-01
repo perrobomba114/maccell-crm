@@ -1,8 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function getTechnicianHistory(userId: string, page: number = 1, pageSize: number = 25, query: string = "") {
+    const caller = await getCurrentUser();
+    if (!caller || (caller.role !== "ADMIN" && caller.id !== userId)) {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         const skip = (page - 1) * pageSize;
 

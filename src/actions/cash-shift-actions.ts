@@ -4,6 +4,8 @@ import { db as prisma } from "@/lib/db";
 import { CashShift } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getDailyRange, getMonthlyRange, getArgentinaDate } from "@/lib/date-utils";
+import { formatInTimeZone } from "date-fns-tz";
+const TIMEZONE = "America/Argentina/Buenos_Aires";
 
 export type CashShiftWithDetails = CashShift & {
     branch: { name: string };
@@ -41,8 +43,8 @@ export async function getCashShifts(
         }
 
         if (date) {
-            // Use timezone-aware daily range
-            const dateStr = date.toISOString().split('T')[0]; // Safe if date passed is nominal
+            // Convert to Argentina local date to avoid UTC day-boundary shift
+            const dateStr = formatInTimeZone(date, TIMEZONE, "yyyy-MM-dd");
             const { start, end } = getDailyRange(dateStr);
 
             whereClause.startTime = {
@@ -108,7 +110,8 @@ export async function getDeepCashShiftsForDate(
     date: Date,
     branchId?: string
 ): Promise<CashShiftWithDetails[]> {
-    const dateStr = date.toISOString().split('T')[0];
+    // Convert to Argentina local date to avoid UTC day-boundary shift
+    const dateStr = formatInTimeZone(date, TIMEZONE, "yyyy-MM-dd");
     const { start: startOfDay, end: endOfDay } = getDailyRange(dateStr);
 
     const shifts = await getCashShiftsInRangeOptimized(startOfDay, endOfDay, branchId);
@@ -459,11 +462,12 @@ export async function updateCashShiftDate(shiftId: string, newDate: Date) {
 
         await prisma.$transaction(async (tx) => {
             // 1. Move related Sales
+            const shiftUpperBound = shift.endTime || new Date();
             const sales = await tx.sale.findMany({
                 where: {
                     branchId: shift.branchId,
                     vendorId: shift.userId,
-                    createdAt: { gte: shift.startTime, lte: shift.endTime || undefined }
+                    createdAt: { gte: shift.startTime, lte: shiftUpperBound }
                 }
             });
 
@@ -483,7 +487,7 @@ export async function updateCashShiftDate(shiftId: string, newDate: Date) {
                     where: {
                         branchId: shift.branchId,
                         userId: shift.userId,
-                        createdAt: { gte: shift.startTime, lte: shift.endTime || undefined }
+                        createdAt: { gte: shift.startTime, lte: shiftUpperBound }
                     }
                 });
 

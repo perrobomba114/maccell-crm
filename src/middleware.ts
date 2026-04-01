@@ -74,8 +74,8 @@ export function middleware(request: NextRequest) {
             sessionRole !== "VENDOR" &&
             sessionRole !== "ADMIN"
         ) {
-            // Allow TECHNICIAN to access /vendor/stock
-            if (sessionRole === "TECHNICIAN" && pathname.startsWith("/vendor/stock")) {
+            // Allow TECHNICIAN to access /vendor/stock (exact path only)
+            if (sessionRole === "TECHNICIAN" && (pathname === "/vendor/stock" || pathname.startsWith("/vendor/stock/"))) {
                 // Allowed
             } else {
                 return NextResponse.redirect(

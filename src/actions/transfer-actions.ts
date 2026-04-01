@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function createStockTransfer(data: {
     productId: string;
@@ -12,6 +13,9 @@ export async function createStockTransfer(data: {
     userId: string;
 }) {
     const { productId, sourceBranchId, targetBranchId, quantity, notes, userId } = data;
+
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, error: "No autorizado" };
 
     if (quantity <= 0) return { success: false, error: "La cantidad debe ser mayor a 0." };
 
@@ -137,6 +141,8 @@ export async function getPendingTransfers(branchId: string) {
 }
 
 export async function respondToTransfer(transferId: string, action: "ACCEPT" | "REJECT", userId: string) {
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, error: "No autorizado" };
     try {
         const transfer = await db.stockTransfer.findUnique({
             where: { id: transferId },
@@ -220,6 +226,8 @@ export async function respondToTransfer(transferId: string, action: "ACCEPT" | "
 // ADMIN ACTIONS
 
 export async function getAllTransfersAdmin() {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
     try {
         const transfers = await db.stockTransfer.findMany({
             include: {
@@ -251,6 +259,9 @@ export async function updateTransferAdmin(data: {
     adminId: string;
 }) {
     const { id, quantity, notes, status, adminId } = data;
+
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
 
     try {
         const transfer = await db.stockTransfer.findUnique({
@@ -365,6 +376,8 @@ export async function updateTransferAdmin(data: {
 }
 
 export async function deleteTransferAdmin(id: string) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
     try {
         const transfer = await db.stockTransfer.findUnique({
             where: { id },

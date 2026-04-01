@@ -2,6 +2,7 @@
 
 import { db as prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function getProducts(filters?: {
     search?: string;
@@ -131,6 +132,10 @@ export async function createProduct(data: {
     description?: string;
     stocks?: { branchId: string; quantity: number }[];
 }) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         // Check if SKU exists
         const existing = await prisma.product.findUnique({
@@ -189,6 +194,10 @@ export async function updateProduct(id: string, data: {
     price?: number;
     stocks?: { branchId: string; quantity: number }[];
 }) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         const { stocks, ...updateData } = data;
 
@@ -266,6 +275,10 @@ export async function updateProduct(id: string, data: {
 }
 
 export async function deleteProduct(id: string) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         // Soft delete
         await prisma.product.update({
@@ -337,6 +350,10 @@ export type ProductImportRow = {
 };
 
 export async function bulkUpsertProducts(products: ProductImportRow[]) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado" };
+    }
     try {
         const categories = await prisma.category.findMany();
         const categoryMap = new Map(categories.map(c => [c.name.toLowerCase(), c.id]));

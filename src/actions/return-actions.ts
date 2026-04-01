@@ -122,8 +122,8 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
 
                 // Log History
                 for (const part of restoredParts) {
-                    // Ensure we have a valid sparePartId and quantity
-                    if (part.sparePartId && part.quantity) {
+                    // Ensure we have a valid sparePartId and positive quantity
+                    if (part.sparePartId && part.quantity > 0) {
                         await (tx as any).sparePartHistory.create({
                             data: {
                                 sparePartId: part.sparePartId,
@@ -206,7 +206,7 @@ export async function createReturnRequestAction(repairId: string, technicianId: 
                 userId: admin.id,
                 title: "Nueva Solicitud de Devolución",
                 message: `${techName} ha solicitado devolver repuestos de la reparación #${repair?.ticketNumber || '?'}.`,
-                type: "alert",
+                type: "ACTION_REQUEST",
                 link: "/admin/returns"
             })
         ));
