@@ -136,7 +136,12 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
                 };
 
                 const isCreatedToday = isSameDay(repair.createdAt);
-                const isFinishedToday = isSameDay(repair.finishedAt);
+                
+                // Use statusHistory to cleanly identify if it was moved to a DONE status today
+                const isFinishedToday = repair.statusHistory?.some((h: any) => 
+                    [5, 6, 7].includes(h.toStatusId) && isSameDay(h.createdAt)
+                ) || false;
+
                 const isKPIStatus = [5, 6, 7, 10].includes(repair.statusId);
 
                 if (techParam) {

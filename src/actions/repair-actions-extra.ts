@@ -1,7 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getDailyRange, getArgentinaDate } from "@/lib/date-utils";
+import { formatInTimeZone } from "date-fns-tz";
+import { getDailyRange, getArgentinaDate, TIMEZONE } from "@/lib/date-utils";
 
 export interface TechnicianPerformance {
     id: string;
@@ -12,10 +13,11 @@ export interface TechnicianPerformance {
 
 export async function getTechnicianPerformance(date: Date = getArgentinaDate()) {
     try {
-        // Use AR timezone-aware range so day boundaries match Argentina local time
-        const { start, end } = getDailyRange(
-            date.toISOString().split('T')[0]
-        );
+        // Use AR timezone-aware string format so day boundaries match Argentina local time
+        // Using date.toISOString() causes late-night AR times (e.g. 21:30) to overflow into tomorrow in UTC
+        const dateStr = formatInTimeZone(date, TIMEZONE, "yyyy-MM-dd");
+        
+        const { start, end } = getDailyRange(dateStr);
 
         // Fetch technicians (Role: TECHNICIAN)
         const techs = await db.user.findMany({
