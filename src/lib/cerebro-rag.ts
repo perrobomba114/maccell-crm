@@ -184,18 +184,60 @@ async function keywordSearch(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Query Expansion — enriquece la query con sinónimos técnicos del taller
+// ─────────────────────────────────────────────────────────────────────────────
+function expandQuery(query: string): string {
+    const lower = query.toLowerCase();
+    const expansions: string[] = [query];
+
+    // Síntomas → términos técnicos equivalentes
+    const map: [RegExp, string][] = [
+        [/no enciende|no prende|muerto|dead/,        'no enciende boot rail VDD_MAIN PMIC'],
+        [/no carga|no cobra|no charge/,              'no carga VBUS Tristar Hydra USB carga IC'],
+        [/pantalla negra|sin imagen|no display/,     'pantalla negra backlight LCD OLED VSP VSN display'],
+        [/pantalla rota|vidrio roto|crack/,          'pantalla rota módulo LCD display reemplazo'],
+        [/reinicia|bootloop|loop|rebota/,            'reinicia bootloop PMIC CPU RAM error arranque'],
+        [/no tiene señal|sin señal|no network/,      'sin señal baseband RF antena modem'],
+        [/wifi|bluetooth|bt /,                       'wifi bluetooth chip RF antena'],
+        [/cámara|camera|foto/,                       'cámara camera MIPI rail VDIG VANA'],
+        [/audio|sonido|speaker|micrófono/,           'audio speaker micrófono codec amplificador'],
+        [/tactil|touch|pantalla no responde/,        'táctil touch digitizer FPC'],
+        [/face id|face unlock|reconocimiento/,       'face ID IR dot projector infrarrojo'],
+        [/mojado|agua|humedad|wet/,                  'humedad agua corrosión limpieza oxidación'],
+        [/golpe|caída|drop|impacto/,                 'golpe impacto CPU desoldada reballing BGA'],
+        [/samsung/,                                  'Samsung Exynos Snapdragon PMIC'],
+        [/iphone/,                                   'iPhone Apple Tristar Hydra NAND CPU'],
+        [/xiaomi|redmi/,                             'Xiaomi Redmi MediaTek Snapdragon PMIC'],
+        [/moto/,                                     'Motorola Moto Snapdragon UFS eMMC'],
+        [/huawei/,                                   'Huawei HiSilicon Kirin'],
+        [/realme|oppo/,                              'Realme OPPO MTK Dimensity'],
+    ];
+
+    for (const [pattern, expansion] of map) {
+        if (pattern.test(lower)) {
+            expansions.push(expansion);
+        }
+    }
+
+    // Deduplicar y unir
+    const unique = [...new Set(expansions.join(' ').split(' '))];
+    return unique.slice(0, 30).join(' '); // máx 30 tokens para el embedding
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FUNCIÓN PRINCIPAL — Búsqueda híbrida
 // ─────────────────────────────────────────────────────────────────────────────
 export async function findSimilarRepairs(
     userMessage: string,
-    limit = 5,
-    minSimilarity = 0.60
+    limit = 7,
+    minSimilarity = 0.55
 ): Promise<SimilarRepair[]> {
-    const embedding = await generateEmbedding(userMessage);
+    const expandedQuery = expandQuery(userMessage);
+    const embedding = await generateEmbedding(expandedQuery);
 
     const [semanticResults, keywordResults] = await Promise.allSettled([
         embedding ? semanticSearch(embedding, limit + 3, minSimilarity) : Promise.resolve([]),
-        keywordSearch(userMessage, limit + 3)
+        keywordSearch(expandedQuery, limit + 3)
     ]);
 
     const semantic = semanticResults.status === 'fulfilled' ? semanticResults.value : [];
@@ -265,11 +307,29 @@ export async function findSimilarRepairs(
 // ─────────────────────────────────────────────────────────────────────────────
 // Formateador de contexto para el prompt
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Extrae campos etiquetados del texto del documento indexado.
+ * Funciona con el formato: CAMPO: valor\n generado por cerebro-indexer.
+ */
+function parseRepairContent(text: string): { problema: string; diagnostico: string; solucion: string; repuestos: string } {
+    const extract = (label: string): string => {
+        const match = text.match(new RegExp(`${label}:\\s*([^\\n]+)`));
+        return match ? match[1].trim() : '';
+    };
+    return {
+        problema: extract('PROBLEMA'),
+        diagnostico: extract('DIAGNÓSTICO|DIAGNOSTICO'),
+        solucion: extract('SOLUCIÓN|SOLUCION'),
+        repuestos: extract('REPUESTOS'),
+    };
+}
+
 export function formatRAGContext(repairs: SimilarRepair[]): string {
-    const validRepairs = repairs.filter(r => r.similarity >= 0.65);
+    const validRepairs = repairs.filter(r => r.similarity >= 0.58);
     if (validRepairs.length === 0) return '';
 
-    const lines = validRepairs.map((r, i) => {
+    const lines = validRepairs.map((r) => {
         const isWiki = r.ticketNumber.startsWith('wiki_') || r.source === 'wiki';
         const status = r.status?.toLowerCase() || '';
 
@@ -278,11 +338,27 @@ export function formatRAGContext(repairs: SimilarRepair[]): string {
         else if (status.includes('ok')) label = '✅ CASO ÉXITO';
 
         const ref = isWiki ? r.ticketNumber.replace('wiki_', 'WIKI-') : r.ticketNumber;
+        const conf = Math.round(r.similarity * 100);
 
-        return `[${label} — Ref: ${ref}]
+        const parsed = parseRepairContent(r.contentText);
+        const hasStructure = parsed.problema || parsed.diagnostico || parsed.solucion;
+
+        if (hasStructure) {
+            const fieldLines: string[] = [
+                `[${label} — Ref: ${ref} | Confianza: ${conf}%]`,
+                `Equipo: ${r.deviceBrand} ${r.deviceModel}`,
+            ];
+            if (parsed.problema)    fieldLines.push(`Problema: ${parsed.problema}`);
+            if (parsed.diagnostico) fieldLines.push(`Diagnóstico: ${parsed.diagnostico}`);
+            if (parsed.solucion)    fieldLines.push(`Solución: ${parsed.solucion}`);
+            if (parsed.repuestos)   fieldLines.push(`Repuestos: ${parsed.repuestos}`);
+            return fieldLines.join('\n');
+        }
+
+        // Fallback al texto plano si no se pudieron extraer los campos
+        return `[${label} — Ref: ${ref} | Confianza: ${conf}%]
 Equipo: ${r.deviceBrand} ${r.deviceModel}
-Historia: ${r.contentText.slice(0, 800)}
-Confianza: ${Math.round(r.similarity * 100)}%`;
+Historia: ${r.contentText.slice(0, 900)}`;
     });
 
     return `\n\n### 📚 HISTORIAL DE REPARACIONES REALES (WIKI/Maccell)

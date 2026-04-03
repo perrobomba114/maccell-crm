@@ -33,7 +33,7 @@ export type PosRepair = {
 export async function searchProductsForPos(term: string, branchId: string): Promise<PosProduct[]> {
     const caller = await getCurrentUser();
     if (!caller) return [];
-    console.log(`[searchProductsForPos] Searching for "${term}" in branch "${branchId}"`);
+    console.log(`[searchProductsForPos] User: ${caller.name} (${caller.role}) | Branch: ${branchId} | Query: "${term}"`);
     if (!term || term.length < 2) return [];
 
     try {
@@ -82,7 +82,7 @@ export async function searchProductsForPos(term: string, branchId: string): Prom
 export async function searchRepairsForPos(term: string, branchId: string): Promise<PosRepair[]> {
     const caller = await getCurrentUser();
     if (!caller) return [];
-    console.log(`[searchRepairsForPos] Searching for "${term}" in branch "${branchId}"`);
+    console.log(`[searchRepairsForPos] User: ${caller.name} (${caller.role}) | Branch: ${branchId} | Query: "${term}"`);
     if (!term || term.length < 2) return [];
 
     try {
@@ -223,18 +223,13 @@ export async function processPosSale(data: {
         ivaCondition?: string;
     };
 }) {
-    console.log("[processPosSale] Starting sale processing...", {
-        total: data.total,
-        method: data.paymentMethod,
-        itemsCount: data.items?.length,
-        invoice: data.invoiceData
-    });
-
     const caller = await getCurrentUser();
     if (!caller) return { success: false, error: "No autorizado" };
     // Use authenticated user's IDs to prevent client spoofing
     const safeVendorId = caller.id;
     const safeBranchId = caller.branch?.id || data.branchId;
+
+    console.log(`[processPosSale] User: ${caller.name} (${caller.role}) | Branch: ${safeBranchId} | Total: $${data.total} | Items: ${data.items?.length} | Payment: ${data.paymentMethod}${data.invoiceData?.generate ? ` | Factura ${data.invoiceData.invoiceType}` : ''}`);
 
     if (!data.items || data.items.length === 0) {
         return { success: false, error: "El carrito está vacío." };

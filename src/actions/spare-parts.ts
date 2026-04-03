@@ -520,7 +520,10 @@ export async function getSparePartsHistory({
     date?: string // YYYY-MM-DD
 }) {
     try {
-        const where: any = {};
+        const where: any = {
+            // Excluir movimientos internos de admin — no son consumo real
+            NOT: { reason: 'Reposición desde depósito' }
+        };
 
         if (date) {
             // Use Argentina timezone-aware range to correctly filter the full local day

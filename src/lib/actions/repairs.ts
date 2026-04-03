@@ -176,6 +176,8 @@ export async function createRepairAction(formData: FormData) {
         const branchId = formData.get("branchId") as string;
         const userId = formData.get("userId") as string;
 
+        console.log(`[createRepairAction] User: ${caller.name} (${caller.role}) | Branch: ${branchId} | Ticket: ${ticketNumber}`);
+
         if (!ticketNumber || ticketNumber.trim().length === 0) {
             return { success: false, error: "Número de ticket requerido" };
         }
@@ -734,6 +736,8 @@ export async function updateRepairAction(formData: FormData) {
 
         const currentUser = await getCurrentUser();
         if (!currentUser) return { success: false, error: "No autorizado" };
+
+        console.log(`[updateRepairAction] User: ${currentUser.name} (${currentUser.role}) | Repair: ${repairId} | Status: ${statusId}`);
 
         await db.customer.update({
             where: { id: existingRepair.customerId },

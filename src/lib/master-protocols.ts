@@ -45,4 +45,18 @@ export const LEVEL3_MASTER_KNOWLEDGE = `
 - **Moto EDL (UFS):** Degradación prematura Exynos/UMCP. Error de escritura en flasheo.
 - **Samsung False Humidity:** Resistencia de sensado de humedad fugando. Limpieza química de IC de carga.
 - **Moto Power Button:** Micro-switch SMD sulfatado. Reemplazo a 300°C.
+
+#### 46-58. Fallas Críticas Xiaomi / Redmi / Realme (Mercado Masivo AR)
+- **Xiaomi/Redmi No Carga (USB-C):** Chip de carga (BQ25890/SMB1381). Rails: VBUS 5V → VSYS. Modo diodo en TP de carga: 400-500mV normal.
+- **Redmi Note 10/11 Loop de Arranque:** PMIC (PM6150). Rail VDD_CX caído. Reballing PMIC o jumper desde rail vecino.
+- **Xiaomi Backlight Muerto:** Driver LED (KTD2151). Bobina elevadora 30V. Medir en TP de ánodo LED: sin tensión = bobina abierta o FET de control.
+- **Realme C-series No Enciende:** Conector de batería FPC quemado (FPC 4-pin en placa). Bypass con jumper desde pad de batería.
+- **Redmi No Tiene Señal:** MT RF (MT6179/MT6635). Reballing necesario. Primero verificar antena NFC interferida.
+- **Xiaomi Face Unlock/IR Muerto:** Emisor IR en módulo frontal. Verificar con cámara trasera del otro teléfono (brillo morado = OK).
+- **Redmi Note 9/10 Pantalla Verde/Rayada:** VSP/VSN en flex de display. Igual a Samsung: +4.6V/-4.4V. Driver en placa principal.
+- **Realme/OPPO Auth Error (Pantalla):** IC de autenticación en display (como Apple). Swap físico o herramienta JC-V1S para clonar.
+- **Xiaomi Audio Muerto (Speaker):** Amplificador TAS5720/CS35L41. Verificar en modo diodo: 0.4V en OUT+ normal.
+- **Redmi Boot Loop MediaTek (BROM):** Error UFS/eMMC. Entrar BROM con cable USB sin batería. SP Flash Tool para reparar partición.
+- **Xiaomi Thermal Throttling:** Pasta térmica disecada (CPU bajo blindaje). Reemplazo crítico en Snapdragon 870/888.
+- **Realme/OPPO Cámara Error:** Bobina VDIG_CAM (1.0V) o VANA_CAM (2.8V) abierta. Medir en TP más cercano al módulo.
 `;

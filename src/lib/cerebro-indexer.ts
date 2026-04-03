@@ -39,6 +39,23 @@ export async function indexRepair(repair: {
     if (repair.parts?.length) {
         lines.push(`REPUESTOS: ${repair.parts.map(p => `${p.sparePart.name} (${p.sparePart.brand})`).join(', ')}`);
     }
+
+    // Detectar y agregar campo SOLUCIÓN desde diagnóstico u observaciones
+    const fixKeywords = ['reemplaz', 'realiz', 'sold', 'cambi', 'reballing', 'jumper', 'swap', 'arregl', 'recuper', 'reparar'];
+    let solucion = '';
+    if (repair.diagnosis) {
+        if (fixKeywords.some(k => repair.diagnosis!.toLowerCase().includes(k))) {
+            solucion = repair.diagnosis;
+        }
+    }
+    if (!solucion && repair.observations?.length) {
+        const lastObs = repair.observations[repair.observations.length - 1].content;
+        if (fixKeywords.some(k => lastObs.toLowerCase().includes(k))) {
+            solucion = lastObs;
+        }
+    }
+    if (solucion) lines.push(`SOLUCIÓN: ${solucion}`);
+
     const document = lines.join('\n');
 
     try {
@@ -99,18 +116,23 @@ export async function indexPendingRepairs(): Promise<void> {
             console.warn('[CEREBRO_INDEXER] pgvector no disponible, indexando todo en wiki text.');
         }
 
-        // Buscar reparaciones terminadas con diagnóstico
+        // Buscar reparaciones terminadas: con diagnóstico O con observaciones
+        // (más agresivo: cualquier reparación terminada con info útil)
         const pending = await db.repair.findMany({
             where: {
-                diagnosis: { not: null, notIn: [''] },
                 statusId: { in: [5, 6, 7, 8, 9, 10] }, // Estados: terminadas
                 NOT: { id: { in: Array.from(existingIds) } },
+                OR: [
+                    { diagnosis: { not: null, notIn: [''] } },
+                    { observations: { some: {} } },
+                    { parts: { some: {} } },
+                ],
             },
             include: {
                 observations: { select: { content: true } },
                 parts: { include: { sparePart: { select: { name: true, brand: true } } } },
             },
-            take: 30, // Procesar de a lotes para no saturar
+            take: 50, // Procesar más reparaciones por lote
         });
 
         if (pending.length === 0) {

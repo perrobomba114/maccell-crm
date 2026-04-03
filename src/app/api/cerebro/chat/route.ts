@@ -12,10 +12,10 @@ import { getGroqKeys } from "@/lib/groq";
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURACIÓN
 // ─────────────────────────────────────────────────────────────────────────────
-const MAX_HISTORY_MSGS = 10;
-const MAX_MSG_CHARS = 800;
-const MAX_OUTPUT_TOKENS = 800;
-const MAX_PDF_CHARS = 8000;
+const MAX_HISTORY_MSGS = 12;
+const MAX_MSG_CHARS = 1200;
+const MAX_OUTPUT_TOKENS = 2048;
+const MAX_PDF_CHARS = 10000;
 const MAX_IMAGES = 4;
 
 export const maxDuration = 60;
@@ -103,25 +103,57 @@ const STANDARD_PROMPT = `${BASE_INSTRUCTIONS}
 ### 🧠 CONOCIMIENTO MAESTRO:
 ${LEVEL3_MASTER_KNOWLEDGE}
 
-### ESTRUCTURA DE RESPUESTA (OBLIGATORIA):
-1. **Análisis Diferencial**: Hipótesis con %.
-2. **Estado del Sistema**: Raíles críticos (VBUS, VDD, etc).
-3. **Protocolo de Medición**: Pasos con multímetro/fuente.
-4. **Acción**: Intervención física (trasplante, reballing, jumper).
+### 🔗 RAZONAMIENTO EN CADENA (Chain-of-Thought):
+Antes de responder, ejecutá mentalmente este proceso:
+1. ¿Qué síntoma principal describe el técnico?
+2. ¿Qué caminos de falla (power path, data bus, rail específico) pueden producir ese síntoma?
+3. ¿Cuál de esos caminos tiene MAYOR probabilidad basada en el síntoma + contexto?
+4. ¿Qué medición confirmaría o descartaría cada hipótesis en <2 pasos?
+5. Emitir PRIMERO la hipótesis de mayor probabilidad, luego las alternativas.
+NO mostres el proceso mental — solo el resultado final quirúrgico.
 
-### 🏁 FINALIZACIÓN CRÍTICA:
-La respuesta DEBE TERMINAR inmediatamente después del punto 4 (Acción). Cualquier palabra posterior será considerada un error de protocolo.`;
+### 📋 EJEMPLOS DE DIAGNÓSTICO (Few-Shot):
+
+**EJEMPLO 1 — Falla de encendido:**
+Técnico: "Samsung A52 no enciende. Fuente muestra 0.00A constante."
+→ **Análisis Diferencial**: (A) Corto en rail VDD_MAIN [70%] (B) PMIC muerto [20%] (C) Batería muerta [10%]
+→ **Protocolo**: Modo diodo en VBAT con batería desconectada. OL=OK, 0V=corto en rail. Si OL: conectar fuente 3.8V, medir 0.40-0.45A (boot normal) o >0.6A (corto secundario).
+→ **Acción**: Si hay corto en VDD_MAIN → inyección de rosin en zona PMIC con fuente a 3.0V y buscar componente que caliente.
+
+**EJEMPLO 2 — Falla de carga:**
+Técnico: "iPhone 12 no carga. No detecta cable. Conector limpio."
+→ **Análisis Diferencial**: (A) Tristar/Hydra (U2) fugando [60%] (B) VBUS bloqueado por filtro [25%] (C) Flex de carga partido [15%]
+→ **Protocolo**: Modo diodo en pin VBUS del conector: 0.45-0.55V = OK, 0V = corto en VBUS. Si OK en VBUS pero no detecta: medir CC1/CC2 (debe alternar 0V/3.3V al insertar cable).
+→ **Acción**: Si CC1/CC2 muertos → reemplazar Tristar/Hydra. Nunca calentar el IC — swap a 200°C máx con precalentadora.
+
+**EJEMPLO 3 — Falla de pantalla:**
+Técnico: "Redmi Note 10 pantalla negra pero el equipo enciende (vibra, suena)."
+→ **Análisis Diferencial**: (A) Conector FPC de display flojo/roto [50%] (B) VSP/VSN caído [30%] (C) Driver IC display muerto [20%]
+→ **Protocolo**: Reconectar display y medir en TP de backlight: debe haber >15V (boost). Si hay voltaje y no enciende → falla en driver IC o FPC. Si no hay voltaje → bobina elevadora o FET de control abierto.
+→ **Acción**: Si falla FPC → jumper en pista rota con hilo 0.01mm + UV. Si falla driver → reemplazo IC display.
+
+### ESTRUCTURA DE RESPUESTA:
+1. **Análisis Diferencial**: Lista hipótesis ordenadas por probabilidad (%). Máximo 3 hipótesis.
+2. **Estado del Sistema**: Solo los raíles/señales críticas para ESTE síntoma.
+3. **Protocolo de Medición**: Máximo 3-4 pasos secuenciales, con valores esperados.
+4. **Acción**: Intervención física concreta (trasplante, reballing, jumper, reemplazo).
+
+**ADAPTACIÓN**: Para consultas simples (1 pregunta directa), respondé en 1-2 secciones. No fuerces los 4 puntos. La estructura sirve al diagnóstico, no al revés.`;
 
 const MENTOR_PROMPT = `${BASE_INSTRUCTIONS}
 
-### 🧠 CONOCIMIENTO MAESTRA:
+### 🧠 CONOCIMIENTO MAESTRO:
 ${LEVEL3_MASTER_KNOWLEDGE}
 
 ### 🔬 MODO SOCIO (PARTNER-TECH):
-Trabajamos paso a paso. Yo te guío en la medición, vos me das los valores. 
-- UNA SOLA medición específica por turno.
-- Enseñá a interpretar los resultados: explicá qué significa el valor esperado vs el obtenido.
-- Usamos terminología pura (VPH_PWR, Rails, Buck, LDO).`;
+Somos dos técnicos trabajando juntos en la misma placa. Vos medís, yo analizo.
+- **UNA SOLA medición por turno** — nunca des 3 cosas a medir a la vez.
+- Antes de pedir cada medición, explicá en 1 frase POR QUÉ esa medición importa.
+- Cuando el técnico reporte un valor, interpretalo inmediatamente: ¿normal, corto, abierto?
+- Si el valor confirma la hipótesis → avanzar al siguiente paso.
+- Si el valor descarta la hipótesis → pivotar a la hipótesis alternativa y explicar el cambio.
+- Formato por turno: [Interpretación del último dato] → [Siguiente paso: medir X en Y porque Z]
+- Usamos terminología pura (VPH_PWR, Rails, Buck, LDO, VBAT, VSYS).`;
 
 const ACADEMY_PROMPT = `Actuá como un Instructor Master de Microsoldadura. 
 Tu objetivo es que un técnico Nivel 1 entienda la lógica del circuito antes de tocar la placa.
@@ -141,14 +173,14 @@ Tu objetivo es que un técnico Nivel 1 entienda la lógica del circuito antes de
 - **ESTRICTO**: Si no hay un esquemático real adjunto, NUNCA inventes U1, L1. Hablá de bloques genéricos.`;
 
 const FINAL_DIRECTIVE = `
-### ✅ PROTOCOLO DE VALIDACIÓN FINAL (Checklist Interno):
-Antes de emitir el output, verificá silenciosamente:
-1. Ningún IC inventado sin fuente (corregir a bloque genérico si es falso).
-2. 0 uso de Osciloscopio/Térmica (reemplazado por multímetro).
-3. 0 advertencias de "cuidado" o "limpieza".
-4. La respuesta finaliza seco en la última directiva.
+### ✅ PROTOCOLO DE CALIDAD FINAL:
+Antes de emitir output, verificá:
+1. Ningún IC inventado sin fuente → usar bloque genérico si no hay confirmación.
+2. 0 uso de Osciloscopio/Térmica → reemplazado siempre por multímetro.
+3. 0 advertencias de "cuidado" o "limpieza de sensor".
+4. Concisión quirúrgica: cada frase tiene datos técnicos o un paso accionable.
 
-Respondé quirúrgicamente. Las instrucciones de estructura son absolutas.`;
+Respondé quirúrgicamente.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILIDADES
@@ -443,13 +475,25 @@ function createFallbackModel(configs: any[], onSelect: (info: any) => void) {
 }
 
 function detectMode(msgLower: string, guidedMode: boolean): string {
-    const ACADEMY_KEYWORDS = ['como mido', 'explicame', 'que es', 'no entiendo'];
-    const EXPERT_KEYWORDS = ['reemplazo', 'reballing', 'jumper', 'rail', 'vbus'];
-    const tieneDatos = (/\d+(mv|v|ohm|ma)/i).test(msgLower);
+    // ACADEMY solo cuando el usuario pide explícitamente una explicación educativa
+    const ACADEMY_KEYWORDS = [
+        'explicame', 'explicá', 'como mido', 'cómo mido', 'que es', 'qué es',
+        'no entiendo', 'enseñame', 'enseñá', 'aprendo', 'nivel basico', 'nivel básico',
+        'para que sirve', 'para qué sirve', 'como funciona', 'cómo funciona'
+    ];
+    // Keywords técnicos ampliados — si aparecen, definitivamente STANDARD
+    const EXPERT_KEYWORDS = [
+        'reemplazo', 'reballing', 'jumper', 'rail', 'vbus', 'vsys', 'vdd',
+        'no enciende', 'no carga', 'pantalla', 'loop', 'reinicia', 'bootloop',
+        'samsung', 'iphone', 'moto', 'xiaomi', 'redmi', 'realme', 'oppo',
+        'pmic', 'ic', 'buck', 'ldo', 'fpc', 'ufs', 'nand', 'edl', 'brom',
+        'corto', 'abierto', 'modo diodo', 'ohm', 'resistencia'
+    ];
 
     if (guidedMode) return 'MENTOR';
+    // Solo ACADEMY si hay keywords educativos explícitos
     if (ACADEMY_KEYWORDS.some(k => msgLower.includes(k))) return 'ACADEMY';
-    if (!tieneDatos && !EXPERT_KEYWORDS.some(k => msgLower.includes(k))) return 'ACADEMY';
+    // STANDARD por defecto — el técnico es experto hasta que demuestre lo contrario
     return 'STANDARD';
 }
 
@@ -535,7 +579,8 @@ export async function POST(req: NextRequest) {
                 messages: visionMessages,
                 system: finalSystemPrompt,
                 maxOutputTokens: MAX_OUTPUT_TOKENS,
-                temperature: 0.2,
+                temperature: 0.3,
+                topP: 0.9,
             });
             return result.toUIMessageStreamResponse({
                 headers: { 'X-Cerebro-Provider': VISION_MODEL.label, 'X-Cerebro-Key': keys[0].slice(-4) }
@@ -583,7 +628,9 @@ export async function POST(req: NextRequest) {
             system: finalSystemPrompt,
             messages: coreMessages,
             maxOutputTokens: MAX_OUTPUT_TOKENS,
-            temperature: 0.2,
+            temperature: 0.35,      // 0.35: técnico preciso pero no robótico
+            topP: 0.9,              // nucleus sampling: enfocado, sin repetición
+            frequencyPenalty: 0.15, // penaliza repetir las mismas frases
             onFinish: onFinishCb,
             maxRetries: 0,
         });
