@@ -249,14 +249,14 @@ async function normalizeHistory(messages: any[]): Promise<any[]> {
     const result: any[] = [];
     for (const m of messages) {
         let textContent = '';
-        if (typeof m.content === 'string' && m.content.trim()) textContent = m.content;
+        if (typeof m.content === 'string' && m.content?.trim()) textContent = m.content;
         if (Array.isArray(m.parts)) {
             textContent = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
         }
         if (Array.isArray(m.content)) {
             textContent = m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
         }
-        const finalText = truncate(textContent.trim());
+        const finalText = truncate(textContent?.trim() || '');
         result.push({ role: m.role, content: finalText || (m.role === 'user' ? 'Medición solicitada' : '...') });
     }
     return result;
@@ -278,11 +278,11 @@ async function parseLastMessage(msg: any): Promise<{ text: string, pdfTexts: str
             }
         }
     }
-    if (typeof msg.content === 'string' && msg.content.trim()) textContent = msg.content;
+    if (typeof msg.content === 'string' && msg.content?.trim()) textContent = msg.content;
     if (Array.isArray(msg.content)) {
         textContent = msg.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
     }
-    textContent = truncate(textContent.trim());
+    textContent = truncate(textContent?.trim() || '');
     return { text: textContent, pdfTexts };
 }
 
@@ -345,7 +345,7 @@ async function classifySymptom(text: string, groq: ReturnType<typeof createGroq>
 {"brand":"Samsung","model":"A52","symptoms":["reinicio"]}
 Texto: "${text.slice(0, 200)}"`
         });
-        const json = JSON.parse(result.trim());
+        const json = JSON.parse(result?.trim() || "{}");
         return `${json.brand} ${json.model} ${json.symptoms.join(' ')}`;
     } catch {
         return text;
@@ -388,15 +388,19 @@ JSON: {
 }`
         });
 
-        const diag = JSON.parse(result.trim());
+        const diag = JSON.parse(result?.trim() || "{}");
+        const symptoms: string[] = Array.isArray(diag.symptoms) ? diag.symptoms : [];
+        const checked: string[] = Array.isArray(diag.checked) ? diag.checked : [];
+        const ruledOut: string[] = Array.isArray(diag.ruledOut) ? diag.ruledOut : [];
+
         let diagString = `
 ### 🕵️ ESTADO DEL DIAGNÓSTICO:
 - **Dispositivo**: ${diag.device || 'Desconocido'}
-- **Síntomas**: ${diag.symptoms.join(', ')}
-- **Verificado**: ${diag.checked.join(', ') || 'Nada aún'}
+- **Síntomas**: ${symptoms.join(', ') || 'No detectados'}
+- **Verificado**: ${checked.join(', ') || 'Nada aún'}
 - **Sospecha**: ${diag.suspected || 'No determinada'}`;
 
-        if (diag.learningHistory && diag.learningHistory.length > 0) {
+        if (Array.isArray(diag.learningHistory) && diag.learningHistory.length > 0) {
             diagString += `\n\n### 🎓 HISTORIAL DE APRENDIZAJE:
 | Nivel | Concepto Aprendido | Medición Realizada |
 |-------|-------------------|-------------------|
@@ -491,6 +495,8 @@ function detectMode(msgLower: string, guidedMode: boolean): string {
     ];
 
     if (guidedMode) return 'MENTOR';
+    // Si hay keywords técnicos explícitos, forzar STANDARD (evitar falso ACADEMY)
+    if (EXPERT_KEYWORDS.some(k => msgLower.includes(k))) return 'STANDARD';
     // Solo ACADEMY si hay keywords educativos explícitos
     if (ACADEMY_KEYWORDS.some(k => msgLower.includes(k))) return 'ACADEMY';
     // STANDARD por defecto — el técnico es experto hasta que demuestre lo contrario
@@ -537,21 +543,26 @@ export async function POST(req: NextRequest) {
 
         let finalSystemPrompt = activeBasePrompt;
 
+        // Correr classify + RAG + Schematics + DiagState EN PARALELO para reducir latencia
         const classifyPromise = lastUserTextContent.length > 8
             ? withTimeout(runAuxTask(keys, (g) => classifySymptom(lastUserTextContent.slice(0, 3000), g), lastUserTextContent), TIMEOUTS.classify, lastUserTextContent)
             : Promise.resolve(lastUserTextContent);
 
-        const classifyResultValue = await classifyPromise;
-        const classifiedQuery = classifyResultValue || lastUserTextContent;
-
-        const [schemResult, ragResult, diagResult] = await Promise.allSettled([
+        const [classifyResult, schemResult, ragResultSettled, diagResult] = await Promise.allSettled([
+            classifyPromise,
             withTimeout(findSchematic(lastUserTextContent), TIMEOUTS.schematic, null),
-            withTimeout(findSimilarRepairs(classifiedQuery), TIMEOUTS.rag, []),
+            withTimeout(
+                classifyPromise.then(q => findSimilarRepairs(q || lastUserTextContent)),
+                TIMEOUTS.rag + TIMEOUTS.classify,
+                []
+            ),
             withTimeout(runAuxTask(keys, (g) => extractDiagnosticState(messages, g), ''), TIMEOUTS.diagnostic, ''),
         ]);
 
+        const ragResult = ragResultSettled;
+
         // Inyectar contexto RAG (Reparaciones Similares)
-        const ragMatches = ragResult.status === 'fulfilled' ? ragResult.value : [];
+        const ragMatches = ragResult.status === 'fulfilled' ? (ragResult.value ?? []) : [];
         console.log(`[CEREBRO] 📚 RAG Matches encontrados: ${ragMatches.length}`);
         if (ragMatches.length > 0) {
             finalSystemPrompt += formatRAGContext(ragMatches);
@@ -562,7 +573,7 @@ export async function POST(req: NextRequest) {
         const diagBlock = diagResult.status === 'fulfilled' ? diagResult.value : '';
         if (diagBlock) finalSystemPrompt += diagBlock;
 
-        if (activeBasePrompt === MENTOR_PROMPT) {
+        if (mode === 'MENTOR') {
             finalSystemPrompt += `\n\n### 🔬 MODO DIAGNÓSTICO GUIADO ACTIVO\nHacé UNA SOLA pregunta específica.`;
         }
 
@@ -573,17 +584,30 @@ export async function POST(req: NextRequest) {
         if (hasImages) {
             console.log("[CEREBRO] 👁️ Activando flujo VISIÓN");
             const visionMessages = await buildVisionMessages(coreMessages, images);
-            const visionGroq = createGroq({ apiKey: keys[0] });
-            const result = await streamText({
-                model: visionGroq(VISION_MODEL.id) as any,
-                messages: visionMessages,
-                system: finalSystemPrompt,
-                maxOutputTokens: MAX_OUTPUT_TOKENS,
-                temperature: 0.3,
-                topP: 0.9,
-            });
-            return result.toUIMessageStreamResponse({
-                headers: { 'X-Cerebro-Provider': VISION_MODEL.label, 'X-Cerebro-Key': keys[0].slice(-4) }
+            // Rotación de key para vision igual que para texto
+            let visionStream: any = null;
+            for (const key of keys) {
+                try {
+                    const visionGroq = createGroq({ apiKey: key });
+                    const r = await streamText({
+                        model: visionGroq(VISION_MODEL.id) as any,
+                        messages: visionMessages,
+                        system: finalSystemPrompt,
+                        maxOutputTokens: MAX_OUTPUT_TOKENS,
+                        temperature: 0.3,
+                        topP: 0.9,
+                    });
+                    visionStream = r;
+                    break;
+                } catch (e: any) {
+                    console.warn(`[CEREBRO] 👁️ Vision key ...${key.slice(-4)} falló:`, e.message);
+                }
+            }
+            if (!visionStream) {
+                return new Response(JSON.stringify({ error: "Todas las keys fallaron para el análisis de imagen" }), { status: 500 });
+            }
+            return visionStream.toUIMessageStreamResponse({
+                headers: { 'X-Cerebro-Provider': VISION_MODEL.label }
             });
         }
 
