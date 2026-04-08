@@ -13,6 +13,7 @@ export async function getReturnRequests(role: "ADMIN" | "TECHNICIAN", userId?: s
 
         const returns = await db.returnRequest.findMany({
             where: whereClause,
+            take: 150, // Prevención de desbordamiento de memoria
             include: {
                 repair: {
                     include: {
@@ -81,23 +82,22 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
                     restoredParts = snapshot;
                     // Restore from SNAPSHOT
                     for (const part of snapshot) {
-                        // Restore Stock
-                        await tx.sparePart.update({
-                            where: { id: part.sparePartId },
-                            data: {
-                                stockLocal: { increment: part.quantity }
-                            }
-                        });
+                        // Restore Stock (prevent RecordNotFound transaction crash)
+                        const exists = await tx.sparePart.findUnique({ where: { id: part.sparePartId } });
+                        if (exists) {
+                            await tx.sparePart.update({
+                                where: { id: part.sparePartId },
+                                data: {
+                                    stockLocal: { increment: part.quantity }
+                                }
+                            });
+                        }
 
                         // Remove from Repair
                         if (part.id) {
-                            try {
-                                await tx.repairPart.delete({
-                                    where: { id: part.id }
-                                });
-                            } catch (e) {
-                                // Ignore if already deleted
-                            }
+                            await tx.repairPart.deleteMany({
+                                where: { id: part.id }
+                            });
                         }
                     }
                 } else {
@@ -105,18 +105,23 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
                     const parts = returnRequest.repair.parts;
                     restoredParts = parts;
                     for (const part of parts) {
-                        // Restore Stock
-                        await tx.sparePart.update({
-                            where: { id: part.sparePartId },
-                            data: {
-                                stockLocal: { increment: part.quantity }
-                            }
-                        });
+                        // Restore Stock (prevent RecordNotFound transaction crash)
+                        const exists = await tx.sparePart.findUnique({ where: { id: part.sparePartId } });
+                        if (exists) {
+                            await tx.sparePart.update({
+                                where: { id: part.sparePartId },
+                                data: {
+                                    stockLocal: { increment: part.quantity }
+                                }
+                            });
+                        }
 
                         // Remove from Repair
-                        await tx.repairPart.delete({
-                            where: { id: part.id }
-                        });
+                        if (part.id) {
+                            await tx.repairPart.deleteMany({
+                                where: { id: part.id }
+                            });
+                        }
                     }
                 }
 
@@ -139,14 +144,18 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
             }
         });
 
-        // Notify Technician
-        await createNotificationAction({
-            userId: returnRequest.technicianId,
-            title: `Devolución ${status === "ACCEPTED" ? "Aceptada" : "Rechazada"}`,
-            message: `Tu solicitud de devolución para la reparación #${returnRequest.repair.ticketNumber} ha sido ${status === "ACCEPTED" ? "aceptada" : "rechazada"}.`,
-            type: "INFO",
-            link: "/technician/returns"
-        });
+        // Notify Technician (Fail-safe)
+        try {
+            await createNotificationAction({
+                userId: returnRequest.technicianId,
+                title: `Devolución ${status === "ACCEPTED" ? "Aceptada" : "Rechazada"}`,
+                message: `Tu solicitud de devolución para la reparación #${returnRequest.repair.ticketNumber} ha sido ${status === "ACCEPTED" ? "aceptada" : "rechazada"}.`,
+                type: "INFO",
+                link: "/technician/returns"
+            });
+        } catch (notifyError) {
+            console.error("Silencio en error de notificación al técnico:", notifyError);
+        }
 
         revalidatePath("/admin/returns");
         revalidatePath("/technician/returns");
@@ -174,6 +183,18 @@ export async function createReturnRequestAction(repairId: string, technicianId: 
 
         if (!repair) return { success: false, error: "Reparación no encontrada" };
 
+        // Evitar duplicación de solicitudes
+        const existingPending = await db.returnRequest.findFirst({
+            where: {
+                repairId,
+                status: "PENDING"
+            }
+        });
+        
+        if (existingPending) {
+            return { success: false, error: "Ya existe una solicitud pendiente de revisión para esta reparación." };
+        }
+
         const partsSnapshot = repair.parts.map(p => ({
             id: p.id,
             sparePartId: p.sparePartId, // Keep reference just in case
@@ -192,24 +213,28 @@ export async function createReturnRequestAction(repairId: string, technicianId: 
             } as any
         });
 
-        // Notify Admins
-        const admins = await db.user.findMany({
-            where: { role: "ADMIN" },
-            select: { id: true }
-        });
+        // Notify Admins (Fail-safe)
+        try {
+            const admins = await db.user.findMany({
+                where: { role: "ADMIN" },
+                select: { id: true }
+            });
 
-        // repair variable is already fetched above with parts.
-        const techName = (await db.user.findUnique({ where: { id: technicianId }, select: { name: true } }))?.name || "Técnico";
+            // repair variable is already fetched above with parts.
+            const techName = (await db.user.findUnique({ where: { id: technicianId }, select: { name: true } }))?.name || "Técnico";
 
-        await Promise.all(admins.map(admin =>
-            createNotificationAction({
-                userId: admin.id,
-                title: "Nueva Solicitud de Devolución",
-                message: `${techName} ha solicitado devolver repuestos de la reparación #${repair?.ticketNumber || '?'}.`,
-                type: "ACTION_REQUEST",
-                link: "/admin/returns"
-            })
-        ));
+            await Promise.all(admins.map(admin =>
+                createNotificationAction({
+                    userId: admin.id,
+                    title: "Nueva Solicitud de Devolución",
+                    message: `${techName} ha solicitado devolver repuestos de la reparación #${repair?.ticketNumber || '?'}.`,
+                    type: "ACTION_REQUEST",
+                    link: "/admin/returns"
+                })
+            ));
+        } catch (notifyError) {
+            console.error("Silencio en error de notificación al admin:", notifyError);
+        }
 
         revalidatePath("/admin/returns");
         revalidatePath("/technician/returns");
