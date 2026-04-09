@@ -332,10 +332,14 @@ export async function findSimilarRepairs(
  * Extrae campos etiquetados del texto del documento indexado.
  * Funciona con el formato: CAMPO: valor\n generado por cerebro-indexer.
  */
-function parseRepairContent(text: string): { problema: string; diagnostico: string; solucion: string; repuestos: string } {
+function parseRepairContent(text: unknown): { problema: string; diagnostico: string; solucion: string; repuestos: string } {
+    const empty = { problema: '', diagnostico: '', solucion: '', repuestos: '' };
+    if (typeof text !== 'string' || !text.trim()) return empty;
     const extract = (label: string): string => {
-        const match = text.match(new RegExp(`${label}:\\s*([^\\n]+)`));
-        return match ? match[1].trim() : '';
+        try {
+            const match = text.match(new RegExp(`${label}:\\s*([^\\n]+)`));
+            return match?.[1]?.trim() ?? '';
+        } catch { return ''; }
     };
     return {
         problema: extract('PROBLEMA'),
@@ -363,25 +367,29 @@ export function formatRAGContext(repairs: SimilarRepair[]): string {
         const parsed = parseRepairContent(r.contentText);
         const hasStructure = parsed.problema || parsed.diagnostico || parsed.solucion;
 
+        const cap = (s: string, n: number) => s.length > n ? s.slice(0, n) + '…' : s;
+
         if (hasStructure) {
             const fieldLines: string[] = [
                 `[${label} — Ref: ${ref} | Confianza: ${conf}%]`,
                 `Equipo: ${r.deviceBrand} ${r.deviceModel}`,
             ];
-            if (parsed.problema)    fieldLines.push(`Problema: ${parsed.problema}`);
-            if (parsed.diagnostico) fieldLines.push(`Diagnóstico: ${parsed.diagnostico}`);
-            if (parsed.solucion)    fieldLines.push(`Solución: ${parsed.solucion}`);
-            if (parsed.repuestos)   fieldLines.push(`Repuestos: ${parsed.repuestos}`);
+            if (parsed.problema)    fieldLines.push(`Problema: ${cap(parsed.problema, 200)}`);
+            if (parsed.diagnostico) fieldLines.push(`Diagnóstico: ${cap(parsed.diagnostico, 250)}`);
+            if (parsed.solucion)    fieldLines.push(`Solución: ${cap(parsed.solucion, 300)}`);
+            if (parsed.repuestos)   fieldLines.push(`Repuestos: ${cap(parsed.repuestos, 150)}`);
             return fieldLines.join('\n');
         }
 
         // Fallback al texto plano si no se pudieron extraer los campos
         return `[${label} — Ref: ${ref} | Confianza: ${conf}%]
 Equipo: ${r.deviceBrand} ${r.deviceModel}
-Historia: ${r.contentText.slice(0, 900)}`;
+Historia: ${(r.contentText ?? '').slice(0, 600)}`;
     });
 
+    const body = lines.join('\n\n');
+    const cappedBody = body.length > 4000 ? body.slice(0, 4000) + '\n…[truncado]' : body;
     return `\n\n### 📚 HISTORIAL DE REPARACIONES REALES (WIKI/Maccell)
 Usa esta sección como tu fuente de VERDAD técnica. Si un componente ID o solución aparece aquí, incorporalo en tu respuesta. Menciona el ticket Ref si lo usas.
-${lines.join('\n\n')}\n`;
+${cappedBody}\n`;
 }

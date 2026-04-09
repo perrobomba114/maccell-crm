@@ -35,6 +35,19 @@ const COMPONENT_TRIGGERS = [
     // Actualizaciones
     'nuevo ic', 'ultima version', 'última versión', 'version actual',
     '2024', '2025',
+    // Síntomas diagnósticos — siempre buscar soluciones documentadas
+    'no enciende', 'no prende', 'no carga', 'no cargando', 'no arranca',
+    'pantalla negra', 'sin imagen', 'sin video', 'sin backlight',
+    'bootloop', 'boot loop', 'reinicia solo', 'se reinicia',
+    'no conecta', 'sin señal', 'sin red', 'no hay señal',
+    'no carga batería', 'no reconoce batería',
+    'corto', 'cortocircuito', 'quemado',
+    'mojado', 'cayó al agua', 'oxidado',
+    'pantalla rota', 'touch no funciona', 'no responde',
+    'no reconoce sim', 'sim no detecta',
+    'cámara no funciona', 'face id no funciona',
+    'no sound', 'sin audio', 'microfono', 'micrófono',
+    'hot', 'se calienta', 'sobrecalentamiento',
 ];
 
 const SPECIFIC_COMPONENT_PATTERNS = [
@@ -51,7 +64,7 @@ const SPECIFIC_COMPONENT_PATTERNS = [
 export function shouldTriggerWebSearch(
     query: string,
     ragResultCount: number,
-    brand?: string
+    _brand?: string
 ): boolean {
     const lower = query.toLowerCase();
 
@@ -63,8 +76,8 @@ export function shouldTriggerWebSearch(
     const hasComponentPattern = SPECIFIC_COMPONENT_PATTERNS.some(p => p.test(query));
     if (hasComponentPattern && ragResultCount < 2) return true;
 
-    // RAG vacío para query sustancial
-    if (ragResultCount === 0 && query.length > 30) return true;
+    // RAG vacío o escaso para query sustancial
+    if (ragResultCount < 2 && query.length > 20) return true;
 
     return false;
 }
@@ -79,19 +92,31 @@ export function shouldTriggerWebSearch(
  */
 async function searchDDG(query: string, maxResults = 5): Promise<{ title: string; url: string }[]> {
     const REPAIR_DOMAINS = [
+        // Internacionales técnicos
         'ifixit.com',
         'gsm-forum.com',
         'boardrepairguide.com',
         'jensa.io',
-        'youtube.com',
         'xda-developers.com',
         'reddit.com/r/mobilerepair',
         'reddit.com/r/datarecovery',
+        'rossmanngroup.com',
+        'phoneguru.org',
+        // LatAm / Español
+        'forosdeelectronica.com',
+        'taringa.net',
+        'celulares.com',
+        'reparaciondecelulares.net',
+        'comunidadelectronicos.com',
+        'tutoelectro.com',
+        'tecnoreparaciones.com',
+        'electroforos.com',
+        // YouTube (tutoriales en español)
+        'youtube.com',
     ];
 
     try {
-        const searchQuery = `${query} reparacion electronica`;
-        const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`;
+        const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
 
         const response = await fetch(url, {
             headers: {
@@ -136,13 +161,13 @@ async function searchDDG(query: string, maxResults = 5): Promise<{ title: string
             })
             .slice(0, maxResults);
 
-        // Si no encontró en dominios preferidos, usar los primeros resultados válidos
-        if (ranked.length === 0) {
-            const fallback = urls
-                .filter(u => u.startsWith('http') && !u.includes('duckduckgo'))
-                .map((url, i) => ({ url, title: titles[i] || url }))
-                .slice(0, 3);
-            return fallback;
+        // Si no encontró suficientes en dominios preferidos, completar con resultados generales
+        if (ranked.length < 2) {
+            const extra = urls
+                .filter(u => u.startsWith('http') && !u.includes('duckduckgo') && !ranked.some(r => r.url === u))
+                .map(u => ({ url: u, title: titles[urls.indexOf(u)] || u }))
+                .slice(0, maxResults - ranked.length);
+            return [...ranked, ...extra];
         }
 
         return ranked;
@@ -153,36 +178,115 @@ async function searchDDG(query: string, maxResults = 5): Promise<{ title: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LECTOR DE PÁGINAS con Jina AI (r.jina.ai — gratuito, sin API key)
+// FETCH DIRECTO + EXTRACCIÓN DE TEXTO HTML (sin dependencias externas)
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function readWithJina(url: string, maxChars = 2500): Promise<string> {
-    try {
-        const jinaUrl = `https://r.jina.ai/${url}`;
+/** Encuentra el índice de inicio del contenido principal usando marcadores conocidos */
+function findContentStart(html: string): number {
+    const CONTENT_MARKERS = [
+        // iFixit wiki / guías
+        'itemprop="text"',
+        'wikiRenderedText',
+        'guide-steps',
+        // Foros phpBB / XDA / GSM Forum
+        'class="post_body"',
+        'class="postbody"',
+        'class="message-body"',
+        'class="postcontent"',
+        // WordPress / blogs genéricos
+        'class="entry-content"',
+        'class="post-content"',
+        'class="article-body"',
+        // Semánticos HTML5
+        '<main',
+        '<article',
+    ];
 
-        const response = await fetch(jinaUrl, {
+    for (const marker of CONTENT_MARKERS) {
+        const idx = html.indexOf(marker);
+        if (idx !== -1) {
+            // Avanzar hasta el cierre del tag de apertura
+            const tagEnd = html.indexOf('>', idx);
+            return tagEnd !== -1 ? tagEnd + 1 : idx;
+        }
+    }
+    return -1;
+}
+
+function extractTextFromHtml(html: string, maxChars: number): string {
+    // 1. Eliminar bloques de ruido antes de procesar
+    let cleaned = html
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
+        .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
+        .replace(/<header[\s\S]*?<\/header>/gi, ' ')
+        .replace(/<aside[\s\S]*?<\/aside>/gi, ' ')
+        .replace(/<form[\s\S]*?<\/form>/gi, ' ')
+        .replace(/<!--[\s\S]*?-->/g, ' ');
+
+    // 2. Intentar aislar el bloque de contenido principal
+    const contentStart = findContentStart(cleaned);
+    if (contentStart !== -1) {
+        // Tomar hasta 30k chars desde el inicio del contenido (suficiente para cualquier artículo)
+        cleaned = cleaned.slice(contentStart, contentStart + 30000);
+    }
+
+    // 3. Convertir etiquetas estructurales en texto legible
+    cleaned = cleaned
+        .replace(/<li[^>]*>/gi, '\n• ')
+        .replace(/<h[1-6][^>]*>/gi, '\n## ')
+        .replace(/<\/h[1-6]>/gi, '\n')
+        .replace(/<p[^>]*>/gi, '\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?(td|th)[^>]*>/gi, ' | ')
+        .replace(/<\/tr>/gi, '\n');
+
+    // 4. Quitar tags restantes y decodificar entidades HTML
+    return cleaned
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&#x27;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/\s{2,}/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+        .slice(0, maxChars);
+}
+
+async function fetchPage(url: string, maxChars = 3000): Promise<string> {
+    try {
+        const response = await fetch(url, {
             headers: {
-                'Accept': 'text/plain',
-                'X-Return-Format': 'markdown',
-                'X-No-Cache': 'true',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml',
+                'Accept-Language': 'en-US,en;q=0.9,es;q=0.8',
+                'Cache-Control': 'no-cache',
             },
-            signal: AbortSignal.timeout(10000),
+            signal: AbortSignal.timeout(8000),
+            redirect: 'follow',
         });
 
         if (!response.ok) {
-            console.warn(`[WEB_SEARCH] Jina ${response.status} for ${url.slice(0, 60)}`);
+            console.warn(`[WEB_FETCH] ${response.status} para ${url.slice(0, 60)}`);
             return '';
         }
 
-        const text = await response.text();
-        // Limpiar y truncar
-        return text
-            .replace(/\[.*?\]\(.*?\)/g, match => match) // preservar links
-            .replace(/\n{3,}/g, '\n\n')
-            .trim()
-            .slice(0, maxChars);
+        const html = await response.text();
+        const text = extractTextFromHtml(html, maxChars);
+
+        if (text.length < 150) {
+            console.warn(`[WEB_FETCH] Contenido muy corto (${text.length} chars) en ${url.slice(0, 60)}`);
+            return '';
+        }
+
+        return text;
     } catch (err: any) {
-        console.warn('[WEB_SEARCH] Jina error:', err.message?.slice(0, 80));
+        console.warn('[WEB_FETCH] Error:', err.message?.slice(0, 80));
         return '';
     }
 }
@@ -192,8 +296,8 @@ async function readWithJina(url: string, maxChars = 2500): Promise<string> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Busca en la web usando DDG (sin API) + Jina Reader (sin API).
- * Retorna los mejores resultados en formato listo para inyectar en el prompt.
+ * Busca en la web usando DDG (sin API) + fetch directo con extracción HTML.
+ * Sin dependencias externas ni API keys.
  */
 export async function cerebroWebSearch(
     query: string,
@@ -205,8 +309,36 @@ export async function cerebroWebSearch(
 
     console.log(`[WEB_SEARCH] 🌐 Buscando: "${refinedQuery.slice(0, 80)}"`);
 
-    // Paso 1: Obtener URLs de DDG
-    const ddgResults = await searchDDG(refinedQuery, 4);
+    // Traducir síntomas comunes al inglés para mejor cobertura en iFixit/GSM Forum
+    const englishQuery = refinedQuery
+        .replace(/no enciende/gi, 'not turning on')
+        .replace(/no prende/gi, 'not turning on')
+        .replace(/no carga/gi, 'not charging')
+        .replace(/no arranca/gi, 'not booting')
+        .replace(/pantalla negra/gi, 'black screen')
+        .replace(/sin imagen/gi, 'no display')
+        .replace(/corto circuito|corto/gi, 'short circuit')
+        .replace(/mojado|agua/gi, 'water damage')
+        .replace(/no enciende/gi, 'not turning on')
+        .replace(/reinicia solo/gi, 'random reboot')
+        .replace(/bootloop/gi, 'bootloop stuck')
+        + ' board repair fix';
+
+    // Query en español con términos LatAm
+    const spanishQuery = refinedQuery + ' reparacion placa solucion';
+
+    const [ddgResultsEs, ddgResultsEn] = await Promise.all([
+        searchDDG(spanishQuery, 3),
+        searchDDG(englishQuery, 3),
+    ]);
+
+    // Combinar y deduplicar por URL
+    const seen = new Set<string>();
+    const ddgResults = [...ddgResultsEs, ...ddgResultsEn].filter(r => {
+        if (seen.has(r.url)) return false;
+        seen.add(r.url);
+        return true;
+    }).slice(0, 5);
 
     if (ddgResults.length === 0) {
         console.log('[WEB_SEARCH] Sin resultados DDG');
@@ -215,9 +347,9 @@ export async function cerebroWebSearch(
 
     console.log(`[WEB_SEARCH] DDG encontró ${ddgResults.length} URLs`);
 
-    // Paso 2: Leer el contenido de las primeras 2 URLs con Jina
+    // Paso 2: Fetch directo de las primeras 3 URLs y extraer texto del HTML
     const readings = await Promise.allSettled(
-        ddgResults.slice(0, 2).map(r => readWithJina(r.url))
+        ddgResults.slice(0, 3).map(r => fetchPage(r.url))
     );
 
     const results: WebSearchResult[] = [];
@@ -253,14 +385,21 @@ export async function cerebroWebSearch(
 // FORMATEADOR
 // ─────────────────────────────────────────────────────────────────────────────
 
+const MAX_WEB_CONTEXT_CHARS = 6000; // Kimi K2 / Llama 70B soportan contexto grande — más contenido = mejor diagnóstico
+
 function formatWebResults(results: WebSearchResult[]): string {
     const today = new Date().toLocaleDateString('es-AR');
-    const blocks = results.map((r, i) =>
-        `[🌐 FUENTE WEB ${i + 1} — ${r.source}]\nURL: ${r.url}\n${r.content}`
-    );
+    const header = `\n\n### 🌐 INFORMACIÓN WEB EN TIEMPO REAL (${today})
+⚠️ INSTRUCCIÓN CRÍTICA: Extraé de estos bloques datos técnicos concretos: voltajes, ICs, componentes, pasos de reparación, causas raíz.
+- Si hay componentes específicos mencionados para ESTA MARCA+MODELO → incluilos en tu análisis.
+- Citá la fuente en la sección Evidencia: [WEB / nombre-del-sitio.com].
+- Si el contenido web contradice tu conocimiento base → prevalece el contenido web para este modelo específico.\n`;
 
-    return `\n\n### 🌐 INFORMACIÓN WEB EN TIEMPO REAL (${today})
-⚠️ INSTRUCCIÓN: Esta información es más reciente que tu entrenamiento. Si hay datos de reemplazo de componentes, ICs alternativos, o soluciones documentadas aquí para ESTA MARCA, deben tener PRIORIDAD sobre tu conocimiento base.
-${blocks.join('\n\n')}
-`;
+    const charsPerSource = Math.floor(MAX_WEB_CONTEXT_CHARS / results.length);
+    const blocks = results.map((r, i) => {
+        const content = r.content.slice(0, charsPerSource);
+        return `[🌐 FUENTE WEB ${i + 1} — ${r.source}]\nTítulo: ${r.title}\nURL: ${r.url}\n---\n${content}\n---`;
+    });
+
+    return header + blocks.join('\n\n') + '\n';
 }

@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Bot, Send, User, BrainCircuit, RefreshCw, X, FileIcon, Plus,
     Loader2, Paperclip, FileText, Microscope, Copy, Check,
-    BookMarked, Zap, GraduationCap, ChevronDown, Wrench, Radio,
+    BookMarked, Zap, ChevronDown, Wrench, Radio,
     Waves, Flame, Droplets, Shield
 } from "lucide-react";
 import { saveMessagesToDbAction, saveUserMessageAction, updateConversationTitleAction } from "@/actions/cerebro-actions";
@@ -17,7 +17,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-type ChatMode = "STANDARD" | "MENTOR" | "ACADEMY";
+type ChatMode = "STANDARD" | "MENTOR";
 interface CerebroChatProps { conversationId: string; initialMessages?: UIMessage[]; }
 
 // ─── Stitch Obsidian Tokens ──────────────────────────────────────────────────
@@ -50,9 +50,8 @@ const QUICK_CHIPS = [
 
 // ─── Mode config ─────────────────────────────────────────────────────────────
 const MODES: { id: ChatMode; label: string; icon: any; desc: string; activeBg: string; dotColor: string }[] = [
-    { id: "STANDARD", label: "Experto",  icon: Wrench,        desc: "Diagnóstico directo para técnicos avanzados", activeBg: "bg-[#7c3aed]/20 border-[#7c3aed]/60 text-[#d2bbff] shadow-[0_0_14px_rgba(124,58,237,0.3)]", dotColor: "bg-[#7c3aed]" },
-    { id: "MENTOR",   label: "Guiado",   icon: Microscope,    desc: "Una medición por turno, paso a paso",          activeBg: "bg-[#4edea3]/15 border-[#4edea3]/50 text-[#4edea3] shadow-[0_0_14px_rgba(78,222,163,0.25)]", dotColor: "bg-[#4edea3]" },
-    { id: "ACADEMY",  label: "Academia", icon: GraduationCap, desc: "Modo pedagógico para aprender la falla",       activeBg: "bg-[#ffb95f]/15 border-[#ffb95f]/50 text-[#ffb95f] shadow-[0_0_14px_rgba(255,185,95,0.25)]", dotColor: "bg-[#ffb95f]" },
+    { id: "STANDARD", label: "Directo",  icon: Wrench,     desc: "Recibís el diagnóstico completo en una sola respuesta: análisis diferencial, protocolo de medición y acción.", activeBg: "bg-[#7c3aed]/20 border-[#7c3aed]/60 text-[#d2bbff] shadow-[0_0_14px_rgba(124,58,237,0.3)]", dotColor: "bg-[#7c3aed]" },
+    { id: "MENTOR",   label: "Guiado",   icon: Microscope, desc: "El AI te pide una sola medición por turno y va adaptando el diagnóstico en tiempo real según lo que reportás.", activeBg: "bg-[#4edea3]/15 border-[#4edea3]/50 text-[#4edea3] shadow-[0_0_14px_rgba(78,222,163,0.25)]", dotColor: "bg-[#4edea3]" },
 ];
 
 // ─── Markdown renderer (Stitch tokens) ───────────────────────────────────────
@@ -336,8 +335,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
                                 mode === m.id
                                     ? m.id === "STANDARD" ? "bg-violet-500/20 text-violet-300 shadow-[0_0_8px_rgba(124,58,237,0.3)]"
-                                        : m.id === "MENTOR" ? "bg-emerald-500/15 text-emerald-300 shadow-[0_0_8px_rgba(78,222,163,0.25)]"
-                                        : "bg-amber-500/15 text-amber-300 shadow-[0_0_8px_rgba(255,185,95,0.25)]"
+                                        : "bg-emerald-500/15 text-emerald-300 shadow-[0_0_8px_rgba(78,222,163,0.25)]"
                                     : "text-[#958da1] hover:text-[#dae2fd] hover:bg-white/[0.04]"
                             }`}>
                             <m.icon size={11} />

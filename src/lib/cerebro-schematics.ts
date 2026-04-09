@@ -87,7 +87,7 @@ export async function findSchematic(userMessage: string): Promise<SchematicMatch
  * para extraer la 'ventana' más relevante, no solo los primeros 8k.
  */
 export function formatSchematicContext(match: SchematicMatch, userQuery = ''): string {
-    const limit = 8000;
+    const limit = 3000;
     if (match.text.length <= limit) {
         return `\n\n### 📋 SCHEMATIC PRE-INDEXADO: ${match.brand} ${match.model} (${match.filename})\n\n${match.text}`;
     }
