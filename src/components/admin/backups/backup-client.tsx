@@ -92,11 +92,14 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
                 toast.success("Sistema restaurado con éxito. Se recargará la página.", { id: "restore-backup", duration: 5000 });
                 setTimeout(() => window.location.reload(), 2000);
             } else {
-                toast.error(res.error, { id: "restore-backup" });
+                toast.error(res.error || "Ocurrió un error inesperado al restaurar", { 
+                    id: "restore-backup",
+                    duration: 10000 // Show for longer if it fails
+                });
                 setIsLoading(false);
             }
         } catch (error) {
-            toast.error("Error crítico al restaurar", { id: "restore-backup" });
+            toast.error("Error crítico de red o servidor", { id: "restore-backup" });
             setIsLoading(false);
         } finally {
             setRestoreTarget(null);
@@ -248,29 +251,31 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
                             <RotateCcw className="h-6 w-6" />
                             PELIGRO: RESTAURACIÓN DE SISTEMA
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-3">
-                            <div className="font-bold text-foreground">
-                                Vas a restaurar la base de datos al estado del archivo: <br />
-                                <div className="font-mono bg-muted p-2 mt-1 rounded text-sm text-foreground break-all">{restoreTarget}</div>
-                            </div>
-                            <p className="text-destructive font-semibold">
-                                ESTA ACCIÓN ES DESTRUCTIVA.
-                            </p>
-                            <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                                <li>Se borrarán <span className="font-bold text-foreground">TODOS</span> los datos actuales que no estén en el backup.</li>
-                                <li>Se reemplazarán usuarios, productos, ventas y reparaciones.</li>
-                                <li>No se puede deshacer.</li>
-                            </ul>
-                            <div className="pt-2">
-                                <label className="text-xs font-semibold uppercase text-muted-foreground">
-                                    Escribe "RECUPERAR" para confirmar:
-                                </label>
-                                <Input
-                                    value={restoreConfirmation}
-                                    onChange={(e) => setRestoreConfirmation(e.target.value)}
-                                    placeholder="RECUPERAR"
-                                    className="mt-1 border-destructive/30 focus-visible:ring-destructive"
-                                />
+                        <AlertDialogDescription className="space-y-3" asChild>
+                            <div>
+                                <div className="font-bold text-foreground">
+                                    Vas a restaurar la base de datos al estado del archivo: <br />
+                                    <div className="font-mono bg-muted p-2 mt-1 rounded text-sm text-foreground break-all">{restoreTarget}</div>
+                                </div>
+                                <p className="text-destructive font-semibold">
+                                    ESTA ACCIÓN ES DESTRUCTIVA.
+                                </p>
+                                <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                                    <li>Se borrarán <span className="font-bold text-foreground">TODOS</span> los datos actuales que no estén en el backup.</li>
+                                    <li>Se reemplazarán usuarios, productos, ventas y reparaciones.</li>
+                                    <li>No se puede deshacer.</li>
+                                </ul>
+                                <div className="pt-2">
+                                    <label className="text-xs font-semibold uppercase text-muted-foreground">
+                                        Escribe "RECUPERAR" para confirmar:
+                                    </label>
+                                    <Input
+                                        value={restoreConfirmation}
+                                        onChange={(e) => setRestoreConfirmation(e.target.value)}
+                                        placeholder="RECUPERAR"
+                                        className="mt-1 border-destructive/30 focus-visible:ring-destructive"
+                                    />
+                                </div>
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>

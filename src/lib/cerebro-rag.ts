@@ -39,9 +39,11 @@ export function chunkText(text: string, chunkSize = 800, overlap = 80): string[]
 function rrfMerge(
     semanticResults: SimilarRepair[],
     keywordResults: SimilarRepair[],
-    k = 60
+    k = 60,
+    preferredBrand = ''
 ): SimilarRepair[] {
     const scores = new Map<string, { item: SimilarRepair; score: number }>();
+    const brandLower = preferredBrand.toLowerCase();
 
     const addList = (list: SimilarRepair[]) => {
         list.forEach((item, rank) => {
@@ -50,10 +52,16 @@ function rrfMerge(
 
             const status = item.status?.toLowerCase() || '';
 
+            // Boost por estado de reparación exitosa
             if (status.includes('ok')) {
                 rrfScore *= 1.35;
             } else if (status.includes('entregado')) {
                 rrfScore *= 1.25;
+            }
+
+            // Boost FUERTE por coincidencia de marca — evita mezcla de dispositivos
+            if (brandLower && (item.deviceBrand?.toLowerCase().includes(brandLower) || brandLower.includes(item.deviceBrand?.toLowerCase() || ''))) {
+                rrfScore *= 2.5;
             }
 
             if (scores.has(key)) {
@@ -71,7 +79,6 @@ function rrfMerge(
     const scoreValues = Array.from(scores.values());
     if (scoreValues.length === 0) return [];
 
-    // Normalizar relativo al score máximo para mantener discriminación
     const maxScore = Math.max(...scoreValues.map(v => v.score));
 
     return scoreValues
@@ -230,7 +237,8 @@ function expandQuery(query: string): string {
 export async function findSimilarRepairs(
     userMessage: string,
     limit = 7,
-    minSimilarity = 0.55
+    minSimilarity = 0.52,
+    preferredBrand = ''
 ): Promise<SimilarRepair[]> {
     const expandedQuery = expandQuery(userMessage);
     const embedding = await generateEmbedding(expandedQuery);
@@ -240,12 +248,26 @@ export async function findSimilarRepairs(
         keywordSearch(expandedQuery, limit + 3)
     ]);
 
-    const semantic = semanticResults.status === 'fulfilled' ? semanticResults.value : [];
-    const keyword = keywordResults.status === 'fulfilled' ? keywordResults.value : [];
+    let semantic = semanticResults.status === 'fulfilled' ? semanticResults.value : [];
+    let keyword = keywordResults.status === 'fulfilled' ? keywordResults.value : [];
+
+    // Si la marca es conocida, boost a los resultados de la misma marca
+    // y deprioriá/penalizá los de otras marcas con symptom overlap
+    const brandLower = preferredBrand.toLowerCase();
+    if (brandLower && brandLower !== 'desconocido') {
+        const isSameBrand = (r: SimilarRepair) =>
+            r.deviceBrand?.toLowerCase().includes(brandLower) ||
+            brandLower.includes(r.deviceBrand?.toLowerCase() || '');
+
+        // Marca como wiki los de la misma marca para que siempre pasen el filtro
+        // Reducir similarity de otras marcas para que no compitan
+        semantic = semantic.map(r => isSameBrand(r) ? r : { ...r, similarity: r.similarity * 0.5 });
+        keyword = keyword.map(r => isSameBrand(r) ? r : { ...r, similarity: r.similarity * 0.5 });
+    }
 
     if (semantic.length > 0 && keyword.length > 0) {
-        const merged = rrfMerge(semantic, keyword);
-        console.log(`[RAG] ⚡ Híbrida RRF: ${merged.slice(0, limit).length} resultados`);
+        const merged = rrfMerge(semantic, keyword, 60, preferredBrand);
+        console.log(`[RAG] ⚡ Híbrida RRF (marca: ${preferredBrand || 'cualquiera'}): ${merged.slice(0, limit).length} resultados`);
         return merged.slice(0, limit);
     }
 
@@ -260,9 +282,7 @@ export async function findSimilarRepairs(
     }
 
     if (embedding) {
-        // Retry semantic search con un umbral más bajo si pgvector falla pero no devuelve vacio,
-        // esto evita un fallback enorme a RAM innecesariamente si la base de datos está funcinal.
-        const retryThreshold = 0.45;
+        const retryThreshold = 0.42;
         if (minSimilarity > retryThreshold) {
             const retry = await semanticSearch(embedding, limit, retryThreshold);
             if (retry.length > 0) {
@@ -274,7 +294,7 @@ export async function findSimilarRepairs(
         try {
             const rows = await db.$queryRawUnsafe<any[]>(
                 `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding"
-                 FROM "repair_embeddings" LIMIT 100` // Limitado a 100
+                 FROM "repair_embeddings" LIMIT 100`
             );
             if (rows?.length > 0) {
                 const results = rows
@@ -326,7 +346,7 @@ function parseRepairContent(text: string): { problema: string; diagnostico: stri
 }
 
 export function formatRAGContext(repairs: SimilarRepair[]): string {
-    const validRepairs = repairs.filter(r => r.similarity >= 0.58);
+    const validRepairs = repairs.filter(r => r.similarity >= 0.55);
     if (validRepairs.length === 0) return '';
 
     const lines = validRepairs.map((r) => {

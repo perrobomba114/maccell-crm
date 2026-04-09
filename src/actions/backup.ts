@@ -101,14 +101,23 @@ export async function restoreBackup(filename: string): Promise<{ success: boolea
         const cleanDbUrl = url.toString();
 
         const psqlPath = resolveBinaryPath("psql");
-        const sqlContent = fs.readFileSync(filepath, "utf-8");
-        await execFileAsync(psqlPath, [cleanDbUrl], { input: sqlContent } as any);
+        
+        // Optimize: Use -f flag instead of stdin buffer to avoid hangs with large files
+        // and capture stderr explicitly for diagnosis.
+        try {
+            await execFileAsync(psqlPath, [cleanDbUrl, "-f", filepath]);
+        } catch (execError: any) {
+            const stderr = execError.stderr || "";
+            const stdout = execError.stdout || "";
+            console.error("PSQL Exec Error:", stderr);
+            throw new Error(stderr || stdout || "Fallo en la ejecución de psql");
+        }
 
         revalidatePath("/admin/backups");
         return { success: true };
     } catch (error) {
         console.error("Restore backup error:", error);
-        return { success: false, error: "Error crítico al restaurar: " + (error instanceof Error ? error.message : "Desconocido") };
+        return { success: false, error: "Error al restaurar: " + (error instanceof Error ? error.message : "Desconocido") };
     }
 }
 
