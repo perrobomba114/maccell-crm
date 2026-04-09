@@ -196,6 +196,19 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
         fetch_(); const interval = setInterval(fetch_, 30_000); return () => clearInterval(interval);
     }, []);
 
+    // Quick prompt from landing chips
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const ev = e as CustomEvent;
+            if (ev.detail?.prompt) {
+                setInput(ev.detail.prompt);
+                setTimeout(() => textareaRef.current?.focus(), 100);
+            }
+        };
+        window.addEventListener("cerebro-quick-prompt", handler);
+        return () => window.removeEventListener("cerebro-quick-prompt", handler);
+    }, []);
+
     const { messages, sendMessage, stop, status, error } = useChat({
         id: conversationId,
         messages: initialMessages,
@@ -271,111 +284,64 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     const activeMode = MODES.find(m => m.id === mode)!;
 
     return (
-        <div className="flex flex-col h-full overflow-hidden relative bg-[#0b1326]">
+        <div className="flex flex-col h-full overflow-hidden relative bg-[#0d1117]">
 
-            {/* ── Header Glassmorphism ──────────────────────────────────── */}
-            <div className="flex flex-col border-b border-[#4a4455]/30 bg-[#171f33]/80 backdrop-blur-[12px] shrink-0">
-                {/* Row 1: brand + mode badge + tokens */}
-                <div className="flex items-center px-4 py-2.5 gap-3">
-                    <div className="p-1.5 rounded-lg bg-[#7c3aed]/20 text-[#d2bbff] shadow-[0_0_10px_rgba(124,58,237,0.3)] shrink-0">
-                        <BrainCircuit size={16} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h2 className="font-[family-name:var(--font-space-grotesk)] text-[#dae2fd] font-bold text-sm leading-tight tracking-tight">Cerebro AI</h2>
-                        <p className="font-[family-name:var(--font-manrope)] text-[#958da1] text-[10px] leading-tight uppercase tracking-widest">BD MACCELL</p>
-                    </div>
-                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold font-[family-name:var(--font-manrope)] ${activeMode.activeBg}`}>
-                        <activeMode.icon size={11} />
-                        <span>{activeMode.label}</span>
-                    </div>
-                    <TokenBar usage={tokenUsage} />
-                </div>
-
-                {/* Row 2: mode selector */}
-                <div className="flex items-center gap-2 px-4 pb-2.5">
+            {/* ── Header: single compact row ────────────────────────────── */}
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] bg-[#161b22]/90 backdrop-blur-md shrink-0">
+                {/* Mode pills */}
+                <div className="flex items-center gap-1">
                     {MODES.map(m => (
-                        <button
-                            key={m.id}
-                            onClick={() => setMode(m.id)}
-                            title={m.desc}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 border flex-1 justify-center font-[family-name:var(--font-manrope)] ${
-                                mode === m.id ? m.activeBg : "bg-[#131b2e] border-[#4a4455]/40 text-[#958da1] hover:text-[#ccc3d8] hover:border-[#958da1]/40"
-                            }`}
-                        >
-                            <m.icon size={11} />
+                        <button key={m.id} onClick={() => setMode(m.id)} title={m.desc}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
+                                mode === m.id
+                                    ? m.id === "STANDARD" ? "bg-violet-500/20 border-violet-500/40 text-violet-300"
+                                        : m.id === "MENTOR" ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                                        : "bg-amber-500/15 border-amber-500/40 text-amber-300"
+                                    : "border-transparent text-white/30 hover:text-white/70 hover:bg-white/[0.04]"
+                            }`}>
+                            <m.icon size={10} />
                             <span>{m.label}</span>
                         </button>
                     ))}
-                    {messages.length > 1 && (
-                        <button
-                            onClick={handleSummarize}
-                            disabled={isSummarizing || isLoading}
-                            title="Resumir sesión y guardar en Wiki"
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold border bg-[#4edea3]/10 border-[#4edea3]/30 text-[#4edea3] hover:bg-[#4edea3]/20 transition-all disabled:opacity-40 whitespace-nowrap font-[family-name:var(--font-manrope)]"
-                        >
-                            {isSummarizing ? <Loader2 size={11} className="animate-spin" /> : <BrainCircuit size={11} />}
-                            <span>Resumir</span>
-                        </button>
-                    )}
                 </div>
+
+                <div className="flex-1" />
+
+                {/* Summarize */}
+                {messages.length > 1 && (
+                    <button onClick={handleSummarize} disabled={isSummarizing || isLoading}
+                        title="Resumir y guardar en Wiki"
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-all disabled:opacity-40">
+                        {isSummarizing ? <Loader2 size={10} className="animate-spin" /> : <BookMarked size={10} />}
+                        <span>Guardar sesión</span>
+                    </button>
+                )}
+
+                <TokenBar usage={tokenUsage} />
             </div>
 
             {/* ── Chat Area ─────────────────────────────────────────────── */}
             <ScrollArea ref={scrollRef} className="flex-1 min-h-0" onScrollCapture={handleScroll}>
                 <div className="p-4 space-y-5 pb-4 max-w-3xl mx-auto w-full">
 
-                    {/* Welcome / Empty state */}
+                    {/* Empty state — minimal, chat-ready */}
                     {messages.length === 0 && !isLoading && (
-                        <div className="flex flex-col items-center pt-6 pb-4 gap-6">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-[#7c3aed]/25 blur-3xl rounded-full scale-150" />
-                                <div className="relative p-5 rounded-2xl bg-[#171f33] border border-[#7c3aed]/20 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                                    <BrainCircuit size={40} className="text-[#d2bbff] drop-shadow-[0_0_12px_rgba(210,187,255,0.5)]" />
-                                </div>
+                        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+                            <div className="w-12 h-12 rounded-2xl bg-violet-600/20 border border-violet-500/20 flex items-center justify-center">
+                                <BrainCircuit size={24} className="text-violet-300" />
                             </div>
-                            <div className="text-center">
-                                <h3 className="font-[family-name:var(--font-space-grotesk)] text-lg font-bold text-[#dae2fd] mb-1 tracking-tight">Asistente Técnico Disponible</h3>
-                                <p className="font-[family-name:var(--font-manrope)] text-[#958da1] text-sm max-w-sm leading-relaxed">
-                                    Describí el síntoma y te daré un diagnóstico cruzado con el historial real de MACCELL.
-                                </p>
+                            <div>
+                                <p className="text-white/80 font-semibold text-sm">Listo para diagnosticar</p>
+                                <p className="text-white/30 text-xs mt-1">Describí el síntoma en el campo de abajo</p>
                             </div>
-
-                            {/* Quick chips */}
-                            <div className="w-full max-w-md">
-                                <p className="font-[family-name:var(--font-manrope)] text-[10px] text-[#4a4455] uppercase tracking-widest font-bold mb-2.5 text-center">Consultas frecuentes</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {QUICK_CHIPS.map((chip) => (
-                                        <button
-                                            key={chip.label}
-                                            onClick={() => submit(chip.prompt)}
-                                            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[12px] font-semibold text-left transition-all active:scale-[0.97] font-[family-name:var(--font-manrope)] ${chip.color}`}
-                                        >
-                                            <chip.icon size={14} className="shrink-0" />
-                                            <span>{chip.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Mode descriptions */}
-                            <div className="w-full max-w-md bg-[#131b2e] rounded-2xl border border-[#4a4455]/30 p-4">
-                                <p className="font-[family-name:var(--font-manrope)] text-[10px] text-[#4a4455] uppercase tracking-widest font-bold mb-3">Modos disponibles</p>
-                                <div className="space-y-2">
-                                    {MODES.map(m => (
-                                        <button key={m.id} onClick={() => setMode(m.id)}
-                                            className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all border text-left ${mode === m.id ? m.activeBg : "border-transparent hover:bg-[#171f33] hover:border-[#4a4455]/30"}`}
-                                        >
-                                            <div className={`p-1.5 rounded-md bg-[#0b1326] ${m.id === "STANDARD" ? "text-[#d2bbff]" : m.id === "MENTOR" ? "text-[#4edea3]" : "text-[#ffb95f]"}`}>
-                                                <m.icon size={14} />
-                                            </div>
-                                            <div>
-                                                <div className="font-[family-name:var(--font-space-grotesk)] text-[12px] font-bold text-[#dae2fd]">{m.label}</div>
-                                                <div className="font-[family-name:var(--font-manrope)] text-[11px] text-[#958da1]">{m.desc}</div>
-                                            </div>
-                                            {mode === m.id && <div className={`ml-auto w-1.5 h-1.5 rounded-full ${m.dotColor}`} />}
-                                        </button>
-                                    ))}
-                                </div>
+                            <div className="grid grid-cols-2 gap-1.5 mt-2 w-full max-w-sm">
+                                {QUICK_CHIPS.map(chip => (
+                                    <button key={chip.label} onClick={() => submit(chip.prompt)}
+                                        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[12px] text-white/60 hover:text-white/90 transition-all text-left">
+                                        <chip.icon size={12} className="shrink-0 opacity-60" />
+                                        <span>{chip.label}</span>
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     )}
