@@ -7,7 +7,7 @@ import { findSchematic, formatSchematicContext } from "@/lib/cerebro-schematics"
 import { LEVEL3_MASTER_KNOWLEDGE } from "@/lib/master-protocols";
 import pdfParse from "pdf-parse";
 import { getGroqKeys } from "@/lib/groq";
-
+import { cerebroWebSearch, shouldTriggerWebSearch } from "@/lib/cerebro-web-search";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURACIÓN
@@ -31,6 +31,7 @@ const TIMEOUTS = {
 interface CerebroRequestBody {
     messages: any[];
     guidedMode?: boolean;
+    deviceContext?: { brand: string; model: string };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -165,8 +166,14 @@ Antes de emitir output, verificá:
 2. ¿Los datos técnicos son de la MISMA MARCA del equipo en consulta? Si son de otra marca → descartarlos.
 3. ¿El historial RAG fue usado como hipótesis #1 si existe y coincide con la marca? Si no → reorganizar.
 4. 0 uso de Osciloscopio/Cámara Térmica.
-5. 0 advertencias, 0 consejos de seguridad, 0 sugerencias de limpieza de pines.
-6. Cada frase tiene datos técnicos o paso accionable — sin relleno.
+5. Cada frase tiene datos técnicos o paso accionable — sin relleno.
+
+**OBLIGATORIO:** Si utilizaste información del bloque RAG o WEB, DEBÉS agregar al final de tu respuesta EXACTAMENTE esta sección (con blockquotes \`>\` para que se renderice como tarjeta):
+
+---
+### 🧾 Evidencia de Diagnóstico
+> **[RAG / Caso MAC1-XXXX]**: Breve resumen de lo aportado.
+> **[WEB / source.com]**: Breve resumen del dato web.
 
 Respondé quirúrgicamente.`;
 
@@ -517,6 +524,7 @@ export async function POST(req: NextRequest) {
         const body = await req.json() as CerebroRequestBody;
         const messages = body.messages || [];
         const guidedMode = body.guidedMode === true;
+        const deviceContext = body.deviceContext;
         if (!messages.length) return new Response("No messages", { status: 400 });
 
         const lastUserMsg = messages.findLast((m: any) => m.role === 'user');
@@ -541,10 +549,20 @@ export async function POST(req: NextRequest) {
 
         let finalSystemPrompt = activeBasePrompt;
 
-        // Correr classify + RAG + Schematics + DiagState EN PARALELO para reducir latencia
-        const classifyPromise = lastUserTextContent.length > 8
-            ? withTimeout(runAuxTask(keys, (g) => classifySymptom(lastUserTextContent.slice(0, 3000), g), { query: lastUserTextContent, brand: '', model: '' }), TIMEOUTS.classify, { query: lastUserTextContent, brand: '', model: '' })
-            : Promise.resolve({ query: lastUserTextContent, brand: '', model: '' });
+        let classifyPromise: Promise<{ query: string; brand: string; model: string }>;
+        if (deviceContext?.brand && deviceContext.brand !== "Auto") {
+            // Si el user declaró la marca, salteamos la clasificación por LLM
+            console.log(`[CEREBRO] 🎯 Usando deviceContext declarado: ${deviceContext.brand} ${deviceContext.model}`);
+            classifyPromise = Promise.resolve({
+                query: `${deviceContext.brand} ${deviceContext.model} ${lastUserTextContent}`,
+                brand: deviceContext.brand,
+                model: deviceContext.model
+            });
+        } else {
+            classifyPromise = lastUserTextContent.length > 8
+                ? withTimeout(runAuxTask(keys, (g) => classifySymptom(lastUserTextContent.slice(0, 3000), g), { query: lastUserTextContent, brand: '', model: '' }), TIMEOUTS.classify, { query: lastUserTextContent, brand: '', model: '' })
+                : Promise.resolve({ query: lastUserTextContent, brand: '', model: '' });
+        }
 
         const [classifyResult, schemResult, ragResultSettled, diagResult] = await Promise.allSettled([
             classifyPromise,
@@ -574,10 +592,29 @@ export async function POST(req: NextRequest) {
         const ragResult = ragResultSettled;
 
         // Inyectar contexto RAG (Reparaciones Similares)
-        const ragMatches = ragResult.status === 'fulfilled' ? (ragResult.value ?? []) : [];
+        const ragMatches = ragResult.status === 'fulfilled' ? ((ragResult.value as any) ?? []) : [];
         console.log(`[CEREBRO] 📚 RAG Matches encontrados: ${ragMatches.length}`);
+        
+        let webContext = '';
+        if (shouldTriggerWebSearch(lastUserTextContent, ragMatches.length, classifiedBrand)) {
+            try {
+                const queryToSearch = classifyResult.status === 'fulfilled' ? ((classifyResult.value as any).query || lastUserTextContent) : lastUserTextContent;
+                webContext = await withTimeout(
+                    cerebroWebSearch(queryToSearch, classifiedBrand),
+                    6500, // 6.5s timeout para web search
+                    ''
+                );
+            } catch {
+                console.warn('[WEB_SEARCH] Timeout o error en búsqueda web, saltando');
+            }
+        }
+
         if (ragMatches.length > 0) {
             finalSystemPrompt += formatRAGContext(ragMatches);
+        }
+
+        if (webContext) {
+            finalSystemPrompt += webContext;
         }
 
         const schematicMatch = schemResult.status === 'fulfilled' ? schemResult.value : null;

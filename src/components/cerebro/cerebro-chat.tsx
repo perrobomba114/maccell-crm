@@ -186,6 +186,8 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     const [zoom, setZoom] = useState(1);
     const [tokenUsage, setTokenUsage] = useState<{ used: number; limit: number; remaining: number; percentage: number; resetAt: string } | null>(null);
     const [mode, setMode] = useState<ChatMode>("STANDARD");
+    const [brand, setBrand] = useState("Auto");
+    const [model, setModel] = useState("");
     const [atBottom, setAtBottom] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -212,7 +214,13 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     const { messages, sendMessage, stop, status, error } = useChat({
         id: conversationId,
         messages: initialMessages,
-        transport: new DefaultChatTransport({ api: "/api/cerebro/chat", body: { guidedMode: mode === "MENTOR" } }),
+        transport: new DefaultChatTransport({ 
+            api: "/api/cerebro/chat", 
+            body: { 
+                guidedMode: mode === "MENTOR",
+                deviceContext: { brand, model }
+            } 
+        }),
         onFinish: async ({ messages: allMessages }: any) => {
             try {
                 if (allMessages?.length > 0) {
@@ -286,21 +294,54 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
     return (
         <div className="flex flex-col h-full overflow-hidden relative bg-[#0d1117]">
 
-            {/* ── Header: single compact row ────────────────────────────── */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] bg-[#161b22]/90 backdrop-blur-md shrink-0">
-                {/* Mode pills */}
-                <div className="flex items-center gap-1">
+            {/* ── Header: Context Picker & Tokens ────────────────────────────── */}
+            <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-[#161b22]/90 backdrop-blur-md shrink-0">
+                
+                {/* Device Context */}
+                <div className="flex items-center gap-2 bg-[#060e20] p-1 rounded-lg border border-[#4a4455]/40">
+                    <select 
+                        value={brand}
+                        onChange={(e) => setBrand(e.target.value)}
+                        className="bg-transparent text-[12px] text-[#dae2fd] outline-none pl-2 pr-1 py-1 cursor-pointer font-[family-name:var(--font-manrope)]"
+                    >
+                        <option value="Auto">Detectar Automático</option>
+                        <option value="Samsung">Samsung</option>
+                        <option value="Apple">Apple / iPhone</option>
+                        <option value="Motorola">Motorola</option>
+                        <option value="Xiaomi">Xiaomi / Redmi</option>
+                        <option value="Huawei">Huawei</option>
+                    </select>
+                    
+                    {brand !== "Auto" && (
+                        <>
+                            <div className="w-[1px] h-4 bg-[#4a4455]/50"></div>
+                            <input 
+                                type="text"
+                                value={model}
+                                onChange={(e) => setModel(e.target.value)}
+                                placeholder="Modelo (Ej: A52)"
+                                className="bg-transparent text-[12px] text-[#ccc3d8] placeholder:text-[#4a4455] outline-none w-28 pl-1 py-1 font-[family-name:var(--font-manrope)]"
+                            />
+                        </>
+                    )}
+                </div>
+
+                {/* Vertical separator */}
+                <div className="hidden sm:block w-[1px] h-5 bg-[#4a4455]/30 mx-1"></div>
+
+                {/* Modes (Compact) */}
+                <div className="flex items-center gap-1 bg-[#060e20] p-1 rounded-lg border border-[#4a4455]/40">
                     {MODES.map(m => (
                         <button key={m.id} onClick={() => setMode(m.id)} title={m.desc}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
                                 mode === m.id
-                                    ? m.id === "STANDARD" ? "bg-violet-500/20 border-violet-500/40 text-violet-300"
-                                        : m.id === "MENTOR" ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
-                                        : "bg-amber-500/15 border-amber-500/40 text-amber-300"
-                                    : "border-transparent text-white/30 hover:text-white/70 hover:bg-white/[0.04]"
+                                    ? m.id === "STANDARD" ? "bg-violet-500/20 text-violet-300 shadow-[0_0_8px_rgba(124,58,237,0.3)]"
+                                        : m.id === "MENTOR" ? "bg-emerald-500/15 text-emerald-300 shadow-[0_0_8px_rgba(78,222,163,0.25)]"
+                                        : "bg-amber-500/15 text-amber-300 shadow-[0_0_8px_rgba(255,185,95,0.25)]"
+                                    : "text-[#958da1] hover:text-[#dae2fd] hover:bg-white/[0.04]"
                             }`}>
-                            <m.icon size={10} />
-                            <span>{m.label}</span>
+                            <m.icon size={11} />
+                            <span className="hidden sm:inline">{m.label}</span>
                         </button>
                     ))}
                 </div>
