@@ -53,3 +53,5 @@ afip-certs/
 # Agent related
 .agent/
 .agents/
+AGENT.md
+.claude/

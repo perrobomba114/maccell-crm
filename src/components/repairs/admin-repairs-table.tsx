@@ -10,7 +10,7 @@ import { Search, Trash2, Edit, Eye, ChevronLeft, ChevronRight, ChevronsLeft, Che
 // ... (imports remain the same, just adding icons above)
 
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
-import { deleteRepairAction } from "@/lib/actions/repairs";
+import { deleteRepairAction, getRepairByIdAction } from "@/lib/actions/repairs";
 import { checkLatestRepairUpdate } from "@/actions/repair-check-actions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,7 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
 
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [viewRepair, setViewRepair] = useState<any>(null);
+    const [loadingRepairId, setLoadingRepairId] = useState<string | null>(null);
 
     const [isPending, startTransition] = useTransition();
 
@@ -439,11 +440,21 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        onClick={() => setViewRepair(repair)}
+                                                        onClick={async () => {
+                                                            setViewRepair(repair);
+                                                            setLoadingRepairId(repair.id);
+                                                            const full = await getRepairByIdAction(repair.id);
+                                                            if (full) setViewRepair(full);
+                                                            setLoadingRepairId(null);
+                                                        }}
                                                         title="Ver detalles"
+                                                        disabled={loadingRepairId === repair.id}
                                                         className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-full"
                                                     >
-                                                        <Eye className="h-4.5 w-4.5" />
+                                                        {loadingRepairId === repair.id
+                                                            ? <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
+                                                            : <Eye className="h-4.5 w-4.5" />
+                                                        }
                                                     </Button>
                                                     <Button
                                                         variant="ghost"

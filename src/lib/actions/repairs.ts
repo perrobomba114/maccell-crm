@@ -615,21 +615,20 @@ export async function getAllRepairsForAdminAction(query: string = "") {
 
         const repairs = await db.repair.findMany({
             where: whereClause,
+            take: 400,
             include: {
-                customer: true,
-                status: true,
-                assignedTo: true,
-                branch: true,
-                parts: {
-                    include: { sparePart: true }
-                },
-                observations: {
-                    orderBy: { createdAt: 'desc' },
-                    include: { user: true }
-                },
+                customer: { select: { id: true, name: true, phone: true } },
+                status: { select: { id: true, name: true, color: true } },
+                assignedTo: { select: { id: true, name: true } },
+                branch: { select: { id: true, name: true } },
                 statusHistory: {
+                    take: 1,
                     orderBy: { createdAt: 'desc' },
-                    include: { fromStatus: true, toStatus: true, user: true }
+                    include: {
+                        fromStatus: { select: { id: true, name: true } },
+                        toStatus: { select: { id: true, name: true } },
+                        user: { select: { id: true, name: true, role: true } },
+                    }
                 }
             },
             orderBy: {
