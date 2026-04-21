@@ -671,6 +671,7 @@ export async function getRepairByIdAction(repairId: string) {
                 customer: true,
                 branch: true,
                 status: true,
+                originalRepair: true,
                 parts: {
                     include: { sparePart: true }
                 },

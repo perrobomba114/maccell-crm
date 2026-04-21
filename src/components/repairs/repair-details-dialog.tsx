@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Image, Smartphone, User, Calendar, DollarSign, FileText, Clock, ImageOff, Plus, RotateCcw } from "lucide-react";
+import { Image, Smartphone, User, Calendar, DollarSign, FileText, Clock, ImageOff, Plus, RotateCcw, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { cn, getImgUrl, isValidImg } from "@/lib/utils";
@@ -234,6 +234,24 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
 
                                     {/* Status of Work */}
                                     <div className="grid grid-cols-1 gap-6">
+
+                                        {/* Warranty Info (if applicable) */}
+                                        {repair.isWarranty && repair.originalRepair && (
+                                            <div className="space-y-2">
+                                                <h3 className="text-[11px] font-black text-yellow-500 uppercase tracking-[0.3em] pl-1 flex items-center gap-2">
+                                                    <ShieldAlert className="w-4 h-4 text-yellow-500" />
+                                                    INFORMACIÓN DE GARANTÍA
+                                                </h3>
+                                                <div className="bg-yellow-600/20 border-2 border-yellow-500/50 p-5 rounded-2xl shadow-inner">
+                                                    <p className="text-sm font-bold text-yellow-500 mb-2">
+                                                        Boleta Anterior: <span className="text-white font-black">{repair.originalRepair.ticketNumber}</span>
+                                                    </p>
+                                                    <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap text-white/90 italic">
+                                                        <span className="font-bold text-yellow-500">Problema Anterior:</span> {repair.originalRepair.problemDescription}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* Problem */}
                                         <div className="space-y-2">
