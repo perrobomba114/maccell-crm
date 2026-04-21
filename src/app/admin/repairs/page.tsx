@@ -17,12 +17,17 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminRepairsPage() {
+export default async function AdminRepairsPage(
+    props: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }
+) {
+    const searchParams = await props.searchParams;
+    const query = typeof searchParams?.q === 'string' ? searchParams.q : "";
+
     const user = await getUserData();
     if (!user || user.role !== "ADMIN") redirect("/");
 
     const [repairs, branches] = await Promise.all([
-        getAllRepairsForAdminAction(),
+        getAllRepairsForAdminAction(query),
         getAllBranches()
     ]);
 
