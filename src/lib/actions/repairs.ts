@@ -354,6 +354,7 @@ export async function getActiveRepairsAction(branchId: string, statusIds?: numbe
                 status: true,
                 assignedTo: true,
                 branch: true,
+                originalRepair: true,
                 parts: {
                     include: { sparePart: true }
                 },
@@ -416,6 +417,7 @@ export async function getRepairHistoryAction(branchId: string, query: string = "
                 status: true,
                 assignedTo: true,
                 branch: true,
+                originalRepair: true,
                 parts: {
                     include: { sparePart: true }
                 },
@@ -621,6 +623,7 @@ export async function getAllRepairsForAdminAction(query: string = "") {
                 status: { select: { id: true, name: true, color: true } },
                 assignedTo: { select: { id: true, name: true } },
                 branch: { select: { id: true, name: true } },
+                originalRepair: { select: { ticketNumber: true, problemDescription: true } },
                 statusHistory: {
                     take: 1,
                     orderBy: { createdAt: 'desc' },
