@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TIMEZONE } from "@/lib/date-utils";
+import { getPantallaConnectionLabel, getPantallaConnectionStatus } from "@/lib/pantallas/status";
 import { type ContentRow, type ScreenRow } from "@/lib/pantallas/types";
 import { ChevronDown, ChevronUp, Monitor, Play, Plus, RefreshCw, SkipForward, Trash2, Upload, Wifi, WifiOff } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -217,40 +218,45 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
           <Card>
             <CardHeader><CardTitle className="text-base">Pantallas ({screens.length})</CardTitle></CardHeader>
             <CardContent className="space-y-2 max-h-[62vh] overflow-auto">
-              {screens.map((screen) => (
-                <div
-                  role="button"
-                  tabIndex={0}
-                  key={screen.id}
-                  onClick={() => setSelectedScreenId(screen.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setSelectedScreenId(screen.id);
-                    }
-                  }}
-                  className={`w-full rounded-xl border p-3 text-left transition ${selectedScreenId === screen.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-semibold">{screen.nombre}</div>
-                      <div className="text-xs text-muted-foreground">{screen.contenidos} contenidos • {screen.duracion}s</div>
+              {screens.map((screen) => {
+                const connectionStatus = getPantallaConnectionStatus(screen);
+                const isOnline = connectionStatus === "online";
+
+                return (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    key={screen.id}
+                    onClick={() => setSelectedScreenId(screen.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedScreenId(screen.id);
+                      }
+                    }}
+                    className={`w-full rounded-xl border p-3 text-left transition ${selectedScreenId === screen.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-semibold">{screen.nombre}</div>
+                        <div className="text-xs text-muted-foreground">{screen.contenidos} contenidos • {screen.duracion}s</div>
+                      </div>
+                      <Badge variant={isOnline ? "default" : "secondary"}>{getPantallaConnectionLabel(connectionStatus)}</Badge>
                     </div>
-                    <Badge variant={screen.activo ? "default" : "secondary"}>{screen.activo ? "Activa" : "Pausada"}</Badge>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                      {isOnline ? <Wifi className="h-3.5 w-3.5 text-emerald-600" /> : <WifiOff className="h-3.5 w-3.5" />}
+                      {fmtDate(screen.lastseen)}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+                      <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { await updatePantallaAction({ id: screen.id, nombre: screen.nombre, duracion: screen.duracion, activo: !screen.activo }); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo actualizar la pantalla"); } })}>
+                        {screen.activo ? "Pausar" : "Activar"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { await regeneratePantallaKeyAction(screen.id); window.alert("Pantalla desvinculada. Abrí la APK y seleccioná esta pantalla para vincularla de nuevo."); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo desvincular la pantalla"); } })}>Reset vínculo</Button>
+                      <Button size="sm" variant="destructive" onClick={() => { if (!window.confirm("¿Eliminar pantalla y contenidos?")) return; startTransition(async () => { try { await deletePantallaAction(screen.id); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo eliminar la pantalla"); } }); }}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                    {screen.lastseen ? <Wifi className="h-3.5 w-3.5 text-emerald-600" /> : <WifiOff className="h-3.5 w-3.5" />}
-                    {fmtDate(screen.lastseen)}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { await updatePantallaAction({ id: screen.id, nombre: screen.nombre, duracion: screen.duracion, activo: !screen.activo }); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo actualizar la pantalla"); } })}>
-                      {screen.activo ? "Pausar" : "Activar"}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { await regeneratePantallaKeyAction(screen.id); window.alert("Pantalla desvinculada. Abrí la APK y seleccioná esta pantalla para vincularla de nuevo."); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo desvincular la pantalla"); } })}>Reset vínculo</Button>
-                    <Button size="sm" variant="destructive" onClick={() => { if (!window.confirm("¿Eliminar pantalla y contenidos?")) return; startTransition(async () => { try { await deletePantallaAction(screen.id); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo eliminar la pantalla"); } }); }}><Trash2 className="h-4 w-4" /></Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         </div>
