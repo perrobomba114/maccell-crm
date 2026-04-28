@@ -87,27 +87,31 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
   async function uploadContent(file: File) {
     if (!selectedScreen) return;
     setUploadingName(file.name);
+    try {
+      const data = new FormData();
+      data.append("screenId", selectedScreen.id);
+      data.append("file", file);
 
-    const data = new FormData();
-    data.append("screenId", selectedScreen.id);
-    data.append("file", file);
+      const response = await fetch("/api/admin/pantallas/upload", { method: "POST", body: data });
+      const raw = await response.text();
+      const payload = raw ? JSON.parse(raw) : {};
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error || "No se pudo subir el archivo");
+      }
 
-    const response = await fetch("/api/admin/pantallas/upload", { method: "POST", body: data });
-    const payload = await response.json();
-    if (!response.ok || payload.error) {
+      await addPantallaContenidoAction({
+        screenId: selectedScreen.id,
+        titulo: payload.name,
+        archivo: payload.path,
+        peso: payload.size,
+      });
+
+      await loadContents(selectedScreen.id);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "No se pudo subir el archivo");
+    } finally {
       setUploadingName(null);
-      throw new Error(payload.error || "No se pudo subir el archivo");
     }
-
-    await addPantallaContenidoAction({
-      screenId: selectedScreen.id,
-      titulo: payload.name,
-      archivo: payload.path,
-      peso: payload.size,
-    });
-
-    setUploadingName(null);
-    await loadContents(selectedScreen.id);
   }
 
   async function saveContents() {
@@ -273,7 +277,9 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
               <div className="flex flex-wrap items-end gap-3 rounded-xl border p-3">
                 <div className="grow">
                   <Label>Subir archivo</Label>
-                  <PantallasUploadDropzone uploadingName={uploadingName} onFile={(file) => void uploadContent(file)} />
+                  <PantallasUploadDropzone uploadingName={uploadingName} onFile={(file) => {
+                    void uploadContent(file);
+                  }} />
                 </div>
                 <Button onClick={saveContents} disabled={pending || isSaving}><Upload className="mr-2 h-4 w-4" />Guardar cambios</Button>
               </div>
