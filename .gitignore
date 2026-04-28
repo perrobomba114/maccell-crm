@@ -46,6 +46,10 @@ backups/
 # AFIP Certs
 afip-certs/
 
+# Pantallas
+/pantalla/
+/PANTALLAS/
+
 # Editor
 .vscode/
 .idea/
@@ -55,3 +59,5 @@ afip-certs/
 .agents/
 AGENT.md
 .claude/
+
+/AGENTS.md

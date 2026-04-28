@@ -8,13 +8,17 @@ export async function GET(
 ) {
     try {
         const { path: filePathArray } = await params;
-        const filePath = path.join(process.cwd(), "public", ...filePathArray);
+        const publicFilePath = path.join(process.cwd(), "public", ...filePathArray);
+        const uploadFilePath = path.join(process.cwd(), "upload", ...filePathArray);
 
-        // Security check: ensure the path is within the public folder
+        // Security checks: ensure both candidates are inside allowed roots
         const publicDir = path.join(process.cwd(), "public");
-        if (!filePath.startsWith(publicDir)) {
+        const uploadDir = path.join(process.cwd(), "upload");
+        if (!publicFilePath.startsWith(publicDir) || !uploadFilePath.startsWith(uploadDir)) {
             return new NextResponse("Forbidden", { status: 403 });
         }
+
+        const filePath = fs.existsSync(uploadFilePath) ? uploadFilePath : publicFilePath;
 
         if (!fs.existsSync(filePath)) {
             console.error(`File not found at path: ${filePath}`);
