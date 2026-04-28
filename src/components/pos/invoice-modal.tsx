@@ -61,7 +61,7 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount, defau
             setDocNumber("");
             setName("");
             setAddress("");
-            setIvaCondition("");
+            setIvaCondition("Consumidor Final");
             setConcept(1);
             setServiceDateFrom(today);
             setServiceDateTo(today);
@@ -236,9 +236,18 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount, defau
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-zinc-400">Condición AFIP</Label>
-                                    <div className="px-3 py-2 rounded-md bg-zinc-950 border border-zinc-800 text-sm text-zinc-300">
-                                        {ivaCondition || "No verificado"}
-                                    </div>
+                                    <Select value={ivaCondition} onValueChange={setIvaCondition}>
+                                        <SelectTrigger className="bg-zinc-950 border-zinc-800 text-zinc-300 h-10">
+                                            <SelectValue placeholder="Seleccionar condición" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
+                                            <SelectItem value="Consumidor Final">Consumidor Final</SelectItem>
+                                            <SelectItem value="Responsable Inscripto">Responsable Inscripto</SelectItem>
+                                            <SelectItem value="Monotributo">Responsable Monotributo</SelectItem>
+                                            <SelectItem value="IVA Exento">IVA Exento</SelectItem>
+                                            <SelectItem value="Monotributo Social">Monotributo Social</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
 

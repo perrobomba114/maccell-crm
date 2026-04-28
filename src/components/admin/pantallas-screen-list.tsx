@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TIMEZONE } from "@/lib/date-utils";
-import { getPantallaConnectionLabel, getPantallaConnectionStatus } from "@/lib/pantallas/status";
+import { getPantallaConnectionLabel, getPantallaConnectionStatus, getPantallaOfflineMinutes } from "@/lib/pantallas/status";
 import { type ScreenRow } from "@/lib/pantallas/types";
 import { Trash2, Wifi, WifiOff } from "lucide-react";
 import { useTransition } from "react";
@@ -39,6 +39,10 @@ export function PantallasScreenList({
         {screens.map((screen) => {
           const connectionStatus = getPantallaConnectionStatus(screen);
           const isOnline = connectionStatus === "online";
+          const offlineMinutes = getPantallaOfflineMinutes(screen);
+          const statusLabel = offlineMinutes && connectionStatus === "offline"
+            ? `Offline hace ${offlineMinutes} min`
+            : getPantallaConnectionLabel(connectionStatus);
 
           return (
             <div
@@ -59,8 +63,12 @@ export function PantallasScreenList({
                   <div className="truncate font-semibold leading-tight">{screen.nombre}</div>
                   <div className="text-xs text-muted-foreground">{screen.contenidos} contenidos • {screen.duracion}s</div>
                 </div>
-                <Badge variant={isOnline ? "default" : "secondary"}>{getPantallaConnectionLabel(connectionStatus)}</Badge>
+                <Badge variant={isOnline ? "default" : "secondary"}>{statusLabel}</Badge>
               </div>
+
+              {screen.contenidos === 0 && (
+                <div className="mt-2 text-xs font-medium text-orange-500">Sin contenidos</div>
+              )}
 
               <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                 {isOnline ? <Wifi className="h-3.5 w-3.5 text-emerald-600" /> : <WifiOff className="h-3.5 w-3.5" />}

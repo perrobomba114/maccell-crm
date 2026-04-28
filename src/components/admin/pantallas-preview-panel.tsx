@@ -38,12 +38,12 @@ export function PantallasPreviewPanel({
               controls
               autoPlay={previewAutoPlay}
               muted
-              className="h-full w-full object-contain"
+              className="h-full w-full object-cover"
               onEnded={onNext}
             />
           )}
           {previewItem && !previewItem.archivo.toLowerCase().endsWith(".mp4") && (
-            <img src={`/api/uploads/pantallas/${previewItem.archivo}`} alt={previewItem.titulo} className="h-full w-full object-contain" />
+            <img src={`/api/uploads/pantallas/${previewItem.archivo}`} alt={previewItem.titulo} className="h-full w-full object-cover" />
           )}
         </div>
         <div className="line-clamp-1 text-xs text-muted-foreground">{previewItem?.titulo || "—"}</div>

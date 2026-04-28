@@ -13,6 +13,13 @@ import {
   regenerateScreenKey,
   updateScreen,
 } from "@/lib/pantallas/repository";
+import {
+  buildPantallasSummary,
+  deleteOrphanPantallaFiles,
+  diagnosePantalla,
+  findOrphanPantallaFiles,
+  getPantallaMetrics,
+} from "@/lib/pantallas/admin-tools";
 import { DEFAULT_DAY_CONFIG, type ContentDayConfig } from "@/lib/pantallas/types";
 import { revalidatePath } from "next/cache";
 
@@ -136,4 +143,63 @@ export async function deletePantallaContenidoAction(contentId: string) {
   await ensurePantallasSchema();
   await deleteContent(contentId);
   revalidatePath("/admin/pantallas");
+}
+
+export async function getPantallaDiagnosticsAction(screenId: string) {
+  await requireAdmin();
+  await ensurePantallasSchema();
+  const screens = await listScreens();
+  const screen = screens.find((item) => item.id === screenId);
+  if (!screen) throw new Error("Pantalla no encontrada");
+  return diagnosePantalla(screen, await listContents(screenId));
+}
+
+export async function getPantallaMetricsAction() {
+  await requireAdmin();
+  await ensurePantallasSchema();
+  return getPantallaMetrics();
+}
+
+export async function cleanupPantallaOrphansAction({ confirmDelete, dryRun = true }: { confirmDelete?: string; dryRun?: boolean } = {}) {
+  await requireAdmin();
+  await ensurePantallasSchema();
+  if (dryRun) return findOrphanPantallaFiles();
+  if (confirmDelete !== "DELETE_ORPHAN_PANTALLA_FILES") {
+    throw new Error("Confirmación inválida para borrar archivos");
+  }
+  return deleteOrphanPantallaFiles();
+}
+
+export async function duplicatePantallaPlaylistAction(input: { sourceScreenId: string; targetScreenId: string }) {
+  await requireAdmin();
+  await ensurePantallasSchema();
+  if (input.sourceScreenId === input.targetScreenId) throw new Error("Elegí una pantalla diferente");
+
+  const sourceContents = await listContents(input.sourceScreenId);
+  for (const content of sourceContents) {
+    await createContent({
+      screenId: input.targetScreenId,
+      titulo: content.titulo,
+      archivo: content.archivo,
+      peso: content.peso,
+      activo: content.activo,
+      days: {
+        lunes: content.lunes,
+        martes: content.martes,
+        miercoles: content.miercoles,
+        jueves: content.jueves,
+        viernes: content.viernes,
+        sabado: content.sabado,
+        domingo: content.domingo,
+      },
+    });
+  }
+  revalidatePath("/admin/pantallas");
+  return sourceContents.length;
+}
+
+export async function getPantallasSummaryAction() {
+  await requireAdmin();
+  await ensurePantallasSchema();
+  return buildPantallasSummary(await listScreens());
 }

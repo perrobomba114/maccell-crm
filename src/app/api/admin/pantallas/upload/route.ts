@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 
 const ALLOWED_EXTENSIONS = new Set([".png", ".mp4", ".jpg", ".jpeg", ".webp"]);
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 
 function sanitizeFileName(fileName: string): string {
   return fileName
@@ -51,7 +52,23 @@ export async function POST(request: NextRequest) {
 
     await fs.mkdir(fullDir, { recursive: true });
 
-    const bytes = Buffer.from(await file.arrayBuffer());
+    const originalBytes = Buffer.from(await file.arrayBuffer());
+    let bytes: Uint8Array = originalBytes;
+    if (IMAGE_EXTENSIONS.has(extension)) {
+      const sharp = (await import("sharp")).default;
+      const pipeline = sharp(originalBytes)
+        .rotate()
+        .resize({ width: 1920, height: 1080, fit: "inside", withoutEnlargement: true });
+
+      if (extension === ".jpg" || extension === ".jpeg") {
+        bytes = await pipeline.jpeg({ quality: 84, mozjpeg: true }).toBuffer();
+      } else if (extension === ".png") {
+        bytes = await pipeline.png({ compressionLevel: 9, effort: 7 }).toBuffer();
+      } else {
+        bytes = await pipeline.webp({ quality: 82, effort: 4 }).toBuffer();
+      }
+    }
+
     await fs.writeFile(fullPath, bytes);
 
     return NextResponse.json({
@@ -59,6 +76,8 @@ export async function POST(request: NextRequest) {
       path: relativePath.replaceAll("\\", "/"),
       size: bytes.length,
       name: file.name,
+      originalSize: originalBytes.length,
+      optimized: IMAGE_EXTENSIONS.has(extension),
     });
   } catch (error) {
     console.error("[PANTALLAS_UPLOAD] Error al subir archivo:", error);

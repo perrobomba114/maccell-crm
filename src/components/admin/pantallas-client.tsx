@@ -12,10 +12,13 @@ import { PantallasCreateForm } from "@/components/admin/pantallas-create-form";
 import { PantallasPreviewPanel } from "@/components/admin/pantallas-preview-panel";
 import { PantallasScreenList } from "@/components/admin/pantallas-screen-list";
 import { PantallasScreenSettings } from "@/components/admin/pantallas-screen-settings";
+import { PantallasSummaryPanel } from "@/components/admin/pantallas-summary-panel";
+import { PantallasToolsPanel } from "@/components/admin/pantallas-tools-panel";
 import { PantallasUploadPanel } from "@/components/admin/pantallas-upload-panel";
 import { usePantallasUpload } from "@/components/admin/use-pantallas-upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { type PantallaMetricRow, type PantallasAdminSummary } from "@/lib/pantallas/admin-tools";
 import { type ContentRow, type ScreenRow } from "@/lib/pantallas/types";
 import { Monitor, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -29,7 +32,15 @@ function moveItem<T>(list: T[], from: number, to: number) {
   return next;
 }
 
-export function PantallasClient({ initialScreens }: { initialScreens: ScreenWithCount[] }) {
+export function PantallasClient({
+  initialMetrics,
+  initialScreens,
+  initialSummary,
+}: {
+  initialMetrics: PantallaMetricRow[];
+  initialScreens: ScreenWithCount[];
+  initialSummary: PantallasAdminSummary;
+}) {
   const [screens, setScreens] = useState(initialScreens);
   const [selectedScreenId, setSelectedScreenId] = useState<string | null>(initialScreens[0]?.id ?? null);
   const [screenForm, setScreenForm] = useState({ nombre: "", duracion: 15, activo: true });
@@ -134,10 +145,8 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
     setContents(next);
   }
 
-  function moveContent(index: number, direction: -1 | 1) {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= contents.length) return;
-    const next = moveItem(contents, index, nextIndex);
+  function reorderContent(from: number, to: number) {
+    const next = moveItem(contents, from, to);
     setContents(next);
     void saveContents(next);
   }
@@ -210,6 +219,8 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
         </div>
       </div>
 
+      <PantallasSummaryPanel summary={initialSummary} />
+
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         <div className="space-y-4">
           <PantallasCreateForm form={screenForm} disabled={pending || isSaving} onChange={setScreenForm} onCreate={createScreen} />
@@ -252,6 +263,15 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
 
             {selectedScreen && <PantallasUploadPanel progress={uploadProgress} onFiles={(files) => void uploadContents(files)} />}
 
+            {selectedScreen && (
+              <PantallasToolsPanel
+                screens={screens}
+                selectedScreen={selectedScreen}
+                initialMetrics={initialMetrics}
+                onRefresh={refreshScreens}
+              />
+            )}
+
             {loadingContents && <div className="text-sm text-muted-foreground">Cargando contenidos...</div>}
             {!loadingContents && selectedScreen && contents.length === 0 && <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">Esta pantalla aún no tiene contenidos.</div>}
 
@@ -260,7 +280,7 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
                 contents={contents}
                 onRename={renameContent}
                 onRenameCommit={() => void saveContents()}
-                onMove={moveContent}
+                onReorder={reorderContent}
                 onToggle={toggleContent}
                 onDelete={(id) => void deleteContent(id)}
                 onPreview={setPreviewIndex}

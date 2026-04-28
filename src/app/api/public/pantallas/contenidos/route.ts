@@ -6,6 +6,7 @@ import {
   getScreenForDevice,
   touchScreenHeartbeat,
 } from "@/lib/pantallas/repository";
+import { recordPantallaSync } from "@/lib/pantallas/admin-tools";
 
 function getPublicOrigin(request: NextRequest): string {
   const configuredUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL;
@@ -66,6 +67,9 @@ export async function POST(request: NextRequest) {
       ? item
       : `${publicOrigin}${item}`
   );
+  void recordPantallaSync(id, data.length).catch((error) => {
+    console.error("[PANTALLAS] No se pudo registrar sync:", error);
+  });
 
   return NextResponse.json(
     {

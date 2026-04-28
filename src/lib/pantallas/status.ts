@@ -23,3 +23,10 @@ export function getPantallaConnectionLabel(status: PantallaConnectionStatus): st
   if (status === "unlinked") return "Sin vincular";
   return "Pausada";
 }
+
+export function getPantallaOfflineMinutes(screen: Pick<ScreenRow, "lastseen">) {
+  if (!screen.lastseen) return null;
+  const diff = Date.now() - new Date(screen.lastseen).getTime();
+  if (diff <= PANTALLAS_ONLINE_THRESHOLD_MS) return 0;
+  return Math.floor(diff / 60000);
+}
