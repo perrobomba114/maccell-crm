@@ -50,6 +50,7 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
 
   const selectedScreen = useMemo(() => screens.find((s) => s.id === selectedScreenId) ?? null, [screens, selectedScreenId]);
   const previewItem = contents[previewIndex] ?? null;
+  const [isSaving, setIsSaving] = useState(false);
 
   async function refreshScreens() {
     window.location.reload();
@@ -66,9 +67,20 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
   }
 
   async function createScreen() {
+    if (!screenForm.nombre.trim()) {
+      window.alert("El nombre es obligatorio");
+      return;
+    }
+    setIsSaving(true);
     startTransition(async () => {
-      await createPantallaAction(screenForm);
-      await refreshScreens();
+      try {
+        await createPantallaAction(screenForm);
+        await refreshScreens();
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : "No se pudo crear la pantalla");
+      } finally {
+        setIsSaving(false);
+      }
     });
   }
 
@@ -99,26 +111,33 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
   }
 
   async function saveContents() {
+    setIsSaving(true);
     startTransition(async () => {
-      await savePantallaContenidosAction(
-        contents.map((item, index) => ({
-          id: item.id,
-          titulo: item.titulo,
-          activo: item.activo,
-          orden: index + 1,
-          days: {
-            lunes: true,
-            martes: true,
-            miercoles: true,
-            jueves: true,
-            viernes: true,
-            sabado: true,
-            domingo: true,
-          },
-        }))
-      );
+      try {
+        await savePantallaContenidosAction(
+          contents.map((item, index) => ({
+            id: item.id,
+            titulo: item.titulo,
+            activo: item.activo,
+            orden: index + 1,
+            days: {
+              lunes: true,
+              martes: true,
+              miercoles: true,
+              jueves: true,
+              viernes: true,
+              sabado: true,
+              domingo: true,
+            },
+          }))
+        );
 
-      if (selectedScreen) await loadContents(selectedScreen.id);
+        if (selectedScreen) await loadContents(selectedScreen.id);
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : "No se pudieron guardar los contenidos");
+      } finally {
+        setIsSaving(false);
+      }
     });
   }
 
@@ -160,7 +179,7 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
               <Input placeholder="Nombre" value={screenForm.nombre} onChange={(e) => setScreenForm((s) => ({ ...s, nombre: e.target.value }))} />
               <Input type="number" min={1} value={screenForm.duracion} onChange={(e) => setScreenForm((s) => ({ ...s, duracion: Number(e.target.value) || 1 }))} />
               <label className="flex items-center gap-2 text-sm"><Checkbox checked={screenForm.activo} onCheckedChange={(v) => setScreenForm((s) => ({ ...s, activo: v === true }))} /> Activa</label>
-              <Button className="w-full" onClick={createScreen} disabled={pending}><Plus className="mr-2 h-4 w-4" />Crear pantalla</Button>
+              <Button className="w-full" onClick={createScreen} disabled={pending || isSaving}><Plus className="mr-2 h-4 w-4" />Crear pantalla</Button>
             </CardContent>
           </Card>
 
@@ -194,11 +213,11 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
                     {fmtDate(screen.lastseen)}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Button size="sm" variant="outline" onClick={() => startTransition(async () => { await updatePantallaAction({ id: screen.id, nombre: screen.nombre, duracion: screen.duracion, activo: !screen.activo }); await refreshScreens(); })}>
+                    <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { await updatePantallaAction({ id: screen.id, nombre: screen.nombre, duracion: screen.duracion, activo: !screen.activo }); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo actualizar la pantalla"); } })}>
                       {screen.activo ? "Pausar" : "Activar"}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => startTransition(async () => { const key = await regeneratePantallaKeyAction(screen.id); window.alert(`Nueva key: ${key}`); await refreshScreens(); })}>Key</Button>
-                    <Button size="sm" variant="destructive" onClick={() => { if (!window.confirm("¿Eliminar pantalla y contenidos?")) return; startTransition(async () => { await deletePantallaAction(screen.id); await refreshScreens(); }); }}><Trash2 className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { const key = await regeneratePantallaKeyAction(screen.id); window.alert(`Nueva key: ${key}`); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo regenerar la key"); } })}>Key</Button>
+                    <Button size="sm" variant="destructive" onClick={() => { if (!window.confirm("¿Eliminar pantalla y contenidos?")) return; startTransition(async () => { try { await deletePantallaAction(screen.id); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo eliminar la pantalla"); } }); }}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
               ))}
@@ -239,8 +258,12 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
                 pending={pending}
                 onSave={(input) => {
                   startTransition(async () => {
-                    await updatePantallaAction(input);
-                    await refreshScreens();
+                    try {
+                      await updatePantallaAction(input);
+                      await refreshScreens();
+                    } catch (error) {
+                      window.alert(error instanceof Error ? error.message : "No se pudo guardar la configuración");
+                    }
                   });
                 }}
               />
@@ -252,7 +275,7 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
                   <Label>Subir archivo</Label>
                   <PantallasUploadDropzone uploadingName={uploadingName} onFile={(file) => void uploadContent(file)} />
                 </div>
-                <Button onClick={saveContents} disabled={pending}><Upload className="mr-2 h-4 w-4" />Guardar cambios</Button>
+                <Button onClick={saveContents} disabled={pending || isSaving}><Upload className="mr-2 h-4 w-4" />Guardar cambios</Button>
               </div>
             )}
 
@@ -271,7 +294,7 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
                         <span className="text-xs text-muted-foreground">#{index + 1}</span>
                       </div>
                       <label className="flex items-center gap-2 text-sm"><Checkbox checked={item.activo} onCheckedChange={(v) => setContents((rows) => rows.map((row) => row.id === item.id ? { ...row, activo: v === true } : row))} /> Activo</label>
-                      <Button variant="destructive" onClick={async () => { await deletePantallaContenidoAction(item.id); if (selectedScreen) await loadContents(selectedScreen.id); }}><Trash2 className="mr-2 h-4 w-4" />Eliminar</Button>
+                      <Button variant="destructive" onClick={async () => { try { await deletePantallaContenidoAction(item.id); if (selectedScreen) await loadContents(selectedScreen.id); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo eliminar el contenido"); } }}><Trash2 className="mr-2 h-4 w-4" />Eliminar</Button>
                     </div>
                     <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setPreviewIndex(index)}>Previsualizar este</Button></div>
                     <a className="block text-xs text-muted-foreground underline" href={`/api/uploads/pantallas/${item.archivo}`} target="_blank" rel="noreferrer">{item.archivo}</a>
