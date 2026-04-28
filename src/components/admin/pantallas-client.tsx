@@ -1,35 +1,26 @@
 "use client";
 
 import {
-  addPantallaContenidoAction,
   createPantallaAction,
-  deletePantallaAction,
   deletePantallaContenidoAction,
   getPantallaContentsAction,
-  regeneratePantallaKeyAction,
   savePantallaContenidosAction,
   updatePantallaAction,
 } from "@/actions/pantallas-actions";
+import { PantallasContentList } from "@/components/admin/pantallas-content-list";
+import { PantallasCreateForm } from "@/components/admin/pantallas-create-form";
+import { PantallasPreviewPanel } from "@/components/admin/pantallas-preview-panel";
+import { PantallasScreenList } from "@/components/admin/pantallas-screen-list";
 import { PantallasScreenSettings } from "@/components/admin/pantallas-screen-settings";
-import { PantallasUploadDropzone } from "@/components/admin/pantallas-upload-dropzone";
-import { Badge } from "@/components/ui/badge";
+import { PantallasUploadPanel } from "@/components/admin/pantallas-upload-panel";
+import { usePantallasUpload } from "@/components/admin/use-pantallas-upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { TIMEZONE } from "@/lib/date-utils";
-import { getPantallaConnectionLabel, getPantallaConnectionStatus } from "@/lib/pantallas/status";
 import { type ContentRow, type ScreenRow } from "@/lib/pantallas/types";
-import { ChevronDown, ChevronUp, Monitor, Play, Plus, RefreshCw, SkipForward, Trash2, Upload, Wifi, WifiOff } from "lucide-react";
+import { Monitor, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 type ScreenWithCount = ScreenRow & { contenidos: number };
-
-function fmtDate(date: Date | null) {
-  if (!date) return "Nunca";
-  return new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", timeZone: TIMEZONE }).format(new Date(date));
-}
 
 function moveItem<T>(list: T[], from: number, to: number) {
   const next = [...list];
@@ -39,7 +30,7 @@ function moveItem<T>(list: T[], from: number, to: number) {
 }
 
 export function PantallasClient({ initialScreens }: { initialScreens: ScreenWithCount[] }) {
-  const [screens] = useState(initialScreens);
+  const [screens, setScreens] = useState(initialScreens);
   const [selectedScreenId, setSelectedScreenId] = useState<string | null>(initialScreens[0]?.id ?? null);
   const [screenForm, setScreenForm] = useState({ nombre: "", duracion: 15, activo: true });
   const [contents, setContents] = useState<ContentRow[]>([]);
@@ -47,11 +38,20 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
   const [pending, startTransition] = useTransition();
   const [previewIndex, setPreviewIndex] = useState(0);
   const [previewAutoPlay, setPreviewAutoPlay] = useState(true);
-  const [uploadingName, setUploadingName] = useState<string | null>(null);
 
   const selectedScreen = useMemo(() => screens.find((s) => s.id === selectedScreenId) ?? null, [screens, selectedScreenId]);
   const previewItem = contents[previewIndex] ?? null;
   const [isSaving, setIsSaving] = useState(false);
+  const { clearUploadProgress, uploadContents, uploadProgress } = usePantallasUpload({
+    screenId: selectedScreen?.id ?? null,
+    onUploaded: async (successCount) => {
+      if (!selectedScreen) return;
+      await loadContents(selectedScreen.id);
+      setScreens((rows) => rows.map((screen) => (
+        screen.id === selectedScreen.id ? { ...screen, contenidos: screen.contenidos + successCount } : screen
+      )));
+    },
+  });
 
   async function refreshScreens() {
     window.location.reload();
@@ -85,42 +85,12 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
     });
   }
 
-  async function uploadContent(file: File) {
-    if (!selectedScreen) return;
-    setUploadingName(file.name);
-    try {
-      const data = new FormData();
-      data.append("screenId", selectedScreen.id);
-      data.append("file", file);
-
-      const response = await fetch("/api/admin/pantallas/upload", { method: "POST", body: data });
-      const raw = await response.text();
-      const payload = raw ? JSON.parse(raw) : {};
-      if (!response.ok || payload.error) {
-        throw new Error(payload.error || "No se pudo subir el archivo");
-      }
-
-      await addPantallaContenidoAction({
-        screenId: selectedScreen.id,
-        titulo: payload.name,
-        archivo: payload.path,
-        peso: payload.size,
-      });
-
-      await loadContents(selectedScreen.id);
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : "No se pudo subir el archivo");
-    } finally {
-      setUploadingName(null);
-    }
-  }
-
-  async function saveContents() {
+  async function saveContents(nextContents = contents) {
     setIsSaving(true);
     startTransition(async () => {
       try {
         await savePantallaContenidosAction(
-          contents.map((item, index) => ({
+          nextContents.map((item, index) => ({
             id: item.id,
             titulo: item.titulo,
             activo: item.activo,
@@ -146,7 +116,44 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
     });
   }
 
+  async function deleteContent(contentId: string) {
+    if (!selectedScreen) return;
+    try {
+      await deletePantallaContenidoAction(contentId);
+      await loadContents(selectedScreen.id);
+      setScreens((rows) => rows.map((screen) => (
+        screen.id === selectedScreen.id ? { ...screen, contenidos: Math.max(0, screen.contenidos - 1) } : screen
+      )));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "No se pudo eliminar el contenido");
+    }
+  }
+
+  function renameContent(contentId: string, titulo: string) {
+    const next = contents.map((row) => row.id === contentId ? { ...row, titulo } : row);
+    setContents(next);
+  }
+
+  function moveContent(index: number, direction: -1 | 1) {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= contents.length) return;
+    const next = moveItem(contents, index, nextIndex);
+    setContents(next);
+    void saveContents(next);
+  }
+
+  function toggleContent(contentId: string, activo: boolean) {
+    const next = contents.map((row) => row.id === contentId ? { ...row, activo } : row);
+    setContents(next);
+    void saveContents(next);
+  }
+
+  function nextPreview() {
+    setPreviewIndex((i) => (i + 1) % Math.max(contents.length, 1));
+  }
+
   useEffect(() => {
+    clearUploadProgress();
     if (!selectedScreenId) {
       setContents([]);
       return;
@@ -171,7 +178,7 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
     return () => {
       cancelled = true;
     };
-  }, [selectedScreenId]);
+  }, [selectedScreenId, clearUploadProgress]);
 
   useEffect(() => {
     if (!previewAutoPlay || !selectedScreen || contents.length === 0) return;
@@ -205,60 +212,9 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
 
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         <div className="space-y-4">
-          <Card className="border-primary/20">
-            <CardHeader><CardTitle className="text-base">Crear pantalla</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <Input placeholder="Nombre" value={screenForm.nombre} onChange={(e) => setScreenForm((s) => ({ ...s, nombre: e.target.value }))} />
-              <Input type="number" min={1} value={screenForm.duracion} onChange={(e) => setScreenForm((s) => ({ ...s, duracion: Number(e.target.value) || 1 }))} />
-              <label className="flex items-center gap-2 text-sm"><Checkbox checked={screenForm.activo} onCheckedChange={(v) => setScreenForm((s) => ({ ...s, activo: v === true }))} /> Activa</label>
-              <Button className="w-full" onClick={createScreen} disabled={pending || isSaving}><Plus className="mr-2 h-4 w-4" />Crear pantalla</Button>
-            </CardContent>
-          </Card>
+          <PantallasCreateForm form={screenForm} disabled={pending || isSaving} onChange={setScreenForm} onCreate={createScreen} />
 
-          <Card>
-            <CardHeader><CardTitle className="text-base">Pantallas ({screens.length})</CardTitle></CardHeader>
-            <CardContent className="space-y-2 max-h-[62vh] overflow-auto">
-              {screens.map((screen) => {
-                const connectionStatus = getPantallaConnectionStatus(screen);
-                const isOnline = connectionStatus === "online";
-
-                return (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    key={screen.id}
-                    onClick={() => setSelectedScreenId(screen.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setSelectedScreenId(screen.id);
-                      }
-                    }}
-                    className={`w-full rounded-xl border p-3 text-left transition ${selectedScreenId === screen.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-semibold">{screen.nombre}</div>
-                        <div className="text-xs text-muted-foreground">{screen.contenidos} contenidos • {screen.duracion}s</div>
-                      </div>
-                      <Badge variant={isOnline ? "default" : "secondary"}>{getPantallaConnectionLabel(connectionStatus)}</Badge>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      {isOnline ? <Wifi className="h-3.5 w-3.5 text-emerald-600" /> : <WifiOff className="h-3.5 w-3.5" />}
-                      {fmtDate(screen.lastseen)}
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { await updatePantallaAction({ id: screen.id, nombre: screen.nombre, duracion: screen.duracion, activo: !screen.activo }); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo actualizar la pantalla"); } })}>
-                        {screen.activo ? "Pausar" : "Activar"}
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { await regeneratePantallaKeyAction(screen.id); window.alert("Pantalla desvinculada. Abrí la APK y seleccioná esta pantalla para vincularla de nuevo."); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo desvincular la pantalla"); } })}>Reset vínculo</Button>
-                      <Button size="sm" variant="destructive" onClick={() => { if (!window.confirm("¿Eliminar pantalla y contenidos?")) return; startTransition(async () => { try { await deletePantallaAction(screen.id); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo eliminar la pantalla"); } }); }}><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+          <PantallasScreenList screens={screens} selectedScreenId={selectedScreenId} onSelect={setSelectedScreenId} onRefresh={refreshScreens} />
         </div>
 
         <Card className="min-h-[70vh]">
@@ -267,25 +223,14 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
           </CardHeader>
           <CardContent className="space-y-4">
             {selectedScreen && (
-              <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
-                <div className="rounded-xl border bg-muted/20 p-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Previsualización</div>
-                    <label className="flex items-center gap-2 text-xs"><Checkbox checked={previewAutoPlay} onCheckedChange={(v) => setPreviewAutoPlay(v === true)} /> Autoplay</label>
-                  </div>
-                  <div className="aspect-video w-full overflow-hidden rounded-lg bg-black/90 flex items-center justify-center">
-                    {!previewItem && <span className="text-xs text-white/70">Sin contenidos</span>}
-                    {previewItem && previewItem.archivo.toLowerCase().endsWith(".mp4") && <video key={previewItem.id} src={`/api/uploads/pantallas/${previewItem.archivo}`} controls autoPlay={previewAutoPlay} muted className="h-full w-full object-contain" onEnded={() => setPreviewIndex((i) => (i + 1) % contents.length)} />}
-                    {previewItem && !previewItem.archivo.toLowerCase().endsWith(".mp4") && <img src={`/api/uploads/pantallas/${previewItem.archivo}`} alt={previewItem.titulo} className="h-full w-full object-contain" />}
-                  </div>
-                  <div className="text-xs text-muted-foreground line-clamp-1">{previewItem?.titulo || "—"}</div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setPreviewAutoPlay((v) => !v)}><Play className="mr-2 h-3.5 w-3.5" /> {previewAutoPlay ? "Pausa" : "Play"}</Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setPreviewIndex((i) => (i + 1) % Math.max(contents.length, 1))}><SkipForward className="mr-2 h-3.5 w-3.5" /> Siguiente</Button>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground rounded-xl border border-dashed p-3">Todas las publicidades corren 24/7. No hay programación por días.</div>
-              </div>
+              <PantallasPreviewPanel
+                screen={selectedScreen}
+                contents={contents}
+                previewItem={previewItem}
+                previewAutoPlay={previewAutoPlay}
+                onAutoplayChange={setPreviewAutoPlay}
+                onNext={nextPreview}
+              />
             )}
 
             {selectedScreen && (
@@ -305,40 +250,21 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
               />
             )}
 
-            {selectedScreen && (
-              <div className="flex flex-wrap items-end gap-3 rounded-xl border p-3">
-                <div className="grow">
-                  <Label>Subir archivo</Label>
-                  <PantallasUploadDropzone uploadingName={uploadingName} onFile={(file) => {
-                    void uploadContent(file);
-                  }} />
-                </div>
-                <Button onClick={saveContents} disabled={pending || isSaving}><Upload className="mr-2 h-4 w-4" />Guardar cambios</Button>
-              </div>
-            )}
+            {selectedScreen && <PantallasUploadPanel progress={uploadProgress} onFiles={(files) => void uploadContents(files)} />}
 
             {loadingContents && <div className="text-sm text-muted-foreground">Cargando contenidos...</div>}
             {!loadingContents && selectedScreen && contents.length === 0 && <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">Esta pantalla aún no tiene contenidos.</div>}
 
             {!loadingContents && contents.length > 0 && (
-              <div className="space-y-3">
-                {contents.map((item, index) => (
-                  <div key={item.id} className="rounded-xl border p-3 space-y-3">
-                    <div className="grid gap-3 lg:grid-cols-[1fr_110px_120px_130px]">
-                      <Input value={item.titulo} onChange={(e) => setContents((rows) => rows.map((row) => row.id === item.id ? { ...row, titulo: e.target.value } : row))} />
-                      <div className="flex items-center gap-1">
-                        <Button size="icon" variant="outline" onClick={() => index > 0 && setContents((rows) => moveItem(rows, index, index - 1))}><ChevronUp className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="outline" onClick={() => index < contents.length - 1 && setContents((rows) => moveItem(rows, index, index + 1))}><ChevronDown className="h-4 w-4" /></Button>
-                        <span className="text-xs text-muted-foreground">#{index + 1}</span>
-                      </div>
-                      <label className="flex items-center gap-2 text-sm"><Checkbox checked={item.activo} onCheckedChange={(v) => setContents((rows) => rows.map((row) => row.id === item.id ? { ...row, activo: v === true } : row))} /> Activo</label>
-                      <Button variant="destructive" onClick={async () => { try { await deletePantallaContenidoAction(item.id); if (selectedScreen) await loadContents(selectedScreen.id); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo eliminar el contenido"); } }}><Trash2 className="mr-2 h-4 w-4" />Eliminar</Button>
-                    </div>
-                    <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setPreviewIndex(index)}>Previsualizar este</Button></div>
-                    <a className="block text-xs text-muted-foreground underline" href={`/api/uploads/pantallas/${item.archivo}`} target="_blank" rel="noreferrer">{item.archivo}</a>
-                  </div>
-                ))}
-              </div>
+              <PantallasContentList
+                contents={contents}
+                onRename={renameContent}
+                onRenameCommit={() => void saveContents()}
+                onMove={moveContent}
+                onToggle={toggleContent}
+                onDelete={(id) => void deleteContent(id)}
+                onPreview={setPreviewIndex}
+              />
             )}
           </CardContent>
         </Card>
