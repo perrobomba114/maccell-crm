@@ -7,6 +7,22 @@ import {
   touchScreenHeartbeat,
 } from "@/lib/pantallas/repository";
 
+function getPublicOrigin(request: NextRequest): string {
+  const configuredUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL;
+  if (configuredUrl) return configuredUrl.replace(/\/$/, "");
+
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
+  if (forwardedHost) return `${forwardedProto}://${forwardedHost}`;
+
+  const host = request.headers.get("host");
+  if (host && !host.startsWith("0.0.0.0")) {
+    return `${request.nextUrl.protocol}//${host}`;
+  }
+
+  return request.nextUrl.origin;
+}
+
 export async function POST(request: NextRequest) {
   const contentType = request.headers.get("content-type") || "";
   let id = "";
@@ -44,10 +60,11 @@ export async function POST(request: NextRequest) {
   }
 
   await touchScreenHeartbeat(id);
+  const publicOrigin = getPublicOrigin(request);
   const data = (await getContentsForToday(id)).map((item) =>
     item.startsWith("http://") || item.startsWith("https://")
       ? item
-      : `${request.nextUrl.origin}${item}`
+      : `${publicOrigin}${item}`
   );
 
   return NextResponse.json(
