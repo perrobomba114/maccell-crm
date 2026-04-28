@@ -146,6 +146,33 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
   }
 
   useEffect(() => {
+    if (!selectedScreenId) {
+      setContents([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingContents(true);
+    getPantallaContentsAction(selectedScreenId)
+      .then((items) => {
+        if (cancelled) return;
+        setContents(items);
+        setPreviewIndex(0);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        window.alert(error instanceof Error ? error.message : "No se pudieron cargar los contenidos");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingContents(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedScreenId]);
+
+  useEffect(() => {
     if (!previewAutoPlay || !selectedScreen || contents.length === 0) return;
     const item = contents[previewIndex];
     if (!item) return;
@@ -195,12 +222,11 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
                   role="button"
                   tabIndex={0}
                   key={screen.id}
-                  onClick={() => { setSelectedScreenId(screen.id); void loadContents(screen.id); }}
+                  onClick={() => setSelectedScreenId(screen.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
                       setSelectedScreenId(screen.id);
-                      void loadContents(screen.id);
                     }
                   }}
                   className={`w-full rounded-xl border p-3 text-left transition ${selectedScreenId === screen.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}

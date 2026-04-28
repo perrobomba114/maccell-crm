@@ -181,7 +181,6 @@ export function ProductsClient({ initialProducts, categories, branches, totalPag
 
     // Since page.tsx passes filtered products, we use initialProducts directly.
     const filteredProducts = initialProducts;
-    console.log('ProductsClient Params:', { totalPages, currentPage, productsLength: filteredProducts.length });
 
     // Effect to debounce search term changes and push to URL
     React.useEffect(() => {

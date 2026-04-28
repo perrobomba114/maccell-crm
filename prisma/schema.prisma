@@ -119,6 +119,42 @@ model ProductStock {
   @@map("product_stocks")
 }
 
+model DigitalScreen {
+  id         String                 @id
+  nombre     String                 @unique
+  duracion   Int                    @default(30)
+  activo     Boolean                @default(true)
+  lastseen   DateTime?              @db.Timestamptz(6)
+  clave      String?
+  stamp      DateTime               @default(now()) @db.Timestamptz(6)
+  contenidos DigitalScreenContent[]
+
+  @@map("digital_screens")
+}
+
+model DigitalScreenContent {
+  id        String        @id
+  screenId  String        @map("screen_id")
+  titulo    String
+  archivo   String
+  orden     Int           @default(1)
+  peso      BigInt        @default(0)
+  activo    Boolean       @default(true)
+  lunes     Boolean       @default(true)
+  martes    Boolean       @default(true)
+  miercoles Boolean       @default(true)
+  jueves    Boolean       @default(true)
+  viernes   Boolean       @default(true)
+  sabado    Boolean       @default(true)
+  domingo   Boolean       @default(true)
+  stamp     DateTime      @default(now()) @db.Timestamptz(6)
+  screen    DigitalScreen @relation(fields: [screenId], references: [id], onDelete: Cascade)
+
+  @@index([screenId], map: "idx_digital_screen_contents_screen_id")
+  @@index([screenId, orden], map: "idx_digital_screen_contents_order")
+  @@map("digital_screen_contents")
+}
+
 model StockTransfer {
   id             String         @id @default(cuid())
   productId      String
