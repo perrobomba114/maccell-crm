@@ -625,7 +625,6 @@ export async function getAllRepairsForAdminAction(query: string = "") {
                 branch: { select: { id: true, name: true } },
                 originalRepair: { select: { ticketNumber: true, problemDescription: true } },
                 statusHistory: {
-                    take: 1,
                     orderBy: { createdAt: 'desc' },
                     include: {
                         fromStatus: { select: { id: true, name: true } },

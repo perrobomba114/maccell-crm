@@ -114,7 +114,6 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
 
             // New Filter: Technician name (from URL param 'tech')
             const techParam = searchParams.get('tech');
-            const matchesTech = !techParam || (repair.assignedTo?.name || "SIN ASIGNAR") === techParam;
 
             // New Filter: Date (from URL param 'date')
             // Match exactly the selected day, taking timezone strings into account
@@ -125,7 +124,9 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
             // default to "today" when no date is picked, we apply "today" here too.
             const targetDate = dateParam ? new Date(dateParam) : (techParam ? new Date() : null);
 
+            let matchesTech = !techParam || (repair.assignedTo?.name || "SIN ASIGNAR") === techParam;
             let matchesDate = true;
+
             if (targetDate) {
                 // Helper to check if a DB date string matches targetDate in Local Browser Time
                 const isSameDay = (dStr: string | Date | null) => {
@@ -139,15 +140,25 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
                 const isCreatedToday = isSameDay(repair.createdAt);
                 
                 // Use statusHistory to cleanly identify if it was moved to a DONE status today
-                const isFinishedToday = repair.statusHistory?.some((h: any) => 
+                const finishedEntries = repair.statusHistory?.filter((h: any) => 
                     [5, 6, 7].includes(h.toStatusId) && isSameDay(h.createdAt)
-                ) || false;
-
+                ) || [];
+                
+                const isFinishedToday = finishedEntries.length > 0;
                 const isKPIStatus = [5, 6, 7, 10].includes(repair.statusId);
 
                 if (techParam) {
                     // Strict KPI Sync: If a tech card is clicked, ONLY show the ones they *finished* today
-                    if (!isFinishedToday || !isKPIStatus) {
+                    // OR if they are currently assigned to it and it was finished today.
+                    // This fixes the issue where `takeRepairAction` doesn't assign a user, but they finish it.
+                    const isFinishedByTechToday = finishedEntries.some((h: any) => h.user?.name === techParam);
+                    
+                    if (isFinishedByTechToday && isKPIStatus) {
+                        matchesTech = true; // Overwrite: They finished it, so it belongs to them
+                        matchesDate = true;
+                    } else if (matchesTech && isFinishedToday && isKPIStatus) {
+                        matchesDate = true; // They are assigned and it was finished today
+                    } else {
                         matchesDate = false;
                     }
                 } else {
