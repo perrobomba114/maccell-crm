@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withPantallasCors } from "@/lib/pantallas/cors";
 import {
   ensurePantallasSchema,
   getContentsForToday,
@@ -28,18 +29,18 @@ export async function POST(request: NextRequest) {
   key = (key || request.nextUrl.searchParams.get("key") || "").trim();
 
   if (!id || !key) {
-    return NextResponse.json({ error: 400, msg: "BAD REQUEST" }, { status: 400 });
+    return NextResponse.json({ error: 400, msg: "BAD REQUEST" }, { status: 400, headers: withPantallasCors() });
   }
 
   await ensurePantallasSchema();
   const screen = await getScreenForDevice(id);
 
   if (!screen) {
-    return NextResponse.json({ error: 404, msg: "Not found" });
+    return NextResponse.json({ error: 404, msg: "Not found" }, { headers: withPantallasCors() });
   }
 
   if (!screen.clave || screen.clave !== key) {
-    return NextResponse.json({ error: 253, msg: "Bad key" });
+    return NextResponse.json({ error: 253, msg: "Bad key" }, { headers: withPantallasCors() });
   }
 
   await touchScreenHeartbeat(id);
@@ -49,11 +50,18 @@ export async function POST(request: NextRequest) {
       : `${request.nextUrl.origin}${item}`
   );
 
-  return NextResponse.json({
-    data,
-    setup: {
-      duracion: screen.duracion,
-      clave: screen.clave,
+  return NextResponse.json(
+    {
+      data,
+      setup: {
+        duracion: screen.duracion,
+        clave: screen.clave,
+      },
     },
-  });
+    { headers: withPantallasCors() }
+  );
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: withPantallasCors() });
 }

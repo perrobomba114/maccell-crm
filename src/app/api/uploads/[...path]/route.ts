@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { Readable } from "stream";
+import { withPantallasCors } from "@/lib/pantallas/cors";
 
 export async function GET(
     request: NextRequest,
@@ -9,21 +10,20 @@ export async function GET(
 ) {
     try {
         const { path: filePathArray } = await params;
-        const publicFilePath = path.join(process.cwd(), "public", ...filePathArray);
-        const uploadFilePath = path.join(process.cwd(), "upload", ...filePathArray);
+        const publicDir = path.resolve(process.cwd(), "public");
+        const uploadDir = path.resolve(process.cwd(), "upload");
+        const publicFilePath = path.resolve(publicDir, ...filePathArray);
+        const uploadFilePath = path.resolve(uploadDir, ...filePathArray);
 
-        // Security checks: ensure both candidates are inside allowed roots
-        const publicDir = path.join(process.cwd(), "public");
-        const uploadDir = path.join(process.cwd(), "upload");
-        if (!publicFilePath.startsWith(publicDir) || !uploadFilePath.startsWith(uploadDir)) {
-            return new NextResponse("Forbidden", { status: 403 });
+        if (!publicFilePath.startsWith(publicDir + path.sep) || !uploadFilePath.startsWith(uploadDir + path.sep)) {
+            return new NextResponse("Forbidden", { status: 403, headers: withPantallasCors() });
         }
 
         const filePath = fs.existsSync(uploadFilePath) ? uploadFilePath : publicFilePath;
 
         if (!fs.existsSync(filePath)) {
             console.error(`File not found at path: ${filePath}`);
-            return new NextResponse("Not Found", { status: 404 });
+            return new NextResponse("Not Found", { status: 404, headers: withPantallasCors() });
         }
 
         const stats = fs.statSync(filePath);
@@ -63,28 +63,32 @@ export async function GET(
             const stream = fs.createReadStream(filePath, { start, end });
             return new NextResponse(Readable.toWeb(stream) as ReadableStream, {
                 status: 206,
-                headers: {
+                headers: withPantallasCors({
                     "Content-Type": contentType,
                     "Content-Length": String(chunkSize),
                     "Content-Range": `bytes ${start}-${end}/${stats.size}`,
                     "Accept-Ranges": "bytes",
                     "Cache-Control": "public, max-age=31536000, immutable",
-                },
+                }),
             });
         }
 
         const fileBuffer = fs.readFileSync(filePath);
 
         return new NextResponse(fileBuffer, {
-            headers: {
+            headers: withPantallasCors({
                 "Content-Type": contentType,
                 "Content-Length": String(stats.size),
                 "Accept-Ranges": "bytes",
                 "Cache-Control": "public, max-age=31536000, immutable",
-            },
+            }),
         });
     } catch (error) {
         console.error("Image serving error:", error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        return new NextResponse("Internal Server Error", { status: 500, headers: withPantallasCors() });
     }
+}
+
+export async function OPTIONS() {
+    return new NextResponse(null, { status: 204, headers: withPantallasCors() });
 }

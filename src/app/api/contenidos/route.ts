@@ -1,1 +1,1 @@
-export { POST } from "@/app/api/public/pantallas/contenidos/route";
+export { POST, OPTIONS } from "@/app/api/public/pantallas/contenidos/route";

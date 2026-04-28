@@ -61,7 +61,6 @@ export async function openRegister(userId: string, branchId: string, amount: num
     }
 
     try {
-        console.log(`[openRegister] Intentando abrir caja. UserId: ${userId}, BranchId: ${branchId}, Amount: ${amount}`);
         await db.cashShift.create({
             data: {
                 userId,
@@ -127,8 +126,6 @@ export async function getShiftSummary(shiftId: string): Promise<{ success: boole
             where: { saleId: { in: saleIds } }
         });
 
-        console.log(`[ShiftSummary] Shift ${shiftId}: Found ${sales.length} sales and ${payments.length} payments.`);
-
         payments.forEach((p: any) => {
             if (p.method === "CASH") cashSales += p.amount;
             else if (p.method === "CARD") cardSales += p.amount;
@@ -137,7 +134,6 @@ export async function getShiftSummary(shiftId: string): Promise<{ success: boole
 
         // Re-calculate total from payments to be precise
         const totalSales = cashSales + cardSales + mpSales;
-        console.log(`[ShiftSummary] Totals -> Cash: ${cashSales}, Card: ${cardSales}, MP: ${mpSales}. Total: ${totalSales}`);
 
         // Fallback for lagacy sales without payments (if any, though migration should handle it or code should handle old sales)
         // If we want to be safe: check if sale has payments. If not, use sale header method. 

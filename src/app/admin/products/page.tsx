@@ -21,8 +21,6 @@ export default async function ProductsPage({
     const sortColumn = sortStr || "sku";
     const sortDirection = (orderStr === "asc" ? "asc" : "desc") as "asc" | "desc";
 
-    console.log("ProductsPage Params:", { page, search, categoryId, sortColumn, sortDirection });
-
     // Initial data fetch
     const { products, totalPages, total } = await getProducts({
         page,
