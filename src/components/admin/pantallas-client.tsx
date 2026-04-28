@@ -246,7 +246,7 @@ export function PantallasClient({ initialScreens }: { initialScreens: ScreenWith
                     <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { await updatePantallaAction({ id: screen.id, nombre: screen.nombre, duracion: screen.duracion, activo: !screen.activo }); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo actualizar la pantalla"); } })}>
                       {screen.activo ? "Pausar" : "Activar"}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { const key = await regeneratePantallaKeyAction(screen.id); window.alert(`Nueva key: ${key}`); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo regenerar la key"); } })}>Key</Button>
+                    <Button size="sm" variant="outline" onClick={() => startTransition(async () => { try { await regeneratePantallaKeyAction(screen.id); window.alert("Pantalla desvinculada. Abrí la APK y seleccioná esta pantalla para vincularla de nuevo."); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo desvincular la pantalla"); } })}>Reset vínculo</Button>
                     <Button size="sm" variant="destructive" onClick={() => { if (!window.confirm("¿Eliminar pantalla y contenidos?")) return; startTransition(async () => { try { await deletePantallaAction(screen.id); await refreshScreens(); } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo eliminar la pantalla"); } }); }}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>

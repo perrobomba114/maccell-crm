@@ -103,15 +103,13 @@ export async function listScreens(): Promise<(ScreenRow & { contenidos: number }
 export async function createScreen(input: { nombre: string; duracion: number; activo: boolean }) {
   await ensurePantallasSchema();
   const id = randomUUID();
-  const key = makeScreenKey();
 
   await db.$executeRawUnsafe(
-    `INSERT INTO digital_screens (id, nombre, duracion, activo, clave, stamp) VALUES ($1, $2, $3, $4, $5, NOW())`,
+    `INSERT INTO digital_screens (id, nombre, duracion, activo, stamp) VALUES ($1, $2, $3, $4, NOW())`,
     id,
     input.nombre.trim(),
     input.duracion,
-    input.activo,
-    key
+    input.activo
   );
 
   return id;
@@ -133,12 +131,41 @@ export async function regenerateScreenKey(screenId: string): Promise<string> {
   const key = makeScreenKey();
 
   await db.$executeRawUnsafe(
-    `UPDATE digital_screens SET clave = $2, lastseen = NOW(), stamp = NOW() WHERE id = $1`,
+    `UPDATE digital_screens SET clave = $2, lastseen = NULL, stamp = NOW() WHERE id = $1`,
     screenId,
     key
   );
 
   return key;
+}
+
+export async function registerScreenForDevice(screenId: string): Promise<{ key: string; alreadyLinked: boolean }> {
+  await ensurePantallasSchema();
+
+  return db.$transaction(async (tx) => {
+    const rows = await tx.$queryRawUnsafe<Record<string, unknown>[]>(
+      `SELECT clave, lastseen FROM digital_screens WHERE id = $1 AND activo = TRUE FOR UPDATE`,
+      screenId
+    );
+
+    if (!rows.length) {
+      throw new Error("SCREEN_NOT_FOUND");
+    }
+
+    const row = rows[0];
+    if (row.lastseen) {
+      return { key: "", alreadyLinked: true };
+    }
+
+    const key = row.clave ? String(row.clave) : makeScreenKey();
+    await tx.$executeRawUnsafe(
+      `UPDATE digital_screens SET clave = $2, lastseen = NOW(), stamp = NOW() WHERE id = $1`,
+      screenId,
+      key
+    );
+
+    return { key, alreadyLinked: false };
+  });
 }
 
 export async function touchScreenHeartbeat(screenId: string) {
@@ -293,7 +320,7 @@ export async function deleteContent(contentId: string) {
 export async function listActiveScreensForDevice() {
   await ensurePantallasSchema();
   const rows = await db.$queryRawUnsafe<Record<string, unknown>[]>(
-    `SELECT id, nombre FROM digital_screens WHERE activo = TRUE ORDER BY nombre ASC`
+    `SELECT id, nombre FROM digital_screens WHERE activo = TRUE AND lastseen IS NULL ORDER BY nombre ASC`
   );
   return rows.map((row) => ({ id: String(row.id), nombre: String(row.nombre) }));
 }

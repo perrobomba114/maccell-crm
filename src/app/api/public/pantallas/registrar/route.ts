@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withPantallasCors } from "@/lib/pantallas/cors";
-import { ensurePantallasSchema, getScreenForDevice, regenerateScreenKey } from "@/lib/pantallas/repository";
+import { ensurePantallasSchema, registerScreenForDevice } from "@/lib/pantallas/repository";
 
 export async function POST(request: NextRequest) {
   const contentType = request.headers.get("content-type") || "";
@@ -24,12 +24,23 @@ export async function POST(request: NextRequest) {
   }
 
   await ensurePantallasSchema();
-  const screen = await getScreenForDevice(id);
-  if (!screen) {
-    return NextResponse.json({ error: 404, msg: "Not found" }, { headers: withPantallasCors() });
+  try {
+    const registration = await registerScreenForDevice(id);
+    if (registration.alreadyLinked) {
+      return NextResponse.json(
+        { error: 409, msg: "Pantalla ya vinculada" },
+        { status: 409, headers: withPantallasCors() }
+      );
+    }
+
+    return NextResponse.json({ error: 0, key: registration.key, msg: "OK" }, { headers: withPantallasCors() });
+  } catch (error) {
+    if (error instanceof Error && error.message === "SCREEN_NOT_FOUND") {
+      return NextResponse.json({ error: 404, msg: "Not found" }, { status: 404, headers: withPantallasCors() });
+    }
+
+    throw error;
   }
-  const key = await regenerateScreenKey(id);
-  return NextResponse.json({ error: 0, key, msg: "OK" }, { headers: withPantallasCors() });
 }
 
 export async function OPTIONS() {
