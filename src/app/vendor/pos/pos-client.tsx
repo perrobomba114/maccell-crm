@@ -44,7 +44,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
         overridePrice, setOverridePrice, overrideReason, setOverrideReason,
         billCounts, employeeCount, setEmployeeCount,
         addToCartProduct, addRepairToCart, handleCheckoutClick, handleAddPayment,
-        confirmSplitSale, handleBillChange, confirmShiftAction,
+        confirmSplitSale, handleBillChange, confirmShiftAction, handleSubmitExpense,
         handleCreateTransfer, handleRespondTransfer, updateShiftSummary,
         cashWarningAccepted
     } = usePos(vendorId, branchId, branchData);
@@ -156,7 +156,7 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 expenseAmount={expenseAmount} setExpenseAmount={setExpenseAmount}
                 expenseDescription={expenseDescription} setExpenseDescription={setExpenseDescription}
                 isSubmittingExpense={isSubmittingExpense}
-                onSubmit={confirmShiftAction}
+                onSubmit={handleSubmitExpense}
             />
 
             <TransferDialog

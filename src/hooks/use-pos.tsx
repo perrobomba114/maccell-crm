@@ -263,6 +263,45 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
         }
     };
 
+    const handleSubmitExpense = async () => {
+        if (!cashShift) {
+            toast.error("Caja cerrada");
+            return;
+        }
+
+        const amount = parseFloat(expenseAmount.replace(/\./g, "").replace(",", "."));
+        const description = expenseDescription.trim();
+
+        if (!Number.isFinite(amount) || amount <= 0) {
+            toast.error("Monto de gasto inválido");
+            return;
+        }
+
+        if (!description) {
+            toast.error("Ingrese una descripción del gasto");
+            return;
+        }
+
+        setIsSubmittingExpense(true);
+        try {
+            const res = await registerExpense(branchId, vendorId, amount, description);
+            if (!res.success) {
+                toast.error(res.error || "Error al registrar gasto");
+                return;
+            }
+
+            toast.success("Gasto registrado");
+            setExpenseAmount("");
+            setExpenseDescription("");
+            setIsExpenseModalOpen(false);
+            await updateShiftSummary(cashShift.id);
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : "Error inesperado al registrar gasto");
+        } finally {
+            setIsSubmittingExpense(false);
+        }
+    };
+
     // Search Effects
     useEffect(() => {
         const timer = setTimeout(async () => {
@@ -374,7 +413,7 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
         overridePrice, setOverridePrice, overrideReason, setOverrideReason,
         billCounts, employeeCount, setEmployeeCount,
         addToCartProduct, addRepairToCart, handleCheckoutClick, handleAddPayment,
-        confirmSplitSale, handleBillChange, confirmShiftAction,
+        confirmSplitSale, handleBillChange, confirmShiftAction, handleSubmitExpense,
         handleCreateTransfer, handleRespondTransfer, updateShiftSummary, loadInitialData,
         cashWarningAccepted
     };
