@@ -10,6 +10,13 @@ interface TechnicianDeadlineMonitorProps {
     userId: string | undefined;
 }
 
+type DeadlineRepair = {
+    id: string;
+    ticketNumber: string;
+    deviceBrand: string;
+    deviceModel: string;
+};
+
 export function TechnicianDeadlineMonitor({ userId }: TechnicianDeadlineMonitorProps) {
     const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set());
     const [activeAlerts, setActiveAlerts] = useState<Set<string>>(new Set());
@@ -25,10 +32,26 @@ export function TechnicianDeadlineMonitor({ userId }: TechnicianDeadlineMonitorP
     useEffect(() => {
         if (activeAlerts.size === 0) return;
 
-        const playSound = () => {
-            if (audioRef.current) {
+        const playSound = async () => {
+            if (!audioRef.current) return;
+
+            try {
                 audioRef.current.currentTime = 0;
-                audioRef.current.play().catch(e => console.error("Audio loop failed:", e));
+                await audioRef.current.play();
+            } catch (e) {
+                console.warn("[DeadlineMonitor] Audio blocked, waiting for interaction");
+
+                const playOnInteraction = () => {
+                    if (audioRef.current) {
+                        audioRef.current.currentTime = 0;
+                        audioRef.current.play().catch(() => {});
+                    }
+                    document.removeEventListener("click", playOnInteraction);
+                    document.removeEventListener("keydown", playOnInteraction);
+                };
+
+                document.addEventListener("click", playOnInteraction);
+                document.addEventListener("keydown", playOnInteraction);
             }
         };
 
@@ -77,11 +100,15 @@ export function TechnicianDeadlineMonitor({ userId }: TechnicianDeadlineMonitorP
         });
     };
 
-    const triggerAlert = (repair: any) => {
-        // Play Sound Immediately
-        if (audioRef.current) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(e => console.error("Audio play failed:", e));
+    const triggerAlert = (repair: DeadlineRepair) => {
+        // Play Sound Immediately (using the same logic as the loop)
+        const audio = audioRef.current;
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(() => {
+                // We don't log here because the loop will eventually trigger the interaction fallback
+                // or the user will see the toast and interact.
+            });
         }
 
         // Show Toast

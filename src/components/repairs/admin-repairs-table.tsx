@@ -1,41 +1,22 @@
 "use client";
 
 import { useState, useEffect, useMemo, useTransition } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { Search, Trash2, Edit, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Building2, ShieldCheck, CheckCircle2, ShieldAlert } from "lucide-react";
-// ... (imports remain the same, just adding icons above)
-
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { deleteRepairAction, getRepairByIdAction } from "@/lib/actions/repairs";
 import { checkLatestRepairUpdate } from "@/actions/repair-check-actions";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { RepairDetailsDialog } from "./repair-details-dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { AnimatePresence, motion } from "framer-motion";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+
+// New modular components
+import { AdminRepairsFilters } from "./components/AdminRepairsFilters";
+import { AdminRepairsList } from "./components/AdminRepairsList";
+import { AdminRepairsPagination } from "./components/AdminRepairsPagination";
+import { AdminRepairsDeleteDialog } from "./components/AdminRepairsDeleteDialog";
+import type { AdminRepair, AdminRepairBranch } from "@/types/admin-repairs";
 
 const ITEMS_PER_PAGE = 20;
 
-const statusColorMap: Record<string, string> = {
-    "red": "bg-red-600 text-white border-red-700 shadow-red-500/20",
-    "yellow": "bg-amber-500 text-black border-amber-600 shadow-amber-500/20",
-    "green": "bg-green-600 text-white border-green-700 shadow-green-500/20",
-    "blue": "bg-blue-600 text-white border-blue-700 shadow-blue-500/20",
-    "gray": "bg-zinc-600 text-white border-zinc-700 shadow-zinc-500/20",
-    "purple": "bg-purple-600 text-white border-purple-700 shadow-purple-500/20",
-    "indigo": "bg-indigo-600 text-white border-indigo-700 shadow-indigo-500/20", // Tomado por Técnico
-    "slate": "bg-slate-800 text-white border-slate-900 shadow-slate-500/20",     // Entregado
-    "orange": "bg-orange-600 text-white border-orange-700 shadow-orange-500/20",
-    "amber": "bg-amber-600 text-white border-amber-700 shadow-amber-500/20",
-};
-
-export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branches: any[] }) {
+export function AdminRepairsTable({ repairs, branches }: { repairs: AdminRepair[], branches: AdminRepairBranch[] }) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const router = useRouter();
@@ -45,22 +26,14 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
     const currentPage = Number(searchParams.get('page')) || 1;
 
     const [deleteId, setDeleteId] = useState<string | null>(null);
-    const [viewRepair, setViewRepair] = useState<any>(null);
+    const [viewRepair, setViewRepair] = useState<unknown>(null);
     const [loadingRepairId, setLoadingRepairId] = useState<string | null>(null);
 
     const [isPending, startTransition] = useTransition();
 
-    // Local state for debounced input
     const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
     const [showOnlyWarranty, setShowOnlyWarranty] = useState(false);
 
-    // Sync local state when URL params change (e.g. navigation) - REMOVED to prevent input fighting/lag
-    // The Input should be the source of truth for the local user session.
-    // useEffect(() => {
-    //     setLocalSearchTerm(searchTerm);
-    // }, [searchTerm]);
-
-    // Helper to update URL params - Memoized to use in effects
     const updateParams = useMemo(() => (updates: Record<string, string | null>) => {
         startTransition(() => {
             const params = new URLSearchParams(searchParams.toString());
@@ -71,30 +44,23 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
                     params.set(key, value);
                 }
             });
-            // Always reset to page 1 on filter change unless explicitly setting page
             if (!updates.page) params.delete("page");
             router.replace(`${pathname}?${params.toString()}`, { scroll: false });
         });
     }, [searchParams, pathname, router]);
 
-    // Debounce effect just for URL persistence (does not block UI)
     useEffect(() => {
         const timer = setTimeout(() => {
             if (localSearchTerm !== searchTerm) {
                 updateParams({ q: localSearchTerm });
             }
-        }, 500); // Increased debounce to 500ms to reduce router thrashing
-
+        }, 500);
         return () => clearTimeout(timer);
     }, [localSearchTerm, searchTerm, updateParams]);
 
-    // Filter using LOCAL state for instant feedback
-    // Split search into words so "iPhone 13" matches brand=iPhone + model=13
     const filteredRepairs = useMemo(() => {
         return repairs.filter(repair => {
             const searchWords = localSearchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
-
-            // Build a combined searchable string from all relevant fields
             const searchableFields = [
                 repair.ticketNumber,
                 repair.customer.name,
@@ -104,7 +70,6 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
                 repair.branch?.name || "",
             ].map(f => f.toLowerCase());
 
-            // Every word must be found in at least one field
             const matchesSearch = searchWords.length === 0 || searchWords.every(word =>
                 searchableFields.some(field => field.includes(word))
             );
@@ -112,23 +77,14 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
             const matchesBranch = selectedBranchId === "ALL" || repair.branchId === selectedBranchId;
             const matchesWarranty = showOnlyWarranty ? repair.isWarranty : true;
 
-            // New Filter: Technician name (from URL param 'tech')
             const techParam = searchParams.get('tech');
-
-            // New Filter: Date (from URL param 'date')
-            // Match exactly the selected day, taking timezone strings into account
             const dateParam = searchParams.get('date');
-
-            // Fix: If the calendar wasn't clicked, it didn't push "?date=" to URL.
-            // If the user clicks a Technician, we MUST apply the date filter. Since the cards 
-            // default to "today" when no date is picked, we apply "today" here too.
             const targetDate = dateParam ? new Date(dateParam) : (techParam ? new Date() : null);
 
             let matchesTech = !techParam || (repair.assignedTo?.name || "SIN ASIGNAR") === techParam;
             let matchesDate = true;
 
             if (targetDate) {
-                // Helper to check if a DB date string matches targetDate in Local Browser Time
                 const isSameDay = (dStr: string | Date | null) => {
                     if (!dStr) return false;
                     const d = new Date(dStr);
@@ -138,40 +94,32 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
                 };
 
                 const isCreatedToday = isSameDay(repair.createdAt);
-                
-                // Use statusHistory to cleanly identify if it was moved to a DONE status today
-                const finishedEntries = repair.statusHistory?.filter((h: any) => 
+                const finishedEntries = repair.statusHistory?.filter((h) =>
                     [5, 6, 7].includes(h.toStatusId) && isSameDay(h.createdAt)
                 ) || [];
-                
+
                 const isFinishedToday = finishedEntries.length > 0;
                 const isKPIStatus = [5, 6, 7, 10].includes(repair.statusId);
 
                 if (techParam) {
-                    // Strict KPI Sync: If a tech card is clicked, ONLY show the ones they *finished* today
-                    // OR if they are currently assigned to it and it was finished today.
-                    // This fixes the issue where `takeRepairAction` doesn't assign a user, but they finish it.
-                    const isFinishedByTechToday = finishedEntries.some((h: any) => h.user?.name === techParam);
-                    
+                    const isFinishedByTechToday = finishedEntries.some((h) => h.user?.name === techParam);
                     if (isFinishedByTechToday && isKPIStatus) {
-                        matchesTech = true; // Overwrite: They finished it, so it belongs to them
+                        matchesTech = true;
                         matchesDate = true;
                     } else if (matchesTech && isFinishedToday && isKPIStatus) {
-                        matchesDate = true; // They are assigned and it was finished today
+                        matchesDate = true;
                     } else {
                         matchesDate = false;
                     }
                 } else {
-                    // General Dashboard: Show what came in today OR what was completed today
                     if (!isCreatedToday && !isFinishedToday) {
                         matchesDate = false;
                     }
                 }
             }
-
             return matchesSearch && matchesBranch && matchesWarranty && matchesTech && matchesDate;
         });
-    }, [repairs, localSearchTerm, selectedBranchId, showOnlyWarranty, searchParams]); // Depend on searchParams
+    }, [repairs, localSearchTerm, selectedBranchId, showOnlyWarranty, searchParams]);
 
     const totalPages = Math.ceil(filteredRepairs.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -179,7 +127,6 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
 
     const handleDelete = async () => {
         if (!deleteId) return;
-
         const result = await deleteRepairAction(deleteId);
         if (result.success) {
             toast.success("Reparación eliminada correctamente");
@@ -190,14 +137,12 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
         router.refresh();
     };
 
-    // Currency Formatter
     const currencyFormatter = useMemo(() => new Intl.NumberFormat("es-AR", {
         style: "currency",
         currency: "ARS",
         maximumFractionDigits: 0
     }), []);
 
-    // Polling Logic
     const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
     useEffect(() => {
         const intervalId = setInterval(async () => {
@@ -216,337 +161,37 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-5">
-                {/* Search Bar - Moved to Top & Constrained Width */}
-                <div className="relative group w-full max-w-md">
-                    <Label htmlFor="admin-repairs-search" className="sr-only">Buscar reparaciones</Label>
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-muted-foreground group-focus-within:text-primary transition-colors duration-200" />
-                    <Input
-                        id="admin-repairs-search"
-                        name="admin-repairs-search"
-                        aria-label="Buscar por ticket, cliente, dispositivo"
-                        placeholder="Buscar por ticket, cliente, dispositivo…"
-                        value={localSearchTerm}
-                        onChange={(e) => setLocalSearchTerm(e.target.value)}
-                        className="pl-10 h-12 text-lg shadow-sm border-muted-foreground/20 focus-visible:ring-offset-2 transition-all duration-200 bg-background/50 backdrop-blur-sm"
-                    />
-                </div>
+            <AdminRepairsFilters
+                localSearchTerm={localSearchTerm}
+                setLocalSearchTerm={setLocalSearchTerm}
+                selectedBranchId={selectedBranchId}
+                branches={branches}
+                showOnlyWarranty={showOnlyWarranty}
+                setShowOnlyWarranty={setShowOnlyWarranty}
+                updateParams={updateParams}
+                searchParams={searchParams}
+            />
 
-                {/* Branch Badges */}
-                <div className="flex flex-col gap-2">
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                        <Building2 className="h-3.5 w-3.5" />
-                        Filtrar por Sucursal
-                    </Label>
-                    <div className="flex flex-wrap gap-2.5">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateParams({ branch: "ALL" })}
-                            className={cn(
-                                "h-9 px-4 transition-all duration-300 font-bold border",
-                                selectedBranchId === "ALL"
-                                    ? "bg-slate-900 text-white border-slate-900 shadow-md hover:bg-slate-800 dark:bg-slate-50 dark:text-slate-900 dark:border-slate-50 dark:hover:bg-slate-200"
-                                    : "text-muted-foreground border-dashed hover:border-solid hover:bg-slate-100 dark:hover:bg-slate-800"
-                            )}
-                        >
-                            Todas
-                        </Button>
-                        {branches
-                            .slice()
-                            .sort((a, b) => {
-                                // Custom sort: MACCELL first, then others (like 8 BIT)
-                                const isAMaccell = a.name.toUpperCase().includes("MACCELL");
-                                const isBMaccell = b.name.toUpperCase().includes("MACCELL");
-                                if (isAMaccell && !isBMaccell) return -1;
-                                if (!isAMaccell && isBMaccell) return 1;
-                                return a.name.localeCompare(b.name, undefined, { numeric: true });
-                            })
-                            .map((b, index) => {
-                                const colors = [
-                                    { selected: "bg-orange-600 border-orange-600 text-white shadow-orange-500/20", hover: "text-orange-600 border-orange-200 hover:bg-orange-50" },
-                                    { selected: "bg-blue-600 border-blue-600 text-white shadow-blue-500/20", hover: "text-blue-600 border-blue-200 hover:bg-blue-50" },
-                                    { selected: "bg-green-600 border-green-600 text-white shadow-green-500/20", hover: "text-green-600 border-green-200 hover:bg-green-50" },
-                                    { selected: "bg-purple-600 border-purple-600 text-white shadow-purple-500/20", hover: "text-purple-600 border-purple-200 hover:bg-purple-50" },
-                                    { selected: "bg-pink-600 border-pink-600 text-white shadow-pink-500/20", hover: "text-pink-600 border-pink-200 hover:bg-pink-50" },
-                                    { selected: "bg-cyan-600 border-cyan-600 text-white shadow-cyan-500/20", hover: "text-cyan-600 border-cyan-200 hover:bg-cyan-50" },
-                                    { selected: "bg-red-600 border-red-600 text-white shadow-red-500/20", hover: "text-red-600 border-red-200 hover:bg-red-50" },
-                                    { selected: "bg-indigo-600 border-indigo-600 text-white shadow-indigo-500/20", hover: "text-indigo-600 border-indigo-200 hover:bg-indigo-50" },
-                                ];
-                                const style = colors[index % colors.length];
-                                const isSelected = selectedBranchId === b.id;
+            <AdminRepairsList
+                repairs={paginatedRepairs}
+                isPending={isPending}
+                loadingRepairId={loadingRepairId}
+                setViewRepair={setViewRepair}
+                setLoadingRepairId={setLoadingRepairId}
+                setDeleteId={setDeleteId}
+                getRepairByIdAction={getRepairByIdAction}
+                currencyFormatter={currencyFormatter}
+                router={router}
+            />
 
-                                return (
-                                    <Button
-                                        key={b.id}
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => updateParams({ branch: b.id })}
-                                        className={cn(
-                                            "h-9 px-4 transition-all duration-300 font-bold border",
-                                            isSelected
-                                                ? cn(style.selected, "shadow-md hover:opacity-90")
-                                                : style.hover
-                                        )}
-                                    >
-                                        {b.name}
-                                    </Button>
-                                );
-                            })}
-
-                    </div>
-                </div>
-
-                {/* Warranty Filter Toggle */}
-                <div className="flex flex-col gap-2">
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Garantías
-                    </Label>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowOnlyWarranty(!showOnlyWarranty)}
-                        className={cn(
-                            "h-9 px-4 transition-all duration-300 font-bold border w-full sm:w-auto justify-start",
-                            showOnlyWarranty
-                                ? "bg-yellow-500 text-white border-yellow-600 shadow-md hover:bg-yellow-600"
-                                : "text-muted-foreground border-dashed hover:border-solid hover:bg-yellow-50 dark:hover:bg-yellow-900/20 hover:text-yellow-600"
-                        )}
-                    >
-                        {showOnlyWarranty ? (
-                            <>
-                                <CheckCircle2 className="mr-2 h-4 w-4" />
-                                Mostrando Garantías
-                            </>
-                        ) : (
-                            <>
-                                <ShieldAlert className="mr-2 h-4 w-4" />
-                                Solo Garantías
-                            </>
-                        )}
-                    </Button>
-                </div>
-            </div>
-
-            {/* Active Tech Filter Badge */}
-            {searchParams.get('tech') && (
-                <div className="flex items-center gap-2 pt-2">
-                    <span className="text-sm font-medium text-muted-foreground">Filtrando por técnico:</span>
-                    <Badge variant="secondary" className="px-3 py-1 text-sm font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors" onClick={() => updateParams({ tech: null })}>
-                        {searchParams.get('tech')}
-                        <span className="sr-only">Quitar filtro</span>
-                        <div className="bg-purple-200 dark:bg-purple-800 rounded-full p-0.5 hover:bg-purple-300 dark:hover:bg-purple-700">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                        </div>
-                    </Badge>
-                </div>
-            )}
-
-            <div className={cn(
-                "relative overflow-hidden border rounded-xl bg-card shadow-lg backdrop-blur-md transition-opacity duration-300",
-                isPending && "opacity-60 pointer-events-none"
-            )}>
-                <Table>
-                    <TableHeader className="bg-muted/40 sticky top-0 z-10">
-                        <TableRow className="hover:bg-transparent border-b">
-                            <TableHead className="text-center w-[110px] uppercase text-[10px] font-bold tracking-tighter">Ticket</TableHead>
-                            <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Técnico</TableHead>
-                            <TableHead className="text-center w-[140px] uppercase text-[10px] font-bold tracking-tighter">Fecha</TableHead>
-                            <TableHead className="text-center w-[120px] uppercase text-[10px] font-bold tracking-tighter">Duración</TableHead>
-                            <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Cliente</TableHead>
-                            <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Dispositivo</TableHead>
-                            <TableHead className="text-center w-[130px] uppercase text-[10px] font-bold tracking-tighter">Estado</TableHead>
-                            <TableHead className="text-right w-[110px] uppercase text-[10px] font-bold tracking-tighter pr-6">Precio</TableHead>
-                            <TableHead className="text-center w-[130px] uppercase text-[10px] font-bold tracking-tighter">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <AnimatePresence>
-                            {paginatedRepairs.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={9} className="h-40 text-center text-muted-foreground animate-pulse">
-                                        No se encontraron resultados para tu búsqueda…
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                paginatedRepairs.map((repair) => {
-                                    const colorClass = statusColorMap[repair.status.color] || "bg-gray-100 text-gray-800";
-                                    return (
-                                        <motion.tr
-                                            key={repair.id}
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            transition={{ duration: 0.2 }}
-                                            className="group hover:bg-muted/30 border-b last:border-0 transition-colors duration-200"
-                                        >
-                                            <TableCell className={cn(
-                                                "text-center font-bold font-mono text-sm tabular-nums",
-                                                repair.isWet ? "text-blue-500 font-extrabold" :
-                                                    repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""
-                                            )}>
-                                                {repair.ticketNumber}
-                                            </TableCell>
-                                            <TableCell className="text-center text-sm font-medium">
-                                                {repair.assignedTo?.name || <span className="text-muted-foreground/50 italic text-[11px]">SIN ASIGNAR</span>}
-                                            </TableCell>
-                                            <TableCell className="text-center tabular-nums">
-                                                <div className="flex flex-col items-center gap-0.5">
-                                                    <span className="text-sm font-semibold">
-                                                        {format(new Date(repair.createdAt), "dd/MM/yy", { locale: es })}
-                                                    </span>
-                                                    <span className="text-[10px] text-muted-foreground font-medium uppercase">
-                                                        {format(new Date(repair.createdAt), "HH:mm 'hs'", { locale: es })}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-center tabular-nums">
-                                                {(() => {
-                                                    let duration = "—";
-                                                    if (repair.startedAt && repair.finishedAt) {
-                                                        const start = new Date(repair.startedAt).getTime();
-                                                        const end = new Date(repair.finishedAt).getTime();
-                                                        const diff = end - start;
-                                                        if (diff > 0) {
-                                                            const hours = Math.floor(diff / (1000 * 60 * 60));
-                                                            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                                                            duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} min`;
-                                                        }
-                                                    }
-                                                    return (
-                                                        <span className="font-bold text-sm text-yellow-600 dark:text-yellow-400/90 whitespace-nowrap">
-                                                            {duration}
-                                                        </span>
-                                                    );
-                                                })()}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <div className="flex flex-col items-center">
-                                                    <span className="font-bold text-base tracking-tight">{repair.customer.name}</span>
-                                                    {repair.customer.phone && <span className="text-[10px] text-muted-foreground tabular-nums">{repair.customer.phone}</span>}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <div className="flex flex-col items-center">
-                                                    <span className="font-bold text-sm text-foreground/80">{repair.deviceBrand}</span>
-                                                    <span className="text-xs text-muted-foreground">{repair.deviceModel}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <Badge variant="outline" className={cn("font-extrabold border-2 shadow-sm px-3 uppercase text-[10px]", colorClass)}>
-                                                    {repair.status.name}
-                                                </Badge>
-                                                {repair.statusHistory && repair.statusHistory[0] && (
-                                                    <div className="text-[9px] text-muted-foreground mt-1 tabular-nums font-bold uppercase tracking-tighter">
-                                                        Prev: <span className="text-blue-500/80">{repair.statusHistory[0].fromStatus?.name || 'Registro'}</span>
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right font-bold text-base tabular-nums pr-6">
-                                                {repair.estimatedPrice > 0 ? currencyFormatter.format(repair.estimatedPrice) : "—"}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <div className="flex justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={async () => {
-                                                            setViewRepair(repair);
-                                                            setLoadingRepairId(repair.id);
-                                                            const full = await getRepairByIdAction(repair.id);
-                                                            if (full) setViewRepair(full);
-                                                            setLoadingRepairId(null);
-                                                        }}
-                                                        title="Ver detalles"
-                                                        disabled={loadingRepairId === repair.id}
-                                                        className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-full"
-                                                    >
-                                                        {loadingRepairId === repair.id
-                                                            ? <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
-                                                            : <Eye className="h-4.5 w-4.5" />
-                                                        }
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => router.push(`/admin/repairs/${repair.id}/edit`)}
-                                                        title="Editar"
-                                                        className="h-9 w-9 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 transition-all rounded-full"
-                                                    >
-                                                        <Edit className="h-4.5 w-4.5" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => setDeleteId(repair.id)}
-                                                        title="Eliminar"
-                                                        className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-all rounded-full"
-                                                    >
-                                                        <Trash2 className="h-4.5 w-4.5" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </motion.tr>
-                                    );
-                                })
-                            )}
-                        </AnimatePresence>
-                    </TableBody>
-                </Table>
-            </div>
-
-            {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 py-4">
-                    <div className="text-sm text-muted-foreground font-medium tabular-nums shadow-sm border px-3 py-1 rounded-full bg-muted/20">
-                        Mostrando <span className="text-foreground font-bold">{startIndex + 1}</span> a <span className="text-foreground font-bold">{Math.min(startIndex + ITEMS_PER_PAGE, filteredRepairs.length)}</span> de <span className="text-foreground font-bold">{filteredRepairs.length}</span> reparaciones
-                    </div>
-                    <div className="flex items-center space-x-3">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => updateParams({ page: "1" })}
-                            disabled={currentPage === 1}
-                            className="h-10 w-10 hover:border-primary/50 transition-colors"
-                        >
-                            <ChevronsLeft className="h-5 w-5" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => updateParams({ page: (currentPage - 1).toString() })}
-                            disabled={currentPage === 1}
-                            className="h-10 w-10 hover:border-primary/50 transition-colors"
-                        >
-                            <ChevronLeft className="h-5 w-5" />
-                        </Button>
-                        <div className="flex items-center gap-1 bg-background/50 border rounded-lg px-3 py-2 shadow-inner h-10">
-                            <span className="text-xs text-muted-foreground uppercase font-bold pr-2">Página</span>
-                            <span className="text-sm font-extrabold tabular-nums w-4 text-center">{currentPage}</span>
-                            <span className="text-xs text-muted-foreground/50 px-1 font-bold">/</span>
-                            <span className="text-sm font-extrabold tabular-nums w-4 text-center">{totalPages}</span>
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => updateParams({ page: (currentPage + 1).toString() })}
-                            disabled={currentPage === totalPages}
-                            className="h-10 w-10 hover:border-primary/50 transition-colors"
-                        >
-                            <ChevronRight className="h-5 w-5" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => updateParams({ page: totalPages.toString() })}
-                            disabled={currentPage === totalPages}
-                            className="h-10 w-10 hover:border-primary/50 transition-colors"
-                        >
-                            <ChevronsRight className="h-5 w-5" />
-                        </Button>
-                    </div>
-                </div>
-            )}
+            <AdminRepairsPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                startIndex={startIndex}
+                itemsPerPage={ITEMS_PER_PAGE}
+                totalFiltered={filteredRepairs.length}
+                updateParams={updateParams}
+            />
 
             <RepairDetailsDialog
                 isOpen={!!viewRepair}
@@ -554,22 +199,11 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: any[], branc
                 repair={viewRepair}
             />
 
-            <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-                <AlertDialogContent className="max-w-[400px] border-2">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-2xl font-bold text-red-600">¿Confirmar Eliminación?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-base font-medium">
-                            Esta acción no se puede deshacer. Se eliminará permanentemente la reparación y todos sus registros históricos.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="pt-4">
-                        <AlertDialogCancel className="font-bold border-2">Cancelar Operación</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 transition-transform active:scale-95 shadow-lg shadow-red-500/20 border-red-700">
-                            Eliminar Definitivamente
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminRepairsDeleteDialog
+                isOpen={!!deleteId}
+                onClose={() => setDeleteId(null)}
+                onConfirm={handleDelete}
+            />
         </div>
     );
 }

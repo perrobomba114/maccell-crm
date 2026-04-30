@@ -1,33 +1,9 @@
 import { Arca } from '@arcasdk/core';
 import fs from 'fs';
 import path from 'path';
-import https from 'https';
 import { constants } from 'crypto';
-import tls from 'tls';
 import { db } from "@/lib/db";
 
-// --- NUCLEAR FIX FOR AFIP SSL ERROR (DH KEY TOO SMALL) ---
-// Monkey-patch tls.createSecureContext to force legacy settings globally.
-// This is necessary because some libraries (like node-soap used by AFIP SDKs) 
-// might not forward custom agent options correctly to the low-level TLS socket.
-const origCreateSecureContext = tls.createSecureContext;
-(tls as any).createSecureContext = function (options: any) {
-    if (!options) options = {};
-    // Force legacy ciphers and lower security level
-    options.ciphers = 'DEFAULT:@SECLEVEL=0';
-    options.minVersion = 'TLSv1';
-    // Force legacy server connect behavior
-    options.secureOptions = (options.secureOptions || 0) | constants.SSL_OP_LEGACY_SERVER_CONNECT;
-    return origCreateSecureContext.call(tls, options);
-};
-
-// Patch Global Agent as well just in case
-try {
-    https.globalAgent.options.ciphers = 'DEFAULT:@SECLEVEL=0';
-    https.globalAgent.options.minVersion = 'TLSv1';
-} catch (e) {
-    console.warn("Could not set global https agent options", e);
-}
 
 // Helper to handle currency rounding
 const formatAmount = (num: number) => Math.round(num * 100) / 100;
@@ -36,7 +12,7 @@ const formatAmount = (num: number) => Math.round(num * 100) / 100;
 const PRODUCTION = String(process.env.AFIP_PRODUCTION).toLowerCase() === 'true';
 const CUIT = parseInt(process.env.AFIP_CUIT || '0');
 
-console.log(`[AFIP] Initializing Client. Production: ${PRODUCTION} (Env: ${process.env.AFIP_PRODUCTION})`);
+console.warn(`[DEBUG] [AFIP] Initializing Client. Production: ${PRODUCTION} (Env: ${process.env.AFIP_PRODUCTION})`);
 
 export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' | '8BIT') {
     let shouldUse8Bit = false;
@@ -44,7 +20,7 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
     // Determine credentials: Force Entity takes precedence, then Branch
     if (forceEntity) {
         shouldUse8Bit = forceEntity === '8BIT';
-        console.log(`[AFIP] Forcing entity to: ${forceEntity}`);
+        console.warn(`[DEBUG] [AFIP] Forcing entity to: ${forceEntity}`);
     } else if (branchId) {
         try {
             const branch = await db.branch.findUnique({
@@ -66,14 +42,14 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
     let selectedKeyEnv = process.env.AFIP_KEY;
 
     if (shouldUse8Bit) {
-        console.log("[AFIP] Using credentials for **8 BIT ACCESORIOS**");
+        console.warn("[DEBUG] [AFIP] Using credentials for **8 BIT ACCESORIOS**");
         const cuit8bit = process.env.AFIP_CUIT_8BIT;
         if (cuit8bit) selectedCuit = parseInt(cuit8bit);
 
         selectedCertEnv = process.env.AFIP_CERT_8BIT;
         selectedKeyEnv = process.env.AFIP_KEY_8BIT;
     } else {
-        console.log("[AFIP] Using default credentials (MACCELL)");
+        console.warn("[DEBUG] [AFIP] Using default credentials (MACCELL)");
     }
 
 
@@ -89,7 +65,7 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
     try {
         // 1. Try ENV Content directly
         if (selectedCertEnv && selectedKeyEnv) {
-            console.log(`[AFIP] Loaded credentials from ENV for ${shouldUse8Bit ? '8BIT' : 'DEFAULT'}`);
+            console.warn(`[DEBUG] [AFIP] Loaded credentials from ENV for ${shouldUse8Bit ? '8BIT' : 'DEFAULT'}`);
             certContent = selectedCertEnv;
             keyContent = selectedKeyEnv;
         }
@@ -102,7 +78,7 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
             const certPath = path.join(certDir, certFilename);
             const keyPath = path.join(certDir, keyFilename);
 
-            console.log(`[AFIP] Looking for credentials at: ${certPath}`);
+            console.warn(`[DEBUG] [AFIP] Looking for credentials at: ${certPath}`);
 
             if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
                 certContent = fs.readFileSync(certPath, 'utf8');
@@ -117,10 +93,10 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
         }
 
         // DEBUG: Print credential details (Partial)
-        console.log(`[AFIP] CUIT: ${selectedCuit}`);
-        console.log(`[AFIP] Cert Start: ${certContent.substring(0, 30)}...`);
-        console.log(`[AFIP] Cert End: ...${certContent.substring(certContent.length - 30)}`);
-        console.log(`[AFIP] Key Length: ${keyContent.length}`);
+        console.warn(`[DEBUG] [AFIP] CUIT: ${selectedCuit}`);
+        console.warn(`[DEBUG] [AFIP] Cert Start: ${certContent.substring(0, 30)}...`);
+        console.warn(`[DEBUG] [AFIP] Cert End: ...${certContent.substring(certContent.length - 30)}`);
+        console.warn(`[DEBUG] [AFIP] Key Length: ${keyContent.length}`);
 
         // Handle Base64 from ENV if needed
         if (!certContent.includes('-----BEGIN')) {
@@ -136,6 +112,10 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
     }
 
     // Initialize ARCA Client
+    // TECH_DEBT(2026-04): @arcasdk/core options type is incomplete (missing
+    // useSoap12, useHttpsAgent, ciphers, minVersion, secureOptions, rejectUnauthorized).
+    // Impacto: pierde verificación de tipos en init de AFIP.
+    // Fix real: contribuir tipos upstream o declarar interfaz local completa.
     const arca = new Arca({
         cuit: selectedCuit, // Use the selected CUIT
         cert: certContent,
@@ -147,7 +127,7 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
         minVersion: 'TLSv1',
         secureOptions: constants.SSL_OP_LEGACY_SERVER_CONNECT,
         rejectUnauthorized: false
-    } as any);
+    } as ConstructorParameters<typeof Arca>[0]);
 
     return arca;
 }
@@ -157,9 +137,10 @@ export async function getServerStatus() {
         const arca = await getAfipClient();
         const status = await arca.electronicBillingService.getServerStatus();
         return { success: true, status };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error checking AFIP status:', error);
-        return { success: false, error: error.message || String(error) };
+        const message = error instanceof Error ? error.message : String(error);
+        return { success: false, error: message };
     }
 }
 
@@ -171,9 +152,10 @@ export async function getLastVoucher(salesPoint: number, type: number) {
         const arca = await getAfipClient();
         const last = await arca.electronicBillingService.getLastVoucher(salesPoint, type);
         return { success: true, lastVoucher: last.cbteNro };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("AFIP LastVoucher Error:", error);
-        return { success: false, error: error.message };
+        const message = error instanceof Error ? error.message : String(error);
+        return { success: false, error: message };
     }
 }
 
@@ -236,7 +218,12 @@ export async function createAfipInvoice(data: {
         // Even 0.01 difference will trigger rejection.
         const headerAmount = formatAmount(calculatedNet + calculatedVat + data.exemptAmount);
 
-        const payload: any = {
+        // TECH_DEBT(2026-04): el tipo INextVoucher del SDK marca CbteFch como string,
+        // pero en producción se viene enviando como number (parseInt) sin problemas con AFIP.
+        // No cambiamos el runtime para evitar regresiones en facturación. CondicionIVAReceptorId
+        // se asigna condicionalmente más abajo, por eso usamos un tipo permisivo para inicializar.
+        // Fix real: validar contra AFIP si CbteFch acepta string y migrar a INextVoucher.
+        const payload: Record<string, string | number | Array<Record<string, number>>> = {
             'CantReg': 1,
             'PtoVta': data.salesPoint,
             'CbteTipo': data.type,
@@ -277,10 +264,28 @@ export async function createAfipInvoice(data: {
         }
 
         payload['CondicionIVAReceptorId'] = condicionIvaId;
-        console.log(`[AFIP] Invoicing with CondicionIVAReceptorId: ${condicionIvaId}`);
+        console.warn(`[DEBUG] [AFIP] Invoicing with CondicionIVAReceptorId: ${condicionIvaId}`);
 
-        const res = await arca.electronicBillingService.createNextVoucher(payload) as any;
-        console.log("AFIP SDK Result:", JSON.stringify(res, null, 2));
+        // TECH_DEBT(2026-04): SDK retorna shape no documentado en ICreateVoucherResult
+        // (response.FeDetResp / Errors). Casteamos vía unknown a interfaz mínima local.
+        // Fix real: usar tipos públicos del SDK cuando se expongan.
+        type AfipErrItem = { Code: number | string; Msg: string };
+        type AfipVoucherResponse = {
+            cae?: string;
+            caeFchVto?: string;
+            response?: {
+                FeDetResp?: {
+                    FECAEDetResponse?: Array<{
+                        CbteDesde?: number;
+                        Observaciones?: { Obs?: AfipErrItem[] };
+                    }>;
+                };
+                Errors?: { Err?: AfipErrItem[] } | AfipErrItem[];
+            };
+        };
+        // SDK input type es INextVoucher; usamos cast porque el payload se construye dinámicamente.
+        const res = await arca.electronicBillingService.createNextVoucher(payload as unknown as Parameters<typeof arca.electronicBillingService.createNextVoucher>[0]) as unknown as AfipVoucherResponse;
+        console.warn("[DEBUG] AFIP SDK Result:", JSON.stringify(res, null, 2));
 
         // SDK returns { cae: string, caeFchVto: string, response: object }
         // If rejected, cae is empty string.
@@ -299,10 +304,11 @@ export async function createAfipInvoice(data: {
         // FAILURE HANDLING
         const rawResponse = res.response || {};
 
-        // 1. Global Errors
-        const errors = rawResponse.Errors?.Err || rawResponse.Errors;
+        // 1. Global Errors — el SDK puede devolver Errors anidado en .Err o como array directo
+        const rawErrors = rawResponse.Errors;
+        const errors = Array.isArray(rawErrors) ? rawErrors : rawErrors?.Err;
         if (errors && Array.isArray(errors) && errors.length > 0) {
-            const msg = errors.map((e: any) => `(${e.Code}) ${e.Msg}`).join(". ");
+            const msg = errors.map((e) => `(${e.Code}) ${e.Msg}`).join(". ");
             throw new Error(`Rechazo AFIP: ${msg}`);
         }
 
@@ -310,7 +316,7 @@ export async function createAfipInvoice(data: {
         const detResp = rawResponse.FeDetResp?.FECAEDetResponse?.[0];
         const obs = detResp?.Observaciones?.Obs;
         if (obs && Array.isArray(obs) && obs.length > 0) {
-            const msg = obs.map((o: any) => `(${o.Code}) ${o.Msg}`).join(". ");
+            const msg = obs.map((o) => `(${o.Code}) ${o.Msg}`).join(". ");
             throw new Error(`AFIP Observaciones: ${msg}`);
         }
 
@@ -319,7 +325,7 @@ export async function createAfipInvoice(data: {
         throw new Error("AFIP rechazó la operación (CAE vacío) sin reportar errores explícitos.");
 
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("AFIP CreateVoucher Error:", error);
         // Clean error message if it's an Error object
         const msg = error instanceof Error ? error.message : String(error);
@@ -330,22 +336,62 @@ export async function createAfipInvoice(data: {
 /**
  * Get Taxpayer Details (Padrón A13)
  */
+type AfipDomicilio = {
+    tipoDomicilio?: string;
+    direccion?: string;
+    calle?: string;
+    localidad?: string;
+    descripcionProvincia?: string;
+    dscrPcia?: string;
+};
+
+type AfipTaxItem = {
+    idImpuesto?: string | number;
+    id?: string | number;
+};
+
+// TECH_DEBT(2026-04): el SDK tipa el resultado con [key: string]: any.
+// Usamos un tipo local que cubre los campos accedidos (todos opcionales para
+// soportar fallbacks taxPayer.persona ?? taxPayer ?? root).
+// Fix real: el SDK debería exportar un tipo concreto para Padron A13.
+type AfipPadronNode = {
+    persona?: AfipPadronNode;
+    datosGenerales?: AfipPadronNode;
+    datosRegimenGeneral?: AfipPadronNode;
+    datosMonotributo?: AfipPadronNode;
+    domicilioFiscal?: AfipDomicilio | AfipDomicilio[];
+    domicilio?: AfipDomicilio | AfipDomicilio[];
+    errorConstancia?: { error?: string; codigo?: number };
+    razonSocial?: string;
+    apellido?: string;
+    nombre?: string;
+    tipoClave?: string;
+    idActividadPrincipal?: string | number;
+    descripcionActividadPrincipal?: string;
+    formaJuridica?: string;
+    tipoPersona?: string;
+    estadoClave?: string;
+    impuesto?: AfipTaxItem | AfipTaxItem[];
+    impuestos?: AfipTaxItem | AfipTaxItem[];
+    categoria?: string;
+};
+
 export async function getTaxpayerDetails(cuit: number) {
     try {
         const arca = await getAfipClient();
-        console.log(`[AFIP] Fetching details for CUIT ${cuit}...`);
+        console.warn(`[DEBUG] [AFIP] Fetching details for CUIT ${cuit}...`);
 
-        const taxPayer = await arca.registerScopeThirteenService.getTaxpayerDetails(cuit);
+        const taxPayer = await arca.registerScopeThirteenService.getTaxpayerDetails(cuit) as unknown as AfipPadronNode | null;
 
         if (!taxPayer) {
             return { success: false, error: "No se encontraron datos para este CUIT." };
         }
 
         // --- IMPROVED DATA EXTRACTION ---
-        const root = (taxPayer as any).persona || taxPayer;
-        const datosGenerales = root.datosGenerales || (taxPayer as any).datosGenerales || root;
-        const datosRegimen = root.datosRegimenGeneral || (taxPayer as any).datosRegimenGeneral;
-        const datosMonotributo = root.datosMonotributo || (taxPayer as any).datosMonotributo;
+        const root: AfipPadronNode = taxPayer.persona || taxPayer;
+        const datosGenerales: AfipPadronNode = root.datosGenerales || taxPayer.datosGenerales || root;
+        const datosRegimen = root.datosRegimenGeneral || taxPayer.datosRegimenGeneral;
+        const datosMonotributo = root.datosMonotributo || taxPayer.datosMonotributo;
 
         if (!datosGenerales && root.errorConstancia) {
             return { success: false, error: `AFIP: ${root.errorConstancia.error || "Error de constancia."}` };
@@ -359,7 +405,7 @@ export async function getTaxpayerDetails(cuit: number) {
         // Extract Address
         let domicilioRaw = datosGenerales.domicilioFiscal || datosGenerales.domicilio || root.domicilio;
         if (Array.isArray(domicilioRaw)) {
-            domicilioRaw = domicilioRaw.find((d: any) => d.tipoDomicilio === 'FISCAL') || domicilioRaw[0];
+            domicilioRaw = domicilioRaw.find((d) => d.tipoDomicilio === 'FISCAL') || domicilioRaw[0];
         }
 
         const address = domicilioRaw ? `${domicilioRaw.direccion || domicilioRaw.calle || ''}, ${domicilioRaw.localidad || ''}, ${domicilioRaw.descripcionProvincia || domicilioRaw.dscrPcia || ''}` : "Domicilio Desconocido";
@@ -372,7 +418,7 @@ export async function getTaxpayerDetails(cuit: number) {
         let isExento = false;
 
         // Helper to normalize taxes list
-        const getTaxes = (regimen: any) => {
+        const getTaxes = (regimen: AfipPadronNode | undefined): AfipTaxItem[] => {
             if (!regimen) return [];
             const taxes = regimen.impuesto || regimen.impuestos;
             if (Array.isArray(taxes)) return taxes;
@@ -381,7 +427,7 @@ export async function getTaxpayerDetails(cuit: number) {
         };
 
         const taxes = getTaxes(datosRegimen);
-        console.log(`[AFIP] CUIT ${cuit} Taxes:`, JSON.stringify(taxes));
+        console.warn(`[DEBUG] [AFIP] CUIT ${cuit} Taxes:`, JSON.stringify(taxes));
 
         // Tax Codes Definitions
         const COD_MONOTRIBUTO = [20];
@@ -391,16 +437,17 @@ export async function getTaxpayerDetails(cuit: number) {
         const COD_EXENTO = [32, 4, 15];
 
         // 1. Check Monotributo (Explicit Object or Code 20)
-        const hasMonotributoTax = taxes.some((t: any) => COD_MONOTRIBUTO.includes(parseInt(t.idImpuesto || t.id || 0)));
+        const taxCode = (t: AfipTaxItem) => parseInt(String(t.idImpuesto || t.id || 0));
+        const hasMonotributoTax = taxes.some((t) => COD_MONOTRIBUTO.includes(taxCode(t)));
 
         if (isMonotributo || hasMonotributoTax) {
             condition = "Monotributo";
             isMonotributo = true;
         } else {
             // 2. Analyze other taxes
-            const hasRI = taxes.some((t: any) => COD_RESP_INSCRIPTO.includes(parseInt(t.idImpuesto || t.id || 0)));
-            const hasGanancias = taxes.some((t: any) => COD_GANANCIAS.includes(parseInt(t.idImpuesto || t.id || 0)));
-            const hasExento = taxes.some((t: any) => COD_EXENTO.includes(parseInt(t.idImpuesto || t.id || 0)));
+            const hasRI = taxes.some((t) => COD_RESP_INSCRIPTO.includes(taxCode(t)));
+            const hasGanancias = taxes.some((t) => COD_GANANCIAS.includes(taxCode(t)));
+            const hasExento = taxes.some((t) => COD_EXENTO.includes(taxCode(t)));
 
             if (hasExento) {
                 condition = "IVA Exento";
@@ -430,10 +477,10 @@ export async function getTaxpayerDetails(cuit: number) {
                     if (tipoClave === "CUIT" && hasActivity) {
                         condition = "Responsable Inscripto";
                         isRespInscripto = true;
-                        console.log(`[AFIP] CUIT ${cuit} - Active CUIT with activity but no taxes fetched. Assuming RI.`);
+                        console.warn(`[DEBUG] [AFIP] CUIT ${cuit} - Active CUIT with activity but no taxes fetched. Assuming RI.`);
                     } else {
                         condition = "Consumidor Final";
-                        console.log(`[AFIP] CUIT ${cuit} - Active ${tipoClave} with no explicit activity/taxes. Assuming CF.`);
+                        console.warn(`[DEBUG] [AFIP] CUIT ${cuit} - Active ${tipoClave} with no explicit activity/taxes. Assuming CF.`);
                     }
                 }
             }
@@ -452,9 +499,9 @@ export async function getTaxpayerDetails(cuit: number) {
             }
         };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("AFIP Padron Error:", error);
-        const message = error.message || "";
+        const message = error instanceof Error ? error.message : String(error);
         if (message.includes("401") || message.includes("Unauthorized")) {
             return {
                 success: false,

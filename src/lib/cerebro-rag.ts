@@ -18,6 +18,21 @@ export interface SimilarRepair {
     source?: 'semantic' | 'keyword' | 'hybrid' | 'wiki';
 }
 
+type RepairEmbeddingSearchRow = {
+    ticketNumber: string;
+    deviceBrand: string;
+    deviceModel: string;
+    contentText: string;
+    similarity?: number | string;
+    status?: string | null;
+    search_score?: number | string;
+    embedding?: string | number[];
+};
+
+function errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Utilidades
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,7 +114,7 @@ async function semanticSearch(
 ): Promise<SimilarRepair[]> {
     try {
         const vectorStr = `[${embedding.join(',')}]`;
-        const rows = await db.$queryRawUnsafe<any[]>(
+        const rows = await db.$queryRawUnsafe<RepairEmbeddingSearchRow[]>(
             `SELECT re."ticketNumber", re."deviceBrand", re."deviceModel", re."contentText",
                     (1 - (re.embedding <=> $1::vector)) as similarity,
                     rs.name as status
@@ -113,19 +128,19 @@ async function semanticSearch(
         );
 
         if (rows?.length > 0) {
-            console.log(`[RAG] 🧠 Semántica: ${rows.length} resultados`);
+            console.warn(`[DEBUG] [RAG] 🧠 Semántica: ${rows.length} resultados`);
             return rows.map(r => ({
                 ticketNumber: r.ticketNumber,
                 deviceBrand: r.deviceBrand,
                 deviceModel: r.deviceModel,
                 contentText: r.contentText,
                 similarity: Number(r.similarity),
-                status: r.status,
+                status: r.status ?? undefined,
                 source: r.ticketNumber.startsWith('wiki_') ? 'wiki' as const : 'semantic' as const
             }));
         }
-    } catch (err: any) {
-        console.warn(`[RAG] pgvector error: ${err.message.slice(0, 80)}`);
+    } catch (err: unknown) {
+        console.warn(`[RAG] pgvector error: ${errorMessage(err).slice(0, 80)}`);
     }
     return [];
 }
@@ -155,7 +170,7 @@ async function keywordSearch(
 
         const safeLimitKeyword = Math.min(Math.max(1, Math.floor(Number(limit))), 20);
 
-        const rows = await db.$queryRawUnsafe<any[]>(
+        const rows = await db.$queryRawUnsafe<RepairEmbeddingSearchRow[]>(
             `SELECT re."ticketNumber", re."deviceBrand", re."deviceModel", re."contentText",
                     rs.name as status,
                     (
@@ -173,19 +188,19 @@ async function keywordSearch(
         );
 
         if (rows?.length > 0) {
-            console.log(`[RAG] 🔑 Keyword: ${rows.length} resultados (terms: ${terms.join(', ')})`);
+            console.warn(`[DEBUG] [RAG] 🔑 Keyword: ${rows.length} resultados (terms: ${terms.join(', ')})`);
             return rows.map(r => ({
                 ticketNumber: r.ticketNumber,
                 deviceBrand: r.deviceBrand,
                 deviceModel: r.deviceModel,
                 contentText: r.contentText,
                 similarity: 0.7 + (Number(r.search_score) / 10),
-                status: r.status,
+                status: r.status ?? undefined,
                 source: 'keyword' as const
             }));
         }
-    } catch (err: any) {
-        console.warn(`[RAG] keyword error: ${err.message.slice(0, 80)}`);
+    } catch (err: unknown) {
+        console.warn(`[RAG] keyword error: ${errorMessage(err).slice(0, 80)}`);
     }
     return [];
 }
@@ -267,17 +282,17 @@ export async function findSimilarRepairs(
 
     if (semantic.length > 0 && keyword.length > 0) {
         const merged = rrfMerge(semantic, keyword, 60, preferredBrand);
-        console.log(`[RAG] ⚡ Híbrida RRF (marca: ${preferredBrand || 'cualquiera'}): ${merged.slice(0, limit).length} resultados`);
+        console.warn(`[DEBUG] [RAG] ⚡ Híbrida RRF (marca: ${preferredBrand || 'cualquiera'}): ${merged.slice(0, limit).length} resultados`);
         return merged.slice(0, limit);
     }
 
     if (semantic.length > 0) {
-        console.log(`[RAG] 🧠 Solo semántica: ${Math.min(semantic.length, limit)} resultados`);
+        console.warn(`[DEBUG] [RAG] 🧠 Solo semántica: ${Math.min(semantic.length, limit)} resultados`);
         return semantic.slice(0, limit);
     }
 
     if (keyword.length > 0) {
-        console.log(`[RAG] 🔑 Solo keyword: ${Math.min(keyword.length, limit)} resultados`);
+        console.warn(`[DEBUG] [RAG] 🔑 Solo keyword: ${Math.min(keyword.length, limit)} resultados`);
         return keyword.slice(0, limit);
     }
 
@@ -286,19 +301,19 @@ export async function findSimilarRepairs(
         if (minSimilarity > retryThreshold) {
             const retry = await semanticSearch(embedding, limit, retryThreshold);
             if (retry.length > 0) {
-                console.log(`[RAG] 🧠 Semántica (Retry threshold): ${retry.length} resultados`);
+                console.warn(`[DEBUG] [RAG] 🧠 Semántica (Retry threshold): ${retry.length} resultados`);
                 return retry;
             }
         }
 
         try {
-            const rows = await db.$queryRawUnsafe<any[]>(
+            const rows = await db.$queryRawUnsafe<RepairEmbeddingSearchRow[]>(
                 `SELECT "ticketNumber", "deviceBrand", "deviceModel", "contentText", "embedding"
                  FROM "repair_embeddings" LIMIT 100`
             );
             if (rows?.length > 0) {
                 const results = rows
-                    .map((row: any): SimilarRepair => ({
+                    .map((row): SimilarRepair => ({
                         ticketNumber: row.ticketNumber,
                         deviceBrand: row.deviceBrand,
                         deviceModel: row.deviceModel,
@@ -311,16 +326,16 @@ export async function findSimilarRepairs(
                     .slice(0, limit);
 
                 if (results.length > 0) {
-                    console.log(`[RAG] 📦 Fallback in-memory: ${results.length} resultados`);
+                    console.warn(`[DEBUG] [RAG] 📦 Fallback in-memory: ${results.length} resultados`);
                     return results;
                 }
             }
-        } catch (err: any) {
-            console.warn('[RAG] fallback in-memory error:', err.message);
+        } catch (err: unknown) {
+            console.warn('[RAG] fallback in-memory error:', errorMessage(err));
         }
     }
 
-    console.log('[RAG] Sin resultados.');
+    console.warn('[DEBUG] [RAG] Sin resultados.');
     return [];
 }
 

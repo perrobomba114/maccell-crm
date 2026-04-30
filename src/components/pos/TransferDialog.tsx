@@ -13,27 +13,42 @@ import {
     DialogDescription
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import type { PosProduct } from "@/lib/actions/pos";
+
+type TransferBranch = {
+    id: string;
+    name: string;
+};
+
+type PendingTransfer = {
+    id: string;
+    quantity: number;
+    notes?: string | null;
+    product: { name: string };
+    sourceBranch?: { name: string } | null;
+    createdBy?: { name: string } | null;
+};
 
 interface TransferDialogProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     transferTab: "NEW" | "INCOMING";
     setTransferTab: (v: "NEW" | "INCOMING") => void;
-    pendingTransfers: any[];
-    selectedTransferProduct: any | null;
-    setSelectedTransferProduct: (v: any | null) => void;
+    pendingTransfers: PendingTransfer[];
+    selectedTransferProduct: PosProduct | null;
+    setSelectedTransferProduct: (v: PosProduct | null) => void;
     transferSearchQuery: string;
     setTransferSearchQuery: (v: string) => void;
-    transferProducts: any[];
+    transferProducts: PosProduct[];
     targetBranchId: string;
     setTargetBranchId: (v: string) => void;
-    branches: any[];
+    branches: TransferBranch[];
     transferQty: string;
     setTransferQty: (v: string) => void;
     transferNotes: string;
     setTransferNotes: (v: string) => void;
     onCreateTransfer: () => void;
-    onRespondTransfer: (id: string, action: "ACCEPT" | "REJECT") => void;
+    onRespondTransfer: (id: string, action: "ACCEPT" | "REJECT") => void | Promise<void>;
 }
 
 export function TransferDialog({
@@ -246,7 +261,7 @@ export function TransferDialog({
 
                                         {t.notes && (
                                             <div className="relative p-3 bg-zinc-950/40 rounded-xl text-sm text-zinc-400 italic border border-white/5 pl-8">
-                                                <span className="absolute left-3 top-3 text-zinc-600 text-2xl leading-none">"</span>
+                                                <span className="absolute left-3 top-3 text-zinc-600 text-2xl leading-none">&quot;</span>
                                                 {t.notes}
                                             </div>
                                         )}

@@ -42,7 +42,7 @@ export async function generateAdminInvoice(data: {
     paymentDueDate?: string; // YYYY-MM-DD
     billingEntity?: 'MACCELL' | '8BIT';
 }) {
-    console.log("Generating Admin Invoice...", data);
+    console.warn("[DEBUG] Generating Admin Invoice...", data);
 
     try {
         if (!data.items || data.items.length === 0) {
@@ -156,7 +156,8 @@ export async function generateAdminInvoice(data: {
         }
         const cae = afipRes.data.cae;
         const caeFchVto = afipRes.data.caeFchVto;
-        // @ts-ignore - Arca SDK type definition might be missing cbteNro or similar in interface but it exists in runtime
+        // @ts-expect-error TECH_DEBT(2026-04): cbteNro no está declarado en data; mantenemos
+        // el fallback runtime por si el SDK lo agrega en futuras respuestas.
         const voucherNum = afipRes.data.voucherNumber || afipRes.data.cbteNro || 0;
 
         // 4. Create Sale & Invoice in DB
@@ -239,8 +240,9 @@ export async function generateAdminInvoice(data: {
         revalidatePath("/admin/invoices");
         return { success: true };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Generate Admin Invoice Error:", error);
-        return { success: false, error: error.message };
+        const message = error instanceof Error ? error.message : String(error);
+        return { success: false, error: message };
     }
 }

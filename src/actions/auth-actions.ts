@@ -6,24 +6,24 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function login(email: string, password: string) {
-    console.log("LOGIN ACTION STARTED", { email });
+
     try {
-        console.log("db.user.findUnique calling...");
+
         // Find user by email
         const user = await prisma.user.findUnique({
             where: { email },
             include: { branch: true },
         });
-        console.log("db.user.findUnique result:", user ? "User found" : "User not found");
+
 
         if (!user) {
             return { success: false, error: "Credenciales inválidas" };
         }
 
-        console.log("bcrypt.compare calling...");
+
         // Verify password
         const passwordMatch = await bcrypt.compare(password, user.password);
-        console.log("bcrypt.compare result:", passwordMatch);
+
 
         if (!passwordMatch) {
             return { success: false, error: "Credenciales inválidas" };
@@ -35,22 +35,22 @@ export async function login(email: string, password: string) {
             data: { isOnline: true, lastActiveAt: new Date() }
         });
 
-        console.log("cookies() calling...");
+
         // Set session cookie (expires in 6 hours)
         const cookieStore = await cookies();
         const SIX_HOURS = 6 * 60 * 60; // 21600 seconds
 
-        console.log("cookies() acquired, setting session...");
+
         cookieStore.set("session_user_id", user.id, {
             httpOnly: true,
-            secure: false, // process.env.NODE_ENV === "production",
+            secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             maxAge: SIX_HOURS,
         });
 
         cookieStore.set("session_role", user.role, {
             httpOnly: true,
-            secure: false, // process.env.NODE_ENV === "production",
+            secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             maxAge: SIX_HOURS,
         });
@@ -71,7 +71,7 @@ export async function login(email: string, password: string) {
                 return { success: false, error: "Rol no reconocido" };
         }
 
-        console.log("Login success, redirecting to:", redirectPath);
+
         return { success: true, redirectPath };
     } catch (error) {
         console.error("Login error:", error);

@@ -1,23 +1,26 @@
 "use server";
 
 import { db } from "@/lib/db";
-const prisma = db as any;
 import { revalidatePath } from "next/cache";
 import { findSimilarRepairs, formatRAGContext } from "@/lib/cerebro-rag";
 import { getCurrentUser } from "@/actions/auth-actions";
+
+function errorMessage(error: unknown, fallback: string): string {
+    return error instanceof Error ? error.message : fallback;
+}
 
 export async function getConversationsAction(userId: string) {
     const caller = await getCurrentUser();
     if (!caller || caller.id !== userId) return { success: false, error: "No autorizado" };
     try {
-        const conversations = await prisma.cerebroConversation.findMany({
+        const conversations = await db.cerebroConversation.findMany({
             where: { userId },
             orderBy: { updatedAt: "desc" },
             take: 50,
         });
-        console.log(`[CEREBRO_GET] Fetched ${conversations.length} conversations for user ${userId}`);
+        console.warn(`[DEBUG] [CEREBRO_GET] Fetched ${conversations.length} conversations for user ${userId}`);
         return { success: true, data: conversations };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[getConversationsAction] Error:", error);
         return { success: false, error: "Error al obtener conversaciones." };
     }
@@ -28,7 +31,7 @@ export async function getConversationMessagesAction(conversationId: string, user
     if (!caller || caller.id !== userId) return { success: false, error: "No autorizado" };
     try {
         // Verificar que la conversación le pertenezca
-        const conv = await prisma.cerebroConversation.findUnique({
+        const conv = await db.cerebroConversation.findUnique({
             where: { id: conversationId },
             include: {
                 messages: {
@@ -42,7 +45,7 @@ export async function getConversationMessagesAction(conversationId: string, user
         }
 
         return { success: true, data: conv.messages };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[getConversationMessagesAction] Error:", error);
         return { success: false, error: "Error al obtener mensajes." };
     }
@@ -52,7 +55,7 @@ export async function createConversationAction(userId: string, title: string = "
     const caller = await getCurrentUser();
     if (!caller || caller.id !== userId) return { success: false, error: "No autorizado" };
     try {
-        const conversation = await prisma.cerebroConversation.create({
+        const conversation = await db.cerebroConversation.create({
             data: {
                 userId,
                 title,
@@ -61,9 +64,9 @@ export async function createConversationAction(userId: string, title: string = "
         revalidatePath("/admin/cerebro");
         revalidatePath("/technician/cerebro");
         return { success: true, data: conversation };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[createConversationAction] Error:", error);
-        return { success: false, error: error.message || "Error al crear la conversación." };
+        return { success: false, error: errorMessage(error, "Error al crear la conversación.") };
     }
 }
 
@@ -79,11 +82,11 @@ export async function saveUserMessageAction(
 ) {
     try {
         // Verificar cuántos mensajes existen ya para esta conversación
-        const existingCount = await prisma.cerebroMessage.count({
+        const existingCount = await db.cerebroMessage.count({
             where: { conversationId }
         });
 
-        await prisma.cerebroMessage.create({
+        await db.cerebroMessage.create({
             data: {
                 conversationId,
                 role: 'user',
@@ -95,15 +98,15 @@ export async function saveUserMessageAction(
         // Si es el primer mensaje → actualizar título de la conversación
         if (existingCount === 0 && content && updateTitle) {
             const cleanTitle = content.substring(0, 50).trim() + (content.length > 50 ? '...' : '');
-            await prisma.cerebroConversation.update({
+            await db.cerebroConversation.update({
                 where: { id: conversationId },
                 data: { title: cleanTitle }
             });
         }
 
-        console.log(`[CEREBRO_USER_MSG] Guardado inmediato en conv: ${conversationId}`);
+        console.warn(`[DEBUG] [CEREBRO_USER_MSG] Guardado inmediato en conv: ${conversationId}`);
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[saveUserMessageAction] Error:', error);
         return { success: false };
     }
@@ -111,9 +114,9 @@ export async function saveUserMessageAction(
 
 export async function saveMessagesToDbAction(conversationId: string, messages: { role: string; content: string; mediaUrls?: string[] }[]) {
     try {
-        console.log(`[CEREBRO_SAVE] Sincronizando ${messages.length} mensajes para conv: ${conversationId}`);
+        console.warn(`[DEBUG] [CEREBRO_SAVE] Sincronizando ${messages.length} mensajes para conv: ${conversationId}`);
         // Obtenemos los mensajes actuales en DB:
-        const existingMessages = await prisma.cerebroMessage.findMany({
+        const existingMessages = await db.cerebroMessage.findMany({
             where: { conversationId },
             orderBy: { createdAt: "asc" }
         });
@@ -123,7 +126,7 @@ export async function saveMessagesToDbAction(conversationId: string, messages: {
 
         if (newMessages.length > 0) {
             for (const m of newMessages) {
-                await prisma.cerebroMessage.create({
+                await db.cerebroMessage.create({
                     data: {
                         conversationId,
                         role: m.role,
@@ -134,33 +137,33 @@ export async function saveMessagesToDbAction(conversationId: string, messages: {
             }
         }
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[saveMessagesToDbAction] Error:", error);
         return { success: false, error: "Error guardando mensajes en DB." };
     }
 }
 
 export async function deleteConversationAction(conversationId: string) {
-    console.log("[CEREBRO_DELETE] Iniciando eliminación de conversación:", conversationId);
+    console.warn("[DEBUG] [CEREBRO_DELETE] Iniciando eliminación de conversación:", conversationId);
     const caller = await getCurrentUser();
     if (!caller) return { success: false, error: "No autorizado" };
     try {
         // Verify ownership before deleting
-        const conv = await prisma.cerebroConversation.findUnique({ where: { id: conversationId }, select: { userId: true } });
+        const conv = await db.cerebroConversation.findUnique({ where: { id: conversationId }, select: { userId: true } });
         if (!conv || (conv.userId !== caller.id && caller.role !== "ADMIN")) {
             return { success: false, error: "No autorizado" };
         }
         // Borramos primero los mensajes y luego la conversación
         // Usamos deleteMany porque es más laxo que delete si el registro ya no existe o hay delays
-        await prisma.cerebroMessage.deleteMany({
+        await db.cerebroMessage.deleteMany({
             where: { conversationId }
         });
 
-        const deleted = await prisma.cerebroConversation.deleteMany({
+        const deleted = await db.cerebroConversation.deleteMany({
             where: { id: conversationId },
         });
 
-        console.log(`[CEREBRO_DELETE] Resultado: ${deleted.count} conversaciones eliminadas.`);
+        console.warn(`[DEBUG] [CEREBRO_DELETE] Resultado: ${deleted.count} conversaciones eliminadas.`);
 
         // Invalida de forma masiva para forzar refresco total
         revalidatePath("/admin/cerebro", "layout");
@@ -168,7 +171,7 @@ export async function deleteConversationAction(conversationId: string) {
         revalidatePath("/", "layout");
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[CEREBRO_DELETE] ERROR EN DB:", error);
         return { success: false, error: "Error en la base de datos al intentar eliminar." };
     }
@@ -176,14 +179,14 @@ export async function deleteConversationAction(conversationId: string) {
 
 export async function updateConversationTitleAction(conversationId: string, title: string) {
     try {
-        await prisma.cerebroConversation.update({
+        await db.cerebroConversation.update({
             where: { id: conversationId },
             data: { title: title.substring(0, 50) }
         });
         revalidatePath("/admin/cerebro");
         revalidatePath("/technician/cerebro");
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[updateConversationTitleAction] Error:", error);
         return { success: false, error: "Error al actualizar el título." };
     }
@@ -191,13 +194,13 @@ export async function updateConversationTitleAction(conversationId: string, titl
 
 export async function generateGeminiPromptAction(query: string) {
     try {
-        console.log(`[GEMINI_PROMPT_GEN] Buscando contexto para query: ${query.substring(0, 50)}...`);
+        console.warn(`[DEBUG] [GEMINI_PROMPT_GEN] Buscando contexto para query: ${query.substring(0, 50)}...`);
         let ragContext = '';
         if (query.length > 5) {
             const similarRepairs = await findSimilarRepairs(query, 3, 0.72);
             ragContext = formatRAGContext(similarRepairs);
             if (ragContext) {
-                console.log(`[GEMINI_PROMPT_GEN] ${similarRepairs.length} casos inyectados.`);
+                console.warn(`[DEBUG] [GEMINI_PROMPT_GEN] ${similarRepairs.length} casos inyectados.`);
             }
         }
 
@@ -218,7 +221,7 @@ ${query}
 `;
 
         return { success: true, prompt: SYSTEM_PROMPT };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[generateGeminiPromptAction] Error:", error);
         return { success: false, error: "Error al compilar el contexto." };
     }

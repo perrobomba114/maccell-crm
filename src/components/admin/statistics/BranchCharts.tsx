@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { BarChart3 } from "lucide-react";
 import {
     BarChart,
@@ -12,11 +13,38 @@ import {
     Legend
 } from "recharts";
 
-function BranchProfitChart({ data }: { data: any[] }) {
+type BranchProfitDatum = {
+    name: string;
+    revenue: number;
+    profit: number;
+};
+
+type BranchStatsData = {
+    branchProfits: BranchProfitDatum[];
+};
+
+function BranchProfitChart({ data }: { data: BranchProfitDatum[] }) {
+    const [isMounted, setIsMounted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 500);
+        return () => clearTimeout(timer);
+    }, []);
+
     if (!data || data.length === 0) return <div className="h-full flex items-center justify-center text-zinc-500 text-sm">Sin datos financieros</div>;
 
+    if (!isMounted || !isReady) {
+        return (
+            <div className="h-full flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+            </div>
+        );
+    }
+
     return (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={200}>
             <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
                 <XAxis
@@ -36,7 +64,10 @@ function BranchProfitChart({ data }: { data: any[] }) {
                 />
                 <Tooltip
                     cursor={{ fill: '#27272a', opacity: 0.4 }}
-                    formatter={(value: any) => [`$${new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(value)}`, ""]}
+                    formatter={(value) => {
+                        const num = typeof value === "number" ? value : Number(value);
+                        return [`$${new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(num)}`, ""];
+                    }}
                     contentStyle={{
                         backgroundColor: '#18181b',
                         borderColor: '#27272a',
@@ -53,7 +84,7 @@ function BranchProfitChart({ data }: { data: any[] }) {
     );
 }
 
-export function BranchCharts({ branchStats }: { branchStats: any }) {
+export function BranchCharts({ branchStats }: { branchStats: BranchStatsData | null | undefined }) {
     if (!branchStats) return null;
 
     return (

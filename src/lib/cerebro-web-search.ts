@@ -171,8 +171,9 @@ async function searchDDG(query: string, maxResults = 5): Promise<{ title: string
         }
 
         return ranked;
-    } catch (err: any) {
-        console.warn('[WEB_SEARCH] DDG error:', err.message?.slice(0, 80));
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn('[WEB_SEARCH] DDG error:', message.slice(0, 80));
         return [];
     }
 }
@@ -285,8 +286,9 @@ async function fetchPage(url: string, maxChars = 3000): Promise<string> {
         }
 
         return text;
-    } catch (err: any) {
-        console.warn('[WEB_FETCH] Error:', err.message?.slice(0, 80));
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn('[WEB_FETCH] Error:', message.slice(0, 80));
         return '';
     }
 }
@@ -307,7 +309,7 @@ export async function cerebroWebSearch(
         ? `${brand} ${query}`
         : query;
 
-    console.log(`[WEB_SEARCH] 🌐 Buscando: "${refinedQuery.slice(0, 80)}"`);
+    console.warn(`[DEBUG] [WEB_SEARCH] 🌐 Buscando: "${refinedQuery.slice(0, 80)}"`);
 
     // Traducir síntomas comunes al inglés para mejor cobertura en iFixit/GSM Forum
     const englishQuery = refinedQuery
@@ -341,11 +343,11 @@ export async function cerebroWebSearch(
     }).slice(0, 5);
 
     if (ddgResults.length === 0) {
-        console.log('[WEB_SEARCH] Sin resultados DDG');
+        console.warn('[DEBUG] [WEB_SEARCH] Sin resultados DDG');
         return '';
     }
 
-    console.log(`[WEB_SEARCH] DDG encontró ${ddgResults.length} URLs`);
+    console.warn(`[DEBUG] [WEB_SEARCH] DDG encontró ${ddgResults.length} URLs`);
 
     // Paso 2: Fetch directo de las primeras 3 URLs y extraer texto del HTML
     const readings = await Promise.allSettled(
@@ -372,11 +374,11 @@ export async function cerebroWebSearch(
     });
 
     if (results.length === 0) {
-        console.log('[WEB_SEARCH] Jina no pudo leer ninguna URL');
+        console.warn('[DEBUG] [WEB_SEARCH] Jina no pudo leer ninguna URL');
         return '';
     }
 
-    console.log(`[WEB_SEARCH] ✅ ${results.length} páginas leídas exitosamente`);
+    console.warn(`[DEBUG] [WEB_SEARCH] ✅ ${results.length} páginas leídas exitosamente`);
 
     return formatWebResults(results);
 }

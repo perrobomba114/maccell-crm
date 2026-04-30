@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { TrendingUp, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
 import {
     BarChart,
@@ -11,13 +12,53 @@ import {
     ResponsiveContainer,
     Cell
 } from "recharts";
-import { cn } from "@/lib/utils";
+type TopProductDatum = {
+    name: string;
+    quantity: number;
+};
 
-function TopProductsInternalChart({ data }: { data: any[] }) {
+type LowStockItem = {
+    name: string;
+    branch: string;
+    stock: number;
+};
+
+type UsedPart = {
+    name: string;
+    count: number;
+};
+
+type ProductStatsData = {
+    topSelling: TopProductDatum[];
+    lowStock: LowStockItem[];
+};
+
+type RepairStatsData = {
+    mostUsedParts: UsedPart[];
+};
+
+function TopProductsInternalChart({ data }: { data: TopProductDatum[] }) {
+    const [isMounted, setIsMounted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 500);
+        return () => clearTimeout(timer);
+    }, []);
+
     if (!data || data.length === 0) return <div className="h-full flex items-center justify-center text-zinc-500 text-sm">Sin datos de productos</div>;
 
+    if (!isMounted || !isReady) {
+        return (
+            <div className="h-full flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+            </div>
+        );
+    }
+
     return (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={200}>
             <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#27272a" />
                 <XAxis type="number" fontSize={11} stroke="#71717a" hide />
@@ -40,7 +81,7 @@ function TopProductsInternalChart({ data }: { data: any[] }) {
                     }}
                 />
                 <Bar dataKey="quantity" name="Cantidad" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={16}>
-                    {data.map((entry: any, index: number) => (
+                    {data.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={index < 3 ? '#8b5cf6' : '#6366f1'} />
                     ))}
                 </Bar>
@@ -49,7 +90,7 @@ function TopProductsInternalChart({ data }: { data: any[] }) {
     );
 }
 
-export function ProductCharts({ productStats, repairStats }: { productStats: any, repairStats: any }) {
+export function ProductCharts({ productStats }: { productStats: ProductStatsData | null | undefined; repairStats?: RepairStatsData | null }) {
     if (!productStats) return null;
 
     return (
@@ -71,7 +112,7 @@ export function ProductCharts({ productStats, repairStats }: { productStats: any
             </div>
 
             {/* Low Stock Alerts & Parts Usage - In Next Row */}
-            {/* We export these as sub-components or render them here? 
+            {/* We export these as sub-components or render them here?
                 The layout in UnifiedDashboard had a grid.
                 Let's export standalone components for the lower grid.
             */}
@@ -79,7 +120,7 @@ export function ProductCharts({ productStats, repairStats }: { productStats: any
     );
 }
 
-export function StockAlertsList({ productStats }: { productStats: any }) {
+export function StockAlertsList({ productStats }: { productStats: ProductStatsData | null | undefined }) {
     if (!productStats) return null;
 
     return (
@@ -99,7 +140,7 @@ export function StockAlertsList({ productStats }: { productStats: any }) {
                         <CheckCircle2 size={30} className="mb-2 text-emerald-500/50" />
                         Todo en orden
                     </div>
-                ) : productStats.lowStock.map((item: any, i: number) => (
+                ) : productStats.lowStock.map((item, i) => (
                     <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10 hover:bg-red-500/10 transition-colors" title={item.name}>
                         <div>
                             <h4 className="text-xs font-bold text-white max-w-[150px] truncate">{item.name}</h4>
@@ -115,7 +156,7 @@ export function StockAlertsList({ productStats }: { productStats: any }) {
     );
 }
 
-export function TopPartsList({ repairStats }: { repairStats: any }) {
+export function TopPartsList({ repairStats }: { repairStats: RepairStatsData | null | undefined }) {
     if (!repairStats) return null;
 
     return (
@@ -132,7 +173,7 @@ export function TopPartsList({ repairStats }: { repairStats: any }) {
             <div className="space-y-4 flex-1 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
                 {repairStats.mostUsedParts.length === 0 ? (
                     <div className="text-zinc-500 text-sm text-center py-10">Sin datos</div>
-                ) : repairStats.mostUsedParts.map((part: any, i: number) => (
+                ) : repairStats.mostUsedParts.map((part, i) => (
                     <div key={i} className="group">
                         <div className="flex justify-between items-center mb-1 text-xs">
                             <span className="text-zinc-300 font-medium truncate max-w-[180px]">{part.name}</span>

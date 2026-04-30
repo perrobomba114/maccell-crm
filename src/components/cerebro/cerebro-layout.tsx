@@ -26,7 +26,34 @@ import {
 
 interface CerebroLayoutProps { userId: string; isAdmin?: boolean; }
 
-function formatConvDate(dateStr: string) {
+type ConversationSummary = {
+    id: string;
+    title: string | null;
+    updatedAt: Date | string;
+};
+
+type CerebroDbMessage = {
+    id: string;
+    role: string;
+    content: string | null;
+    mediaUrls: string[];
+};
+
+type CerebroInitialPart = UIMessage["parts"][number] & {
+    type: "text" | "file";
+    text?: string;
+    file?: {
+        url: string;
+        name: string;
+        type: string;
+    };
+};
+
+function toUiRole(role: string): UIMessage["role"] {
+    return role === "assistant" ? "assistant" : "user";
+}
+
+function formatConvDate(dateStr: string | Date) {
     const d = new Date(dateStr);
     if (isToday(d)) return format(d, "HH:mm");
     if (isYesterday(d)) return "Ayer";
@@ -34,7 +61,7 @@ function formatConvDate(dateStr: string) {
 }
 
 export function CerebroLayout({ userId, isAdmin = false }: CerebroLayoutProps) {
-    const [conversations, setConversations] = useState<any[]>([]);
+    const [conversations, setConversations] = useState<ConversationSummary[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const [activeConvTitle, setActiveConvTitle] = useState<string>("Nueva Consulta");
     const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
@@ -82,7 +109,7 @@ export function CerebroLayout({ userId, isAdmin = false }: CerebroLayoutProps) {
             if (res.success && res.data) {
                 setConversations(res.data);
                 if (selectFirst && res.data.length > 0) {
-                    await handleSelectConversation(res.data[0].id, res.data[0].title);
+                    await handleSelectConversation(res.data[0].id, res.data[0].title ?? undefined);
                 }
             }
         } catch (e) { console.error(e); }
@@ -116,12 +143,12 @@ export function CerebroLayout({ userId, isAdmin = false }: CerebroLayoutProps) {
         try {
             const res = await getConversationMessagesAction(id, userId);
             if (res.success && res.data) {
-                const formatted: UIMessage[] = res.data.map((m: any) => {
-                    const parts: any[] = [{ type: "text", text: m.content || "" }];
+                const formatted: UIMessage[] = (res.data as CerebroDbMessage[]).map((m) => {
+                    const parts: CerebroInitialPart[] = [{ type: "text", text: m.content || "" } as CerebroInitialPart];
                     if (m.mediaUrls?.length > 0)
                         m.mediaUrls.forEach((url: string) =>
-                            parts.push({ type: "file", file: { url, name: "Imagen adjunta", type: "image/jpeg" } }));
-                    return { id: m.id, role: m.role as any, parts };
+                            parts.push({ type: "file", file: { url, name: "Imagen adjunta", type: "image/jpeg" } } as CerebroInitialPart));
+                    return { id: m.id, role: toUiRole(m.role), parts };
                 });
                 setInitialMessages(formatted);
             }
@@ -269,7 +296,7 @@ export function CerebroLayout({ userId, isAdmin = false }: CerebroLayoutProps) {
                                         {items.map(conv => (
                                             <div
                                                 key={conv.id}
-                                                onClick={() => handleSelectConversation(conv.id, conv.title)}
+                                                onClick={() => handleSelectConversation(conv.id, conv.title ?? undefined)}
                                                 className={cn(
                                                     "group relative flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all",
                                                     activeConversationId === conv.id

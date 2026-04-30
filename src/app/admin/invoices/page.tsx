@@ -27,7 +27,6 @@ export default async function InvoicesPage({
 }: {
     searchParams: Promise<{ page?: string, date?: string, view?: string }>
 }) {
-    console.log("InvoicesPage rendering...");
     const resolvedParams = await searchParams;
     const page = Number(resolvedParams.page) || 1;
     const viewAll = resolvedParams.view === 'all';
@@ -49,7 +48,6 @@ export default async function InvoicesPage({
     const branches = await db.branch.findMany({ select: { id: true, name: true } });
 
     // Fetch Invoices via Server Action
-    // @ts-ignore
     const { invoices, totalPages, currentPage, totalAmount, totalCount, totalNet, totalVat, count21, count105 } = await getInvoices({
         page,
         limit: 25,
@@ -71,7 +69,7 @@ export default async function InvoicesPage({
     }
 
     return (
-        <div className="p-8 space-y-6 bg-black min-h-screen text-white">
+        <div className="p-8 space-y-6 bg-black min-h-screen text-white" suppressHydrationWarning>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight mb-2">Facturas Electrónicas</h1>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
@@ -37,11 +38,34 @@ interface RepairDistributionChartProps {
 }
 
 export function RepairDistributionChart({ data }: RepairDistributionChartProps) {
+    const [isMounted, setIsMounted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 500);
+        return () => clearTimeout(timer);
+    }, []);
+
     const chartData = data.map(item => ({
         name: STATUS_NAMES[item.statusId] || `Estado ${item.statusId}`,
         value: item.count,
         color: STATUS_COLORS[item.statusId] || "#cccccc"
     }));
+
+    if (!isMounted || !isReady) {
+        return (
+            <Card className="col-span-full lg:col-span-3">
+                <CardHeader>
+                    <CardTitle>Reparaciones Mensuales por Estado</CardTitle>
+                    <CardDescription>Distribución de tu trabajo este mes</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px] flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                </CardContent>
+            </Card>
+        );
+    }
 
     return (
         <Card className="col-span-full lg:col-span-3">
@@ -50,7 +74,7 @@ export function RepairDistributionChart({ data }: RepairDistributionChartProps) 
                 <CardDescription>Distribución de tu trabajo este mes</CardDescription>
             </CardHeader>
             <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={200}>
                     <PieChart>
                         <Pie
                             data={chartData}

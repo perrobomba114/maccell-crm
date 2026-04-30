@@ -64,7 +64,7 @@ export async function findSchematic(userMessage: string): Promise<SchematicMatch
 
         if (!row) return null;
 
-        console.log(`[CEREBRO] 📋 Schematic encontrado: ${row.deviceBrand} ${row.deviceModel} (${row.filename})`);
+        console.warn(`[DEBUG] [CEREBRO] 📋 Schematic encontrado: ${row.deviceBrand} ${row.deviceModel} (${row.filename})`);
 
         return {
             brand: row.deviceBrand,
@@ -72,18 +72,19 @@ export async function findSchematic(userMessage: string): Promise<SchematicMatch
             filename: row.filename,
             text: row.extractedText
         };
-    } catch (err: any) {
+    } catch (err: unknown) {
         // La tabla puede no existir todavía si nadie subió schematics
-        console.warn('[CEREBRO] ⚠️ findSchematic error:', err.message?.slice(0, 80));
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn('[CEREBRO] ⚠️ findSchematic error:', message.slice(0, 80));
         return null;
     }
 }
 
 /**
  * Formatea el contexto del schematic para inyectar en el system prompt.
- * 
+ *
  * MEJORA: Búsqueda de Ventana Inteligente.
- * Si el texto es muy largo, buscamos palabras clave del usuario dento de los 100k 
+ * Si el texto es muy largo, buscamos palabras clave del usuario dento de los 100k
  * para extraer la 'ventana' más relevante, no solo los primeros 8k.
  */
 export function formatSchematicContext(match: SchematicMatch, userQuery = ''): string {
@@ -140,7 +141,7 @@ export function formatSchematicContext(match: SchematicMatch, userQuery = ''): s
     }
 
     return `\n\n### 📋 DATOS TÉCNICOS DEL ESQUEMA: ${match.brand} ${match.model} (${match.filename})
-⚠️ INSTRUCCIÓN NIVEL 3: No des consejos genéricos. 
+⚠️ INSTRUCCIÓN NIVEL 3: No des consejos genéricos.
 1. Identificá los ICs involucrados (ej: U3300/Tigris, U2700/PMIC).
 2. Buscá las líneas de alimentación principales (VBUS, VCC_MAIN, VDD).
 3. Entregá valores exactos de Voltaje (V) y Caída de Tensión (mV) de los test points (TP) o pines visibles abajo.

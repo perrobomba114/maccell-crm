@@ -12,7 +12,7 @@ export async function cleanupCorruptedImagesAction() {
         return { success: false, error: "No autorizado" };
     }
     try {
-        console.log("Staring Image Cleanup...");
+        console.warn("[DEBUG] Staring Image Cleanup...");
         const allRepairs = await db.repair.findMany({
             select: { id: true, deviceImages: true }
         });
@@ -31,7 +31,7 @@ export async function cleanupCorruptedImagesAction() {
                 // Local check: using isValidImg utility
                 if (!isValidImg(imgPath)) {
                     // Double check manually for specific "undefined" strings just in case
-                    console.log(`[Cleanup] Removing invalid syntax: ${imgPath}`);
+                    console.warn(`[DEBUG] [Cleanup] Removing invalid syntax: ${imgPath}`);
                     changed = true;
                     imagesRemoved++;
                     continue;
@@ -45,7 +45,7 @@ export async function cleanupCorruptedImagesAction() {
                         await fs.access(fullPath);
                         cleanImages.push(imgPath);
                     } catch {
-                        console.log(`[Cleanup] Removing missing file: ${imgPath}`);
+                        console.warn(`[DEBUG] [Cleanup] Removing missing file: ${imgPath}`);
                         changed = true;
                         imagesRemoved++;
                     }
@@ -69,8 +69,8 @@ export async function cleanupCorruptedImagesAction() {
             message: `Limpieza completada. Se corrigieron ${repairsFixed} reparaciones y se eliminaron ${imagesRemoved} imágenes rotas.`
         };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Cleanup Error:", error);
-        return { success: false, error: error.message || "Error al limpiar imágenes" };
+        return { success: false, error: error instanceof Error ? error.message : "Error al limpiar imágenes" };
     }
 }

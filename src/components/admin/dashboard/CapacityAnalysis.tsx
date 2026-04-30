@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from "recharts";
 import { Activity, Users, Clock } from "lucide-react";
@@ -12,11 +13,28 @@ interface WorkloadItem {
 }
 
 export function CapacityAnalysis({ workloads }: { workloads: WorkloadItem[] }) {
+    const [isMounted, setIsMounted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 500);
+        return () => clearTimeout(timer);
+    }, []);
+
     if (!workloads || workloads.length === 0) {
         return (
             <Card className="bg-[#09090b] border-zinc-900 rounded-3xl h-full flex flex-col items-center justify-center p-12">
                 <Activity className="w-12 h-12 text-zinc-800 mb-4 animate-pulse" />
                 <p className="text-zinc-500 font-bold uppercase tracking-widest text-xs">Sin datos de capacidad</p>
+            </Card>
+        );
+    }
+
+    if (!isMounted || !isReady) {
+        return (
+            <Card className="bg-[#09090b] border-zinc-900 shadow-2xl rounded-3xl h-full flex items-center justify-center p-12">
+                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
             </Card>
         );
     }
@@ -50,7 +68,7 @@ export function CapacityAnalysis({ workloads }: { workloads: WorkloadItem[] }) {
 
             <CardContent className="flex-1 p-6 relative z-10">
                 <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={200}>
                         <BarChart
                             data={sortedData}
                             layout="vertical"

@@ -28,12 +28,15 @@ import {
 
 export function WeeklyOutputChart({ data }: { data: { name: string; count: number }[] }) {
     const [isMounted, setIsMounted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
         setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 500);
+        return () => clearTimeout(timer);
     }, []);
 
-    if (!isMounted) return (
+    if (!isMounted || !isReady) return (
         <Card className="col-span-4 lg:col-span-2 border border-zinc-900 h-[380px] bg-zinc-950/50 animate-pulse rounded-[2.5rem]" />
     );
 
@@ -51,7 +54,7 @@ export function WeeklyOutputChart({ data }: { data: { name: string; count: numbe
             </CardHeader>
             <CardContent className="flex-1 min-h-0">
                 <div className="h-[250px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={100} minHeight={100}>
                         <BarChart
                             data={chartData}
                             layout="vertical"
@@ -127,12 +130,15 @@ export function WeeklyOutputChart({ data }: { data: { name: string; count: numbe
 
 export function MyStatusPieChart({ data }: { data: { name: string; value: number; color: string }[] }) {
     const [isMounted, setIsMounted] = useState(false);
+    const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
         setIsMounted(true);
+        const timer = setTimeout(() => setIsReady(true), 500);
+        return () => clearTimeout(timer);
     }, []);
 
-    if (!isMounted) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-[340px] animate-pulse rounded-[2.5rem] bg-zinc-900/20" />;
+    if (!isMounted || !isReady) return <Card className="col-span-4 lg:col-span-2 border-none shadow-md h-[340px] animate-pulse rounded-[2.5rem] bg-zinc-900/20" />;
 
     const COLORS = ['#3b82f6', '#f97316', '#10b981', '#ef4444', '#8b5cf6'];
 

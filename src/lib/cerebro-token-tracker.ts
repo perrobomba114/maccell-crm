@@ -8,6 +8,10 @@ import { db } from '@/lib/db';
 
 const DAILY_LIMIT = 100_000;
 
+function errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 /** Retorna la fecha de hoy en formato ISO "YYYY-MM-DD" (UTC) */
 function todayUTC(): string {
     return new Date().toISOString().slice(0, 10);
@@ -31,7 +35,7 @@ async function ensureTable(): Promise<void> {
  * Registra tokens consumidos en la DB.
  * Fire-and-forget — nunca bloquea la respuesta al usuario.
  */
-export async function trackTokens(totalTokens: any): Promise<void> {
+export async function trackTokens(totalTokens: unknown): Promise<void> {
     const tokens = Number(totalTokens);
     if (isNaN(tokens) || tokens <= 0) return;
 
@@ -39,7 +43,7 @@ export async function trackTokens(totalTokens: any): Promise<void> {
         await ensureTable();
         const today = todayUTC();
 
-        console.log(`[TOKEN_TRACKER] 🪙 Registrando ${tokens} tokens para ${today}`);
+        console.warn(`[DEBUG] [TOKEN_TRACKER] 🪙 Registrando ${tokens} tokens para ${today}`);
 
         // Usamos $executeRaw (template literal) para máxima seguridad y evitar errores con "date"
         await db.$executeRaw`
@@ -48,8 +52,8 @@ export async function trackTokens(totalTokens: any): Promise<void> {
             ON CONFLICT ("date") DO UPDATE
               SET "tokens_used" = "cerebro_daily_tokens"."tokens_used" + EXCLUDED."tokens_used"
         `;
-    } catch (err: any) {
-        console.warn('[TOKEN_TRACKER] ⚠️ Fallo al registrar tokens:', err.message);
+    } catch (err: unknown) {
+        console.warn('[TOKEN_TRACKER] ⚠️ Fallo al registrar tokens:', errorMessage(err));
     }
 }
 
@@ -88,8 +92,8 @@ export async function getTokenUsage(): Promise<{
         const percentage = Math.min(100, Math.round((used / DAILY_LIMIT) * 100));
 
         return { used, limit: DAILY_LIMIT, remaining, percentage, resetAt, source: 'db' };
-    } catch (err: any) {
-        console.warn('[TOKEN_TRACKER] ⚠️ Error leyendo DB:', err.message);
+    } catch (err: unknown) {
+        console.warn('[TOKEN_TRACKER] ⚠️ Error leyendo DB:', errorMessage(err));
         return { used: 0, limit: DAILY_LIMIT, remaining: DAILY_LIMIT, percentage: 0, resetAt, source: 'fallback' };
     }
 }

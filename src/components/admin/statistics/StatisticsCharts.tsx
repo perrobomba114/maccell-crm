@@ -44,7 +44,7 @@ export function BranchProfitChart({ data }: BranchProfitProps) {
                 <CardDescription>Comparativa de Ingresos vs Ganancia Real</CardDescription>
             </CardHeader>
             <CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={300}>
                     <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
                         <XAxis
@@ -100,7 +100,7 @@ export function TopProductsChart({ data }: TopProductsProps) {
                 <CardDescription>Top 10 por cantidad vendida</CardDescription>
             </CardHeader>
             <CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={300}>
                     <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} className="stroke-muted" />
                         <XAxis type="number" fontSize={12} />
@@ -151,7 +151,7 @@ export function BranchGrowthChart({ data }: BranchGrowthProps) {
                 <CardDescription>% vs Mes Anterior</CardDescription>
             </CardHeader>
             <CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={300}>
                     <BarChart data={data} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
                         <defs>
                             <linearGradient id="growthPositive" x1="0" y1="0" x2="0" y2="1">
@@ -187,7 +187,7 @@ export function BranchGrowthChart({ data }: BranchGrowthProps) {
                                 backgroundColor: 'rgba(255, 255, 255, 0.9)', // Adapt for light mode default here?
                                 backdropFilter: 'blur(8px)'
                             }}
-                            formatter={(value: any) => [`${Number(value).toFixed(2)}%`, "Crecimiento"]}
+                            formatter={(value: unknown) => [`${Number(value).toFixed(2)}%`, "Crecimiento"]}
                         />
                         <ReferenceLine y={0} stroke="#71717a" strokeDasharray="3 3" />
                         <Bar dataKey="percent" name="Crecimiento %" radius={[6, 6, 6, 6]} maxBarSize={60} animationDuration={1500}>

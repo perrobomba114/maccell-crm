@@ -9,6 +9,14 @@
 
 import { generateEmbedding } from '@/lib/local-embeddings';
 
+type ExistingRepairEmbeddingRow = {
+    repairId: string;
+};
+
+function errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Indexar una reparación individual
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,7 +74,7 @@ export async function indexRepair(repair: {
         // usando el botón "Guardar a Wiki" en Cerebro tras un buen diagnóstico.
         // Esto mantiene la wiki curada y de alta calidad.
 
-        console.log(`[CEREBRO_INDEXER] 🧠 Generando embedding para: ${repair.ticketNumber}`);
+        console.warn(`[DEBUG] [CEREBRO_INDEXER] 🧠 Generando embedding para: ${repair.ticketNumber}`);
         const embedding = await generateEmbedding(document);
 
         if (embedding) {
@@ -82,17 +90,17 @@ export async function indexRepair(repair: {
                         embedding     = EXCLUDED.embedding,
                         "updatedAt"   = now()
                 `, repair.id, repair.ticketNumber, repair.deviceBrand, repair.deviceModel, document, vectorStr);
-                console.log(`[CEREBRO_INDEXER] ✅ RAG indexado: ${repair.ticketNumber}`);
-            } catch (pgErr: any) {
-                console.warn(`[CEREBRO_INDEXER] ⚠️ pgvector no disponible: ${pgErr.message.slice(0, 80)}`);
+                console.warn(`[DEBUG] [CEREBRO_INDEXER] ✅ RAG indexado: ${repair.ticketNumber}`);
+            } catch (pgErr: unknown) {
+                console.warn(`[CEREBRO_INDEXER] ⚠️ pgvector no disponible: ${errorMessage(pgErr).slice(0, 80)}`);
             }
         } else {
             console.warn(`[CEREBRO_INDEXER] ⚠️ No se pudo generar embedding para: ${repair.ticketNumber}`);
         }
 
         return true;
-    } catch (err: any) {
-        console.error(`[CEREBRO_INDEXER] ❌ Error procesando ${repair.ticketNumber}:`, err.message);
+    } catch (err: unknown) {
+        console.error(`[CEREBRO_INDEXER] ❌ Error procesando ${repair.ticketNumber}:`, errorMessage(err));
         return false;
     }
 
@@ -103,15 +111,15 @@ export async function indexRepair(repair: {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function indexPendingRepairs(): Promise<void> {
     const { db } = await import('@/lib/db');
-    console.log('[CEREBRO_INDEXER] 🔍 Buscando reparaciones sin indexar...');
+    console.warn('[DEBUG] [CEREBRO_INDEXER] 🔍 Buscando reparaciones sin indexar...');
 
     try {
         // Obtener IDs ya indexados en pgvector (si está disponible)
         let existingIds = new Set<string>();
         try {
-            const existingRes = await db.$queryRawUnsafe<any[]>('SELECT "repairId" FROM repair_embeddings');
+            const existingRes = await db.$queryRawUnsafe<ExistingRepairEmbeddingRow[]>('SELECT "repairId" FROM repair_embeddings');
             existingIds = new Set(existingRes.map(r => r.repairId));
-            console.log(`[CEREBRO_INDEXER] Ya indexadas en pgvector: ${existingIds.size}`);
+            console.warn(`[DEBUG] [CEREBRO_INDEXER] Ya indexadas en pgvector: ${existingIds.size}`);
         } catch {
             console.warn('[CEREBRO_INDEXER] pgvector no disponible, indexando todo en wiki text.');
         }
@@ -136,22 +144,22 @@ export async function indexPendingRepairs(): Promise<void> {
         });
 
         if (pending.length === 0) {
-            console.log('[CEREBRO_INDEXER] ✅ Todo está indexado. Nada que procesar.');
+            console.warn('[DEBUG] [CEREBRO_INDEXER] ✅ Todo está indexado. Nada que procesar.');
             return;
         }
 
-        console.log(`[CEREBRO_INDEXER] ⚙️ Indexando ${pending.length} reparaciones...`);
+        console.warn(`[DEBUG] [CEREBRO_INDEXER] ⚙️ Indexando ${pending.length} reparaciones...`);
 
         let success = 0;
         const BATCH_SIZE = 5;
         for (let i = 0; i < pending.length; i += BATCH_SIZE) {
             const batch = pending.slice(i, i + BATCH_SIZE);
-            const results = await Promise.allSettled(batch.map(r => indexRepair(r as any)));
+            const results = await Promise.allSettled(batch.map(r => indexRepair(r)));
             success += results.filter(r => r.status === 'fulfilled' && r.value).length;
         }
 
-        console.log(`[CEREBRO_INDEXER] ✅ Completado: ${success}/${pending.length} reparaciones indexadas.`);
-    } catch (err: any) {
-        console.error('[CEREBRO_INDEXER] ❌ Error en indexación masiva:', err.message);
+        console.warn(`[DEBUG] [CEREBRO_INDEXER] ✅ Completado: ${success}/${pending.length} reparaciones indexadas.`);
+    } catch (err: unknown) {
+        console.error('[CEREBRO_INDEXER] ❌ Error en indexación masiva:', errorMessage(err));
     }
 }

@@ -35,9 +35,9 @@ class EmbeddingPipeline {
                     env.backends.onnx.wasm.numThreads = 2;
                 }
 
-                console.log('[EMBEDDINGS] 🔄 Cargando modelo all-MiniLM-L6-v2...');
+                console.warn('[DEBUG] [EMBEDDINGS] 🔄 Cargando modelo all-MiniLM-L6-v2...');
                 const pipe = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-                console.log('[EMBEDDINGS] ✅ Modelo listo.');
+                console.warn('[DEBUG] [EMBEDDINGS] ✅ Modelo listo.');
                 this.instance = pipe;
                 return pipe;
             } catch (err) {
@@ -65,8 +65,8 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
         const pipe = await EmbeddingPipeline.get();
         const output = await pipe(text, { pooling: 'mean', normalize: true });
         return Array.from(output.data as Float32Array);
-    } catch (err: any) {
-        console.error('[EMBEDDINGS] ❌ Error:', err.message);
+    } catch (err: unknown) {
+        console.error('[EMBEDDINGS] ❌ Error:', err instanceof Error ? err.message : String(err));
         return null;
     }
 }
