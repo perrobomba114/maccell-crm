@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { formatInTimeZone } from "date-fns-tz";
 import { getDailyRange, getArgentinaDate, TIMEZONE } from "@/lib/date-utils";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export interface TechnicianPerformance {
     id: string;
@@ -11,88 +12,102 @@ export interface TechnicianPerformance {
     avgTime: string;
 }
 
-export async function getTechnicianPerformance(date: Date = getArgentinaDate()) {
+function normalizePerformanceDate(date: Date | string = getArgentinaDate()) {
+    if (typeof date === "string") {
+        return date.trim().slice(0, 10);
+    }
+
+    return formatInTimeZone(date, TIMEZONE, "yyyy-MM-dd");
+}
+
+function formatAverageTime(totalMinutes: number, count: number) {
+    if (count === 0) return "-";
+
+    const avgMins = Math.round(totalMinutes / count);
+    const hours = Math.floor(avgMins / 60);
+    const mins = avgMins % 60;
+
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins} min`;
+}
+
+export async function getTechnicianPerformance(date: Date | string = getArgentinaDate()) {
     try {
-        // Use AR timezone-aware string format so day boundaries match Argentina local time
-        // Using date.toISOString() causes late-night AR times (e.g. 21:30) to overflow into tomorrow in UTC
-        const dateStr = formatInTimeZone(date, TIMEZONE, "yyyy-MM-dd");
-        
-        const { start, end } = getDailyRange(dateStr);
-
-        // Fetch technicians (Role: TECHNICIAN)
-        const techs = await db.user.findMany({
-            where: { role: "TECHNICIAN" },
-            select: { id: true, name: true }
-        });
-
-        const stats: TechnicianPerformance[] = [];
-
-        for (const tech of techs) {
-            // Find status history entries where THIS tech moved a repair to "DONE" statuses (5, 6, 7)
-            const historyEntries = await db.repairStatusHistory.findMany({
-                where: {
-                    userId: tech.id,
-                    toStatusId: { in: [5, 6, 7] },
-                    createdAt: { gte: start, lte: end }
-                },
-                include: {
-                    repair: {
-                        select: {
-                            id: true,
-                            createdAt: true,
-                            updatedAt: true
-                        }
-                    }
-                }
-            });
-
-            const uniqueRepairs = new Set<string>();
-            let totalMinutes = 0;
-            let validTimeCount = 0;
-
-            historyEntries.forEach(entry => {
-                if (!uniqueRepairs.has(entry.repairId)) {
-                    uniqueRepairs.add(entry.repairId);
-                    
-                    // Calculate estimated time from creation to completion
-                    const diff = new Date(entry.createdAt).getTime() - new Date(entry.repair.createdAt).getTime();
-                    const mins = diff / (1000 * 60);
-                    if (mins > 0) {
-                        totalMinutes += mins;
-                        validTimeCount++;
-                    }
-                }
-            });
-
-            const count = uniqueRepairs.size;
-
-            const avgMins = validTimeCount > 0 ? Math.round(totalMinutes / validTimeCount) : 0;
-            const hours = Math.floor(avgMins / 60);
-            const mins = avgMins % 60;
-            const avgTimeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins} min`;
-
-            if (count > 0) {
-                stats.push({
-                    id: tech.id,
-                    name: tech.name,
-                    repairedCount: count,
-                    avgTime: avgTimeStr
-                });
-            } else {
-                // Include tech even with 0 repairs? "3 cards con nombres de los tecnicos".
-                // User likely wants to see them even if 0 to know they did nothing.
-                stats.push({
-                    id: tech.id,
-                    name: tech.name,
-                    repairedCount: 0,
-                    avgTime: "-"
-                });
-            }
+        const caller = await getCurrentUser();
+        if (!caller || caller.role !== "ADMIN") {
+            return { success: false, error: "Unauthorized", data: [] };
         }
 
-        // Return top 3 or all? "3 cards". I will return top 3 by count + any others if I have < 3?
-        // Actually, if there are exactly 3 technicians in the shop, returning all is correct.
-        // I will return all and let UI grid handle it.
+        const dateStr = normalizePerformanceDate(date);
+        const { start, end } = getDailyRange(dateStr);
+
+        const [techs, historyEntries] = await Promise.all([
+            db.user.findMany({
+                where: { role: "TECHNICIAN" },
+                select: { id: true, name: true },
+                orderBy: { name: "asc" },
+            }),
+            db.repairStatusHistory.findMany({
+                where: {
+                    userId: { not: null },
+                    toStatusId: { in: [5, 6, 7] },
+                    createdAt: { gte: start, lte: end },
+                },
+                select: {
+                    repairId: true,
+                    userId: true,
+                    createdAt: true,
+                    repair: {
+                        select: {
+                            createdAt: true,
+                        },
+                    },
+                },
+            }),
+        ]);
+
+        const performanceByTech = new Map<string, {
+            repairIds: Set<string>;
+            totalMinutes: number;
+            validTimeCount: number;
+        }>();
+
+        for (const entry of historyEntries) {
+            if (!entry.userId) continue;
+
+            const techPerformance = performanceByTech.get(entry.userId) ?? {
+                repairIds: new Set<string>(),
+                totalMinutes: 0,
+                validTimeCount: 0,
+            };
+
+            if (!techPerformance.repairIds.has(entry.repairId)) {
+                techPerformance.repairIds.add(entry.repairId);
+
+                const diffMs = entry.createdAt.getTime() - entry.repair.createdAt.getTime();
+                const minutes = diffMs / (1000 * 60);
+                if (minutes > 0) {
+                    techPerformance.totalMinutes += minutes;
+                    techPerformance.validTimeCount++;
+                }
+            }
+
+            performanceByTech.set(entry.userId, techPerformance);
+        }
+
+        const stats: TechnicianPerformance[] = techs.map((tech) => {
+            const techPerformance = performanceByTech.get(tech.id);
+            const repairedCount = techPerformance?.repairIds.size ?? 0;
+
+            return {
+                id: tech.id,
+                name: tech.name,
+                repairedCount,
+                avgTime: techPerformance
+                    ? formatAverageTime(techPerformance.totalMinutes, techPerformance.validTimeCount)
+                    : "-",
+            };
+        });
+
         return { success: true, data: stats };
 
     } catch (error) {

@@ -72,8 +72,7 @@ export function TechnicianStatsCards() {
             setDate(d);
             setIsCalendarOpen(false);
             const params = new URLSearchParams(searchParams.toString());
-            // Store as ISO string (date part only to avoid timezone shifts if possible, or straight ISO)
-            params.set("date", d.toISOString());
+            params.set("date", format(d, "yyyy-MM-dd"));
             params.delete("page");
             router.replace(`${pathname}?${params.toString()}`, { scroll: false });
         }

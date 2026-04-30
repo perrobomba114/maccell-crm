@@ -1,10 +1,10 @@
 "use client";
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Image, Smartphone, User, Calendar, DollarSign, FileText, Clock, ImageOff, Plus, RotateCcw, ShieldAlert } from "lucide-react";
+import { Smartphone, User, Calendar, DollarSign, Clock, ImageOff, Plus, RotateCcw, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { cn, getImgUrl, isValidImg } from "@/lib/utils";
@@ -13,8 +13,68 @@ import { toast } from "sonner";
 import { createSinglePartReturnAction } from "@/lib/actions/repairs";
 import { useRouter } from "next/navigation";
 
+type RepairStatusColor = string | null;
+type RepairUserRole = "ADMIN" | "VENDOR" | "TECHNICIAN";
+
+type RepairStatusSummary = {
+    name: string;
+    color: RepairStatusColor;
+};
+
+type RepairStatusHistoryItem = {
+    createdAt: Date | string;
+    userId?: string | null;
+    fromStatus?: { name: string } | null;
+    toStatus: RepairStatusSummary;
+    user?: { name: string; role?: RepairUserRole | string } | null;
+};
+
+type RepairObservationItem = {
+    content: string;
+    createdAt: Date | string;
+    user?: { name: string } | null;
+};
+
+type RepairPartItem = {
+    id: string;
+    sparePart: {
+        name: string;
+        sku: string;
+    };
+};
+
+export type RepairDetails = {
+    id: string;
+    ticketNumber: string;
+    createdAt: Date | string;
+    promisedAt: Date | string;
+    assignedUserId?: string | null;
+    deviceBrand: string;
+    deviceModel: string;
+    problemDescription: string;
+    diagnosis?: string | null;
+    estimatedPrice?: number | null;
+    deviceImages?: string[];
+    isWet?: boolean;
+    isWarranty?: boolean;
+    customer: {
+        name: string;
+        phone?: string | null;
+    };
+    branch?: { name: string } | null;
+    status: RepairStatusSummary;
+    assignedTo?: { name: string } | null;
+    originalRepair?: {
+        ticketNumber: string;
+        problemDescription: string;
+    } | null;
+    parts?: RepairPartItem[];
+    observations?: RepairObservationItem[];
+    statusHistory?: RepairStatusHistoryItem[];
+};
+
 interface RepairDetailsDialogProps {
-    repair: any;
+    repair: RepairDetails | null;
     isOpen: boolean;
     onClose: () => void;
     currentUserId?: string;
@@ -75,7 +135,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
 
     if (!repair) return null;
 
-    const images = (repair.deviceImages || []).filter(isValidImg);
+    const images = (repair.deviceImages ?? []).filter(isValidImg);
 
     const handleImageClick = (index: number) => {
         setViewerIndex(index);
@@ -105,7 +165,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
         }
     };
 
-    const colorClass = statusColorMap[repair.status.color] || "bg-gray-100 text-gray-800";
+    const colorClass = statusColorMap[repair.status.color ?? ""] || "bg-gray-100 text-gray-800";
 
     return (
         <>
@@ -171,7 +231,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     </div>
                                     <p className="text-sm font-black text-white uppercase italic leading-tight px-1">
                                         {(() => {
-                                            const lastTech = repair.statusHistory?.find((h: any) => h.user?.role === "TECHNICIAN")?.user;
+                                            const lastTech = repair.statusHistory?.find((h) => h.user?.role === "TECHNICIAN")?.user;
                                             if (lastTech?.name) return lastTech.name;
                                             
                                             const lastUser = repair.statusHistory?.[0]?.user;
@@ -189,7 +249,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Presupuesto</span>
                                     </div>
                                     <p className="text-2xl font-black text-white relative z-10 tracking-tighter italic">
-                                        {repair.estimatedPrice > 0 ? `$${repair.estimatedPrice.toLocaleString()}` : "A COTIZAR"}
+                                        {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice?.toLocaleString()}` : "A COTIZAR"}
                                     </p>
                                 </div>
                             </div>
@@ -258,7 +318,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                             <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">PROBLEMA REPORTADO</h3>
                                             <div className="bg-slate-900/80 border-2 border-slate-800 p-5 rounded-2xl shadow-inner">
                                                 <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap text-white/90 italic">
-                                                    "{repair.problemDescription}"
+                                                    &ldquo;{repair.problemDescription}&rdquo;
                                                 </p>
                                             </div>
                                         </div>
@@ -318,7 +378,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
 
                                             {repair.parts && repair.parts.length > 0 && (
                                                 <div className="bg-card rounded-xl border shadow-sm divide-y">
-                                                    {repair.parts.map((p: any, idx: number) => (
+                                                    {repair.parts.map((p, idx) => (
                                                         <div key={idx} className="p-3 flex items-center justify-between text-sm group">
                                                             <div className="flex items-center gap-3">
                                                                 <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
@@ -363,7 +423,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                                                     {repair.deviceImages
                                                         .filter(isValidImg)
-                                                        .map((url: string, idx: number) => (
+                                                        .map((url, idx) => (
                                                             <RepairImage
                                                                 key={idx}
                                                                 url={url}
@@ -380,7 +440,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                             <div className="space-y-3 pt-4 border-t border-slate-800">
                                                 <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">NOTAS / OBSERVACIONES</h3>
                                                 <div className="space-y-2">
-                                                    {repair.observations.map((obs: any, idx: number) => (
+                                                    {repair.observations.map((obs, idx) => (
                                                         <div key={idx} className="bg-slate-900 shadow-lg border border-white/[0.03] p-3 md:p-4 rounded-xl relative">
                                                             <div className="flex justify-between items-start mb-2">
                                                                 <div className="flex items-center gap-2">
@@ -410,7 +470,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                             <div className="space-y-3 pt-4 border-t border-slate-800">
                                                 <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">HISTORIAL DE ESTADOS</h3>
                                                 <div className="space-y-2">
-                                                    {repair.statusHistory.map((history: any, idx: number) => (
+                                                    {repair.statusHistory.map((history, idx) => (
                                                         <div key={idx} className="flex items-center gap-3 bg-slate-900 shadow-lg border border-white/[0.03] p-3 rounded-xl hover:border-blue-500/20 transition-colors duration-300">
                                                             <div className="flex flex-col items-center shrink-0 min-w-[55px] border-r border-white/5 pr-3">
                                                                 <span className="text-[10px] font-black text-white italic tracking-tighter leading-none">{format(new Date(history.createdAt), "dd/MM")}</span>
@@ -425,7 +485,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                                                         </div>
                                                                     </>
                                                                 )}
-                                                                <Badge variant="outline" className={cn("text-[9px] font-black px-2 py-0 uppercase border-2 shadow-sm rounded-md", statusColorMap[history.toStatus.color] || "bg-slate-800 text-white border-slate-700")}>
+                                                                <Badge variant="outline" className={cn("text-[9px] font-black px-2 py-0 uppercase border-2 shadow-sm rounded-md", statusColorMap[history.toStatus.color ?? ""] || "bg-slate-800 text-white border-slate-700")}>
                                                                     {history.toStatus.name}
                                                                 </Badge>
                                                             </div>

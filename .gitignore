@@ -40,6 +40,7 @@ upload/
 # Backups
 backups/
 *.sql
+!prisma/migrations/**/*.sql
 *.zip
 *.tar.gz
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { deleteRepairAction, getRepairByIdAction } from "@/lib/actions/repairs";
 import { checkLatestRepairUpdate } from "@/actions/repair-check-actions";
@@ -12,29 +12,28 @@ import { AdminRepairsFilters } from "./components/AdminRepairsFilters";
 import { AdminRepairsList } from "./components/AdminRepairsList";
 import { AdminRepairsPagination } from "./components/AdminRepairsPagination";
 import { AdminRepairsDeleteDialog } from "./components/AdminRepairsDeleteDialog";
-import type { AdminRepair, AdminRepairBranch } from "@/types/admin-repairs";
+import type { AdminRepairBranch, AdminRepairsResult } from "@/types/admin-repairs";
+import type { RepairDetails } from "./repair-details-dialog";
 
-const ITEMS_PER_PAGE = 20;
-
-export function AdminRepairsTable({ repairs, branches }: { repairs: AdminRepair[], branches: AdminRepairBranch[] }) {
+export function AdminRepairsTable({ repairsData, branches }: { repairsData: AdminRepairsResult, branches: AdminRepairBranch[] }) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const router = useRouter();
 
     const searchTerm = searchParams.get('q') || '';
     const selectedBranchId = searchParams.get('branch') || 'ALL';
-    const currentPage = Number(searchParams.get('page')) || 1;
+    const currentPage = repairsData.page;
+    const showOnlyWarranty = searchParams.get('warranty') === '1';
 
     const [deleteId, setDeleteId] = useState<string | null>(null);
-    const [viewRepair, setViewRepair] = useState<unknown>(null);
+    const [viewRepair, setViewRepair] = useState<RepairDetails | null>(null);
     const [loadingRepairId, setLoadingRepairId] = useState<string | null>(null);
 
     const [isPending, startTransition] = useTransition();
 
     const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
-    const [showOnlyWarranty, setShowOnlyWarranty] = useState(false);
 
-    const updateParams = useMemo(() => (updates: Record<string, string | null>) => {
+    const updateParams = useCallback((updates: Record<string, string | null>) => {
         startTransition(() => {
             const params = new URLSearchParams(searchParams.toString());
             Object.entries(updates).forEach(([key, value]) => {
@@ -50,6 +49,10 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: AdminRepair[
     }, [searchParams, pathname, router]);
 
     useEffect(() => {
+        setLocalSearchTerm(searchTerm);
+    }, [searchTerm]);
+
+    useEffect(() => {
         const timer = setTimeout(() => {
             if (localSearchTerm !== searchTerm) {
                 updateParams({ q: localSearchTerm });
@@ -58,72 +61,8 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: AdminRepair[
         return () => clearTimeout(timer);
     }, [localSearchTerm, searchTerm, updateParams]);
 
-    const filteredRepairs = useMemo(() => {
-        return repairs.filter(repair => {
-            const searchWords = localSearchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
-            const searchableFields = [
-                repair.ticketNumber,
-                repair.customer.name,
-                repair.customer.phone || "",
-                repair.deviceBrand,
-                repair.deviceModel,
-                repair.branch?.name || "",
-            ].map(f => f.toLowerCase());
-
-            const matchesSearch = searchWords.length === 0 || searchWords.every(word =>
-                searchableFields.some(field => field.includes(word))
-            );
-
-            const matchesBranch = selectedBranchId === "ALL" || repair.branchId === selectedBranchId;
-            const matchesWarranty = showOnlyWarranty ? repair.isWarranty : true;
-
-            const techParam = searchParams.get('tech');
-            const dateParam = searchParams.get('date');
-            const targetDate = dateParam ? new Date(dateParam) : (techParam ? new Date() : null);
-
-            let matchesTech = !techParam || (repair.assignedTo?.name || "SIN ASIGNAR") === techParam;
-            let matchesDate = true;
-
-            if (targetDate) {
-                const isSameDay = (dStr: string | Date | null) => {
-                    if (!dStr) return false;
-                    const d = new Date(dStr);
-                    return targetDate.getFullYear() === d.getFullYear() &&
-                        targetDate.getMonth() === d.getMonth() &&
-                        targetDate.getDate() === d.getDate();
-                };
-
-                const isCreatedToday = isSameDay(repair.createdAt);
-                const finishedEntries = repair.statusHistory?.filter((h) =>
-                    [5, 6, 7].includes(h.toStatusId) && isSameDay(h.createdAt)
-                ) || [];
-
-                const isFinishedToday = finishedEntries.length > 0;
-                const isKPIStatus = [5, 6, 7, 10].includes(repair.statusId);
-
-                if (techParam) {
-                    const isFinishedByTechToday = finishedEntries.some((h) => h.user?.name === techParam);
-                    if (isFinishedByTechToday && isKPIStatus) {
-                        matchesTech = true;
-                        matchesDate = true;
-                    } else if (matchesTech && isFinishedToday && isKPIStatus) {
-                        matchesDate = true;
-                    } else {
-                        matchesDate = false;
-                    }
-                } else {
-                    if (!isCreatedToday && !isFinishedToday) {
-                        matchesDate = false;
-                    }
-                }
-            }
-            return matchesSearch && matchesBranch && matchesWarranty && matchesTech && matchesDate;
-        });
-    }, [repairs, localSearchTerm, selectedBranchId, showOnlyWarranty, searchParams]);
-
-    const totalPages = Math.ceil(filteredRepairs.length / ITEMS_PER_PAGE);
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const paginatedRepairs = filteredRepairs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(repairsData.total / repairsData.pageSize);
+    const startIndex = (currentPage - 1) * repairsData.pageSize;
 
     const handleDelete = async () => {
         if (!deleteId) return;
@@ -143,21 +82,21 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: AdminRepair[
         maximumFractionDigits: 0
     }), []);
 
-    const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+    const lastRefreshedRef = useRef<Date>(new Date());
     useEffect(() => {
         const intervalId = setInterval(async () => {
             try {
                 const latestUpdate = await checkLatestRepairUpdate();
-                if (latestUpdate && new Date(latestUpdate) > lastRefreshed) {
+                if (latestUpdate && new Date(latestUpdate) > lastRefreshedRef.current) {
                     router.refresh();
-                    setLastRefreshed(new Date());
+                    lastRefreshedRef.current = new Date();
                 }
             } catch (error) {
                 console.error("Polling error:", error);
             }
         }, 15000);
         return () => clearInterval(intervalId);
-    }, [router, lastRefreshed]);
+    }, [router]);
 
     return (
         <div className="space-y-6">
@@ -167,13 +106,13 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: AdminRepair[
                 selectedBranchId={selectedBranchId}
                 branches={branches}
                 showOnlyWarranty={showOnlyWarranty}
-                setShowOnlyWarranty={setShowOnlyWarranty}
+                setShowOnlyWarranty={(show) => updateParams({ warranty: show ? "1" : null })}
                 updateParams={updateParams}
                 searchParams={searchParams}
             />
 
             <AdminRepairsList
-                repairs={paginatedRepairs}
+                repairs={repairsData.repairs}
                 isPending={isPending}
                 loadingRepairId={loadingRepairId}
                 setViewRepair={setViewRepair}
@@ -188,8 +127,8 @@ export function AdminRepairsTable({ repairs, branches }: { repairs: AdminRepair[
                 currentPage={currentPage}
                 totalPages={totalPages}
                 startIndex={startIndex}
-                itemsPerPage={ITEMS_PER_PAGE}
-                totalFiltered={filteredRepairs.length}
+                itemsPerPage={repairsData.pageSize}
+                totalFiltered={repairsData.total}
                 updateParams={updateParams}
             />
 

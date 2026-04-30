@@ -3,6 +3,16 @@ export type AdminRepairBranch = {
     name: string;
 };
 
+export type AdminRepairsQuery = {
+    query?: string;
+    branchId?: string;
+    warrantyOnly?: boolean;
+    technician?: string;
+    date?: string;
+    page?: number;
+    pageSize?: number;
+};
+
 export type AdminRepair = {
     id: string;
     ticketNumber: string;
@@ -32,4 +42,11 @@ export type AdminRepair = {
     isWarranty?: boolean;
     isWet?: boolean;
     estimatedPrice: number | null;
+};
+
+export type AdminRepairsResult = {
+    repairs: AdminRepair[];
+    total: number;
+    page: number;
+    pageSize: number;
 };

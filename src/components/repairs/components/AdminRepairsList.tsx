@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import type { AdminRepair } from "@/types/admin-repairs";
+import type { RepairDetails } from "../repair-details-dialog";
 
 const statusColorMap: Record<string, string> = {
     "red": "bg-red-600 text-white border-red-700 shadow-red-500/20",
@@ -28,10 +29,10 @@ interface AdminRepairsListProps {
     repairs: AdminRepair[];
     isPending: boolean;
     loadingRepairId: string | null;
-    setViewRepair: (repair: unknown) => void;
+    setViewRepair: (repair: RepairDetails | null) => void;
     setLoadingRepairId: (id: string | null) => void;
     setDeleteId: (id: string | null) => void;
-    getRepairByIdAction: (id: string) => Promise<unknown>;
+    getRepairByIdAction: (id: string) => Promise<RepairDetails | null>;
     currencyFormatter: Intl.NumberFormat;
     router: AppRouterInstance;
 }
@@ -157,7 +158,6 @@ export function AdminRepairsList({
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={async () => {
-                                                        setViewRepair(repair);
                                                         setLoadingRepairId(repair.id);
                                                         const full = await getRepairByIdAction(repair.id);
                                                         if (full) setViewRepair(full);
