@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Box, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { addPartToRepairAction } from "@/actions/repairs/technician-actions";
+import { addPartToRepairAction } from "@/lib/actions/repairs";
 import { SparePartSelector, SparePartItem } from "./spare-part-selector";
 
 interface AddPartDialogProps {

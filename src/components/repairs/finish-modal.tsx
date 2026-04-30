@@ -23,7 +23,7 @@ import {
     Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
-import { finishRepairAction } from "@/actions/repairs/technician-actions";
+import { finishRepairAction } from "@/lib/actions/repairs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { getImgUrl, isValidImg } from "@/lib/utils";

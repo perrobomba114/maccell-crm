@@ -44,6 +44,9 @@ import {
     type SparePartImportRow
 } from "@/actions/spare-parts";
 import { toast } from "sonner";
+import { handleExport, handleFileChange } from "./import-export-utils";
+import { handleReplenishReport } from "./replenish-report-utils";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import { BuyModal } from "./buy-modal";
 
@@ -223,314 +226,23 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
         }
     };
 
-    const handleExport = async () => {
-        toast.promise(
-            async () => {
-                const { spareParts, success, error } = await getAllSparePartsForExport();
-                if (!success || !spareParts) throw new Error(error || "Error al exportar");
-
-                const headers = ["SKU", "Nombre", "Marca", "Categoria", "Stock Local", "Stock Deposito", "Max Stock Local", "Precio USD", "Precio ARG", "Precio POS"];
-
-                const rows = spareParts.map(p => {
-                    const row = [
-                        p.sku,
-                        p.name,
-                        p.brand,
-                        p.category?.name || "Sin categoria",
-                        p.stockLocal,
-                        p.stockDepot,
-                        p.maxStockLocal,
-                        p.priceUsd,
-                        p.priceArg,
-                        p.pricePos
-                    ];
-
-                    return row.map(cell => {
-                        const cellStr = String(cell);
-                        if (cellStr.includes(",") || cellStr.includes('"') || cellStr.includes("\n")) {
-                            return `"${cellStr.replace(/"/g, '""')}"`;
-                        }
-                        return cellStr;
-                    }).join(",");
-                });
-
-                const csvContent = [headers.join(","), ...rows].join("\n");
-                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.setAttribute("href", url);
-                link.setAttribute("download", `repuestos_${new Date().toISOString().split("T")[0]}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            },
-            {
-                loading: "Generando CSV...",
-                success: "Repuestos exportados correctamente",
-                error: (err) => `Error: ${err.message}`
-            }
-        );
-    };
+    
+    const onExport = () => handleExport();
+    const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => handleFileChange(e, router);
 
     const handleImport = () => {
         fileInputRef.current?.click();
     };
 
-    const parseCSVLine = (line: string, delimiter: string): string[] => {
-        const result = [];
-        let current = "";
-        let inQuotes = false;
-
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
-            if (char === '"') {
-                if (inQuotes && line[i + 1] === '"') {
-                    current += '"';
-                    i++;
-                } else {
-                    inQuotes = !inQuotes;
-                }
-            } else if (char === delimiter && !inQuotes) {
-                result.push(current);
-                current = "";
-            } else {
-                current += char;
-            }
-        }
-        result.push(current);
-        return result;
-    };
-
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        e.target.value = ""; // Reset
-
-        const text = await file.text();
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
-        if (lines.length < 2) {
-            toast.error("El archivo CSV parece estar vacío o sin datos.");
-            return;
-        }
-
-        const toastId = toast.loading("Procesando archivo...");
-
-        try {
-            // Detect delimiter
-            const firstLine = lines[0];
-            const commaCount = (firstLine.match(/,/g) || []).length;
-            const semiCount = (firstLine.match(/;/g) || []).length;
-            const delimiter = semiCount > commaCount ? ";" : ",";
-
-            const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim().toLowerCase());
-
-            // Map headers
-            // Expected: SKU, Nombre, Marca, Category, Stock Local, Stock Depot, Max Stock, Price USD
-            const skuIdx = headers.findIndex(h => h === "sku");
-            const nameIdx = headers.findIndex(h => h === "nombre");
-            const brandIdx = headers.findIndex(h => h === "marca");
-
-            if (skuIdx === -1 || nameIdx === -1) {
-                toast.dismiss(toastId);
-                toast.error(`Faltan columnas requeridas (SKU, Nombre). Detectado separador: "${delimiter}"`);
-                return;
-            }
-
-            const catIdx = headers.findIndex(h => h.includes("categor"));
-            // Fix: Ensure "Max Stock Local" is not matched as "Stock Local" by excluding "max"
-            const stockLocalIdx = headers.findIndex(h =>
-                (h.includes("local") && h.includes("stock") && !h.includes("max")) ||
-                h === "stock"
-            );
-            const stockDepotIdx = headers.findIndex(h => h.includes("depo") && h.includes("stock"));
-            const maxStockIdx = headers.findIndex(h => h.includes("max") && h.includes("stock"));
-            const priceUsdIdx = headers.findIndex(h => h.includes("precio") && h.includes("usd"));
-            const pricePosIdx = headers.findIndex(h => h.includes("pos") && h.includes("precio"));
-
-            const parsedParts: SparePartImportRow[] = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const cols = parseCSVLine(lines[i], delimiter);
-                if (cols.length < headers.length && cols.length < 2) continue; // Skip empty/malformed lines
-
-                // Helper to safely get value
-                const getVal = (idx: number) => idx !== -1 && cols[idx] ? cols[idx].trim() : "";
-
-                const sku = getVal(skuIdx);
-                const name = getVal(nameIdx);
-                if (!sku || !name) continue;
-
-                const brand = brandIdx !== -1 ? getVal(brandIdx) : "Generico";
-                const categoryName = catIdx !== -1 ? getVal(catIdx) : undefined;
-
-                // Helper to parse numbers (handle "USD 6,60" -> 6.60)
-                const parseNum = (val: string, isInt: boolean = true) => {
-                    if (!val) return 0;
-                    // Remove "USD", currency symbols, spaces
-                    let clean = val.replace(/[^0-9.,-]/g, "").trim();
-                    // If CSV uses comma as decimal (common with semicolon sep), replace comma with dot
-                    // Simple heuristic: if includes comma but not dot, or comma is after dot?
-                    // Better: just replace , with . if it looks like a decimal separator
-                    if (clean.includes(",") && !clean.includes(".")) {
-                        clean = clean.replace(",", ".");
-                    } else if (clean.includes(",") && clean.includes(".")) {
-                        // 1.234,56 -> 1234.56 (remove dot, replace comma)
-                        clean = clean.replace(/\./g, "").replace(",", ".");
-                    }
-                    const num = parseFloat(clean);
-                    return isNaN(num) ? 0 : (isInt ? Math.round(num) : num);
-                };
-
-                const stockLocal = parseNum(getVal(stockLocalIdx));
-                const stockDepot = parseNum(getVal(stockDepotIdx));
-                const maxStockLocal = parseNum(getVal(maxStockIdx));
-                const priceUsd = parseNum(getVal(priceUsdIdx), false); // float
-                const pricePos = parseNum(getVal(pricePosIdx), false); // float
-
-                // Hacky cast, usually logic needs to update import function signature but for now we just pass it
-                // We need to update import type in next step if this fails TS check.
-                // The import function signature was: SparePartImportRow
-                // Let's check that type definition in previous step...
-                // It was: export type SparePartImportRow = { ... priceUsd: number; ... }
-                // So adding pricePos here might fail if I don't update type first.
-                // I will update this file, then I realize I might need to update the type definition in spar-parts.ts?
-                // Actually I am editing spare-parts-client.tsx, the type is imported.
-                // It is better to just push this change and if TS screams, I fix the type.
-
-                parsedParts.push({
-                    sku,
-                    name,
-                    brand,
-                    categoryName,
-                    stockLocal,
-                    stockDepot,
-                    maxStockLocal,
-                    priceUsd,
-                    // @ts-ignore
-                    pricePos
-                });
-            }
-
-            toast.dismiss(toastId);
-            toast.promise(bulkUpsertSpareParts(parsedParts as any), {
-                loading: `Importando ${parsedParts.length} repuestos...`,
-                success: (data) => {
-                    if (data.success) {
-                        router.refresh();
-                        return `Importación exitosa: ${data.count} procesados. ${data.errors?.length ? `(${data.errors.length} errores)` : ""}`;
-                    } else {
-                        throw new Error(data.error);
-                    }
-                },
-                error: (err) => `Error: ${err.message}`
-            });
-
-        } catch (error) {
-            console.error(error);
-            toast.dismiss(toastId);
-            toast.error("Error al procesar CSV");
-        }
-    };
 
     const handleReport = () => {
         // Redirect to the new dedicated spare parts report page
         router.push("/admin/reports/repuestos");
     };
 
-    const handleReplenishReport = () => {
-        const doc = new jsPDF();
+    
+    const onReplenishReport = () => handleReplenishReport(initialData);
 
-        // Filter items that need replenishment AND have stock in depot
-        const replenishItems = initialData
-            .filter(item => {
-                const needed = item.maxStockLocal - item.stockLocal;
-                return needed > 0 && item.stockDepot > 0;
-            })
-            .map(item => {
-                const needed = item.maxStockLocal - item.stockLocal;
-                // We can only replenish what we have in depot, or what is needed, whichever is lower
-                const toReplenish = Math.min(needed, item.stockDepot);
-
-                return {
-                    name: item.name,
-                    replenish: toReplenish,
-                    stockLocal: item.stockLocal
-                };
-            });
-
-        if (replenishItems.length === 0) {
-            toast.info("No hay productos para reponer con stock en depósito.");
-            return;
-        }
-
-        const date = new Date().toLocaleDateString("es-AR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric"
-        });
-
-        // Header
-        doc.setFontSize(18);
-        doc.text("Reporte de Reposición", 14, 20);
-
-        doc.setFontSize(12);
-        doc.text(`Fecha: ${date}`, 14, 30);
-        doc.text(`Total items a reponer: ${replenishItems.length}`, 14, 36);
-
-        // Table
-        autoTable(doc, {
-            startY: 45,
-            head: [["Producto", "Stock Local", "A Reponer", "Check"]],
-            body: replenishItems.map(item => [
-                item.name,
-                item.stockLocal,
-                item.replenish,
-                "" // Cleaning column for check
-            ]),
-            theme: "striped",
-            headStyles: {
-                fillColor: [255, 102, 0], // Vignette/Orange pop color (or use brand color)
-                textColor: [255, 255, 255],
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            bodyStyles: {
-                textColor: [50, 50, 50]
-            },
-            alternateRowStyles: {
-                fillColor: [245, 245, 245] // Light gray for zebra
-            },
-            columnStyles: {
-                0: { cellWidth: 80 }, // Name
-                1: { cellWidth: 35, halign: 'center', fontStyle: 'bold', textColor: [0, 100, 0] }, // Stock Local (Greenish)
-                2: { cellWidth: 35, halign: 'center', fontStyle: 'bold', textColor: [200, 0, 0] }, // Replenish (Reddish)
-                3: { cellWidth: 30 }  // Check
-            },
-            styles: {
-                fontSize: 10,
-                cellPadding: 4,
-                lineColor: [200, 200, 200],
-                lineWidth: 0.1,
-            }
-        });
-
-        // Footer Signatures
-        const pageHeight = doc.internal.pageSize.height;
-        doc.setLineWidth(0.5);
-
-        // Left Signature
-        doc.line(20, pageHeight - 40, 90, pageHeight - 40);
-        doc.setFontSize(10);
-        doc.text("Responsable de Depósito", 55, pageHeight - 35, { align: "center" });
-
-        // Right Signature
-        doc.line(120, pageHeight - 40, 190, pageHeight - 40);
-        doc.text("Responsable del Local", 155, pageHeight - 35, { align: "center" });
-
-        doc.save(`reposicion_${date.replace(/\//g, "-")}.pdf`);
-        toast.success("PDF generado correctamente");
-    };
 
     const handleConfirmReplenish = async () => {
         if (!replenishData) return;
@@ -789,7 +501,7 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
                 />
 
                 <div className="flex gap-2 w-full sm:w-auto flex-wrap justify-end">
-                    <Button className="bg-amber-600 hover:bg-amber-700 text-white" size="sm" onClick={handleExport}>
+                    <Button className="bg-amber-600 hover:bg-amber-700 text-white" size="sm" onClick={onExport}>
                         <Download className="mr-2 h-4 w-4" />
                         Exportar
                     </Button>
@@ -803,13 +515,13 @@ export function SparePartsClient({ initialData, categories }: SparePartsClientPr
                         ref={fileInputRef}
                         className="hidden"
                         accept=".csv"
-                        onChange={handleFileChange}
+                        onChange={onFileChange}
                     />
                     <Button className="bg-blue-600 hover:bg-blue-700 text-white" size="sm" onClick={handleReport}>
                         <FileBarChart className="mr-2 h-4 w-4" />
                         Informe
                     </Button>
-                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" size="sm" onClick={handleReplenishReport}>
+                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" size="sm" onClick={onReplenishReport}>
                         <FileBarChart className="mr-2 h-4 w-4" />
                         Reponer
                     </Button>

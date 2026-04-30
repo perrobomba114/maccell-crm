@@ -9,7 +9,7 @@ import { Loader2, CalendarClock, AlertTriangle, Clock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { assignTimeAction } from "@/actions/repairs/technician-actions";
+import { assignTimeAction } from "@/lib/actions/repairs";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { SparePartSelector, SparePartItem } from "./spare-part-selector";

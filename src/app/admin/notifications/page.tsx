@@ -6,7 +6,7 @@ import { AdminNotificationsClient } from "../../../components/admin/notification
 export default async function AdminNotificationsPage({
     searchParams
 }: {
-    searchParams: { status?: string; type?: string; page?: string };
+    searchParams: Promise<{ status?: string; type?: string; page?: string }>;
 }) {
     const user = await getUserData();
     if (!user || user.role !== "ADMIN") {

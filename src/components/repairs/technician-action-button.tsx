@@ -6,7 +6,7 @@ import { Loader2, Play, CheckSquare, Clock, RotateCcw, Pause } from "lucide-reac
 import { AssignmentModal } from "./assignment-modal";
 import { FinishRepairModal } from "./finish-modal";
 import { StartRepairModal } from "./start-repair-modal";
-import { startRepairAction, pauseRepairAction } from "@/actions/repairs/technician-actions";
+import { startRepairAction, pauseRepairAction } from "@/lib/actions/repairs";
 import { toast } from "sonner";
 
 interface TechnicianActionButtonProps {

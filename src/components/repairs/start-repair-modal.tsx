@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Loader2, CalendarClock, Play } from "lucide-react";
 import { toast } from "sonner";
-import { startRepairAction } from "@/actions/repairs/technician-actions";
+import { startRepairAction } from "@/lib/actions/repairs";
 
 interface StartRepairModalProps {
     repair: any;

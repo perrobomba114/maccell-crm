@@ -10,7 +10,7 @@ import { ImagePreviewModal } from "./image-preview-modal";
 import { cn, getImgUrl, isValidImg } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { createSinglePartReturnAction } from "@/actions/repairs/technician-actions";
+import { createSinglePartReturnAction } from "@/lib/actions/repairs";
 import { useRouter } from "next/navigation";
 
 interface RepairDetailsDialogProps {

@@ -9,7 +9,7 @@ import { Loader2, Share2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getTechnicians } from "@/actions/user-actions";
-import { transferRepairAction } from "@/actions/repairs/technician-actions";
+import { transferRepairAction } from "@/lib/actions/repairs";
 
 interface TransferRepairDialogProps {
     repair: any;
