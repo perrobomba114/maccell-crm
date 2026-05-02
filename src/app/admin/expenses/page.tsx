@@ -1,12 +1,13 @@
 import { getUserData } from "@/actions/get-user";
 import { redirect } from "next/navigation";
 import { getExpensesAction } from "@/actions/admin-expenses";
+import { getAllBranches } from "@/actions/branch-actions";
 import { ExpensesTable } from "@/components/expenses/expenses-table";
 import { ExpensesFilter } from "@/components/expenses/expenses-filter";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, CalendarDays, ChevronLeft, ChevronRight, DollarSign, Receipt, TrendingDown } from "lucide-react";
+import { Building2, CalendarDays, ChevronLeft, ChevronRight, DollarSign, Receipt, TrendingDown, WalletCards } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
 import { TIMEZONE } from "@/lib/date-utils";
 import Link from "next/link";
@@ -19,10 +20,11 @@ const currencyFormatter = new Intl.NumberFormat("es-AR", {
     maximumFractionDigits: 0,
 });
 
-function buildExpensesHref(params: { date?: string; view?: string }, page: number) {
+function buildExpensesHref(params: { date?: string; view?: string; branchId?: string }, page: number) {
     const query = new URLSearchParams();
     if (params.date) query.set("date", params.date);
     if (params.view) query.set("view", params.view);
+    if (params.branchId) query.set("branchId", params.branchId);
     query.set("page", String(page));
     return `/admin/expenses?${query.toString()}`;
 }
@@ -30,7 +32,7 @@ function buildExpensesHref(params: { date?: string; view?: string }, page: numbe
 export default async function AdminExpensesPage({
     searchParams
 }: {
-    searchParams: Promise<{ date?: string; page?: string; view?: string }>
+    searchParams: Promise<{ date?: string; page?: string; view?: string; branchId?: string }>
 }) {
     const user = await getUserData();
     if (user?.role !== "ADMIN") redirect("/");
@@ -46,95 +48,123 @@ export default async function AdminExpensesPage({
 
     const date = isViewAll ? undefined : (resolvedParams.date || undefined);
     const page = parseInt(resolvedParams.page || "1");
+    const branchId = resolvedParams.branchId;
 
-    const { expenses, totalAmount, monthlyTotal, totalCount, totalPages, currentPage, branchSummary } = await getExpensesAction({
-        date,
-        page,
-        limit: 25
-    });
+    const [expensesResult, branchesResult] = await Promise.all([
+        getExpensesAction({
+            date,
+            page,
+            limit: 25,
+            branchId
+        }),
+        getAllBranches()
+    ]);
+
+    const { expenses, totalAmount, monthlyTotal, totalCount, totalPages, currentPage, branchSummary } = expensesResult;
+    const branches = branchesResult.success ? branchesResult.branches || [] : [];
     const periodLabel = date ? "día seleccionado" : "vista completa";
     const topBranch = branchSummary[0];
+    const selectedBranch = branchId ? branches.find((branch) => branch.id === branchId) : undefined;
+    const branchSummaryTotal = branchSummary.reduce((sum, branch) => sum + branch.total, 0);
 
     return (
-        <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-            <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
-                <div className="border-b bg-[linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--muted))_100%)] p-5 sm:p-6">
-                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-                        <div className="max-w-2xl">
-                            <Badge variant="outline" className="mb-3 rounded-md border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
-                                Control de egresos
-                            </Badge>
-                            <h2 className="text-3xl font-black tracking-tight">Gastos</h2>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                                Auditoría de gastos cargados por vendedores, con totales por fecha, mes y sucursal.
-                            </p>
+        <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
+            <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                <div className="relative flex flex-col gap-1 border-b p-5 sm:p-6">
+                    <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-rose-400 to-red-600" />
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                                <WalletCards className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Gastos</h2>
+                                    <Badge variant="outline" className="rounded-md border-rose-200 bg-rose-50 text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+                                        Egresos
+                                    </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Auditoría de gastos cargados por vendedores · filtro por fecha y sucursal.
+                                </p>
+                            </div>
                         </div>
-                        <ExpensesFilter />
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="hidden sm:inline">Mostrando</span>
+                            <Badge variant="secondary" className="rounded-md font-semibold">
+                                {totalCount.toLocaleString("es-AR")} registros
+                            </Badge>
+                            {selectedBranch && (
+                                <Badge variant="secondary" className="rounded-md font-semibold">
+                                    <Building2 className="mr-1 h-3 w-3" />
+                                    {selectedBranch.name}
+                                </Badge>
+                            )}
+                        </div>
                     </div>
+                </div>
+
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center gap-3 border-t bg-gradient-to-r from-rose-500/5 via-amber-500/5 to-purple-500/5 p-4 sm:p-5">
+                    <ExpensesFilter branches={branches} currentBranchId={branchId} />
                 </div>
 
                 <div className="grid gap-6 p-4 sm:p-5 md:grid-cols-2 lg:grid-cols-4">
                     <Card className="relative overflow-hidden border-none bg-gradient-to-br from-rose-500 to-red-700 text-white shadow-lg">
-                        <CardContent className="flex min-h-[198px] flex-col p-6">
+                        <CardContent className="flex min-h-[180px] flex-col p-6">
                             <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <p className="mb-1 text-sm font-medium text-rose-100">Gastos del {periodLabel}</p>
-                                    <h3 className="text-3xl font-bold leading-none tracking-tight tabular-nums">- {currencyFormatter.format(totalAmount)}</h3>
-                                </div>
-                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-rose-100">Gastos del {periodLabel}</p>
+                                <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">
                                     <DollarSign className="h-6 w-6 text-white" />
                                 </div>
                             </div>
+                            <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">- {currencyFormatter.format(totalAmount)}</h3>
                             <div className="mt-auto pt-4 text-sm text-rose-100">{totalCount} registros filtrados</div>
                         </CardContent>
                         <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
                     </Card>
 
                     <Card className="relative overflow-hidden border-none bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg">
-                        <CardContent className="flex min-h-[198px] flex-col p-6">
+                        <CardContent className="flex min-h-[180px] flex-col p-6">
                             <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <p className="mb-1 text-sm font-medium text-amber-100">Total del mes</p>
-                                    <h3 className="text-3xl font-bold leading-none tracking-tight tabular-nums">- {currencyFormatter.format(monthlyTotal)}</h3>
-                                </div>
-                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-amber-100">{selectedBranch ? "Mes de la sucursal" : "Total del mes"}</p>
+                                <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">
                                     <CalendarDays className="h-6 w-6 text-white" />
                                 </div>
                             </div>
+                            <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">- {currencyFormatter.format(monthlyTotal)}</h3>
                             <div className="mt-auto pt-4 text-sm text-amber-100">Acumulado mensual Argentina</div>
                         </CardContent>
                         <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
                     </Card>
 
                     <Card className="relative overflow-hidden border-none bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
-                        <CardContent className="flex min-h-[198px] flex-col p-6">
+                        <CardContent className="flex min-h-[180px] flex-col p-6">
                             <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <p className="mb-1 text-sm font-medium text-blue-100">Promedio</p>
-                                    <h3 className="text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalCount > 0 ? totalAmount / totalCount : 0)}</h3>
-                                </div>
-                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-blue-100">Promedio</p>
+                                <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">
                                     <TrendingDown className="h-6 w-6 text-white" />
                                 </div>
                             </div>
+                            <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalCount > 0 ? totalAmount / totalCount : 0)}</h3>
                             <div className="mt-auto pt-4 text-sm text-blue-100">Por registro filtrado</div>
                         </CardContent>
                         <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
                     </Card>
 
                     <Card className="relative overflow-hidden border-none bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-lg">
-                        <CardContent className="flex min-h-[198px] flex-col p-6">
+                        <CardContent className="flex min-h-[180px] flex-col p-6">
                             <div className="flex items-start justify-between gap-4">
-                                <div className="min-w-0">
-                                    <p className="mb-1 text-sm font-medium text-purple-100">Sucursal principal</p>
-                                    <h3 className="truncate text-2xl font-bold leading-none tracking-tight">{topBranch?.branchName || "Sin datos"}</h3>
-                                </div>
-                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-purple-100">Sucursal principal</p>
+                                <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">
                                     <Building2 className="h-6 w-6 text-white" />
                                 </div>
                             </div>
-                            <p className="mt-auto pt-4 text-xs font-semibold tabular-nums text-purple-100">
-                                {topBranch ? `- ${currencyFormatter.format(topBranch.total)} · ${topBranch.count} registros` : "Sin gastos mensuales"}
+                            <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">
+                                {topBranch ? `- ${currencyFormatter.format(topBranch.total)}` : "Sin datos"}
+                            </h3>
+                            <p className="mt-auto truncate pt-4 text-sm text-purple-100">
+                                {topBranch ? `${topBranch.branchName} · ${topBranch.count} registros` : "Sin gastos mensuales"}
                             </p>
                         </CardContent>
                         <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
@@ -143,13 +173,63 @@ export default async function AdminExpensesPage({
             </section>
 
             <Card className="border bg-card shadow-sm">
+                <CardHeader className="gap-2">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                        <WalletCards className="h-5 w-5 text-emerald-600" />
+                        Gastos por sucursal
+                    </CardTitle>
+                    <CardDescription>Distribución mensual para comparar locales sin mezclar la lectura.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {branchSummary.length === 0 ? (
+                        <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+                            No hay gastos mensuales para discriminar por sucursal.
+                        </div>
+                    ) : (
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                            {branchSummary.map((branch) => {
+                                const percent = branchSummaryTotal > 0 ? Math.round((branch.total / branchSummaryTotal) * 100) : 0;
+                                const isActive = branch.branchId === branchId;
+                                return (
+                                    <Link
+                                        key={branch.branchId}
+                                        href={buildExpensesHref({ ...resolvedParams, branchId: branch.branchId }, 1)}
+                                        className="group rounded-lg border bg-background/60 p-4 transition-colors hover:bg-muted/40"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="truncate text-sm font-bold">{branch.branchName}</span>
+                                                    {isActive && <Badge variant="secondary" className="rounded-md">Activa</Badge>}
+                                                </div>
+                                                <p className="mt-1 text-xs text-muted-foreground">{branch.count} registros del mes</p>
+                                            </div>
+                                            <span className="text-sm font-black tabular-nums text-rose-600 dark:text-rose-400">
+                                                - {currencyFormatter.format(branch.total)}
+                                            </span>
+                                        </div>
+                                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+                                            <div className="h-full rounded-full bg-emerald-500 transition-all group-hover:bg-emerald-400" style={{ width: `${percent}%` }} />
+                                        </div>
+                                        <p className="mt-2 text-xs font-medium text-muted-foreground">{percent}% del gasto mensual</p>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card className="border bg-card shadow-sm">
                 <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <CardTitle className="flex items-center gap-2 text-xl">
                             <Receipt className="h-5 w-5 text-rose-600" />
                         Listado de Gastos
                         </CardTitle>
-                        <CardDescription>Movimientos ordenados del más reciente al más antiguo.</CardDescription>
+                        <CardDescription>
+                            Movimientos ordenados del más reciente al más antiguo{selectedBranch ? ` en ${selectedBranch.name}` : ""}.
+                        </CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent>

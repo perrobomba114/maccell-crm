@@ -126,36 +126,70 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
 
     return (
         <div className="space-y-6">
-            <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
-                <div className="border-b bg-[linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--muted))_100%)] p-5 sm:p-6">
-                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-                        <div className="max-w-2xl">
-                            <Badge variant="outline" className="mb-3 rounded-md border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-300">
-                                Base de datos
-                            </Badge>
-                            <h2 className="text-3xl font-black tracking-tight">Copias de Seguridad</h2>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                                Creá, descargá o restaurá puntos de recuperación del sistema. Usá restaurar solo ante incidentes reales.
-                            </p>
+            <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                <div className="relative flex flex-col gap-1 border-b p-5 sm:p-6">
+                    <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-cyan-400 to-blue-600" />
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                                <Database className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Copias de seguridad</h2>
+                                    <Badge variant="outline" className="rounded-md border-cyan-200 bg-cyan-50 text-[10px] font-bold uppercase tracking-wider text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-300">
+                                        Base de datos
+                                    </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Creá, descargá o restaurá puntos de recuperación · usá restaurar solo ante incidentes reales.
+                                </p>
+                            </div>
                         </div>
-
-                        <div className="flex flex-col gap-2 sm:flex-row">
-                            <input id="upload-backup" type="file" accept=".sql" className="hidden" onChange={handleUpload} disabled={isBusy} />
-                            <Button variant="outline" className="h-11 gap-2 font-bold" asChild disabled={isBusy}>
-                                <label htmlFor="upload-backup" className="cursor-pointer">
-                                    {activeAction === "upload" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                                    Subir .sql
-                                </label>
-                            </Button>
-                            <Button onClick={handleCreate} disabled={isBusy} className="h-11 gap-2 bg-cyan-700 font-bold text-white hover:bg-cyan-800">
-                                {activeAction === "create" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
-                                Crear backup
-                            </Button>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="hidden sm:inline">Disponibles</span>
+                            <Badge
+                                variant="secondary"
+                                className={`rounded-md font-semibold ${initialBackups.length > 0
+                                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                                    : "bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                                    }`}
+                            >
+                                {initialBackups.length} copias
+                            </Badge>
                         </div>
                     </div>
                 </div>
 
-                <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-4">
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center gap-3 border-t bg-gradient-to-r from-cyan-500/5 via-blue-500/5 to-purple-500/5 p-4 sm:p-5">
+                    <input id="upload-backup" type="file" accept=".sql" className="hidden" onChange={handleUpload} disabled={isBusy} />
+                    <Button
+                        variant="outline"
+                        className="h-12 gap-2 rounded-xl border-2 px-4 font-semibold shadow-sm transition-all hover:border-cyan-500/50 hover:shadow-md"
+                        asChild
+                        disabled={isBusy}
+                    >
+                        <label htmlFor="upload-backup" className="cursor-pointer">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                                {activeAction === "upload" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            </div>
+                            Subir .sql
+                        </label>
+                    </Button>
+                    <Button
+                        onClick={handleCreate}
+                        disabled={isBusy}
+                        className="ml-auto h-12 gap-2 rounded-xl border-2 border-cyan-500 bg-gradient-to-br from-cyan-500 to-blue-600 px-4 font-semibold text-white shadow-sm transition-all hover:from-cyan-500 hover:to-blue-700 hover:shadow-md"
+                    >
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20">
+                            {activeAction === "create" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+                        </div>
+                        Crear backup
+                    </Button>
+                </div>
+
+                <div className="grid gap-6 border-t p-4 sm:p-5 md:grid-cols-2 lg:grid-cols-4">
                     <MetricCard title="Backups guardados" value={String(initialBackups.length)} description="archivos .sql disponibles" icon={<Archive className="h-6 w-6" />} tone="emerald" />
                     <MetricCard title="Espacio usado" value={formatBytes(stats.totalSize)} description="tamaño total local" icon={<HardDrive className="h-6 w-6" />} tone="blue" />
                     <MetricCard title="Última copia" value={stats.latest ? format(new Date(stats.latest.createdAt), "dd/MM") : "Sin datos"} description={stats.latest ? format(new Date(stats.latest.createdAt), "HH:mm 'hs'") : "creá tu primer backup"} icon={<Clock3 className="h-6 w-6" />} tone="amber" />

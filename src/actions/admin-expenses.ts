@@ -6,20 +6,29 @@ import { formatInTimeZone } from "date-fns-tz";
 import type { Prisma } from "@prisma/client";
 import { getDailyRange, getMonthlyRange, TIMEZONE } from "@/lib/date-utils";
 import type { ExpenseBranchSummary } from "@/types/admin-expenses";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function getExpensesAction({
     date,
     page = 1,
     limit = 25,
-    userId
+    userId,
+    branchId
 }: {
     date?: string;
     page?: number;
     limit?: number;
     userId?: string;
+    branchId?: string;
 }) {
     try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser) {
+            return getEmptyExpensesResult(page);
+        }
+
         const where: Prisma.ExpenseWhereInput = {};
+        const effectiveUserId = currentUser.role === "ADMIN" ? userId : currentUser.id;
 
         // Determine Reference Date (Argentina Time)
         // If date is provided, use it. If not, get today in AR.
@@ -34,8 +43,12 @@ export async function getExpensesAction({
             };
         }
 
-        if (userId) {
-            where.userId = userId;
+        if (effectiveUserId) {
+            where.userId = effectiveUserId;
+        }
+
+        if (branchId && currentUser.role === "ADMIN") {
+            where.branchId = branchId;
         }
 
         const skip = (page - 1) * limit;
@@ -48,7 +61,7 @@ export async function getExpensesAction({
                         select: { name: true, imageUrl: true }
                     },
                     branch: {
-                        select: { name: true }
+                        select: { id: true, name: true, code: true }
                     }
                 },
                 orderBy: { createdAt: "desc" },
@@ -68,12 +81,17 @@ export async function getExpensesAction({
 
         const { start, end } = getMonthlyRange(referenceDateStr);
 
-        const monthlyWhere: Prisma.ExpenseWhereInput = {
+        const monthlyBaseWhere: Prisma.ExpenseWhereInput = {
             createdAt: {
                 gte: start,
                 lte: end
             },
-            userId: userId || undefined
+            userId: effectiveUserId || undefined
+        };
+
+        const monthlyWhere: Prisma.ExpenseWhereInput = {
+            ...monthlyBaseWhere,
+            branchId: branchId && currentUser.role === "ADMIN" ? branchId : undefined
         };
 
         const [monthlyAggregations, branchGroups] = await Promise.all([
@@ -83,7 +101,7 @@ export async function getExpensesAction({
             }),
             db.expense.groupBy({
                 by: ["branchId"],
-                where: monthlyWhere,
+                where: monthlyBaseWhere,
                 _sum: { amount: true },
                 _count: { _all: true },
                 orderBy: { _sum: { amount: "desc" } },
@@ -99,6 +117,7 @@ export async function getExpensesAction({
 
         const branchNames = new Map(branches.map((branch) => [branch.id, branch.name]));
         const branchSummary: ExpenseBranchSummary[] = branchGroups.map((group) => ({
+            branchId: group.branchId,
             branchName: branchNames.get(group.branchId) || "Sucursal sin nombre",
             total: group._sum.amount || 0,
             count: group._count._all,
@@ -118,23 +137,25 @@ export async function getExpensesAction({
 
     } catch (error) {
         console.error("Error getting expenses:", error);
-        return {
-            expenses: [],
-            totalCount: 0,
-            totalPages: 0,
-            currentPage: 1,
-            totalAmount: 0,
-            monthlyTotal: 0,
-            branchSummary: []
-        };
+        return getEmptyExpensesResult(page);
     }
 }
 
 export async function updateExpenseAction(id: string, data: { amount: number; description: string }) {
     try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser) return { success: false, error: "No autorizado" };
         if (!id) return { success: false, error: "ID de gasto requerido" };
         if (!data.amount || data.amount <= 0) return { success: false, error: "El monto debe ser mayor a 0" };
         if (!data.description || data.description.trim().length < 3) return { success: false, error: "Descripción inválida" };
+
+        const expense = await db.expense.findUnique({
+            where: { id },
+            select: { userId: true }
+        });
+        if (!expense || (currentUser.role !== "ADMIN" && expense.userId !== currentUser.id)) {
+            return { success: false, error: "No autorizado" };
+        }
 
         await db.expense.update({
             where: { id },
@@ -154,7 +175,17 @@ export async function updateExpenseAction(id: string, data: { amount: number; de
 
 export async function deleteExpenseAction(id: string) {
     try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser) return { success: false, error: "No autorizado" };
         if (!id) return { success: false, error: "ID de gasto requerido" };
+
+        const expense = await db.expense.findUnique({
+            where: { id },
+            select: { userId: true }
+        });
+        if (!expense || (currentUser.role !== "ADMIN" && expense.userId !== currentUser.id)) {
+            return { success: false, error: "No autorizado" };
+        }
 
         await db.expense.delete({
             where: { id }
@@ -166,4 +197,16 @@ export async function deleteExpenseAction(id: string) {
         console.error("Error deleting expense:", error);
         return { success: false, error: "Error al eliminar gasto" };
     }
+}
+
+function getEmptyExpensesResult(page: number) {
+    return {
+        expenses: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: page,
+        totalAmount: 0,
+        monthlyTotal: 0,
+        branchSummary: []
+    };
 }

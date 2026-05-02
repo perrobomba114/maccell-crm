@@ -8,11 +8,14 @@ export type AdminExpense = {
         imageUrl: string | null;
     };
     branch: {
+        id: string;
         name: string;
+        code: string;
     };
 };
 
 export type ExpenseBranchSummary = {
+    branchId: string;
     branchName: string;
     total: number;
     count: number;

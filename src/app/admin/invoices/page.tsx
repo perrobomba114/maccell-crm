@@ -67,24 +67,40 @@ export default async function InvoicesPage({
 
     return (
         <div className="space-y-6 p-4 sm:p-6 lg:p-8" suppressHydrationWarning>
-            <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-                <div className="border-b bg-[linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--muted))_100%)] p-5 sm:p-6">
-                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-                        <div className="max-w-3xl">
-                            <Badge variant="outline" className="mb-3 rounded-md border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
-                                AFIP / ARCA
-                            </Badge>
-                            <h1 className="text-3xl font-black tracking-tight text-foreground">Facturas Electrónicas</h1>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                                Control fiscal por certificado: MACCELL consolida sus 3 locales y 8 Bit Accesorios se muestra separado.
-                            </p>
-                        </div>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <div className="rounded-lg border bg-background/70 p-1.5">
-                                <InvoiceDateFilter />
+            <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                <div className="relative flex flex-col gap-1 border-b p-5 sm:p-6">
+                    <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-emerald-400 to-emerald-600" />
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                <ReceiptText className="h-5 w-5" />
                             </div>
-                            <CreateInvoiceModal branches={branches} userId={adminUserId} />
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Facturas electrónicas</h1>
+                                    <Badge variant="outline" className="rounded-md border-emerald-200 bg-emerald-50 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                        AFIP / ARCA
+                                    </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Control fiscal por certificado · MACCELL consolida sus 3 locales · 8 Bit Accesorios separado.
+                                </p>
+                            </div>
                         </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="hidden sm:inline">Mostrando</span>
+                            <Badge variant="secondary" className="rounded-md font-semibold">
+                                {totalCount.toLocaleString("es-AR")} comprobantes
+                            </Badge>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center gap-3 border-t bg-gradient-to-r from-emerald-500/5 via-blue-500/5 to-purple-500/5 p-4 sm:p-5">
+                    <InvoiceDateFilter />
+                    <div className="ml-auto">
+                        <CreateInvoiceModal branches={branches} userId={adminUserId} />
                     </div>
                 </div>
 
@@ -92,34 +108,29 @@ export default async function InvoicesPage({
                     <Card className="relative overflow-hidden border-none bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg">
                         <CardContent className="flex min-h-[218px] flex-col p-6">
                             <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <p className="mb-1 text-sm font-medium text-emerald-100">Total facturado</p>
-                                    <h3 className="text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalAmount)}</h3>
-                                </div>
-                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-emerald-100">Total facturado</p>
+                                <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">
                                     <DollarSign className="h-6 w-6 text-white" />
                                 </div>
                             </div>
+                            <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalAmount)}</h3>
                             <div className="mt-auto flex items-center gap-2 pt-4">
                                 <span className="rounded-full bg-white/20 px-2 py-1 text-xs font-bold">{totalCount} comprobantes</span>
                                 <span className="text-xs text-emerald-100">{periodLabel}</span>
                             </div>
                         </CardContent>
                         <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-                        <div className="pointer-events-none absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-black/10 blur-2xl" />
                     </Card>
 
                     <Card className="relative overflow-hidden border-none bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
                         <CardContent className="flex min-h-[218px] flex-col p-6">
                             <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <p className="mb-1 text-sm font-medium text-blue-100">IVA facturado</p>
-                                    <h3 className="text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalVat)}</h3>
-                                </div>
-                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-blue-100">IVA facturado</p>
+                                <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">
                                     <Percent className="h-6 w-6 text-white" />
                                 </div>
                             </div>
+                            <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalVat)}</h3>
                             <div className="mt-auto pt-4 text-sm text-blue-100">Solo facturación nueva configurada al 21%</div>
                         </CardContent>
                         <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
@@ -145,7 +156,7 @@ export default async function InvoicesPage({
                         />
                     )}
                 </div>
-            </div>
+            </section>
 
             <Card className="border bg-card shadow-sm">
                 <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -253,14 +264,12 @@ function FiscalEntityCard({
         <Card className={`relative overflow-hidden border-none bg-gradient-to-br ${color} text-white shadow-lg`}>
             <CardContent className="flex min-h-[218px] flex-col p-6">
                 <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <p className={`mb-1 text-sm font-medium ${mutedText}`}>{title}</p>
-                        <h3 className="text-2xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(summary.totalVat)}</h3>
-                    </div>
-                    <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                    <p className={`line-clamp-2 min-h-[2.5rem] text-sm font-medium ${mutedText}`}>{title}</p>
+                    <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">
                         {icon}
                     </div>
                 </div>
+                <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(summary.totalVat)}</h3>
                 <p className={`mt-2 text-xs font-semibold ${mutedText}`}>IVA facturado · {summary.count} comprobantes · {subtitle}</p>
                 <div className="mt-auto space-y-1.5 border-t border-white/20 pt-4">
                     {summary.branches.length === 0 ? (

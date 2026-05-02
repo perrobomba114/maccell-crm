@@ -37,15 +37,13 @@ export function MetricCard({ title, value, description, icon, tone = "blue" }: {
 
     return (
         <Card className={`relative overflow-hidden border-none bg-gradient-to-br ${gradient} text-white shadow-lg`}>
-            <CardContent className="flex min-h-[178px] flex-col p-6">
+            <CardContent className="flex min-h-[180px] flex-col p-6">
                 <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                        <p className={`mb-1 text-sm font-medium ${mutedText}`}>{title}</p>
-                        <h3 className="truncate text-3xl font-bold leading-none tracking-tight tabular-nums">{value}</h3>
-                    </div>
-                    <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">{icon}</div>
+                    <p className={`line-clamp-2 min-h-[2.5rem] text-sm font-medium ${mutedText}`}>{title}</p>
+                    <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">{icon}</div>
                 </div>
-                <p className={`mt-auto pt-4 text-sm ${mutedText}`}>{description}</p>
+                <h3 className="mt-3 truncate whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">{value}</h3>
+                <p className={`mt-auto truncate pt-4 text-sm ${mutedText}`}>{description}</p>
             </CardContent>
             <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
         </Card>

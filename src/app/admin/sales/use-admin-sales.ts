@@ -41,6 +41,8 @@ export function useAdminSales() {
     // Computed Totals
     const totalRevenue = sales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
     const totalSalesCount = sales.length;
+    const avgTicket = totalSalesCount > 0 ? totalRevenue / totalSalesCount : 0;
+    const topBranch = rankingData[0];
 
     // Handle search param updates (navigation while on page)
     useEffect(() => {
@@ -165,6 +167,8 @@ export function useAdminSales() {
         setSelectedBranch,
         totalRevenue,
         totalSalesCount,
+        avgTicket,
+        topBranch,
         viewingSale,
         setViewingSale,
         editingSale,

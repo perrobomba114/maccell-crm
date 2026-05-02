@@ -24,6 +24,12 @@ interface ExpensesTableProps {
     expenses: AdminExpense[];
 }
 
+const currencyFormatter = new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+});
+
 export function ExpensesTable({ expenses }: ExpensesTableProps) {
     const [editingExpense, setEditingExpense] = useState<AdminExpense | null>(null);
 
@@ -39,16 +45,16 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
             <div className="hidden overflow-hidden rounded-lg border bg-card shadow-sm md:block">
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-[170px] pl-6">Fecha</TableHead>
+                            <TableHead className="w-[150px] pl-6">Fecha</TableHead>
                             <TableHead>Detalle</TableHead>
-                            <TableHead>Registró</TableHead>
-                            <TableHead>Sucursal</TableHead>
-                            <TableHead className="text-right">Monto</TableHead>
+                            <TableHead className="w-[190px]">Registró</TableHead>
+                            <TableHead className="w-[180px]">Sucursal</TableHead>
+                            <TableHead className="w-[150px] text-right">Monto</TableHead>
                             <TableHead className="w-[110px] text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -81,8 +87,9 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-4">
-                                        <div className="max-w-[380px] font-semibold leading-snug">
-                                            {expense.description}
+                                        <div className="max-w-[520px]">
+                                            <p className="font-semibold leading-snug">{expense.description}</p>
+                                            <p className="mt-1 text-xs text-muted-foreground">ID {expense.id.slice(-6).toUpperCase()}</p>
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-4">
@@ -95,14 +102,15 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-4">
-                                        <span className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1 text-xs font-bold">
+                                        <span className="inline-flex max-w-[160px] items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1 text-xs font-bold">
                                             <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                                            {expense.branch.name}
+                                            <span className="truncate">{expense.branch.name}</span>
+                                            <span className="text-muted-foreground">{expense.branch.code}</span>
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right py-4">
-                                        <span className="font-black text-rose-600 dark:text-rose-400 tabular-nums text-base">
-                                            - ${expense.amount.toLocaleString()}
+                                        <span className="rounded-md bg-rose-50 px-2.5 py-1 font-black tabular-nums text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">
+                                            - {currencyFormatter.format(expense.amount)}
                                         </span>
                                     </TableCell>
                                     <TableCell className="py-4 text-right">
@@ -115,6 +123,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                                                 title="Editar"
                                             >
                                                 <Edit className="h-4 w-4" />
+                                                <span className="sr-only">Editar gasto</span>
                                             </Button>
                                             <Button
                                                 variant="ghost"
@@ -124,6 +133,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                                                 title="Eliminar"
                                             >
                                                 <Trash2 className="h-4 w-4" />
+                                                <span className="sr-only">Eliminar gasto</span>
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -148,7 +158,9 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                                     {format(new Date(expense.createdAt), "dd MMM yyyy · HH:mm 'hs'", { locale: es })}
                                 </p>
                             </div>
-                            <span className="font-black text-rose-600">-${expense.amount.toLocaleString()}</span>
+                            <span className="shrink-0 rounded-md bg-rose-50 px-2 py-1 font-black text-rose-700">
+                                -{currencyFormatter.format(expense.amount)}
+                            </span>
                         </div>
                         <div className="mt-4 flex items-center justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">

@@ -13,6 +13,11 @@ export interface TechnicianPerformance {
     avgTime: string;
 }
 
+// Status "CLAIMED" (tomada): un técnico marca el equipo en una sucursal pero
+// no necesariamente lo revisa — luego se reasigna a otro técnico. No cuenta
+// como trabajo en el ranking de rendimiento.
+const CLAIMED_STATUS_ID = 2;
+
 type TechnicianPerformanceFilters = {
     date?: Date | string;
     query?: string;
@@ -92,6 +97,7 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
             db.repairStatusHistory.findMany({
                 where: {
                     userId: { not: null },
+                    toStatusId: { not: CLAIMED_STATUS_ID },
                     createdAt: { gte: start, lte: end },
                     repair: repairWhere,
                 },
