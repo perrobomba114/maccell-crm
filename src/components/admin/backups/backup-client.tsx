@@ -1,32 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { createBackup, deleteBackup, restoreBackup, uploadBackup, type BackupFile } from "@/actions/backup";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format } from "date-fns";
+import { AlertTriangle, Archive, Clock3, Database, HardDrive, Loader2, ShieldCheck, Upload } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { BackupFile, createBackup, deleteBackup, restoreBackup, uploadBackup } from "@/actions/backup";
-import { Button } from "@/components/ui/button";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Download, Trash2, RotateCcw, Upload, Database, Loader2 } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { BackupMobileCard, BackupRow, MetricCard, formatBytes } from "./backup-ui";
+
+type BackupAction = "create" | "upload" | "restore" | "delete" | null;
 
 interface BackupClientProps {
     initialBackups: BackupFile[];
@@ -34,17 +22,24 @@ interface BackupClientProps {
 
 export function BackupClient({ initialBackups }: BackupClientProps) {
     const router = useRouter();
-    const [isLoading, setIsLoading] = useState(false);
-    const [backups, setBackups] = useState(initialBackups); // Unused if we depend on router.refresh(), but kept for optimistic updates if needed.
-
-    // Dialog states
+    const [activeAction, setActiveAction] = useState<BackupAction>(null);
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [restoreTarget, setRestoreTarget] = useState<string | null>(null);
     const [restoreConfirmation, setRestoreConfirmation] = useState("");
 
+    const stats = useMemo(() => {
+        const totalSize = initialBackups.reduce((acc, backup) => acc + backup.size, 0);
+        const latest = initialBackups[0];
+        return { totalSize, latest };
+    }, [initialBackups]);
+
+    const isBusy = activeAction !== null;
+    const restoreBackupMeta = initialBackups.find((backup) => backup.name === restoreTarget);
+    const deleteBackupMeta = initialBackups.find((backup) => backup.name === deleteTarget);
+
     const handleCreate = async () => {
-        setIsLoading(true);
-        toast.loading("Creando backup...", { id: "create-backup" });
+        setActiveAction("create");
+        toast.loading("Creando copia de seguridad...", { id: "create-backup" });
         try {
             const res = await createBackup();
             if (res.success) {
@@ -53,16 +48,41 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
             } else {
                 toast.error(res.error, { id: "create-backup" });
             }
-        } catch (error) {
-            toast.error("Error inesperado", { id: "create-backup" });
+        } catch {
+            toast.error("Error inesperado al crear backup", { id: "create-backup" });
         } finally {
-            setIsLoading(false);
+            setActiveAction(null);
+        }
+    };
+
+    const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        setActiveAction("upload");
+        toast.loading("Subiendo archivo .sql...", { id: "upload-backup" });
+        try {
+            const res = await uploadBackup(formData);
+            if (res.success) {
+                toast.success("Backup subido correctamente", { id: "upload-backup" });
+                router.refresh();
+            } else {
+                toast.error(res.error, { id: "upload-backup" });
+            }
+        } catch {
+            toast.error("Error al subir archivo", { id: "upload-backup" });
+        } finally {
+            setActiveAction(null);
+            event.target.value = "";
         }
     };
 
     const handleDelete = async () => {
         if (!deleteTarget) return;
-        toast.loading("Eliminando...", { id: "delete-backup" });
+        setActiveAction("delete");
+        toast.loading("Eliminando backup...", { id: "delete-backup" });
         try {
             const res = await deleteBackup(deleteTarget);
             if (res.success) {
@@ -72,6 +92,7 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
                 toast.error(res.error, { id: "delete-backup" });
             }
         } finally {
+            setActiveAction(null);
             setDeleteTarget(null);
         }
     };
@@ -79,166 +100,126 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
     const handleRestore = async () => {
         if (!restoreTarget) return;
         if (restoreConfirmation !== "RECUPERAR") {
-            toast.error("Debes escribir RECUPERAR para confirmar");
+            toast.error("Debés escribir RECUPERAR para confirmar");
             return;
         }
 
-        setIsLoading(true);
-        toast.loading("RESTAURANDO BASE DE DATOS... NO CIERRES ESTA VENTANA", { id: "restore-backup", duration: 100000 });
-
+        setActiveAction("restore");
+        toast.loading("Restaurando base de datos. No cierres esta ventana.", { id: "restore-backup", duration: 100000 });
         try {
             const res = await restoreBackup(restoreTarget);
             if (res.success) {
-                toast.success("Sistema restaurado con éxito. Se recargará la página.", { id: "restore-backup", duration: 5000 });
+                toast.success("Sistema restaurado. La página se recargará.", { id: "restore-backup", duration: 5000 });
                 setTimeout(() => window.location.reload(), 2000);
             } else {
-                toast.error(res.error || "Ocurrió un error inesperado al restaurar", { 
-                    id: "restore-backup",
-                    duration: 10000 // Show for longer if it fails
-                });
-                setIsLoading(false);
+                toast.error(res.error || "No se pudo restaurar el backup", { id: "restore-backup", duration: 10000 });
+                setActiveAction(null);
             }
-        } catch (error) {
+        } catch {
             toast.error("Error crítico de red o servidor", { id: "restore-backup" });
-            setIsLoading(false);
+            setActiveAction(null);
         } finally {
             setRestoreTarget(null);
             setRestoreConfirmation("");
         }
     };
 
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        toast.loading("Subiendo backup...", { id: "upload-backup" });
-        try {
-            const res = await uploadBackup(formData);
-            if (res.success) {
-                toast.success("Backup subido correctamente", { id: "upload-backup" });
-                router.refresh();
-            } else {
-                toast.error(res.error, { id: "upload-backup" });
-            }
-        } catch (error) {
-            toast.error("Error al subir archivo", { id: "upload-backup" });
-        } finally {
-            // Reset input
-            e.target.value = "";
-        }
-    };
-
-    const formatBytes = (bytes: number) => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    };
-
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center flex-wrap gap-4">
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-foreground">Copias de Seguridad</h2>
-                    <p className="text-muted-foreground">Gestiona los puntos de restauración del sistema.</p>
-                </div>
-                <div className="flex gap-2">
-                    <div className="relative">
-                        <input
-                            type="file"
-                            id="upload-backup"
-                            accept=".sql"
-                            className="hidden"
-                            onChange={handleUpload}
-                            disabled={isLoading}
-                        />
-                        <label htmlFor="upload-backup">
-                            <Button variant="outline" className="cursor-pointer" asChild disabled={isLoading}>
-                                <span>
-                                    <Upload className="mr-2 h-4 w-4" />
-                                    Subir Backup
-                                </span>
-                            </Button>
-                        </label>
-                    </div>
-                    <Button onClick={handleCreate} disabled={isLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
-                        Crear Nuevo Backup
-                    </Button>
-                </div>
-            </div>
+            <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
+                <div className="border-b bg-[linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--muted))_100%)] p-5 sm:p-6">
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                        <div className="max-w-2xl">
+                            <Badge variant="outline" className="mb-3 rounded-md border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-300">
+                                Base de datos
+                            </Badge>
+                            <h2 className="text-3xl font-black tracking-tight">Copias de Seguridad</h2>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                Creá, descargá o restaurá puntos de recuperación del sistema. Usá restaurar solo ante incidentes reales.
+                            </p>
+                        </div>
 
-            <div className="bg-card rounded-md border shadow-sm">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Nombre del Archivo</TableHead>
-                            <TableHead>Fecha de Creación</TableHead>
-                            <TableHead>Tamaño</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {initialBackups.map((backup) => (
-                            <TableRow key={backup.name}>
-                                <TableCell className="font-mono text-xs text-foreground">{backup.name}</TableCell>
-                                <TableCell className="text-muted-foreground">
-                                    {format(new Date(backup.createdAt), "PPP p", { locale: es })}
-                                </TableCell>
-                                <TableCell className="text-muted-foreground">{formatBytes(backup.size)}</TableCell>
-                                <TableCell className="text-right space-x-2">
-                                    <Button variant="outline" size="sm" asChild>
-                                        <a href={`/api/backups/${backup.name}`} download>
-                                            <Download className="h-4 w-4" />
-                                        </a>
-                                    </Button>
-                                    <Button
-                                        variant="default"
-                                        size="sm"
-                                        className="bg-orange-600 hover:bg-orange-700 text-white dark:bg-orange-700 dark:hover:bg-orange-800"
-                                        onClick={() => setRestoreTarget(backup.name)}
-                                        disabled={isLoading}
-                                    >
-                                        <RotateCcw className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => setDeleteTarget(backup.name)}
-                                        disabled={isLoading}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <input id="upload-backup" type="file" accept=".sql" className="hidden" onChange={handleUpload} disabled={isBusy} />
+                            <Button variant="outline" className="h-11 gap-2 font-bold" asChild disabled={isBusy}>
+                                <label htmlFor="upload-backup" className="cursor-pointer">
+                                    {activeAction === "upload" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                    Subir .sql
+                                </label>
+                            </Button>
+                            <Button onClick={handleCreate} disabled={isBusy} className="h-11 gap-2 bg-cyan-700 font-bold text-white hover:bg-cyan-800">
+                                {activeAction === "create" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+                                Crear backup
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-4">
+                    <MetricCard title="Backups guardados" value={String(initialBackups.length)} description="archivos .sql disponibles" icon={<Archive className="h-6 w-6" />} tone="emerald" />
+                    <MetricCard title="Espacio usado" value={formatBytes(stats.totalSize)} description="tamaño total local" icon={<HardDrive className="h-6 w-6" />} tone="blue" />
+                    <MetricCard title="Última copia" value={stats.latest ? format(new Date(stats.latest.createdAt), "dd/MM") : "Sin datos"} description={stats.latest ? format(new Date(stats.latest.createdAt), "HH:mm 'hs'") : "creá tu primer backup"} icon={<Clock3 className="h-6 w-6" />} tone="amber" />
+                    <MetricCard title="Estado" value={initialBackups.length > 0 ? "Cubierto" : "Pendiente"} description={initialBackups.length > 0 ? "hay punto de recuperación" : "sin copia disponible"} icon={<ShieldCheck className="h-6 w-6" />} tone={initialBackups.length > 0 ? "purple" : "rose"} />
+                </div>
+            </section>
+
+            <Card className="border bg-card shadow-sm">
+                <CardHeader className="gap-2">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                        <Database className="h-5 w-5 text-cyan-700" />
+                        Historial de copias
+                    </CardTitle>
+                    <CardDescription>Descargá archivos, eliminá copias antiguas o restaurá un punto específico.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="hidden overflow-hidden rounded-lg border md:block">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead>Archivo</TableHead>
+                                    <TableHead>Fecha</TableHead>
+                                    <TableHead>Tamaño</TableHead>
+                                    <TableHead className="text-right">Acciones</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {initialBackups.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-40 text-center text-muted-foreground">
+                                            No hay copias de seguridad disponibles.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : initialBackups.map((backup) => (
+                                    <BackupRow key={backup.name} backup={backup} isBusy={isBusy} onDelete={setDeleteTarget} onRestore={setRestoreTarget} />
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    <div className="grid gap-3 md:hidden">
+                        {initialBackups.length === 0 ? (
+                            <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+                                No hay copias de seguridad disponibles.
+                            </div>
+                        ) : initialBackups.map((backup) => (
+                            <BackupMobileCard key={backup.name} backup={backup} isBusy={isBusy} onDelete={setDeleteTarget} onRestore={setRestoreTarget} />
                         ))}
-                        {initialBackups.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                                    No hay copias de seguridad disponibles.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                        <AlertDialogTitle>Eliminar copia de seguridad</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta acción eliminará permanentemente el archivo de backup <span className="font-mono text-foreground font-semibold">{deleteTarget}</span>.
+                            Se eliminará permanentemente <span className="font-mono font-semibold text-foreground">{deleteBackupMeta?.name || deleteTarget}</span>. Esta acción no borra datos del sistema, solo el archivo de backup.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Eliminar
+                            Eliminar archivo
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -247,47 +228,31 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
             <AlertDialog open={!!restoreTarget} onOpenChange={(open) => !open && setRestoreTarget(null)}>
                 <AlertDialogContent className="border-destructive/50 border-2">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-destructive flex items-center gap-2">
-                            <RotateCcw className="h-6 w-6" />
-                            PELIGRO: RESTAURACIÓN DE SISTEMA
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="h-5 w-5" />
+                            Restauración destructiva
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-3" asChild>
-                            <div>
-                                <div className="font-bold text-foreground">
-                                    Vas a restaurar la base de datos al estado del archivo: <br />
-                                    <div className="font-mono bg-muted p-2 mt-1 rounded text-sm text-foreground break-all">{restoreTarget}</div>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-4">
+                                <p>Vas a restaurar la base al estado de este archivo:</p>
+                                <div className="rounded-md border bg-muted p-3 font-mono text-xs text-foreground break-all">
+                                    {restoreBackupMeta?.name || restoreTarget}
                                 </div>
-                                <p className="text-destructive font-semibold">
-                                    ESTA ACCIÓN ES DESTRUCTIVA.
-                                </p>
-                                <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                                    <li>Se borrarán <span className="font-bold text-foreground">TODOS</span> los datos actuales que no estén en el backup.</li>
-                                    <li>Se reemplazarán usuarios, productos, ventas y reparaciones.</li>
-                                    <li>No se puede deshacer.</li>
-                                </ul>
-                                <div className="pt-2">
-                                    <label className="text-xs font-semibold uppercase text-muted-foreground">
-                                        Escribe "RECUPERAR" para confirmar:
-                                    </label>
-                                    <Input
-                                        value={restoreConfirmation}
-                                        onChange={(e) => setRestoreConfirmation(e.target.value)}
-                                        placeholder="RECUPERAR"
-                                        className="mt-1 border-destructive/30 focus-visible:ring-destructive"
-                                    />
+                                <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground">
+                                    Se reemplazarán usuarios, productos, ventas, reparaciones y movimientos posteriores a esa copia.
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Escribí RECUPERAR para confirmar</label>
+                                    <Input value={restoreConfirmation} onChange={(event) => setRestoreConfirmation(event.target.value)} placeholder="RECUPERAR" className="border-destructive/30 focus-visible:ring-destructive" />
                                 </div>
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar, me arrepentí</AlertDialogCancel>
-                        <Button
-                            variant="destructive"
-                            onClick={handleRestore}
-                            disabled={restoreConfirmation !== "RECUPERAR" || isLoading}
-                            className="bg-destructive hover:bg-destructive/90"
-                        >
-                            {isLoading ? "Restaurando..." : "CONFIRMAR RESTAURACIÓN"}
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <Button variant="destructive" onClick={handleRestore} disabled={restoreConfirmation !== "RECUPERAR" || isBusy}>
+                            {activeAction === "restore" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Confirmar restauración
                         </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>

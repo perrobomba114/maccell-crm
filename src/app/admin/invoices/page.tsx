@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
     Table,
     TableBody,
@@ -89,46 +88,50 @@ export default async function InvoicesPage({
                     </div>
                 </div>
 
-                <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-4">
-                    <Card className="border-emerald-200 bg-emerald-50/70 shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/20">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-100">
-                                <DollarSign className="h-4 w-4" />
-                                Total facturado
-                            </CardTitle>
-                            <CardDescription>{periodLabel}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-black tracking-tight text-emerald-950 dark:text-emerald-50">
-                                {currencyFormatter.format(totalAmount)}
+                <div className="grid gap-6 p-4 sm:p-5 md:grid-cols-2 lg:grid-cols-4">
+                    <Card className="relative overflow-hidden border-none bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg">
+                        <CardContent className="flex min-h-[218px] flex-col p-6">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <p className="mb-1 text-sm font-medium text-emerald-100">Total facturado</p>
+                                    <h3 className="text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalAmount)}</h3>
+                                </div>
+                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                    <DollarSign className="h-6 w-6 text-white" />
+                                </div>
                             </div>
-                            <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">{totalCount} comprobantes</p>
+                            <div className="mt-auto flex items-center gap-2 pt-4">
+                                <span className="rounded-full bg-white/20 px-2 py-1 text-xs font-bold">{totalCount} comprobantes</span>
+                                <span className="text-xs text-emerald-100">{periodLabel}</span>
+                            </div>
                         </CardContent>
+                        <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+                        <div className="pointer-events-none absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-black/10 blur-2xl" />
                     </Card>
 
-                    <Card className="border-sky-200 bg-sky-50/70 shadow-sm dark:border-sky-900/50 dark:bg-sky-950/20">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2 text-sm font-bold text-sky-900 dark:text-sky-100">
-                                <Percent className="h-4 w-4" />
-                                IVA facturado
-                            </CardTitle>
-                            <CardDescription>Solo IVA 21% para facturas nuevas</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-black tracking-tight text-sky-950 dark:text-sky-50">
-                                {currencyFormatter.format(totalVat)}
+                    <Card className="relative overflow-hidden border-none bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
+                        <CardContent className="flex min-h-[218px] flex-col p-6">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <p className="mb-1 text-sm font-medium text-blue-100">IVA facturado</p>
+                                    <h3 className="text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalVat)}</h3>
+                                </div>
+                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                    <Percent className="h-6 w-6 text-white" />
+                                </div>
                             </div>
-                            <p className="mt-1 text-xs font-medium text-sky-700 dark:text-sky-300">Facturación nueva configurada al 21%</p>
+                            <div className="mt-auto pt-4 text-sm text-blue-100">Solo facturación nueva configurada al 21%</div>
                         </CardContent>
+                        <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
                     </Card>
 
                     {maccellSummary && (
                         <FiscalEntityCard
                             title="MACCELL"
                             subtitle="3 locales, mismo certificado"
-                            icon={<Landmark className="h-4 w-4" />}
+                            icon={<Landmark className="h-6 w-6 text-white" />}
                             summary={maccellSummary}
-                            tone="blue"
+                            tone="amber"
                         />
                     )}
 
@@ -136,9 +139,9 @@ export default async function InvoicesPage({
                         <FiscalEntityCard
                             title="8 Bit Accesorios"
                             subtitle="certificado AFIP propio"
-                            icon={<Store className="h-4 w-4" />}
+                            icon={<Store className="h-6 w-6 text-white" />}
                             summary={eightBitSummary}
-                            tone="violet"
+                            tone="purple"
                         />
                     )}
                 </div>
@@ -239,41 +242,41 @@ function FiscalEntityCard({
     subtitle: string;
     icon: ReactNode;
     summary: Awaited<ReturnType<typeof getInvoices>>["entitySummaries"][number];
-    tone: "blue" | "violet";
+    tone: "amber" | "purple";
 }) {
-    const color = tone === "blue"
-        ? "border-blue-200 bg-blue-50/70 text-blue-950 dark:border-blue-900/50 dark:bg-blue-950/20 dark:text-blue-50"
-        : "border-violet-200 bg-violet-50/70 text-violet-950 dark:border-violet-900/50 dark:bg-violet-950/20 dark:text-violet-50";
+    const color = tone === "amber"
+        ? "from-amber-400 to-orange-600"
+        : "from-purple-500 to-pink-600";
+    const mutedText = tone === "amber" ? "text-amber-100" : "text-purple-100";
 
     return (
-        <Card className={`${color} shadow-sm`}>
-            <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-bold">
-                    {icon}
-                    {title}
-                </CardTitle>
-                <CardDescription>{subtitle}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                <div>
-                    <div className="text-2xl font-black tracking-tight">{currencyFormatter.format(summary.totalVat)}</div>
-                    <p className="text-xs font-semibold opacity-70">IVA facturado · {summary.count} comprobantes</p>
+        <Card className={`relative overflow-hidden border-none bg-gradient-to-br ${color} text-white shadow-lg`}>
+            <CardContent className="flex min-h-[218px] flex-col p-6">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <p className={`mb-1 text-sm font-medium ${mutedText}`}>{title}</p>
+                        <h3 className="text-2xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(summary.totalVat)}</h3>
+                    </div>
+                    <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                        {icon}
+                    </div>
                 </div>
-                <Separator className="opacity-50" />
-                <div className="space-y-1.5">
+                <p className={`mt-2 text-xs font-semibold ${mutedText}`}>IVA facturado · {summary.count} comprobantes · {subtitle}</p>
+                <div className="mt-auto space-y-1.5 border-t border-white/20 pt-4">
                     {summary.branches.length === 0 ? (
-                        <p className="text-xs opacity-70">Sin comprobantes en el período.</p>
+                        <p className={`text-xs ${mutedText}`}>Sin comprobantes en el período.</p>
                     ) : summary.branches.map((branch) => (
-                        <div key={branch.name} className="flex items-center justify-between gap-3 text-xs">
+                        <div key={branch.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-xs">
                             <span className="flex min-w-0 items-center gap-1.5 font-semibold">
-                                <Building2 className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                                <Building2 className="h-3.5 w-3.5 shrink-0 text-white/80" />
                                 <span className="truncate">{branch.name}</span>
                             </span>
-                            <span className="font-mono font-bold">{currencyFormatter.format(branch.totalVat)}</span>
+                            <span className="text-right font-mono font-bold tabular-nums">{currencyFormatter.format(branch.totalVat)}</span>
                         </div>
                     ))}
                 </div>
             </CardContent>
+            <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
         </Card>
     );
 }

@@ -38,7 +38,9 @@ public/repairs/
 upload/
 
 # Backups
-backups/
+/backups/
+!src/components/admin/backups/
+!src/components/admin/backups/**
 *.sql
 !prisma/migrations/**/*.sql
 *.zip
@@ -58,7 +60,17 @@ afip-certs/
 # Agent related
 .agent/
 .agents/
+!.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/maccell/
+!.agents/skills/maccell/**
+!.agents/skills/frontend-design/
+!.agents/skills/frontend-design/**
 AGENT.md
 .claude/
+.kiro/
+.qwen/
 
 /AGENTS.md

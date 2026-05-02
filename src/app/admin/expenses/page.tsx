@@ -73,68 +73,71 @@ export default async function AdminExpensesPage({
                     </div>
                 </div>
 
-                <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-4">
-                    <Card className="border-rose-200 bg-rose-50/70 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/20">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2 text-sm font-bold text-rose-900 dark:text-rose-100">
-                                <DollarSign className="h-4 w-4" />
-                                Gastos del {periodLabel}
-                            </CardTitle>
-                            <CardDescription>{totalCount} registros filtrados</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-black tracking-tight text-rose-950 dark:text-rose-50">
-                                - {currencyFormatter.format(totalAmount)}
+                <div className="grid gap-6 p-4 sm:p-5 md:grid-cols-2 lg:grid-cols-4">
+                    <Card className="relative overflow-hidden border-none bg-gradient-to-br from-rose-500 to-red-700 text-white shadow-lg">
+                        <CardContent className="flex min-h-[198px] flex-col p-6">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <p className="mb-1 text-sm font-medium text-rose-100">Gastos del {periodLabel}</p>
+                                    <h3 className="text-3xl font-bold leading-none tracking-tight tabular-nums">- {currencyFormatter.format(totalAmount)}</h3>
+                                </div>
+                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                    <DollarSign className="h-6 w-6 text-white" />
+                                </div>
                             </div>
+                            <div className="mt-auto pt-4 text-sm text-rose-100">{totalCount} registros filtrados</div>
                         </CardContent>
+                        <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
                     </Card>
 
-                    <Card className="border-orange-200 bg-orange-50/70 shadow-sm dark:border-orange-900/50 dark:bg-orange-950/20">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2 text-sm font-bold text-orange-900 dark:text-orange-100">
-                                <CalendarDays className="h-4 w-4" />
-                                Total del mes
-                            </CardTitle>
-                            <CardDescription>Acumulado mensual Argentina</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-black tracking-tight text-orange-950 dark:text-orange-50">
-                                - {currencyFormatter.format(monthlyTotal)}
+                    <Card className="relative overflow-hidden border-none bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg">
+                        <CardContent className="flex min-h-[198px] flex-col p-6">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <p className="mb-1 text-sm font-medium text-amber-100">Total del mes</p>
+                                    <h3 className="text-3xl font-bold leading-none tracking-tight tabular-nums">- {currencyFormatter.format(monthlyTotal)}</h3>
+                                </div>
+                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                    <CalendarDays className="h-6 w-6 text-white" />
+                                </div>
                             </div>
+                            <div className="mt-auto pt-4 text-sm text-amber-100">Acumulado mensual Argentina</div>
                         </CardContent>
+                        <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
                     </Card>
 
-                    <Card className="border-slate-200 bg-slate-50/80 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2 text-sm font-bold">
-                                <TrendingDown className="h-4 w-4" />
-                                Promedio
-                            </CardTitle>
-                            <CardDescription>Por registro filtrado</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-black tracking-tight">
-                                {currencyFormatter.format(totalCount > 0 ? totalAmount / totalCount : 0)}
+                    <Card className="relative overflow-hidden border-none bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
+                        <CardContent className="flex min-h-[198px] flex-col p-6">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <p className="mb-1 text-sm font-medium text-blue-100">Promedio</p>
+                                    <h3 className="text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalCount > 0 ? totalAmount / totalCount : 0)}</h3>
+                                </div>
+                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                    <TrendingDown className="h-6 w-6 text-white" />
+                                </div>
                             </div>
+                            <div className="mt-auto pt-4 text-sm text-blue-100">Por registro filtrado</div>
                         </CardContent>
+                        <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
                     </Card>
 
-                    <Card className="border-blue-200 bg-blue-50/70 shadow-sm dark:border-blue-900/50 dark:bg-blue-950/20">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2 text-sm font-bold text-blue-900 dark:text-blue-100">
-                                <Building2 className="h-4 w-4" />
-                                Sucursal principal
-                            </CardTitle>
-                            <CardDescription>Mayor gasto del mes</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="truncate text-xl font-black tracking-tight text-blue-950 dark:text-blue-50">
-                                {topBranch?.branchName || "Sin datos"}
+                    <Card className="relative overflow-hidden border-none bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-lg">
+                        <CardContent className="flex min-h-[198px] flex-col p-6">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <p className="mb-1 text-sm font-medium text-purple-100">Sucursal principal</p>
+                                    <h3 className="truncate text-2xl font-bold leading-none tracking-tight">{topBranch?.branchName || "Sin datos"}</h3>
+                                </div>
+                                <div className="rounded-xl bg-white/20 p-3 backdrop-blur-sm">
+                                    <Building2 className="h-6 w-6 text-white" />
+                                </div>
                             </div>
-                            <p className="mt-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                            <p className="mt-auto pt-4 text-xs font-semibold tabular-nums text-purple-100">
                                 {topBranch ? `- ${currencyFormatter.format(topBranch.total)} · ${topBranch.count} registros` : "Sin gastos mensuales"}
                             </p>
                         </CardContent>
+                        <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
                     </Card>
                 </div>
             </section>

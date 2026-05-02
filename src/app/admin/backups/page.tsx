@@ -19,10 +19,8 @@ export default async function BackupsPage() {
     }));
 
     return (
-        <div className="container mx-auto py-6">
-            <BackupClient
-                initialBackups={backups.map(b => ({ ...b, createdAt: new Date(b.createdAt) }))}
-            />
+        <div className="p-4 sm:p-6 lg:p-8">
+            <BackupClient initialBackups={backups.map((b) => ({ ...b, createdAt: new Date(b.createdAt) }))} />
         </div>
     );
 }
