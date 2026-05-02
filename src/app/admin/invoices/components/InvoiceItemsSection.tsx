@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, ShoppingCart, Trash2 } from "lucide-react";
 import type { InvoiceItemField, InvoiceItemForm, InvoiceItemValue } from "@/types/invoice-form";
 
@@ -56,15 +55,9 @@ export function InvoiceItemsSection({
                             </div>
                         </div>
                         <div className="col-span-1 md:col-span-1">
-                            <Select value={item.vatCondition} onValueChange={v => handleUpdateItem(item.id, 'vatCondition', v as InvoiceItemForm["vatCondition"])}>
-                                <SelectTrigger className="bg-zinc-950 border-zinc-700 h-10 px-2 text-xs">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
-                                    <SelectItem value="21">21%</SelectItem>
-                                    <SelectItem value="10.5">10.5%</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <div className="flex h-10 items-center justify-center rounded-md border border-emerald-900/60 bg-emerald-950/30 px-2 text-xs font-black text-emerald-300">
+                                21%
+                            </div>
                         </div>
                         <div className="col-span-1 md:col-span-1 flex justify-end md:justify-center">
                             <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} className="h-9 w-9 text-zinc-500 hover:text-red-400 hover:bg-red-950/20 rounded-full">

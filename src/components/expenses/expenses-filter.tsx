@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar as CalendarIcon, FilterX } from "lucide-react";
+import { Calendar as CalendarIcon, FilterX, ListFilter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -51,13 +51,13 @@ export function ExpensesFilter() {
     };
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
                         variant={"outline"}
                         className={cn(
-                            "w-[240px] justify-start text-left font-normal",
+                            "h-11 w-full justify-start text-left font-semibold sm:w-[250px]",
                             !date && "text-muted-foreground"
                         )}
                     >
@@ -74,9 +74,16 @@ export function ExpensesFilter() {
                     />
                 </PopoverContent>
             </Popover>
+            {!date && (
+                <Button variant="secondary" className="h-11 gap-2 font-bold" disabled>
+                    <ListFilter className="h-4 w-4" />
+                    Vista completa
+                </Button>
+            )}
             {date && (
-                <Button variant="ghost" size="icon" onClick={clearFilter} title="Limpiar filtro">
+                <Button variant="outline" className="h-11 gap-2 font-bold" onClick={clearFilter} title="Ver todos los gastos">
                     <FilterX className="h-4 w-4" />
+                    Ver todos
                 </Button>
             )}
         </div>

@@ -1,319 +1,273 @@
-"use strict";
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Loader2, Calendar, Ticket, Phone } from "lucide-react";
 import { resolveReturnRequest } from "@/actions/return-actions";
-import { toast } from "sonner";
-import { useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { CheckCircle2, Clock3, Loader2, PackageCheck, Phone, Search, Ticket, UserRound, XCircle } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
+import type { ReturnRequestForAdmin, ReturnStatus } from "./return-types";
+import {
+    EmptyReturnsState,
+    MetricCard,
+    MobileReturnCard,
+    NotePreview,
+    PartsStack,
+    STATUS_OPTIONS,
+    StatusBadge,
+    formatReturnDate,
+    getReturnParts,
+} from "./return-ui";
 
-interface ReturnRequest {
-    id: string;
-    status: "PENDING" | "ACCEPTED" | "REJECTED";
-    technicianNote: string | null;
-    adminNote: string | null;
-    createdAt: Date;
-    technician: {
-        name: string;
-    };
-    repair: {
-        ticketNumber: string;
-        customer: {
-            name: string;
-            phone: string;
-        };
-        status: {
-            name: string;
-        };
-        parts: Array<{
-            id: string;
-            quantity: number;
-            sparePart: {
-                name: string;
-                code: string;
-            };
-        }>;
-    };
-    partsSnapshot?: any;
-}
+type AdminReturnsClientProps = {
+    returns: ReturnRequestForAdmin[];
+    adminId: string;
+};
 
-export default function AdminReturnsClient({ returns: initialReturns, adminId }: { returns: ReturnRequest[], adminId: string }) {
-    // Optimistic UI could be added, but for now we rely on revalidation
-    const [selectedRequest, setSelectedRequest] = useState<ReturnRequest | null>(null);
+export default function AdminReturnsClient({ returns: initialReturns, adminId }: AdminReturnsClientProps) {
+    const [selectedRequest, setSelectedRequest] = useState<ReturnRequestForAdmin | null>(null);
     const [actionType, setActionType] = useState<"ACCEPTED" | "REJECTED" | null>(null);
     const [adminNote, setAdminNote] = useState("");
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<ReturnStatus | "ALL">("PENDING");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [isPending, startTransition] = useTransition();
 
-    const openConfirmDialog = (req: ReturnRequest, type: "ACCEPTED" | "REJECTED") => {
+    const counts = useMemo(() => ({
+        total: initialReturns.length,
+        pending: initialReturns.filter((req) => req.status === "PENDING").length,
+        accepted: initialReturns.filter((req) => req.status === "ACCEPTED").length,
+        rejected: initialReturns.filter((req) => req.status === "REJECTED").length,
+    }), [initialReturns]);
+
+    const filteredReturns = useMemo(() => {
+        const words = searchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
+
+        return initialReturns.filter((req) => {
+            if (statusFilter !== "ALL" && req.status !== statusFilter) return false;
+            if (words.length === 0) return true;
+
+            const parts = getReturnParts(req).map((part) => `${part.name} ${part.code || ""}`).join(" ");
+            const haystack = [
+                req.repair.ticketNumber,
+                req.repair.customer.name,
+                req.repair.customer.phone || "",
+                req.technician.name,
+                req.technicianNote || "",
+                parts,
+            ].join(" ").toLowerCase();
+
+            return words.every((word) => haystack.includes(word));
+        });
+    }, [initialReturns, searchTerm, statusFilter]);
+
+    const openConfirmDialog = (req: ReturnRequestForAdmin, type: "ACCEPTED" | "REJECTED") => {
         setSelectedRequest(req);
         setActionType(type);
         setAdminNote("");
     };
 
-    const handleConfirm = async () => {
+    const handleConfirm = () => {
         if (!selectedRequest || !actionType) return;
 
-        setIsProcessing(true);
-        try {
-            const result = await resolveReturnRequest(selectedRequest.id, adminId, actionType, adminNote);
-            if (result.success) {
-                toast.success(`Solicitud ${actionType === "ACCEPTED" ? "aceptada" : "rechazada"} correctamente.`);
-                setSelectedRequest(null);
-            } else {
-                toast.error(result.error);
+        startTransition(async () => {
+            try {
+                const result = await resolveReturnRequest(selectedRequest.id, adminId, actionType, adminNote);
+                if (result.success) {
+                    toast.success(`Solicitud ${actionType === "ACCEPTED" ? "aceptada" : "rechazada"} correctamente.`);
+                    setSelectedRequest(null);
+                } else {
+                    toast.error(result.error);
+                }
+            } catch {
+                toast.error("Error al procesar solicitud.");
             }
-        } catch (error) {
-            toast.error("Error al procesar solicitud.");
-        } finally {
-            setIsProcessing(false);
-        }
+        });
     };
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-2">
-                <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent dark:from-gray-100 dark:to-gray-400">
-                    Gestión de Devoluciones
-                </h2>
-                <p className="text-muted-foreground">
-                    Administra las solicitudes de devolución de repuestos de los técnicos.
-                </p>
-            </div>
+            <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
+                <div className="border-b bg-[linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--muted))_100%)] p-5 sm:p-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="max-w-2xl">
+                            <Badge variant="outline" className="mb-3 rounded-md border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-300">
+                                Repuestos y stock
+                            </Badge>
+                            <h2 className="text-3xl font-black tracking-tight text-foreground">Gestión de Devoluciones</h2>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                Revisá solicitudes de técnicos, validá repuestos y resolvé el retorno de stock sin perder contexto del ticket.
+                            </p>
+                        </div>
 
-            <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
-                <Table>
-                    <TableHeader className="bg-muted/40">
-                        <TableRow className="hover:bg-transparent border-b border-border/60">
-                            <TableHead className="text-center font-semibold text-muted-foreground">TICKET</TableHead>
-                            <TableHead className="text-center font-semibold text-muted-foreground">TÉCNICO</TableHead>
-                            <TableHead className="text-center font-semibold text-muted-foreground">REPUESTOS</TableHead>
-                            <TableHead className="text-center font-semibold text-muted-foreground">CLIENTE</TableHead>
-                            <TableHead className="text-center font-semibold text-muted-foreground">OBSERVACIÓN</TableHead>
-                            <TableHead className="text-center font-semibold text-muted-foreground">ESTADO</TableHead>
-                            <TableHead className="text-center font-semibold text-muted-foreground">FECHA</TableHead>
-                            <TableHead className="text-center font-semibold text-muted-foreground">ACCIONES</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {initialReturns.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
-                                    <div className="flex flex-col items-center justify-center gap-2">
-                                        <CheckCircle className="h-8 w-8 opacity-20" />
-                                        <p>No hay solicitudes pendientes.</p>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            initialReturns.map((req) => (
-                                <TableRow key={req.id} className="group hover:bg-muted/30 transition-colors border-b border-border/40">
-                                    <TableCell className="text-center font-mono font-medium">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <Ticket className="h-4 w-4 text-muted-foreground" />
-                                            #{req.repair.ticketNumber}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs">
-                                                {req.technician.name.charAt(0)}
-                                            </div>
-                                            <span className="font-medium text-sm">{req.technician.name}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <div className="flex flex-col gap-1 items-center">
-                                            {(() => {
-                                                let displayParts: { quantity: number; name: string }[] = [];
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[560px]">
+                            <MetricCard label="Pendientes" value={counts.pending} tone="amber" icon={<Clock3 className="h-5 w-5" />} />
+                            <MetricCard label="Aceptadas" value={counts.accepted} tone="emerald" icon={<CheckCircle2 className="h-5 w-5" />} />
+                            <MetricCard label="Rechazadas" value={counts.rejected} tone="rose" icon={<XCircle className="h-5 w-5" />} />
+                            <MetricCard label="Total" value={counts.total} tone="slate" icon={<PackageCheck className="h-5 w-5" />} />
+                        </div>
+                    </div>
+                </div>
 
-                                                if (req.partsSnapshot && Array.isArray(req.partsSnapshot) && req.partsSnapshot.length > 0) {
-                                                    displayParts = req.partsSnapshot.map((p: any) => ({
-                                                        quantity: p.quantity,
-                                                        name: p.name
-                                                    }));
-                                                } else if (req.repair.parts && req.repair.parts.length > 0) {
-                                                    displayParts = req.repair.parts.map(p => ({
-                                                        quantity: p.quantity,
-                                                        name: p.sparePart.name
-                                                    }));
-                                                }
-
-                                                if (displayParts.length > 0) {
-                                                    return displayParts.map((part, idx) => (
-                                                        <Badge key={idx} variant="outline" className="text-xs font-normal">
-                                                            {part.quantity}x {part.name}
-                                                        </Badge>
-                                                    ));
-                                                } else {
-                                                    return <span className="text-xs text-muted-foreground italic">Sin repuestos</span>;
-                                                }
-                                            })()}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <div className="flex flex-col items-center justify-center gap-0.5">
-                                            <span className="font-medium text-sm">{req.repair.customer.name}</span>
-                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                <Phone className="h-3 w-3" />
-                                                {req.repair.customer.phone}
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <div className="mx-auto max-w-[180px] px-3 py-1.5 rounded-lg border border-border/40 bg-muted/20 text-xs italic text-muted-foreground truncate cursor-help hover:bg-muted/40 transition-colors">
-                                                        {req.technicianNote || "Sin observaciones"}
-                                                    </div>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p className="max-w-xs text-sm">{req.technicianNote || "Sin observaciones"}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <StatusBadge status={req.status} />
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <div className="flex flex-col items-center justify-center text-sm">
-                                            <div className="flex items-center gap-1.5 font-medium">
-                                                <Calendar className="h-3.5 w-3.5 text-muted-foreground/70" />
-                                                {format(new Date(req.createdAt), "dd/MM", { locale: es })}
-                                            </div>
-                                            <span className="text-xs text-muted-foreground">
-                                                {format(new Date(req.createdAt), "HH:mm")}
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        {req.status === "PENDING" ? (
-                                            <div className="flex justify-center gap-2">
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                                                    onClick={() => openConfirmDialog(req, "ACCEPTED")}
-                                                    title="Aceptar"
-                                                >
-                                                    <CheckCircle className="h-5 w-5" />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-                                                    onClick={() => openConfirmDialog(req, "REJECTED")}
-                                                    title="Rechazar"
-                                                >
-                                                    <XCircle className="h-5 w-5" />
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                                                Resuelto
-                                            </span>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-
-            <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            {actionType === "ACCEPTED" ? <CheckCircle className="h-5 w-5 text-emerald-500" /> : <XCircle className="h-5 w-5 text-rose-500" />}
-                            {actionType === "ACCEPTED" ? "Aceptar Devolución" : "Rechazar Devolución"}
-                        </DialogTitle>
-                        <DialogDescription>
-                            Confirmar acción para el ticket <span className="font-mono font-bold text-foreground">#{selectedRequest?.repair.ticketNumber}</span> de {selectedRequest?.technician.name}.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Nota Administrativa (Opcional)</Label>
-                            <Textarea
-                                value={adminNote}
-                                onChange={(e) => setAdminNote(e.target.value)}
-                                placeholder="Ej: Repuestos recibidos correctamente / No corresponde devolución..."
-                                className="resize-none"
+                <div className="space-y-4 p-4 sm:p-5">
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="relative w-full xl:max-w-md">
+                            <Label htmlFor="returns-search" className="sr-only">Buscar devoluciones</Label>
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                id="returns-search"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Buscar por ticket, técnico, cliente o repuesto"
+                                className="h-11 pl-9"
                             />
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            {STATUS_OPTIONS.map((option) => (
+                                <Button
+                                    key={option.value}
+                                    type="button"
+                                    size="sm"
+                                    variant={statusFilter === option.value ? "default" : "outline"}
+                                    onClick={() => setStatusFilter(option.value)}
+                                    className={cn("h-9 rounded-md font-bold", statusFilter === option.value && "bg-slate-950 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950")}
+                                >
+                                    {option.label}
+                                </Button>
+                            ))}
                         </div>
                     </div>
 
+                    {filteredReturns.length === 0 ? (
+                        <EmptyReturnsState />
+                    ) : (
+                        <>
+                            <div className="hidden overflow-hidden rounded-lg border md:block">
+                                <Table>
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableHead className="w-[120px]">Ticket</TableHead>
+                                            <TableHead>Técnico</TableHead>
+                                            <TableHead>Repuestos</TableHead>
+                                            <TableHead>Cliente</TableHead>
+                                            <TableHead>Observación</TableHead>
+                                            <TableHead>Estado</TableHead>
+                                            <TableHead>Fecha</TableHead>
+                                            <TableHead className="text-right">Acciones</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredReturns.map((req) => {
+                                            const parts = getReturnParts(req);
+                                            const date = formatReturnDate(req.createdAt);
+
+                                            return (
+                                                <TableRow key={req.id} className="align-top">
+                                                    <TableCell className="font-mono font-black">
+                                                        <span className="inline-flex items-center gap-2">
+                                                            <Ticket className="h-4 w-4 text-orange-600" />
+                                                            #{req.repair.ticketNumber}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2 font-semibold">
+                                                            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-xs font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                                                {req.technician.name.charAt(0)}
+                                                            </span>
+                                                            {req.technician.name}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell><PartsStack parts={parts} /></TableCell>
+                                                    <TableCell>
+                                                        <div className="space-y-1">
+                                                            <p className="font-semibold">{req.repair.customer.name}</p>
+                                                            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                                <Phone className="h-3.5 w-3.5" />
+                                                                {req.repair.customer.phone || "Sin teléfono"}
+                                                            </p>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell><NotePreview note={req.technicianNote} /></TableCell>
+                                                    <TableCell><StatusBadge status={req.status} /></TableCell>
+                                                    <TableCell>
+                                                        <div className="text-sm font-semibold">{date.day}</div>
+                                                        <div className="text-xs text-muted-foreground">{date.time} hs</div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        {req.status === "PENDING" ? (
+                                                            <div className="inline-flex gap-2">
+                                                                <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => openConfirmDialog(req, "ACCEPTED")}>
+                                                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                                                    Aceptar
+                                                                </Button>
+                                                                <Button size="sm" variant="outline" className="border-rose-200 text-rose-700 hover:bg-rose-50" onClick={() => openConfirmDialog(req, "REJECTED")}>
+                                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                                    Rechazar
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs font-bold text-muted-foreground">Resuelta</span>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
+                            <div className="grid gap-3 md:hidden">
+                                {filteredReturns.map((req) => (
+                                    <MobileReturnCard key={req.id} req={req} onResolve={openConfirmDialog} />
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+            </section>
+
+            <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
+                <DialogContent className="sm:max-w-[520px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {actionType === "ACCEPTED" ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <XCircle className="h-5 w-5 text-rose-600" />}
+                            {actionType === "ACCEPTED" ? "Aceptar devolución" : "Rechazar devolución"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Ticket <span className="font-mono font-bold text-foreground">#{selectedRequest?.repair.ticketNumber}</span> solicitado por {selectedRequest?.technician.name}.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3 py-2">
+                        <Label htmlFor="admin-note">Nota administrativa</Label>
+                        <Textarea
+                            id="admin-note"
+                            value={adminNote}
+                            onChange={(event) => setAdminNote(event.target.value)}
+                            placeholder="Ej: Repuestos recibidos correctamente / No corresponde devolución..."
+                            className="min-h-28 resize-none"
+                        />
+                    </div>
+
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setSelectedRequest(null)} disabled={isProcessing}>Cancelar</Button>
+                        <Button variant="ghost" onClick={() => setSelectedRequest(null)} disabled={isPending}>Cancelar</Button>
                         <Button
                             onClick={handleConfirm}
-                            disabled={isProcessing}
-                            className={actionType === "ACCEPTED" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"}
+                            disabled={isPending}
+                            className={actionType === "ACCEPTED" ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-rose-600 text-white hover:bg-rose-700"}
                         >
-                            {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {actionType === "ACCEPTED" ? "Aceptar Solicitud" : "Rechazar Solicitud"}
+                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {actionType === "ACCEPTED" ? "Aceptar solicitud" : "Rechazar solicitud"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
     );
-}
-
-function StatusBadge({ status }: { status: string }) {
-    switch (status) {
-        case "PENDING":
-            return (
-                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800 px-2 py-0.5">
-                    <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-                    Pendiente
-                </Badge>
-            );
-        case "ACCEPTED":
-            return (
-                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 px-2 py-0.5">
-                    <CheckCircle className="mr-1.5 h-3 w-3" />
-                    Aceptada
-                </Badge>
-            );
-        case "REJECTED":
-            return (
-                <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800 px-2 py-0.5">
-                    <XCircle className="mr-1.5 h-3 w-3" />
-                    Rechazada
-                </Badge>
-            );
-        default:
-            return <Badge variant="outline">{status}</Badge>;
-    }
 }

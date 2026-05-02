@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { generateAdminInvoice, searchCuit } from "@/lib/actions/admin-invoice";
 import type { InvoiceBranchOption, InvoiceItemField, InvoiceItemForm, InvoiceItemValue } from "@/types/invoice-form";
@@ -35,6 +35,20 @@ export function useInvoiceForm(branches: InvoiceBranchOption[], userId: string, 
         { id: "1", description: "", quantity: 1, unitPrice: 0, vatCondition: "21" }
     ]);
 
+    const branchesByEntity = useMemo(() => ({
+        MACCELL: branches.filter((branch) => branch.name.toUpperCase().includes("MACCELL")),
+        "8BIT": branches.filter((branch) => branch.code === "8BIT" || branch.name.toUpperCase().includes("8 BIT")),
+    }), [branches]);
+
+    useEffect(() => {
+        const entityBranches = branchesByEntity[billingEntity];
+        const firstBranchId = entityBranches[0]?.id;
+        if (firstBranchId && !entityBranches.some((branch) => branch.id === branchId)) {
+            setBranchId(firstBranchId);
+        }
+        setSalesPoint(billingEntity === "8BIT" ? "3" : "10");
+    }, [billingEntity, branchId, branchesByEntity]);
+
     // Totals
     const [totals, setTotals] = useState({ net: 0, vat: 0, total: 0 });
 
@@ -44,7 +58,7 @@ export function useInvoiceForm(branches: InvoiceBranchOption[], userId: string, 
 
         items.forEach(item => {
             const totalItem = item.quantity * item.unitPrice;
-            const rate = item.vatCondition === "21" ? 1.21 : 1.105;
+            const rate = 1.21;
             const itemNet = totalItem / rate;
             const itemVat = totalItem - itemNet;
 
@@ -165,6 +179,7 @@ export function useInvoiceForm(branches: InvoiceBranchOption[], userId: string, 
         branchId, setBranchId, salesPoint, setSalesPoint,
         invoiceType: invoiceType as "A" | "B", setInvoiceType,
         billingEntity: billingEntity as "MACCELL" | "8BIT", setBillingEntity,
+        branchesByEntity,
         concept: concept as 1 | 2 | 3, setConcept,
         serviceDateFrom, setServiceDateFrom,
         serviceDateTo, setServiceDateTo, paymentDueDate, setPaymentDueDate,

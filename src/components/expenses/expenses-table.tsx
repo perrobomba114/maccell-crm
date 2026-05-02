@@ -13,25 +13,19 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Edit, Trash2, MoreHorizontal } from "lucide-react";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Building2, Edit, ReceiptText, Trash2, UserRound } from "lucide-react";
 import { deleteExpenseAction } from "@/actions/admin-expenses";
 import { EditExpenseDialog } from "./edit-expense-dialog";
 import { toast } from "sonner";
 import { getImgUrl } from "@/lib/utils";
+import type { AdminExpense } from "@/types/admin-expenses";
 
 interface ExpensesTableProps {
-    expenses: any[];
+    expenses: AdminExpense[];
 }
 
 export function ExpensesTable({ expenses }: ExpensesTableProps) {
-    const [editingExpense, setEditingExpense] = useState<any>(null);
+    const [editingExpense, setEditingExpense] = useState<AdminExpense | null>(null);
 
     const handleDelete = async (id: string) => {
         if (confirm("¿Estás seguro de que deseas eliminar este gasto?")) {
@@ -46,24 +40,25 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
 
     return (
         <div className="space-y-4">
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm overflow-hidden">
+            <div className="hidden overflow-hidden rounded-lg border bg-card shadow-sm md:block">
                 <Table>
-                    <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50">
-                        <TableRow className="hover:bg-transparent border-b border-zinc-100 dark:border-zinc-800">
-                            <TableHead className="w-[180px] font-bold text-xs uppercase tracking-wider text-zinc-500 pl-6 h-12">Fecha</TableHead>
-                            <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500 h-12">Detalle</TableHead>
-                            <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500 h-12">Sucursal</TableHead>
-                            <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500 text-right h-12">Monto</TableHead>
-                            <TableHead className="w-[100px] font-bold text-xs uppercase tracking-wider text-zinc-500 text-center h-12">Acciones</TableHead>
+                    <TableHeader className="bg-muted/50">
+                        <TableRow className="hover:bg-transparent">
+                            <TableHead className="w-[170px] pl-6">Fecha</TableHead>
+                            <TableHead>Detalle</TableHead>
+                            <TableHead>Registró</TableHead>
+                            <TableHead>Sucursal</TableHead>
+                            <TableHead className="text-right">Monto</TableHead>
+                            <TableHead className="w-[110px] text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {expenses.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-32 text-center text-zinc-500">
+                                <TableCell colSpan={6} className="h-40 text-center text-muted-foreground">
                                     <div className="flex flex-col items-center justify-center gap-2">
-                                        <div className="p-3 bg-zinc-100 dark:bg-zinc-800 rounded-full">
-                                            <Trash2 className="h-5 w-5 text-zinc-400" />
+                                        <div className="rounded-full bg-emerald-50 p-3 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                            <ReceiptText className="h-5 w-5" />
                                         </div>
                                         <p className="font-medium text-sm">No hay gastos registrados</p>
                                     </div>
@@ -73,48 +68,49 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                             expenses.map((expense) => (
                                 <TableRow
                                     key={expense.id}
-                                    className="group hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors border-b border-zinc-100 dark:border-zinc-800 last:border-0"
+                                    className="group"
                                 >
                                     <TableCell className="pl-6 py-4">
                                         <div className="flex flex-col">
-                                            <span className="font-semibold text-zinc-700 dark:text-zinc-200 tabular-nums">
+                                            <span className="font-semibold tabular-nums">
                                                 {format(new Date(expense.createdAt), "dd MMM yyyy", { locale: es })}
                                             </span>
-                                            <span className="text-xs text-zinc-400 font-medium">
+                                            <span className="text-xs text-muted-foreground font-medium">
                                                 {format(new Date(expense.createdAt), "HH:mm", { locale: es })} hs
                                             </span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-4">
-                                        <div className="flex flex-col gap-1">
-                                            <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                                                {expense.description}
-                                            </span>
-                                            <div className="flex items-center gap-2">
-                                                <Avatar className="h-5 w-5 border border-zinc-200">
-                                                    <AvatarImage src={getImgUrl(expense.user.imageUrl)} />
-                                                    <AvatarFallback className="text-[9px]">{expense.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                                </Avatar>
-                                                <span className="text-xs text-zinc-500">{expense.user.name}</span>
-                                            </div>
+                                        <div className="max-w-[380px] font-semibold leading-snug">
+                                            {expense.description}
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-4">
-                                        <span className="inline-flex items-center px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-7 w-7 border">
+                                                <AvatarImage src={getImgUrl(expense.user.imageUrl)} />
+                                                <AvatarFallback className="text-[10px]">{expense.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-sm font-medium">{expense.user.name}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="py-4">
+                                        <span className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1 text-xs font-bold">
+                                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                                             {expense.branch.name}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right py-4">
-                                        <span className="font-bold text-red-600 dark:text-red-400 tabular-nums text-base">
+                                        <span className="font-black text-rose-600 dark:text-rose-400 tabular-nums text-base">
                                             - ${expense.amount.toLocaleString()}
                                         </span>
                                     </TableCell>
-                                    <TableCell className="py-4">
-                                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <TableCell className="py-4 text-right">
+                                        <div className="inline-flex items-center justify-end gap-1">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-8 w-8 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                                className="h-8 w-8 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                                 onClick={() => setEditingExpense(expense)}
                                                 title="Editar"
                                             >
@@ -123,7 +119,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-8 w-8 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                className="h-8 w-8 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
                                                 onClick={() => handleDelete(expense.id)}
                                                 title="Eliminar"
                                             >
@@ -136,6 +132,43 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                         )}
                     </TableBody>
                 </Table>
+            </div>
+
+            <div className="grid gap-3 md:hidden">
+                {expenses.length === 0 ? (
+                    <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+                        No hay gastos registrados
+                    </div>
+                ) : expenses.map((expense) => (
+                    <article key={expense.id} className="rounded-lg border bg-card p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <p className="font-bold leading-snug">{expense.description}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {format(new Date(expense.createdAt), "dd MMM yyyy · HH:mm 'hs'", { locale: es })}
+                                </p>
+                            </div>
+                            <span className="font-black text-rose-600">-${expense.amount.toLocaleString()}</span>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                                <UserRound className="h-4 w-4 shrink-0" />
+                                <span className="truncate">{expense.user.name}</span>
+                            </div>
+                            <span className="rounded-md bg-muted px-2 py-1 text-xs font-bold">{expense.branch.name}</span>
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setEditingExpense(expense)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                            </Button>
+                            <Button variant="outline" size="sm" className="border-rose-200 text-rose-700 hover:bg-rose-50" onClick={() => handleDelete(expense.id)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Eliminar
+                            </Button>
+                        </div>
+                    </article>
+                ))}
             </div>
 
             {editingExpense && (

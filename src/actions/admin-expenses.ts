@@ -2,10 +2,10 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-
-import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
-
-const TIMEZONE = "America/Argentina/Buenos_Aires";
+import { formatInTimeZone } from "date-fns-tz";
+import type { Prisma } from "@prisma/client";
+import { getDailyRange, getMonthlyRange, TIMEZONE } from "@/lib/date-utils";
+import type { ExpenseBranchSummary } from "@/types/admin-expenses";
 
 export async function getExpensesAction({
     date,
@@ -19,21 +19,18 @@ export async function getExpensesAction({
     userId?: string;
 }) {
     try {
-        const where: any = {};
+        const where: Prisma.ExpenseWhereInput = {};
 
         // Determine Reference Date (Argentina Time)
         // If date is provided, use it. If not, get today in AR.
         const referenceDateStr = date || formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
 
-        // 1. Daily Query Range (AR Time -> UTC)
-        // Explicitly parse 00:00:00 AR and 23:59:59 AR
         if (date) {
-            const startDate = fromZonedTime(`${referenceDateStr} 00:00:00`, TIMEZONE);
-            const endDate = fromZonedTime(`${referenceDateStr} 23:59:59.999`, TIMEZONE);
+            const { start, end } = getDailyRange(referenceDateStr);
 
             where.createdAt = {
-                gte: startDate,
-                lte: endDate
+                gte: start,
+                lte: end
             };
         }
 
@@ -43,7 +40,7 @@ export async function getExpensesAction({
 
         const skip = (page - 1) * limit;
 
-        const [expenses, totalCount] = await Promise.all([
+        const [expenses, totalCount, aggregations] = await Promise.all([
             db.expense.findMany({
                 where,
                 include: {
@@ -58,42 +55,55 @@ export async function getExpensesAction({
                 skip,
                 take: limit
             }),
-            db.expense.count({ where })
+            db.expense.count({ where }),
+            db.expense.aggregate({
+                where,
+                _sum: { amount: true }
+            })
         ]);
 
         const totalPages = Math.ceil(totalCount / limit);
 
-        // Daily/Filtered Total
-        const aggregations = await db.expense.aggregate({
-            where,
-            _sum: { amount: true }
-        });
         const totalAmount = aggregations._sum.amount || 0;
 
-        // 2. Monthly Query Range (AR Time -> UTC)
-        // Calculate the first and last day of the month based on referenceDateStr
-        const [year, month] = referenceDateStr.split('-').map(Number);
+        const { start, end } = getMonthlyRange(referenceDateStr);
 
-        // Start: 1st of month 00:00:00
-        const startOfMonth = fromZonedTime(`${year}-${String(month).padStart(2, '0')}-01 00:00:00`, TIMEZONE);
-
-        // End: Last day of month 23:59:59
-        // Trick: Day 0 of next month gives last day of current month
-        const lastDay = new Date(year, month, 0).getDate();
-        const endOfMonth = fromZonedTime(`${year}-${String(month).padStart(2, '0')}-${lastDay} 23:59:59.999`, TIMEZONE);
-
-        const monthlyAggregations = await db.expense.aggregate({
-            where: {
-                createdAt: {
-                    gte: startOfMonth,
-                    lte: endOfMonth
-                },
-                userId: userId // Maintain same user context for monthly total if present
-                    ? userId
-                    : undefined
+        const monthlyWhere: Prisma.ExpenseWhereInput = {
+            createdAt: {
+                gte: start,
+                lte: end
             },
-            _sum: { amount: true }
+            userId: userId || undefined
+        };
+
+        const [monthlyAggregations, branchGroups] = await Promise.all([
+            db.expense.aggregate({
+                where: monthlyWhere,
+                _sum: { amount: true }
+            }),
+            db.expense.groupBy({
+                by: ["branchId"],
+                where: monthlyWhere,
+                _sum: { amount: true },
+                _count: { _all: true },
+                orderBy: { _sum: { amount: "desc" } },
+            })
+        ]);
+
+        const branches = await db.branch.findMany({
+            where: {
+                id: { in: branchGroups.map((group) => group.branchId) }
+            },
+            select: { id: true, name: true }
         });
+
+        const branchNames = new Map(branches.map((branch) => [branch.id, branch.name]));
+        const branchSummary: ExpenseBranchSummary[] = branchGroups.map((group) => ({
+            branchName: branchNames.get(group.branchId) || "Sucursal sin nombre",
+            total: group._sum.amount || 0,
+            count: group._count._all,
+        }));
+
         const monthlyTotal = monthlyAggregations._sum.amount || 0;
 
         return {
@@ -102,7 +112,8 @@ export async function getExpensesAction({
             totalPages,
             currentPage: page,
             totalAmount,
-            monthlyTotal
+            monthlyTotal,
+            branchSummary
         };
 
     } catch (error) {
@@ -113,7 +124,8 @@ export async function getExpensesAction({
             totalPages: 0,
             currentPage: 1,
             totalAmount: 0,
-            monthlyTotal: 0
+            monthlyTotal: 0,
+            branchSummary: []
         };
     }
 }

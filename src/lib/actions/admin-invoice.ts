@@ -19,7 +19,7 @@ export type AdminInvoiceItem = {
     description: string;
     quantity: number;
     unitPrice: number;
-    vatCondition: "21" | "10.5"; // Simplification for now
+    vatCondition: "21";
 };
 
 export async function generateAdminInvoice(data: {
@@ -42,8 +42,6 @@ export async function generateAdminInvoice(data: {
     paymentDueDate?: string; // YYYY-MM-DD
     billingEntity?: 'MACCELL' | '8BIT';
 }) {
-    console.warn("[DEBUG] Generating Admin Invoice...", data);
-
     try {
         if (!data.items || data.items.length === 0) {
             return { success: false, error: "Debe agregar al menos un ítems." };
@@ -52,39 +50,22 @@ export async function generateAdminInvoice(data: {
         // 1. Calculate Totals (Server-side validation)
         let totalNet21 = 0;
         let totalVat21 = 0;
-        let totalNet105 = 0;
-        let totalVat105 = 0;
 
         for (const item of data.items) {
             const itemTotal = item.quantity * item.unitPrice;
-            // Assuming the Unit Price entered IS "Final" (Tax Included)
-            let rate = 1.21;
-            let is21 = true;
-
-            if (item.vatCondition === "10.5") {
-                rate = 1.105;
-                is21 = false;
-            }
-
+            const rate = 1.21;
             const net = itemTotal / rate;
             const vat = itemTotal - net;
 
-            if (is21) {
-                totalNet21 += net;
-                totalVat21 += vat;
-            } else {
-                totalNet105 += net;
-                totalVat105 += vat;
-            }
+            totalNet21 += net;
+            totalVat21 += vat;
         }
 
         totalNet21 = formatAmount(totalNet21);
         totalVat21 = formatAmount(totalVat21);
-        totalNet105 = formatAmount(totalNet105);
-        totalVat105 = formatAmount(totalVat105);
 
-        const totalNet = formatAmount(totalNet21 + totalNet105);
-        const totalVat = formatAmount(totalVat21 + totalVat105);
+        const totalNet = totalNet21;
+        const totalVat = totalVat21;
         const totalAmount = formatAmount(totalNet + totalVat);
 
         // Prepare detailed IVA items for AFIP
@@ -92,10 +73,6 @@ export async function generateAdminInvoice(data: {
         if (totalNet21 > 0) {
             ivaItems.push({ id: 5, base: totalNet21, amount: totalVat21 });
         }
-        if (totalNet105 > 0) {
-            ivaItems.push({ id: 4, base: totalNet105, amount: totalVat105 });
-        }
-
         // 2. Prepare AFIP Payload
         const concept = data.concept || 1; // 1: Products, 2: Services, 3: Mixed
 

@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
     Table,
     TableBody,
@@ -11,16 +12,23 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { FileText, DollarSign, Calendar as CalendarIcon } from "lucide-react";
+import { Building2, DollarSign, Landmark, Percent, ReceiptText, Store } from "lucide-react";
 import { CreateInvoiceModal } from "./create-invoice-modal";
 import { InvoicePrintButton } from "./invoice-print-button";
 import { getInvoices } from "@/actions/invoice-actions";
 import { InvoiceDateFilter } from "./invoice-date-filter";
 import { InvoicePagination } from "./invoice-pagination";
 import { InvoiceDetailModal } from "./invoice-detail-modal";
+import type { ReactNode } from "react";
 
 
 export const dynamic = 'force-dynamic';
+
+const currencyFormatter = new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 2,
+});
 
 export default async function InvoicesPage({
     searchParams
@@ -45,154 +53,160 @@ export default async function InvoicesPage({
     const adminUserId = adminUser?.id || "admin-user";
 
     // Fetch Branches for the modal
-    const branches = await db.branch.findMany({ select: { id: true, name: true } });
+    const branches = await db.branch.findMany({ select: { id: true, name: true, code: true } });
 
     // Fetch Invoices via Server Action
-    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalNet, totalVat, count21, count105 } = await getInvoices({
+    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalVat, entitySummaries } = await getInvoices({
         page,
         limit: 25,
         date
     });
 
-    // Calculate VAT Split (Mathematical Derivation)
-    // N21 = (TotalVAT - 0.105 * TotalNet) / 0.105
-    // This assumes only 21% and 10.5% rates exist.
-    let vat21 = 0;
-    let vat105 = 0;
-
-    if (totalVat > 0 && totalNet > 0) {
-        const net21 = (totalVat - (0.105 * totalNet)) / 0.105;
-        // Clamp for safety (floating point issues)
-        const safeNet21 = Math.max(0, net21);
-        vat21 = safeNet21 * 0.21;
-        vat105 = Math.max(0, totalVat - vat21);
-    }
+    const maccellSummary = entitySummaries.find((summary) => summary.entity === "MACCELL");
+    const eightBitSummary = entitySummaries.find((summary) => summary.entity === "8BIT");
+    const periodLabel = date && date.length === 10 ? "del día seleccionado" : "del mes seleccionado";
 
     return (
-        <div className="p-8 space-y-6 bg-black min-h-screen text-white" suppressHydrationWarning>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight mb-2">Facturas Electrónicas</h1>
-                    <p className="text-zinc-400">Historial de comprobantes emitidos vía ARCA/AFIP.</p>
-                </div>
-                <div className="flex flex-col md:flex-row items-end md:items-center gap-4 w-full md:w-auto">
-                    {/* Date Filter Toolbar */}
-                    <div className="flex items-center gap-2 bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800">
-                        <InvoiceDateFilter />
+        <div className="space-y-6 p-4 sm:p-6 lg:p-8" suppressHydrationWarning>
+            <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+                <div className="border-b bg-[linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--muted))_100%)] p-5 sm:p-6">
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                        <div className="max-w-3xl">
+                            <Badge variant="outline" className="mb-3 rounded-md border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                AFIP / ARCA
+                            </Badge>
+                            <h1 className="text-3xl font-black tracking-tight text-foreground">Facturas Electrónicas</h1>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                Control fiscal por certificado: MACCELL consolida sus 3 locales y 8 Bit Accesorios se muestra separado.
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <div className="rounded-lg border bg-background/70 p-1.5">
+                                <InvoiceDateFilter />
+                            </div>
+                            <CreateInvoiceModal branches={branches} userId={adminUserId} />
+                        </div>
                     </div>
-                    <CreateInvoiceModal branches={branches} userId={adminUserId} />
+                </div>
+
+                <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-4">
+                    <Card className="border-emerald-200 bg-emerald-50/70 shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                                <DollarSign className="h-4 w-4" />
+                                Total facturado
+                            </CardTitle>
+                            <CardDescription>{periodLabel}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-black tracking-tight text-emerald-950 dark:text-emerald-50">
+                                {currencyFormatter.format(totalAmount)}
+                            </div>
+                            <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">{totalCount} comprobantes</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-sky-200 bg-sky-50/70 shadow-sm dark:border-sky-900/50 dark:bg-sky-950/20">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-sm font-bold text-sky-900 dark:text-sky-100">
+                                <Percent className="h-4 w-4" />
+                                IVA facturado
+                            </CardTitle>
+                            <CardDescription>Solo IVA 21% para facturas nuevas</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-black tracking-tight text-sky-950 dark:text-sky-50">
+                                {currencyFormatter.format(totalVat)}
+                            </div>
+                            <p className="mt-1 text-xs font-medium text-sky-700 dark:text-sky-300">Facturación nueva configurada al 21%</p>
+                        </CardContent>
+                    </Card>
+
+                    {maccellSummary && (
+                        <FiscalEntityCard
+                            title="MACCELL"
+                            subtitle="3 locales, mismo certificado"
+                            icon={<Landmark className="h-4 w-4" />}
+                            summary={maccellSummary}
+                            tone="blue"
+                        />
+                    )}
+
+                    {eightBitSummary && (
+                        <FiscalEntityCard
+                            title="8 Bit Accesorios"
+                            subtitle="certificado AFIP propio"
+                            icon={<Store className="h-4 w-4" />}
+                            summary={eightBitSummary}
+                            tone="violet"
+                        />
+                    )}
                 </div>
             </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Total Invoice Card */}
-                <Card className="bg-emerald-600 border-emerald-500 shadow-md">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-white/80 flex items-center gap-2">
-                            <DollarSign className="w-4 h-4 text-emerald-200" />
-                            {date && date.length === 10 ? "Total Facturado del Día" : "Total Facturado (Mes)"}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-white">
-                            ${totalAmount.toLocaleString()}
-                        </div>
-                        <p className="text-xs text-emerald-100 mt-1">
-                            {date && date.length === 10 ? "Suma total del día seleccionado" : "Suma total del mes seleccionado"}
-                        </p>
-                    </CardContent>
-                </Card>
-
-                {/* IVA 21% Card */}
-                <Card className="bg-blue-600 border-blue-500 shadow-md">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-white/80 flex items-center gap-2">
-                            <span className="text-blue-200 font-bold">%</span>
-                            IVA 21%
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-white">
-                            ${vat21.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </div>
-                        <p className="text-xs text-blue-100 mt-1">
-                            {count21} Comprobantes (Mes)
-                        </p>
-                    </CardContent>
-                </Card>
-
-                {/* IVA 10.5% Card */}
-                <Card className="bg-orange-600 border-orange-500 shadow-md">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-white/80 flex items-center gap-2">
-                            <span className="text-orange-200 font-bold">%</span>
-                            IVA 10.5%
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-white">
-                            ${vat105.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </div>
-                        <p className="text-xs text-orange-100 mt-1">
-                            {count105} Comprobantes (Mes)
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <Card className="bg-zinc-900 border-zinc-800">
-                <CardHeader>
-                    <CardTitle className="text-xl flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-blue-500" />
+            <Card className="border bg-card shadow-sm">
+                <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                        <ReceiptText className="h-5 w-5 text-emerald-600" />
                         Comprobantes ({totalCount})
                     </CardTitle>
+                    <CardDescription>Historial emitido por las entidades fiscales configuradas.</CardDescription>
+                </div>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="border-zinc-800 hover:bg-zinc-900/50">
-                                <TableHead className="text-zinc-400">Fecha</TableHead>
-                                <TableHead className="text-zinc-400">Sucursal</TableHead>
-                                <TableHead className="text-zinc-400">Comprobante</TableHead>
-                                <TableHead className="text-zinc-400">Cliente</TableHead>
-                                <TableHead className="text-zinc-400">CAE</TableHead>
-                                <TableHead className="text-right text-zinc-400">Total</TableHead>
-                                <TableHead className="text-right text-zinc-400">Acciones</TableHead>
+                    <div className="overflow-hidden rounded-lg border">
+                        <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow className="hover:bg-transparent">
+                                <TableHead>Fecha</TableHead>
+                                <TableHead>Entidad / local</TableHead>
+                                <TableHead>Comprobante</TableHead>
+                                <TableHead>Cliente</TableHead>
+                                <TableHead>CAE</TableHead>
+                                <TableHead className="text-right">IVA</TableHead>
+                                <TableHead className="text-right">Total</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {invoices.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center text-zinc-500">
+                                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                         No se encontraron facturas {date ? "para esta fecha" : "emitidas"}.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 invoices.map((inv) => (
-                                    <TableRow key={inv.id} className="border-zinc-800 hover:bg-zinc-800/50">
-                                        <TableCell className="font-medium text-zinc-200">
+                                    <TableRow key={inv.id}>
+                                        <TableCell className="font-medium">
                                             {format(inv.createdAt, "dd/MM/yyyy HH:mm", { locale: es })}
                                         </TableCell>
-                                        <TableCell className="text-zinc-300">
-                                            {inv.sale.branch.name}
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold">{inv.billingEntity === "8BIT" ? "8 Bit Accesorios" : "MACCELL"}</span>
+                                                <span className="text-xs text-muted-foreground">{inv.sale.branch.name}</span>
+                                            </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="outline" className="bg-zinc-950 border-zinc-700 text-zinc-300">
+                                            <Badge variant="outline" className="rounded-md bg-background font-mono">
                                                 {inv.invoiceType} - {inv.invoiceNumber}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-zinc-300">
+                                        <TableCell>
                                             <div className="flex flex-col">
                                                 <span className="font-medium truncate max-w-[150px]" title={inv.customerName}>{inv.customerName}</span>
-                                                <span className="text-xs text-zinc-500">{inv.customerDocType}: {inv.customerDoc}</span>
+                                                <span className="text-xs text-muted-foreground">{inv.customerDocType}: {inv.customerDoc}</span>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="font-mono text-xs text-zinc-400">
+                                        <TableCell className="font-mono text-xs text-muted-foreground">
                                             {inv.cae}
                                         </TableCell>
-                                        <TableCell className="text-right font-bold text-green-400">
-                                            ${inv.totalAmount.toLocaleString()}
+                                        <TableCell className="text-right font-semibold text-sky-700 dark:text-sky-300">
+                                            {currencyFormatter.format(inv.vatAmount)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-black text-emerald-700 dark:text-emerald-300">
+                                            {currencyFormatter.format(inv.totalAmount)}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-1">
@@ -205,10 +219,61 @@ export default async function InvoicesPage({
                             )}
                         </TableBody>
                     </Table>
+                    </div>
 
                     <InvoicePagination currentPage={currentPage} totalPages={totalPages} />
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+function FiscalEntityCard({
+    title,
+    subtitle,
+    icon,
+    summary,
+    tone,
+}: {
+    title: string;
+    subtitle: string;
+    icon: ReactNode;
+    summary: Awaited<ReturnType<typeof getInvoices>>["entitySummaries"][number];
+    tone: "blue" | "violet";
+}) {
+    const color = tone === "blue"
+        ? "border-blue-200 bg-blue-50/70 text-blue-950 dark:border-blue-900/50 dark:bg-blue-950/20 dark:text-blue-50"
+        : "border-violet-200 bg-violet-50/70 text-violet-950 dark:border-violet-900/50 dark:bg-violet-950/20 dark:text-violet-50";
+
+    return (
+        <Card className={`${color} shadow-sm`}>
+            <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-bold">
+                    {icon}
+                    {title}
+                </CardTitle>
+                <CardDescription>{subtitle}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div>
+                    <div className="text-2xl font-black tracking-tight">{currencyFormatter.format(summary.totalVat)}</div>
+                    <p className="text-xs font-semibold opacity-70">IVA facturado · {summary.count} comprobantes</p>
+                </div>
+                <Separator className="opacity-50" />
+                <div className="space-y-1.5">
+                    {summary.branches.length === 0 ? (
+                        <p className="text-xs opacity-70">Sin comprobantes en el período.</p>
+                    ) : summary.branches.map((branch) => (
+                        <div key={branch.name} className="flex items-center justify-between gap-3 text-xs">
+                            <span className="flex min-w-0 items-center gap-1.5 font-semibold">
+                                <Building2 className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                                <span className="truncate">{branch.name}</span>
+                            </span>
+                            <span className="font-mono font-bold">{currencyFormatter.format(branch.totalVat)}</span>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
     );
 }

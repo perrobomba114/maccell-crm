@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { formatInTimeZone } from "date-fns-tz";
 import { getDailyRange, getArgentinaDate, TIMEZONE } from "@/lib/date-utils";
 import { getCurrentUser } from "@/actions/auth-actions";
@@ -8,9 +9,16 @@ import { getCurrentUser } from "@/actions/auth-actions";
 export interface TechnicianPerformance {
     id: string;
     name: string;
-    repairedCount: number;
+    seenCount: number;
     avgTime: string;
 }
+
+type TechnicianPerformanceFilters = {
+    date?: Date | string;
+    query?: string;
+    branchId?: string;
+    warrantyOnly?: boolean;
+};
 
 function normalizePerformanceDate(date: Date | string = getArgentinaDate()) {
     if (typeof date === "string") {
@@ -30,15 +38,50 @@ function formatAverageTime(totalMinutes: number, count: number) {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins} min`;
 }
 
-export async function getTechnicianPerformance(date: Date | string = getArgentinaDate()) {
+function buildPerformanceRepairWhere(filters: TechnicianPerformanceFilters): Prisma.RepairWhereInput {
+    const repairWhere: Prisma.RepairWhereInput = {};
+    const andFilters: Prisma.RepairWhereInput[] = [];
+    const query = filters.query?.trim();
+
+    if (filters.branchId && filters.branchId !== "ALL") {
+        repairWhere.branchId = filters.branchId;
+    }
+
+    if (filters.warrantyOnly) {
+        repairWhere.isWarranty = true;
+    }
+
+    if (query) {
+        const words = query.split(/\s+/).filter(Boolean);
+        andFilters.push(...words.map((word): Prisma.RepairWhereInput => ({
+            OR: [
+                { ticketNumber: { contains: word, mode: "insensitive" } },
+                { customer: { name: { contains: word, mode: "insensitive" } } },
+                { customer: { phone: { contains: word, mode: "insensitive" } } },
+                { deviceBrand: { contains: word, mode: "insensitive" } },
+                { deviceModel: { contains: word, mode: "insensitive" } },
+                { branch: { name: { contains: word, mode: "insensitive" } } },
+            ],
+        })));
+    }
+
+    if (andFilters.length > 0) {
+        repairWhere.AND = andFilters;
+    }
+
+    return repairWhere;
+}
+
+export async function getTechnicianPerformance(filters: TechnicianPerformanceFilters = { date: getArgentinaDate() }) {
     try {
         const caller = await getCurrentUser();
         if (!caller || caller.role !== "ADMIN") {
             return { success: false, error: "Unauthorized", data: [] };
         }
 
-        const dateStr = normalizePerformanceDate(date);
+        const dateStr = normalizePerformanceDate(filters.date ?? getArgentinaDate());
         const { start, end } = getDailyRange(dateStr);
+        const repairWhere = buildPerformanceRepairWhere(filters);
 
         const [techs, historyEntries] = await Promise.all([
             db.user.findMany({
@@ -49,8 +92,8 @@ export async function getTechnicianPerformance(date: Date | string = getArgentin
             db.repairStatusHistory.findMany({
                 where: {
                     userId: { not: null },
-                    toStatusId: { in: [5, 6, 7] },
                     createdAt: { gte: start, lte: end },
+                    repair: repairWhere,
                 },
                 select: {
                     repairId: true,
@@ -96,12 +139,12 @@ export async function getTechnicianPerformance(date: Date | string = getArgentin
 
         const stats: TechnicianPerformance[] = techs.map((tech) => {
             const techPerformance = performanceByTech.get(tech.id);
-            const repairedCount = techPerformance?.repairIds.size ?? 0;
+            const seenCount = techPerformance?.repairIds.size ?? 0;
 
             return {
                 id: tech.id,
                 name: tech.name,
-                repairedCount,
+                seenCount,
                 avgTime: techPerformance
                     ? formatAverageTime(techPerformance.totalMinutes, techPerformance.validTimeCount)
                     : "-",

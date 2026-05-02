@@ -13,7 +13,13 @@ import { getTechnicianPerformance, TechnicianPerformance } from "@/actions/repai
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
-export function TechnicianStatsCards() {
+type TechnicianStatsCardsProps = {
+    query: string;
+    branchId: string;
+    warrantyOnly: boolean;
+};
+
+export function TechnicianStatsCards({ query, branchId, warrantyOnly }: TechnicianStatsCardsProps) {
     const [date, setDate] = useState<Date | undefined>(undefined);
     const [stats, setStats] = useState<TechnicianPerformance[]>([]);
     const [loading, setLoading] = useState(true);
@@ -37,14 +43,13 @@ export function TechnicianStatsCards() {
         if (date) {
             loadStats();
         }
-    }, [date]);
+    }, [date, query, branchId, warrantyOnly]);
 
     const loadStats = async () => {
         setLoading(true);
-        const res = await getTechnicianPerformance(date);
+        const res = await getTechnicianPerformance({ date, query, branchId, warrantyOnly });
         if (res.success && res.data) {
-            // Sort by repairedCount descending
-            const sorted = [...res.data].sort((a, b) => b.repairedCount - a.repairedCount);
+            const sorted = [...res.data].sort((a, b) => b.seenCount - a.seenCount);
             setStats(sorted);
         }
         setLoading(false);
@@ -56,12 +61,14 @@ export function TechnicianStatsCards() {
         return "bg-orange-500 text-white border-none shadow-md cursor-pointer transition-all duration-300 hover:scale-105 hover:ring-4 hover:ring-orange-300/50";
     }
 
-    const handleTechClick = (techName: string) => {
+    const handleTechClick = (tech: TechnicianPerformance) => {
         const params = new URLSearchParams(searchParams.toString());
-        if (params.get("tech") === techName) {
+        if (params.get("techId") === tech.id) {
+            params.delete("techId");
             params.delete("tech"); // Toggle off
         } else {
-            params.set("tech", techName);
+            params.set("techId", tech.id);
+            params.set("tech", tech.name);
         }
         params.delete("page"); // Reset pagination
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -127,11 +134,11 @@ export function TechnicianStatsCards() {
                     ))
                 ) : stats.length > 0 ? (
                     stats.slice(0, 3).map((tech, index) => {
-                        const isActive = searchParams.get("tech") === tech.name;
+                        const isActive = searchParams.get("techId") === tech.id;
                         return (
                             <Card
                                 key={tech.id}
-                                onClick={() => handleTechClick(tech.name)}
+                                onClick={() => handleTechClick(tech)}
                                 className={cn("relative overflow-hidden", getCardStyles(index), isActive && "ring-4 ring-offset-2 ring-foreground/50 scale-105")}
                             >
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4 px-4">
@@ -145,7 +152,7 @@ export function TechnicianStatsCards() {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="px-4 pb-4">
-                                    <div className="text-5xl font-extrabold my-2 tracking-tighter shadow-sm">{tech.repairedCount}</div>
+                                    <div className="text-5xl font-extrabold my-2 tracking-tighter shadow-sm">{tech.seenCount}</div>
                                     <div className="flex items-center gap-2 bg-black/20 w-fit px-2 py-1.5 rounded-md backdrop-blur-sm">
                                         <Clock className="h-4 w-4 opacity-90" />
                                         <div className="flex flex-col leading-none">

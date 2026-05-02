@@ -13,6 +13,7 @@ interface InvoiceConfigSectionProps {
     paymentDueDate: string;
     branchId: string;
     branches: InvoiceBranchOption[];
+    branchesByEntity: Record<"MACCELL" | "8BIT", InvoiceBranchOption[]>;
     setBillingEntity: (val: "MACCELL" | "8BIT") => void;
     setInvoiceType: (val: "A" | "B") => void;
     setConcept: (val: 1 | 2 | 3) => void;
@@ -24,7 +25,7 @@ interface InvoiceConfigSectionProps {
 
 export function InvoiceConfigSection({
     billingEntity, invoiceType, concept, serviceDateFrom, serviceDateTo, paymentDueDate,
-    branchId, branches, setBillingEntity, setInvoiceType, setConcept,
+    branchId, branches, branchesByEntity, setBillingEntity, setInvoiceType, setConcept,
     setServiceDateFrom, setServiceDateTo, setPaymentDueDate, setBranchId
 }: InvoiceConfigSectionProps) {
     return (
@@ -34,13 +35,14 @@ export function InvoiceConfigSection({
             </div>
 
             <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-6">
-                <div className="hidden">
+                <div className="space-y-3">
+                    <Label className="text-zinc-400 font-medium">Local / punto operativo</Label>
                     <Select value={branchId} onValueChange={setBranchId}>
                         <SelectTrigger className="bg-zinc-950 border-zinc-700 h-11">
-                            <SelectValue placeholder="Seleccionar" />
+                            <SelectValue placeholder="Seleccionar local" />
                         </SelectTrigger>
                         <SelectContent className="bg-zinc-900 border-zinc-800">
-                            {branches.map(b => (
+                            {(branchesByEntity[billingEntity].length > 0 ? branchesByEntity[billingEntity] : branches).map(b => (
                                 <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                             ))}
                         </SelectContent>

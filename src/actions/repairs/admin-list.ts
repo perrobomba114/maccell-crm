@@ -21,6 +21,7 @@ function normalizeAdminRepairsQuery(input: string | AdminRepairsQuery = ""): Req
         branchId: params.branchId || "ALL",
         warrantyOnly: params.warrantyOnly ?? false,
         technician: params.technician?.trim() || "",
+        technicianId: params.technicianId?.trim() || "",
         date,
         page: Math.max(Number(params.page) || 1, 1),
         pageSize,
@@ -53,7 +54,17 @@ function buildAdminRepairsWhere(params: Required<AdminRepairsQuery>): Prisma.Rep
         whereClause.isWarranty = true;
     }
 
-    if (params.technician || params.date) {
+    if (params.technicianId) {
+        const { start, end } = getDailyRange(params.date || undefined);
+        andFilters.push({
+            statusHistory: {
+                some: {
+                    userId: params.technicianId,
+                    createdAt: { gte: start, lte: end },
+                },
+            },
+        });
+    } else if (params.technician || params.date) {
         const { start, end } = getDailyRange(params.date || undefined);
         const finishedOnDate: Prisma.RepairWhereInput = {
             statusHistory: {

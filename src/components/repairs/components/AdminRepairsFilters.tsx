@@ -142,11 +142,11 @@ export function AdminRepairsFilters({
             </div>
 
             {/* Active Tech Filter Badge */}
-            {searchParams.get('tech') && (
+            {searchParams.get('techId') && (
                 <div className="flex items-center gap-2 pt-2">
                     <span className="text-sm font-medium text-muted-foreground">Filtrando por técnico:</span>
-                    <Badge variant="secondary" className="px-3 py-1 text-sm font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors" onClick={() => updateParams({ tech: null })}>
-                        {searchParams.get('tech')}
+                    <Badge variant="secondary" className="px-3 py-1 text-sm font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors" onClick={() => updateParams({ techId: null, tech: null })}>
+                        {searchParams.get('tech') || searchParams.get('techId')}
                         <span className="sr-only">Quitar filtro</span>
                         <div className="bg-purple-200 dark:bg-purple-800 rounded-full p-0.5 hover:bg-purple-300 dark:hover:bg-purple-700">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>

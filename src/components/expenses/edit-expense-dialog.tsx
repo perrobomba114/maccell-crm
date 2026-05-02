@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { updateExpenseAction } from "@/actions/admin-expenses";
-import { Loader2 } from "lucide-react";
+import { Loader2, PencilLine } from "lucide-react";
+import type { AdminExpense } from "@/types/admin-expenses";
 
 interface EditExpenseDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    expense: any;
+    expense: AdminExpense;
 }
 
 export function EditExpenseDialog({ isOpen, onClose, expense }: EditExpenseDialogProps) {
@@ -43,7 +44,7 @@ export function EditExpenseDialog({ isOpen, onClose, expense }: EditExpenseDialo
             } else {
                 toast.error(result.error || "Error al actualizar");
             }
-        } catch (error) {
+        } catch {
             toast.error("Error inesperado");
         } finally {
             setIsLoading(false);
@@ -52,11 +53,14 @@ export function EditExpenseDialog({ isOpen, onClose, expense }: EditExpenseDialo
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[460px]">
                 <DialogHeader>
-                    <DialogTitle>Editar Gasto</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        <PencilLine className="h-5 w-5 text-rose-600" />
+                        Editar gasto
+                    </DialogTitle>
                     <DialogDescription>
-                        Modifica los detalles del gasto.
+                        Ajustá el monto o la descripción registrada por el vendedor.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -67,6 +71,7 @@ export function EditExpenseDialog({ isOpen, onClose, expense }: EditExpenseDialo
                             name="description"
                             defaultValue={expense.description}
                             placeholder="Descripción del gasto"
+                            className="h-11"
                             required
                         />
                     </div>
@@ -79,6 +84,7 @@ export function EditExpenseDialog({ isOpen, onClose, expense }: EditExpenseDialo
                             step="0.01"
                             defaultValue={expense.amount}
                             placeholder="0.00"
+                            className="h-11 font-mono"
                             required
                         />
                     </div>

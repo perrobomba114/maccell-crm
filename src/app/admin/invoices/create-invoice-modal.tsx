@@ -21,6 +21,7 @@ export function CreateInvoiceModal({ branches, userId }: { branches: InvoiceBran
         open, setOpen, isLoading, isSearching,
         branchId, setBranchId, salesPoint, setSalesPoint,
         invoiceType, setInvoiceType, billingEntity, setBillingEntity,
+        branchesByEntity,
         concept, setConcept, serviceDateFrom, setServiceDateFrom,
         serviceDateTo, setServiceDateTo, paymentDueDate, setPaymentDueDate,
         docType, docNumber, setDocNumber,
@@ -80,6 +81,7 @@ export function CreateInvoiceModal({ branches, userId }: { branches: InvoiceBran
                         paymentDueDate={paymentDueDate}
                         branchId={branchId}
                         branches={branches}
+                        branchesByEntity={branchesByEntity}
                         setBillingEntity={setBillingEntity}
                         setInvoiceType={setInvoiceType}
                         setConcept={setConcept}

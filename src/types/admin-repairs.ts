@@ -8,6 +8,7 @@ export type AdminRepairsQuery = {
     branchId?: string;
     warrantyOnly?: boolean;
     technician?: string;
+    technicianId?: string;
     date?: string;
     page?: number;
     pageSize?: number;

@@ -24,6 +24,7 @@ export default async function AdminRepairsPage(
     const query = typeof searchParams?.q === 'string' ? searchParams.q : "";
     const branchId = typeof searchParams?.branch === "string" ? searchParams.branch : "ALL";
     const technician = typeof searchParams?.tech === "string" ? searchParams.tech : "";
+    const technicianId = typeof searchParams?.techId === "string" ? searchParams.techId : "";
     const date = typeof searchParams?.date === "string" ? searchParams.date : "";
     const page = typeof searchParams?.page === "string" ? Number(searchParams.page) : 1;
     const warrantyOnly = searchParams?.warranty === "1";
@@ -32,7 +33,7 @@ export default async function AdminRepairsPage(
     if (!user || user.role !== "ADMIN") redirect("/");
 
     const [repairsData, branches] = await Promise.all([
-        getAllRepairsForAdminAction({ query, branchId, technician, date, page, warrantyOnly }),
+        getAllRepairsForAdminAction({ query, branchId, technician, technicianId, date, page, warrantyOnly }),
         getAllBranches()
     ]);
 
@@ -49,7 +50,7 @@ export default async function AdminRepairsPage(
             </div>
 
             {/* Performance Cards */}
-            <TechnicianStatsCards />
+            <TechnicianStatsCards query={query} branchId={branchId} warrantyOnly={warrantyOnly} />
 
             <Card>
                 <CardHeader>
