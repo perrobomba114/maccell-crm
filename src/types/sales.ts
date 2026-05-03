@@ -42,6 +42,15 @@ export type SaleWithDetails = {
     payments?: SalePaymentSummary[];
 };
 
+export type AdminSalesPage = {
+    sales: SaleWithDetails[];
+    totalSalesCount: number;
+    totalRevenue: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+};
+
 export type BranchRankingItem = {
     branchId: string | null;
     branchName: string;

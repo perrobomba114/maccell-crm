@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
-    getAdminSales,
+    getAdminSalesPage,
     getBranchRanking,
     deleteSale,
     updateSalePaymentMethod
@@ -10,6 +10,8 @@ import {
 import { getAllBranches } from "@/actions/branch-actions";
 import { printSaleTicket } from "@/lib/print-utils";
 import type { BranchRankingItem, BranchSummary, EditablePaymentMethod, SaleWithDetails } from "@/types/sales";
+
+const ADMIN_SALES_PAGE_SIZE = 25;
 
 export function useAdminSales() {
     const searchParams = useSearchParams();
@@ -25,6 +27,11 @@ export function useAdminSales() {
     );
     const [searchTerm, setSearchTerm] = useState(initialQuery);
     const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(ADMIN_SALES_PAGE_SIZE);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalSalesCount, setTotalSalesCount] = useState(0);
+    const [totalRevenue, setTotalRevenue] = useState(0);
 
     // View Sale State
     const [viewingSale, setViewingSale] = useState<SaleWithDetails | null>(null);
@@ -38,20 +45,32 @@ export function useAdminSales() {
     const [saleToDelete, setSaleToDelete] = useState<SaleWithDetails | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Computed Totals
-    const totalRevenue = sales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
-    const totalSalesCount = sales.length;
     const avgTicket = totalSalesCount > 0 ? totalRevenue / totalSalesCount : 0;
     const topBranch = rankingData[0];
+
+    const updateDate = useCallback((value: Date | undefined) => {
+        setPage(1);
+        setDate(value);
+    }, []);
+
+    const updateSearchTerm = useCallback((value: string) => {
+        setPage(1);
+        setSearchTerm(value);
+    }, []);
+
+    const updateSelectedBranch = useCallback((value: string) => {
+        setPage(1);
+        setSelectedBranch(value);
+    }, []);
 
     // Handle search param updates (navigation while on page)
     useEffect(() => {
         const querySearch = searchParams.get("search");
         if (querySearch && querySearch !== searchTerm) {
-            setSearchTerm(querySearch);
-            setDate(undefined); // Clear date filter to search globally
+            updateSearchTerm(querySearch);
+            updateDate(undefined); // Clear date filter to search globally
         }
-    }, [searchParams]);
+    }, [searchParams, searchTerm, updateDate, updateSearchTerm]);
 
     const loadBranches = useCallback(async () => {
         const res = await getAllBranches();
@@ -70,11 +89,13 @@ export function useAdminSales() {
             if (endStr) endStr.setHours(23, 59, 59, 999);
 
             const [salesData, rankingRes] = await Promise.all([
-                getAdminSales({
+                getAdminSalesPage({
                     startDate: startStr,
                     endDate: endStr,
                     term: searchTerm,
-                    branchId: selectedBranch
+                    branchId: selectedBranch,
+                    page,
+                    limit: ADMIN_SALES_PAGE_SIZE,
                 }),
                 getBranchRanking({
                     startDate: startStr,
@@ -82,7 +103,14 @@ export function useAdminSales() {
                 })
             ]);
 
-            setSales(salesData);
+            setSales(salesData.sales);
+            setTotalSalesCount(salesData.totalSalesCount);
+            setTotalRevenue(salesData.totalRevenue);
+            setTotalPages(salesData.totalPages);
+            setPageSize(salesData.pageSize);
+            if (salesData.totalSalesCount > 0 && page > salesData.totalPages) {
+                setPage(salesData.totalPages);
+            }
             setRankingData(rankingRes);
         } catch (error) {
             console.error("Error loading sales", error);
@@ -90,7 +118,7 @@ export function useAdminSales() {
         } finally {
             setLoading(false);
         }
-    }, [date, searchTerm, selectedBranch]);
+    }, [date, page, searchTerm, selectedBranch]);
 
     useEffect(() => {
         loadBranches();
@@ -160,11 +188,15 @@ export function useAdminSales() {
         branches,
         loading,
         date,
-        setDate,
+        setDate: updateDate,
         searchTerm,
-        setSearchTerm,
+        setSearchTerm: updateSearchTerm,
         selectedBranch,
-        setSelectedBranch,
+        setSelectedBranch: updateSelectedBranch,
+        page,
+        setPage,
+        pageSize,
+        totalPages,
         totalRevenue,
         totalSalesCount,
         avgTicket,

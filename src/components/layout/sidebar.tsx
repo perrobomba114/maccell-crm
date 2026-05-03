@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { LucideIcon, LayoutDashboard, Users, Building2, Package, Wrench, ShoppingCart, FileText, Receipt, ClipboardList, ChevronLeft, ChevronRight, Star, List, History, Box, BarChart3, Banknote, Percent, RotateCcw, Settings, X, ShieldCheck, Database, Bell, BrainCircuit, Tags, ListChecks, ArrowLeftRight } from "lucide-react";
 import { cn, getImgUrl } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     Tooltip,
     TooltipContent,
@@ -47,6 +47,7 @@ export function Sidebar({
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [internalIsMobileOpen, setInternalIsMobileOpen] = useState(false);
+    const previousPathname = useRef(pathname);
 
     const isMobileOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsMobileOpen;
 
@@ -86,6 +87,9 @@ export function Sidebar({
     };
 
     useEffect(() => {
+        if (previousPathname.current === pathname) return;
+        previousPathname.current = pathname;
+
         if (isMobile && isMobileOpen) {
             if (onClose) onClose();
             else setInternalIsMobileOpen(false);

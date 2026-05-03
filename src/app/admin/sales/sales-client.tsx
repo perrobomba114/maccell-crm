@@ -25,6 +25,7 @@ import { useAdminSales } from "./use-admin-sales";
 import { SalesMetricCard } from "./components/metrics";
 import { BranchRanking } from "./components/branch-ranking";
 import { SalesTable } from "./components/sales-table";
+import { SalesPagination } from "./components/sales-pagination";
 import { SaleDetailDialog } from "./components/sale-detail-dialog";
 import { EditPaymentDialog } from "./components/edit-payment-dialog";
 import { DeleteSaleDialog } from "./components/delete-sale-dialog";
@@ -52,6 +53,10 @@ export default function AdminSalesClient() {
         setSearchTerm,
         selectedBranch,
         setSelectedBranch,
+        page,
+        setPage,
+        pageSize,
+        totalPages,
         totalRevenue,
         totalSalesCount,
         avgTicket,
@@ -320,6 +325,14 @@ export default function AdminSalesClient() {
                         }}
                         onPrint={handlePrint}
                         onDelete={setSaleToDelete}
+                    />
+                    <SalesPagination
+                        page={page}
+                        totalPages={totalPages}
+                        pageSize={pageSize}
+                        totalItems={totalSalesCount}
+                        visibleItems={sales.length}
+                        onPageChange={setPage}
                     />
                 </CardContent>
             </Card>
