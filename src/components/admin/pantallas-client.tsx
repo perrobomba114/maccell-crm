@@ -9,6 +9,7 @@ import {
 } from "@/actions/pantallas-actions";
 import { PantallasContentList } from "@/components/admin/pantallas-content-list";
 import { PantallasCreateForm } from "@/components/admin/pantallas-create-form";
+import { PantallasDangerZone } from "@/components/admin/pantallas-danger-zone";
 import { PantallasPreviewPanel } from "@/components/admin/pantallas-preview-panel";
 import { PantallasScreenList } from "@/components/admin/pantallas-screen-list";
 import { PantallasScreenSettings } from "@/components/admin/pantallas-screen-settings";
@@ -20,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type PantallaMetricRow, type PantallasAdminSummary } from "@/lib/pantallas/admin-tools";
 import { type ContentRow, type ScreenRow } from "@/lib/pantallas/types";
-import { Monitor, RefreshCw } from "lucide-react";
+import { Monitor, MousePointer2, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 type ScreenWithCount = ScreenRow & { contenidos: number };
@@ -42,7 +43,7 @@ export function PantallasClient({
   initialSummary: PantallasAdminSummary;
 }) {
   const [screens, setScreens] = useState(initialScreens);
-  const [selectedScreenId, setSelectedScreenId] = useState<string | null>(initialScreens[0]?.id ?? null);
+  const [selectedScreenId, setSelectedScreenId] = useState<string | null>(null);
   const [screenForm, setScreenForm] = useState({ nombre: "", duracion: 15, activo: true });
   const [contents, setContents] = useState<ContentRow[]>([]);
   const [loadingContents, setLoadingContents] = useState(false);
@@ -51,7 +52,8 @@ export function PantallasClient({
   const [previewAutoPlay, setPreviewAutoPlay] = useState(true);
 
   const selectedScreen = useMemo(() => screens.find((s) => s.id === selectedScreenId) ?? null, [screens, selectedScreenId]);
-  const previewItem = contents[previewIndex] ?? null;
+  const activeContents = useMemo(() => contents.filter((item) => item.activo), [contents]);
+  const previewItem = activeContents[previewIndex] ?? null;
   const [isSaving, setIsSaving] = useState(false);
   const { clearUploadProgress, uploadContents, uploadProgress } = usePantallasUpload({
     screenId: selectedScreen?.id ?? null,
@@ -190,19 +192,8 @@ export function PantallasClient({
   }, [selectedScreenId, clearUploadProgress]);
 
   useEffect(() => {
-    if (!previewAutoPlay || !selectedScreen || contents.length === 0) return;
-    const item = contents[previewIndex];
-    if (!item) return;
-
-    const isVideo = item.archivo.toLowerCase().endsWith(".mp4") || item.archivo.toLowerCase().endsWith(".webm");
-    if (isVideo) return;
-
-    const timer = window.setTimeout(() => {
-      setPreviewIndex((i) => (i + 1) % contents.length);
-    }, Math.max(1, selectedScreen.duracion) * 1000);
-
-    return () => window.clearTimeout(timer);
-  }, [previewAutoPlay, selectedScreen, contents, previewIndex]);
+    if (previewIndex >= activeContents.length) setPreviewIndex(0);
+  }, [activeContents.length, previewIndex]);
 
   return (
     <div className="space-y-6">
@@ -225,18 +216,35 @@ export function PantallasClient({
         <div className="space-y-4">
           <PantallasCreateForm form={screenForm} disabled={pending || isSaving} onChange={setScreenForm} onCreate={createScreen} />
 
-          <PantallasScreenList screens={screens} selectedScreenId={selectedScreenId} onSelect={setSelectedScreenId} onRefresh={refreshScreens} />
+          <PantallasScreenList screens={screens} selectedScreenId={selectedScreenId} onSelect={setSelectedScreenId} />
         </div>
 
-        <Card className="min-h-[70vh]">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Monitor className="h-4 w-4" />{selectedScreen ? `Contenidos de ${selectedScreen.nombre}` : "Seleccioná una pantalla"}</CardTitle>
+        <Card className="min-h-[70vh] overflow-hidden border-blue-500/20 shadow-sm">
+          <CardHeader className="border-b bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-emerald-500/10">
+            <CardTitle className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Monitor className="h-5 w-5" />
+              </span>
+              {selectedScreen ? `Contenidos de ${selectedScreen.nombre}` : "Seleccioná una pantalla"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {!selectedScreen && (
+              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-dashed border-blue-500/30 bg-gradient-to-br from-blue-500/5 via-background to-emerald-500/5 p-10 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <MousePointer2 className="h-8 w-8" />
+                </div>
+                <h2 className="text-2xl font-black tracking-tight">Seleccioná un local</h2>
+                <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                  Primero elegí una pantalla desde la lista. Recién ahí se habilitan preview, contenidos, carga y acciones críticas.
+                </p>
+              </div>
+            )}
+
             {selectedScreen && (
               <PantallasPreviewPanel
                 screen={selectedScreen}
-                contents={contents}
+                contents={activeContents}
                 previewItem={previewItem}
                 previewAutoPlay={previewAutoPlay}
                 onAutoplayChange={setPreviewAutoPlay}
@@ -261,6 +269,8 @@ export function PantallasClient({
               />
             )}
 
+            {selectedScreen && <PantallasDangerZone screen={selectedScreen} onRefresh={refreshScreens} />}
+
             {selectedScreen && <PantallasUploadPanel progress={uploadProgress} onFiles={(files) => void uploadContents(files)} />}
 
             {selectedScreen && (
@@ -283,7 +293,7 @@ export function PantallasClient({
                 onReorder={reorderContent}
                 onToggle={toggleContent}
                 onDelete={(id) => void deleteContent(id)}
-                onPreview={setPreviewIndex}
+                onPreview={(id) => setPreviewIndex(Math.max(0, activeContents.findIndex((item) => item.id === id)))}
               />
             )}
           </CardContent>

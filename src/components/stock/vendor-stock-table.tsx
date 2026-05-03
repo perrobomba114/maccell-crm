@@ -1,13 +1,12 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, ChevronLeft, ChevronRight, MinusCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { removeStockUnitAction } from "@/actions/stock";
 import {
@@ -21,8 +20,18 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+type VendorStockItem = {
+    id: string;
+    sku: string;
+    name: string;
+    brand: string;
+    categoryName: string;
+    pricePos: number | string | null;
+    stockLocal: number;
+};
+
 interface VendorStockTableProps {
-    data: any[];
+    data: VendorStockItem[];
     totalPages: number;
     currentPage: number;
     totalItems: number;
@@ -31,7 +40,7 @@ interface VendorStockTableProps {
 
 export function VendorStockTable({ data, totalPages, currentPage, totalItems, userBranchName }: VendorStockTableProps) {
     const router = useRouter();
-    const [itemToRemove, setItemToRemove] = useState<any>(null);
+    const [itemToRemove, setItemToRemove] = useState<VendorStockItem | null>(null);
     const [isRemoving, setIsRemoving] = useState(false);
 
     const isMaccell2 = userBranchName?.toUpperCase().includes("MACCELL 2");
@@ -68,7 +77,7 @@ export function VendorStockTable({ data, totalPages, currentPage, totalItems, us
         <div className="space-y-4">
             <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
                 <Table>
-                    <TableHeader className="bg-muted/50">
+                    <TableHeader>
                         <TableRow>
                             <TableHead className="w-[120px] text-center">SKU</TableHead>
                             <TableHead className="text-center">Nombre</TableHead>

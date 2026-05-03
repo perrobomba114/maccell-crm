@@ -22,7 +22,7 @@ export function PantallasContentList({
   onRenameCommit: () => void;
   onToggle: (id: string, activo: boolean) => void;
   onDelete: (id: string) => void;
-  onPreview: (index: number) => void;
+  onPreview: (id: string) => void;
 }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -56,7 +56,7 @@ export function PantallasContentList({
             </Button>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => onPreview(index)}>
+            <Button size="sm" variant="outline" disabled={!item.activo} onClick={() => onPreview(item.id)}>
               Previsualizar este
             </Button>
           </div>

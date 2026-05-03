@@ -179,7 +179,7 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
 
             <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted/50">
+                    <TableHeader>
                         <TableRow className="hover:bg-muted/50">
                             <TableHead className="w-[100px] text-center">Estado</TableHead>
                             <TableHead className="text-center">Sucursal / Usuario</TableHead>
@@ -323,7 +323,7 @@ export function CashShiftTable({ shifts }: CashShiftTableProps) {
                         <div className="text-sm text-muted-foreground pt-2">
                             ¿Estás seguro de que querés eliminar el cierre <b>#{deletingShift?.id.slice(-6).toUpperCase()}</b> de <b>{deletingShift?.branch.name}</b>?
                             <div className="bg-red-50 border border-red-100 rounded-lg p-3 mt-3 text-red-800 text-xs">
-                                <strong>Advertencia:</strong> Si este cierre fue importado históricamente, también se eliminarán las ventas asociadas ("H-...").
+                                <strong>Advertencia:</strong> Si este cierre fue importado históricamente, también se eliminarán las ventas asociadas (&quot;H-...&quot;).
                                 Si es un cierre real, las ventas quedarán sin asignar.
                             </div>
                         </div>

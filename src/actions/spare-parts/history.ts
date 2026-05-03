@@ -1,9 +1,20 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { db as prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { getDailyRange } from "@/lib/date-utils";
+
+const sparePartHistoryInclude = {
+    user: { select: { name: true, email: true } },
+    branch: { select: { name: true, code: true } },
+    sparePart: { select: { name: true, sku: true } }
+} satisfies Prisma.SparePartHistoryInclude;
+
+export type SparePartHistoryListItem = Prisma.SparePartHistoryGetPayload<{
+    include: typeof sparePartHistoryInclude;
+}>;
 
 export async function getSparePartsHistory({
     page = 1,
@@ -15,7 +26,12 @@ export async function getSparePartsHistory({
     date?: string // YYYY-MM-DD
 }) {
     try {
-        const where: any = {
+        const user = await getCurrentUser();
+        if (!user || user.role !== "ADMIN") {
+            return { success: false, error: "No autorizado" };
+        }
+
+        const where: Prisma.SparePartHistoryWhereInput = {
             NOT: { reason: 'Reposición desde depósito' }
         };
 
@@ -30,18 +46,14 @@ export async function getSparePartsHistory({
         const skip = (page - 1) * limit;
 
         const [history, total] = await Promise.all([
-            (prisma as any).sparePartHistory.findMany({
+            prisma.sparePartHistory.findMany({
                 where,
-                include: {
-                    user: { select: { name: true, email: true } },
-                    branch: { select: { name: true, code: true } },
-                    sparePart: { select: { name: true, sku: true } }
-                },
+                include: sparePartHistoryInclude,
                 orderBy: { createdAt: 'desc' },
                 skip,
                 take: limit
             }),
-            (prisma as any).sparePartHistory.count({ where })
+            prisma.sparePartHistory.count({ where })
         ]);
 
         return {
@@ -63,10 +75,15 @@ export async function getSparePartsHistory({
 
 export async function toggleHistoryChecked(id: string) {
     try {
-        const item = await (prisma as any).sparePartHistory.findUnique({ where: { id } });
+        const user = await getCurrentUser();
+        if (!user || user.role !== "ADMIN") {
+            return { success: false, error: "No autorizado" };
+        }
+
+        const item = await prisma.sparePartHistory.findUnique({ where: { id } });
         if (!item) return { success: false, error: "Registro no encontrado" };
 
-        await (prisma as any).sparePartHistory.update({
+        await prisma.sparePartHistory.update({
             where: { id },
             data: { isChecked: !item.isChecked }
         });
@@ -107,7 +124,7 @@ export async function syncRepairHistoryAction() {
         for (const rp of repairParts) {
             const ticketPattern = `Reparación #${rp.repair.ticketNumber}`;
 
-            const existing = await (prisma as any).sparePartHistory.findFirst({
+            const existing = await prisma.sparePartHistory.findFirst({
                 where: {
                     sparePartId: rp.sparePartId,
                     reason: {
@@ -120,7 +137,7 @@ export async function syncRepairHistoryAction() {
                 const userId = rp.repair.assignedUserId || rp.repair.userId;
                 const branchId = rp.repair.branchId;
 
-                await (prisma as any).sparePartHistory.create({
+                await prisma.sparePartHistory.create({
                     data: {
                         sparePartId: rp.sparePartId,
                         userId: userId,
@@ -138,8 +155,9 @@ export async function syncRepairHistoryAction() {
         revalidatePath("/admin/repuestos/historial");
         return { success: true, count: addedCount };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error syncing history:", error);
-        return { success: false, error: `Error: ${error.message || "Desconocido"}` };
+        const message = error instanceof Error ? error.message : "Desconocido";
+        return { success: false, error: `Error: ${message}` };
     }
 }

@@ -192,7 +192,7 @@ export function StockTable({
             {/* Modern Table Card */}
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted/40">
+                    <TableHeader>
                         <TableRow className="hover:bg-transparent border-b border-border/60">
                             <SortableHeader label="SKU" column="sku" />
                             <SortableHeader label="Producto" column="name" className="w-[25%]" />

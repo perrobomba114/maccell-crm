@@ -48,7 +48,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
         <div className="flex flex-col gap-4">
             <div className="hidden overflow-hidden rounded-lg border bg-card shadow-sm md:block">
                 <Table>
-                    <TableHeader className="bg-muted/50">
+                    <TableHeader>
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="w-[150px] pl-6">Fecha</TableHead>
                             <TableHead>Detalle</TableHead>

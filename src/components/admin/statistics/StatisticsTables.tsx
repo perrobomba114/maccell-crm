@@ -31,7 +31,7 @@ export function ReplenishmentTable({ data }: ReplenishmentProps) {
             <CardContent className="p-0">
                 <div className="max-h-[350px] overflow-auto custom-scrollbar">
                     <Table>
-                        <TableHeader className="bg-muted/50 sticky top-0 backdrop-blur-md z-10">
+                        <TableHeader className="sticky top-0 backdrop-blur-md z-10">
                             <TableRow className="hover:bg-transparent border-border/50">
                                 <TableHead>Producto</TableHead>
                                 <TableHead>Sucursal</TableHead>
@@ -81,7 +81,7 @@ export function TechnicianTable({ data }: TechnicianProps) {
             <CardContent className="p-0">
                 <div className="max-h-[350px] overflow-auto custom-scrollbar">
                     <Table>
-                        <TableHeader className="bg-muted/50 sticky top-0 backdrop-blur-md z-10">
+                        <TableHeader className="sticky top-0 backdrop-blur-md z-10">
                             <TableRow className="hover:bg-transparent border-border/50">
                                 <TableHead className="pl-6">Técnico</TableHead>
                                 <TableHead className="text-right pr-6">Reparaciones</TableHead>
@@ -137,7 +137,7 @@ export function PartsUsageTable({ data }: PartsUsageProps) {
             <CardContent className="p-0">
                 <div className="max-h-[350px] overflow-auto custom-scrollbar">
                     <Table>
-                        <TableHeader className="bg-muted/50 sticky top-0 backdrop-blur-md z-10">
+                        <TableHeader className="sticky top-0 backdrop-blur-md z-10">
                             <TableRow className="hover:bg-transparent border-border/50">
                                 <TableHead>Repuesto</TableHead>
                                 <TableHead className="text-right">Usos</TableHead>

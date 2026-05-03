@@ -94,7 +94,7 @@ export default function AdminReturnsClient({ returns: initialReturns, adminId }:
         <div className="space-y-6">
             <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
                 <div className="border-b bg-[linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--muted))_100%)] p-5 sm:p-6">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="space-y-5">
                         <div className="max-w-2xl">
                             <Badge variant="outline" className="mb-3 rounded-md border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-300">
                                 Repuestos y stock
@@ -105,7 +105,7 @@ export default function AdminReturnsClient({ returns: initialReturns, adminId }:
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[560px]">
+                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                             <MetricCard label="Pendientes" value={counts.pending} tone="amber" icon={<Clock3 className="h-5 w-5" />} />
                             <MetricCard label="Aceptadas" value={counts.accepted} tone="emerald" icon={<CheckCircle2 className="h-5 w-5" />} />
                             <MetricCard label="Rechazadas" value={counts.rejected} tone="rose" icon={<XCircle className="h-5 w-5" />} />
@@ -150,7 +150,7 @@ export default function AdminReturnsClient({ returns: initialReturns, adminId }:
                         <>
                             <div className="hidden overflow-hidden rounded-lg border md:block">
                                 <Table>
-                                    <TableHeader className="bg-muted/50">
+                                    <TableHeader>
                                         <TableRow className="hover:bg-transparent">
                                             <TableHead className="w-[120px]">Ticket</TableHead>
                                             <TableHead>Técnico</TableHead>

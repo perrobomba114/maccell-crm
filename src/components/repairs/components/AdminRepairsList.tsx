@@ -54,7 +54,7 @@ export function AdminRepairsList({
             isPending && "opacity-60 pointer-events-none"
         )}>
             <Table>
-                <TableHeader className="bg-muted/40 sticky top-0 z-10">
+                <TableHeader className="sticky top-0 z-10">
                     <TableRow className="hover:bg-transparent border-b">
                         <TableHead className="text-center w-[110px] uppercase text-[10px] font-bold tracking-tighter">Ticket</TableHead>
                         <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Técnico</TableHead>

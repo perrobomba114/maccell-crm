@@ -15,14 +15,23 @@ import { TakeRepairDialog } from "./take-repair-dialog";
 import { RepairTimer } from "./repair-timer";
 import { AssignmentModal } from "./assignment-modal";
 import { AddImagesDialog } from "./add-images-dialog";
-import { RepairDetailsDialog } from "./repair-details-dialog"; // Import Dialog
+import { RepairDetailsDialog, type RepairDetails } from "./repair-details-dialog"; // Import Dialog
 import { TransferRepairDialog } from "./transfer-repair-dialog";
 import { printRepairTicket, printWarrantyTicket, printWetReport } from "@/lib/print-utils";
 import { Share2 } from "lucide-react";
 import { AddPartDialog } from "./add-part-dialog";
 
+type ActiveRepair = RepairDetails & {
+    statusId: number;
+    status: RepairDetails["status"] & { id?: number };
+    startedAt?: Date | string | null;
+    finishedAt?: Date | string | null;
+    estimatedTime?: number | null;
+    estimatedPrice?: number | null;
+};
+
 interface ActiveRepairsTableProps {
-    repairs: any[];
+    repairs: ActiveRepair[];
     emptyMessage?: string;
     enableTakeover?: boolean;
     enableManagement?: boolean;
@@ -54,18 +63,20 @@ export function ActiveRepairsTable({
     showIssueSummary = false
 }: ActiveRepairsTableProps) {
     const [searchTerm, setSearchTerm] = useState("");
-    const [takeoverRepair, setTakeoverRepair] = useState<any | null>(null);
-    const [assignmentRepair, setAssignmentRepair] = useState<any | null>(null);
-    const [imageUploadRepair, setImageUploadRepair] = useState<any | null>(null);
-    const [viewDetailsRepair, setViewDetailsRepair] = useState<any | null>(null);
-    const [transferRepair, setTransferRepair] = useState<any | null>(null);
-    const [addPartRepair, setAddPartRepair] = useState<any | null>(null);
+    const [takeoverRepair, setTakeoverRepair] = useState<ActiveRepair | null>(null);
+    const [assignmentRepair, setAssignmentRepair] = useState<ActiveRepair | null>(null);
+    const [imageUploadRepair, setImageUploadRepair] = useState<ActiveRepair | null>(null);
+    const [viewDetailsRepair, setViewDetailsRepair] = useState<ActiveRepair | null>(null);
+    const [transferRepair, setTransferRepair] = useState<ActiveRepair | null>(null);
+    const [addPartRepair, setAddPartRepair] = useState<ActiveRepair | null>(null);
 
     const router = useRouter();
 
-    const handlePrint = (repair: any) => {
+    const handlePrint = (repair: ActiveRepair) => {
         // Always print the repair ticket
-        printRepairTicket(repair);
+        // Cast: print-utils espera shape de Prisma con `parts.quantity`; aquí reusamos
+        // RepairDetails que solo expone los campos de UI. Los runtime objects sí traen quantity.
+        printRepairTicket(repair as Parameters<typeof printRepairTicket>[0]);
 
         // If status is "Entregado" (ID 10), also print warranty and wet report (if applicable)
         if (repair.statusId === 10 || repair.status?.id === 10 || repair.status?.name === "Entregado") {
@@ -153,7 +164,7 @@ export function ActiveRepairsTable({
 
             <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
                 <Table>
-                    <TableHeader className="bg-muted/50">
+                    <TableHeader>
                         <TableRow>
                             <TableHead className="text-center w-[50px] px-1">Pos.</TableHead>
                             <TableHead className="text-center w-[90px] px-1">Ticket</TableHead>
@@ -176,7 +187,7 @@ export function ActiveRepairsTable({
                             </TableRow>
                         ) : (
                             filteredRepairs.map((repair, index) => {
-                                const colorClass = statusColorMap[repair.status.color] || "bg-gray-100 text-gray-800";
+                                const colorClass = statusColorMap[repair.status.color ?? ""] || "bg-gray-100 text-gray-800";
                                 const position = index + 1;
                                 return (
                                     <TableRow key={repair.id} className="hover:bg-muted/10">
@@ -221,8 +232,8 @@ export function ActiveRepairsTable({
                                                     })()
                                                 ) : (
                                                     <RepairTimer
-                                                        startedAt={repair.startedAt}
-                                                        estimatedMinutes={repair.estimatedTime}
+                                                        startedAt={repair.startedAt ?? null}
+                                                        estimatedMinutes={repair.estimatedTime ?? null}
                                                         statusId={repair.statusId}
                                                         onAdd={enableManagement ? () => setAssignmentRepair(repair) : undefined}
                                                     />
@@ -257,7 +268,7 @@ export function ActiveRepairsTable({
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center font-bold text-sm px-1 whitespace-nowrap">
-                                            {repair.estimatedPrice > 0 ? `$${repair.estimatedPrice.toLocaleString()}` : "-"}
+                                            {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice!.toLocaleString()}` : "-"}
                                         </TableCell>
                                         <TableCell className="text-center px-1">
                                             <Badge variant="outline" className={`font-bold border text-[10px] py-0 uppercase ${colorClass}`}>

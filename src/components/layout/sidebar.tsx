@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
-import { LucideIcon, LayoutDashboard, Users, Building2, Package, Wrench, ShoppingCart, FileText, Receipt, ClipboardList, Sparkles, ChevronLeft, ChevronRight, Star, List, History, Box, BarChart3, Banknote, Percent, RotateCcw, Settings, Menu, X, ShieldCheck, Database, Bell, BrainCircuit } from "lucide-react";
+import { LucideIcon, LayoutDashboard, Users, Building2, Package, Wrench, ShoppingCart, FileText, Receipt, ClipboardList, ChevronLeft, ChevronRight, Star, List, History, Box, BarChart3, Banknote, Percent, RotateCcw, Settings, X, ShieldCheck, Database, Bell, BrainCircuit, Tags, ListChecks, ArrowLeftRight } from "lucide-react";
 import { cn, getImgUrl } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -13,12 +12,9 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-// Removed missing hook import
 
-
-// Icon mapping (same as before)
 const iconMap: Record<string, LucideIcon> = {
-    LayoutDashboard, Users, Building2, Package, Wrench, ShoppingCart, FileText, Receipt, ClipboardList, Star, List, History, Box, BarChart3, Banknote, Percent, RotateCcw, Settings, ShieldCheck, Database, Bell, BrainCircuit
+    LayoutDashboard, Users, Building2, Package, Wrench, ShoppingCart, FileText, Receipt, ClipboardList, Star, List, History, Box, BarChart3, Banknote, Percent, RotateCcw, Settings, ShieldCheck, Database, Bell, BrainCircuit, Tags, ListChecks, ArrowLeftRight
 };
 
 interface SidebarLink {
@@ -35,9 +31,7 @@ interface SidebarGroup {
 interface SidebarProps {
     links?: SidebarLink[];
     groups?: SidebarGroup[];
-    accentColor?: string;
     onCollapseChange?: (collapsed: boolean) => void;
-    // Mobile controls
     isOpen?: boolean;
     onClose?: () => void;
 }
@@ -45,7 +39,6 @@ interface SidebarProps {
 export function Sidebar({
     links = [],
     groups,
-    accentColor = "primary",
     onCollapseChange,
     isOpen: externalIsOpen,
     onClose
@@ -53,17 +46,12 @@ export function Sidebar({
     const pathname = usePathname();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    // Use external open state if provided, otherwise internal (for backward compatibility if needed)
     const [internalIsMobileOpen, setInternalIsMobileOpen] = useState(false);
-    const [isMounted, setIsMounted] = useState(false);
 
     const isMobileOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsMobileOpen;
-    const setIsMobileOpen = onClose ? (val: boolean) => !val && onClose() : setInternalIsMobileOpen;
 
-    // Check media query safely
     useEffect(() => {
         const checkMobile = () => {
-            // ... existing logic
             const mobile = window.innerWidth < 768;
             setIsMobile(mobile);
             if (!mobile) {
@@ -79,7 +67,6 @@ export function Sidebar({
         return () => window.removeEventListener("resize", checkMobile);
     }, []);
 
-    // Sync external collapse state for layout padding
     useEffect(() => {
         onCollapseChange?.(isCollapsed);
     }, [isCollapsed, onCollapseChange]);
@@ -98,22 +85,17 @@ export function Sidebar({
         }
     };
 
-    // Close mobile menu on navigate
     useEffect(() => {
         if (isMobile && isMobileOpen) {
             if (onClose) onClose();
             else setInternalIsMobileOpen(false);
         }
-    }, [pathname, isMobile]);
-
-    // Eliminated blocking isMounted check to render immediately
-    // if (!isMounted) return null;
+    }, [pathname, isMobile, isMobileOpen, onClose]);
 
     const renderLink = (link: SidebarLink) => {
         const Icon = iconMap[link.icon as keyof typeof iconMap] || LayoutDashboard;
-        const isActive = pathname === link.href;
+        const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
 
-        // Determine if we show label: Desktop Expanded OR Mobile Open
         const showLabel = (!isCollapsed && !isMobile) || (isMobile && isMobileOpen);
 
         const linkContent = (
@@ -134,7 +116,6 @@ export function Sidebar({
                     !showLabel
                         ? "justify-center w-10 h-10 mx-auto rounded-full"
                         : "w-full gap-3 px-3 py-2.5 rounded-xl",
-                    // Mobile active state feedback
                     "active:scale-95"
                 )}
             >
@@ -170,16 +151,12 @@ export function Sidebar({
         return linkContent;
     };
 
-    // Mobile Width logic:
-    // If mobile: Inclosed = 0 (hidden), Open = 17rem
-    // If Desktop: handle isCollapsed
     const sidebarWidth = isMobile
         ? (isMobileOpen ? "17rem" : "0rem")
         : (isCollapsed ? "4.5rem" : "17rem");
 
     return (
         <>
-            {/* Mobile Overlay Backdrop */}
             <AnimatePresence>
                 {isMobile && isMobileOpen && (
                     <motion.div
@@ -208,7 +185,6 @@ export function Sidebar({
                 )}
             >
                 <div className="flex h-full flex-col min-w-[4.5rem]">
-                    {/* Logo Area */}
                     <div className="relative flex h-16 items-center border-b border-sidebar-border/30 px-3 overflow-hidden">
                         <Link href="/" className="flex items-center justify-center group w-full transition-all duration-300">
                             {((!isCollapsed && !isMobile) || (isMobile && isMobileOpen)) ? (
@@ -239,7 +215,6 @@ export function Sidebar({
                                 </motion.div>
                             )}
                         </Link>
-                        {/* Mobile Close Button */}
                         {isMobile && isMobileOpen && (
                             <button
                                 onClick={() => onClose?.()}
@@ -251,19 +226,16 @@ export function Sidebar({
                         )}
                     </div>
 
-                    {/* Navigation Links */}
                     <TooltipProvider delayDuration={0}>
                         <nav className="flex-1 space-y-4 p-3 overflow-y-auto custom-scrollbar overflow-x-hidden">
                             {groups ? (
                                 groups.map((group, index) => (
                                     <div key={index} className="space-y-1">
-                                        {/* Label visible only when expanded */}
                                         {((!isCollapsed && !isMobile) || (isMobile && isMobileOpen)) && group.label && (
                                             <div className="px-3 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider mb-2 mt-4 first:mt-0 whitespace-nowrap">
                                                 {group.label}
                                             </div>
                                         )}
-                                        {/* Divider when collapsed */}
                                         {!((!isCollapsed && !isMobile) || (isMobile && isMobileOpen)) && (
                                             <div className="h-px bg-border/40 mx-2 my-2 first:hidden" />
                                         )}
@@ -281,7 +253,6 @@ export function Sidebar({
                         </nav>
                     </TooltipProvider>
 
-                    {/* Toggle Button */}
                     <div className="border-t border-sidebar-border/30 p-3 flex justify-center">
                         <button
                             onClick={toggleCollapse}
@@ -293,10 +264,6 @@ export function Sidebar({
                             )}
                             aria-label={isCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
                         >
-                            {/* Logic for Icon:
-                                Mobile Open -> ChevronLeft (Close)
-                                Desktop -> Chevron
-                            */}
                             {isMobile ? (
                                 <ChevronLeft className="h-5 w-5" />
                             ) : (

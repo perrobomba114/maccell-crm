@@ -52,7 +52,7 @@ export function ReadyForPickupTable({ data }: ReadyForPickupTableProps) {
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-auto custom-scrollbar">
                 <Table>
-                    <TableHeader className="bg-muted/30 sticky top-0 md:static">
+                    <TableHeader className="sticky top-0 md:static">
                         <TableRow className="border-b border-border/50">
                             <TableHead className="pl-6 w-[40%] text-xs uppercase tracking-wider font-semibold text-muted-foreground">Cliente</TableHead>
                             <TableHead className="w-[35%] text-xs uppercase tracking-wider font-semibold text-muted-foreground">Equipo</TableHead>
@@ -102,7 +102,7 @@ export function ReadyForPickupTable({ data }: ReadyForPickupTableProps) {
                         {data.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={3} className="text-center text-muted-foreground py-16 flex flex-col items-center gap-4">
-                                    <div className="bg-muted/50 p-4 rounded-full">
+                                    <div className="p-4 rounded-full">
                                         <CheckCircle2 className="h-8 w-8 text-muted-foreground/50" />
                                     </div>
                                     <p className="font-medium text-sm">¡Excelente! Todo entregado.</p>

@@ -2,7 +2,10 @@
 import { Suspense } from "react";
 import { getSparePartsHistory } from "@/actions/spare-parts";
 import { HistoryClient } from "@/components/admin/spare-parts/history-client";
-import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { getDailyRange, TIMEZONE } from "@/lib/date-utils";
+import { formatInTimeZone } from "date-fns-tz";
+import { History } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -14,18 +17,9 @@ export default async function SparePartsHistoryPage({ searchParams }: PageProps)
     const params = await searchParams;
     const page = Number(params.page) || 1;
 
-    // Default to today if no date provided
-    // Important: Use Argentina timezone logic if needed, but for simplicity server-side "now" 
-    // formatted as YYYY-MM-DD usually works if server is UTC or local. 
-    // Ideally we want the USER's today. 
-    // If we assume the business is in one timezone, we can force it or just use simple date.
-
-    const today = new Date();
-    // Format to YYYY-MM-DD
-    const todayStr = format(today, "yyyy-MM-dd");
-
+    const { start } = getDailyRange();
+    const todayStr = formatInTimeZone(start, TIMEZONE, "yyyy-MM-dd");
     const date = typeof params.date === 'string' ? params.date : todayStr;
-
     const limit = 25;
 
     const { success, history, pagination } = await getSparePartsHistory({
@@ -40,16 +34,27 @@ export default async function SparePartsHistoryPage({ searchParams }: PageProps)
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Historial de Repuestos</h1>
-                <p className="text-muted-foreground">
-                    Registro de bajas y movimientos manuales de stock.
-                </p>
-            </div>
+            <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                <div className="relative flex flex-col gap-4 border-b p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                    <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-amber-400 to-orange-600" />
+                    <div className="flex items-center gap-4">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                            <History className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Historial de Repuestos</h1>
+                            <p className="text-sm text-muted-foreground">
+                                Registro de bajas, controles y movimientos manuales de stock.
+                            </p>
+                        </div>
+                    </div>
+                    <Badge variant="secondary">{total} movimientos</Badge>
+                </div>
+            </section>
 
             <Suspense fallback={<div>Cargando historial...</div>}>
                 <HistoryClient
-                    data={data as any}
+                    data={data}
                     totalPages={totalPages}
                     currentPage={page}
                     total={total}

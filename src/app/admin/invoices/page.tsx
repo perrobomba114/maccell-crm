@@ -171,7 +171,7 @@ export default async function InvoicesPage({
                 <CardContent>
                     <div className="overflow-hidden rounded-lg border">
                         <Table>
-                        <TableHeader className="bg-muted/50">
+                        <TableHeader>
                             <TableRow className="hover:bg-transparent">
                                 <TableHead>Fecha</TableHead>
                                 <TableHead>Entidad / local</TableHead>

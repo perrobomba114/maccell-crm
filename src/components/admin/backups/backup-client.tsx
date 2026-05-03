@@ -208,7 +208,7 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
                 <CardContent>
                     <div className="hidden overflow-hidden rounded-lg border md:block">
                         <Table>
-                            <TableHeader className="bg-muted/50">
+                            <TableHeader>
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead>Archivo</TableHead>
                                     <TableHead>Fecha</TableHead>

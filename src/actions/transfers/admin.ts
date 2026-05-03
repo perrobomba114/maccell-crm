@@ -1,26 +1,33 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth-actions";
+
+const adminTransferInclude = {
+    product: true,
+    sourceBranch: {
+        select: { name: true }
+    },
+    targetBranch: {
+        select: { name: true }
+    },
+    createdBy: {
+        select: { name: true }
+    }
+} satisfies Prisma.StockTransferInclude;
+
+export type AdminStockTransfer = Prisma.StockTransferGetPayload<{
+    include: typeof adminTransferInclude;
+}>;
 
 export async function getAllTransfersAdmin() {
     const caller = await getCurrentUser();
     if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };
     try {
         const transfers = await db.stockTransfer.findMany({
-            include: {
-                product: true,
-                sourceBranch: {
-                    select: { name: true }
-                },
-                targetBranch: {
-                    select: { name: true }
-                },
-                createdBy: {
-                    select: { name: true }
-                }
-            },
+            include: adminTransferInclude,
             orderBy: { createdAt: 'desc' }
         });
         return { success: true, transfers };
@@ -35,9 +42,8 @@ export async function updateTransferAdmin(data: {
     quantity?: number;
     notes?: string;
     status?: "PENDING" | "COMPLETED" | "CANCELLED";
-    adminId: string;
 }) {
-    const { id, quantity, notes, status, adminId } = data;
+    const { id, quantity, notes, status } = data;
 
     const caller = await getCurrentUser();
     if (!caller || caller.role !== "ADMIN") return { success: false, error: "No autorizado" };

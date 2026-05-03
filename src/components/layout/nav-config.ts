@@ -89,10 +89,10 @@ export const adminGroups = [
         label: "Inventario",
         items: [
             { href: "/admin/products", label: "Productos", icon: "Package" },
-            { href: "/admin/categories", label: "Categorías", icon: "ClipboardList" },
+            { href: "/admin/categories", label: "Categorías", icon: "Tags" },
             { href: "/admin/repuestos", label: "Repuestos", icon: "Settings" },
-            { href: "/admin/repuestos/historial", label: "Historial Repuestos", icon: "History" },
-            { href: "/admin/transfers", label: "Transferencias", icon: "History" },
+            { href: "/admin/repuestos/historial", label: "Historial Repuestos", icon: "ListChecks" },
+            { href: "/admin/transfers", label: "Transferencias", icon: "ArrowLeftRight" },
             { href: "/admin/discounts", label: "Descuentos", icon: "Percent" },
         ]
     },

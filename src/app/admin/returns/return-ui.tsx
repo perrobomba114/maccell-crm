@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -25,23 +26,27 @@ type MetricCardProps = {
 };
 
 const metricTone = {
-    amber: "border-amber-200/70 bg-amber-50/70 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100",
-    emerald: "border-emerald-200/70 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100",
-    rose: "border-rose-200/70 bg-rose-50/70 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-100",
-    slate: "border-slate-200/80 bg-slate-50/80 text-slate-900 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-100",
+    amber: { gradient: "from-amber-400 to-orange-600", text: "text-amber-100" },
+    emerald: { gradient: "from-emerald-500 to-emerald-700", text: "text-emerald-100" },
+    rose: { gradient: "from-rose-500 to-red-700", text: "text-rose-100" },
+    slate: { gradient: "from-blue-500 to-indigo-600", text: "text-blue-100" },
 };
 
 export function MetricCard({ label, value, icon, tone }: MetricCardProps) {
+    const config = metricTone[tone];
+
     return (
-        <div className={cn("rounded-lg border p-4 shadow-sm", metricTone[tone])}>
-            <div className="flex items-start justify-between gap-3">
-                <div>
-                    <p className="text-xs font-bold uppercase tracking-widest opacity-70">{label}</p>
-                    <p className="mt-2 text-3xl font-black tabular-nums tracking-tight">{value}</p>
+        <Card className={cn("relative overflow-hidden border-none bg-gradient-to-br text-white shadow-lg", config.gradient)}>
+            <CardContent className="flex min-h-[180px] flex-col p-6">
+                <div className="flex items-start justify-between gap-4">
+                    <p className={cn("line-clamp-2 min-h-[2.5rem] text-sm font-medium", config.text)}>{label}</p>
+                    <div className="shrink-0 rounded-xl bg-white/20 p-3 text-white backdrop-blur-sm">{icon}</div>
                 </div>
-                <div className="rounded-md bg-white/70 p-2 shadow-sm dark:bg-black/20">{icon}</div>
-            </div>
-        </div>
+                <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">{value}</h3>
+                <div className={cn("mt-auto pt-4 text-sm", config.text)}>Solicitudes</div>
+            </CardContent>
+            <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+        </Card>
     );
 }
 

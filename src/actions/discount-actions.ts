@@ -1,7 +1,9 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getDailyRange } from "@/lib/date-utils";
+import { getCurrentUser } from "@/actions/auth-actions";
 
 interface GetPriceOverridesParams {
     page?: number;
@@ -10,15 +12,35 @@ interface GetPriceOverridesParams {
     branchId?: string | null;
 }
 
+const priceOverrideInclude = {
+    sale: {
+        include: {
+            branch: true,
+            vendor: true
+        }
+    },
+    product: true,
+    repair: true
+} satisfies Prisma.SaleItemInclude;
+
+export type PriceOverrideListItem = Prisma.SaleItemGetPayload<{
+    include: typeof priceOverrideInclude;
+}>;
+
 export async function getPriceOverrides({ page = 1, limit = 25, date, branchId }: GetPriceOverridesParams = {}) {
     try {
-        const whereClause: any = {
+        const user = await getCurrentUser();
+        if (!user || user.role !== "ADMIN") {
+            return { success: false, error: "No autorizado" };
+        }
+
+        const whereClause: Prisma.SaleItemWhereInput = {
             originalPrice: {
                 not: null
             }
         };
 
-        const saleConditions: any = {};
+        const saleConditions: Prisma.SaleWhereInput = {};
 
         if (date) {
             const { start, end } = getDailyRange(date.toISOString().split('T')[0]);
@@ -41,16 +63,7 @@ export async function getPriceOverrides({ page = 1, limit = 25, date, branchId }
 
         const overrides = await db.saleItem.findMany({
             where: whereClause,
-            include: {
-                sale: {
-                    include: {
-                        branch: true,
-                        vendor: true
-                    }
-                },
-                product: true,
-                repair: true
-            },
+            include: priceOverrideInclude,
             orderBy: {
                 sale: {
                     createdAt: "desc"
