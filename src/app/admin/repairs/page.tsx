@@ -4,6 +4,8 @@ import { getAllBranches } from "@/actions/get-branches";
 import { AdminRepairsTable } from "@/components/repairs/admin-repairs-table";
 import { TechnicianStatsCards } from "@/components/repairs/technician-stats-cards";
 import { redirect } from "next/navigation";
+import { format } from "date-fns";
+import { getArgentinaDate } from "@/lib/date-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -25,7 +27,7 @@ export default async function AdminRepairsPage(
     const branchId = typeof searchParams?.branch === "string" ? searchParams.branch : "ALL";
     const technician = typeof searchParams?.tech === "string" ? searchParams.tech : "";
     const technicianId = typeof searchParams?.techId === "string" ? searchParams.techId : "";
-    const date = typeof searchParams?.date === "string" ? searchParams.date : "";
+    const date = typeof searchParams?.date === "string" ? searchParams.date : format(getArgentinaDate(), "yyyy-MM-dd");
     const page = typeof searchParams?.page === "string" ? Number(searchParams.page) : 1;
     const warrantyOnly = searchParams?.warranty === "1";
 

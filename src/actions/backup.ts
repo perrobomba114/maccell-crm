@@ -106,9 +106,10 @@ export async function restoreBackup(filename: string): Promise<{ success: boolea
         // and capture stderr explicitly for diagnosis.
         try {
             await execFileAsync(psqlPath, [cleanDbUrl, "-f", filepath]);
-        } catch (execError: any) {
-            const stderr = execError.stderr || "";
-            const stdout = execError.stdout || "";
+        } catch (execError: unknown) {
+            const err = execError as { stderr?: string; stdout?: string };
+            const stderr = err.stderr || "";
+            const stdout = err.stdout || "";
             console.error("PSQL Exec Error:", stderr);
             throw new Error(stderr || stdout || "Fallo en la ejecución de psql");
         }
@@ -138,31 +139,6 @@ export async function deleteBackup(filename: string): Promise<{ success: boolean
     } catch (error) {
         console.error("Delete backup error:", error);
         return { success: false, error: "Error al eliminar backup" };
-    }
-}
-
-export async function uploadBackup(formData: FormData): Promise<{ success: boolean; error?: string }> {
-    try {
-        ensureBackupDir();
-        const file = formData.get("file") as File;
-        if (!file) throw new Error("No se recibió ningún archivo");
-
-        // path.basename strips any directory traversal (e.g. "../../shell.sql" → "shell.sql")
-        const safeFilename = path.basename(file.name);
-        if (!safeFilename.endsWith(".sql")) {
-            throw new Error("El archivo debe ser .sql");
-        }
-
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const filepath = path.join(BACKUP_DIR, safeFilename);
-
-        fs.writeFileSync(filepath, buffer);
-
-        revalidatePath("/admin/backups");
-        return { success: true };
-    } catch (error) {
-        console.error("Upload backup error:", error);
-        return { success: false, error: "Error al subir backup" };
     }
 }
 

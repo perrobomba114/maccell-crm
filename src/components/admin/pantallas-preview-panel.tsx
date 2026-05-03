@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { type ContentRow, type ScreenRow } from "@/lib/pantallas/types";
 import { Badge } from "@/components/ui/badge";
-import { Maximize, Pause, Play, SkipForward } from "lucide-react";
+import { Download, Maximize, Minimize, Pause, Play, SkipForward } from "lucide-react";
 
 export function PantallasPreviewPanel({
   screen,
@@ -22,6 +22,16 @@ export function PantallasPreviewPanel({
   onNext: () => void;
 }) {
   const previewRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const isVideo = !!previewItem?.archivo.toLowerCase().endsWith(".mp4");
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
 
   const handleFullscreen = () => {
     const el = previewRef.current;
@@ -31,6 +41,29 @@ export function PantallasPreviewPanel({
     } else {
       void el.requestFullscreen?.();
     }
+  };
+
+  const handleTogglePlay = () => {
+    if (isVideo && videoRef.current) {
+      if (videoRef.current.paused) {
+        void videoRef.current.play();
+      } else {
+        videoRef.current.pause();
+      }
+      return;
+    }
+    onAutoplayChange(!previewAutoPlay);
+  };
+
+  const handleDownload = () => {
+    if (!previewItem) return;
+    const url = `/api/uploads/pantallas/${previewItem.archivo}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = previewItem.archivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   return (
@@ -45,26 +78,74 @@ export function PantallasPreviewPanel({
         </div>
         <div
           ref={previewRef}
-          className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg bg-black/90"
+          className="group relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg bg-black/90"
         >
           {!previewItem && <span className="text-xs text-white/70">Sin contenidos activos</span>}
-          {previewItem?.archivo.toLowerCase().endsWith(".mp4") && (
+          {previewItem && isVideo && (
             <video
+              ref={videoRef}
               key={previewItem.id}
               src={`/api/uploads/pantallas/${previewItem.archivo}`}
-              controls
+              controls={!isFullscreen}
               autoPlay={previewAutoPlay}
               muted
               className="h-full w-full object-contain"
               onEnded={onNext}
             />
           )}
-          {previewItem && !previewItem.archivo.toLowerCase().endsWith(".mp4") && (
-            <img src={`/api/uploads/pantallas/${previewItem.archivo}`} alt={previewItem.titulo} className="h-full w-full object-contain" />
+          {previewItem && !isVideo && (
+            <img
+              src={`/api/uploads/pantallas/${previewItem.archivo}`}
+              alt={previewItem.titulo}
+              className="h-full w-full object-contain"
+            />
+          )}
+
+          {isFullscreen && previewItem && (
+            <div className="pointer-events-none absolute inset-0 flex items-end justify-center p-6 opacity-0 transition-opacity duration-200 hover:opacity-100 group-hover:opacity-100">
+              <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 rounded-full bg-black/70 px-3 py-2 backdrop-blur">
+                <Button
+                  size="sm"
+                  className="bg-amber-500 text-white hover:bg-amber-600"
+                  onClick={handleTogglePlay}
+                >
+                  {(isVideo ? !videoRef.current?.paused : previewAutoPlay) ? (
+                    <Pause className="mr-2 h-3.5 w-3.5" />
+                  ) : (
+                    <Play className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  {(isVideo ? !videoRef.current?.paused : previewAutoPlay) ? "Pausa" : "Play"}
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-blue-500 text-white hover:bg-blue-600"
+                  onClick={onNext}
+                >
+                  <SkipForward className="mr-2 h-3.5 w-3.5" />
+                  Siguiente
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-purple-500 text-white hover:bg-purple-600"
+                  onClick={handleDownload}
+                >
+                  <Download className="mr-2 h-3.5 w-3.5" />
+                  Descargar
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-rose-500 text-white hover:bg-rose-600"
+                  onClick={handleFullscreen}
+                >
+                  <Minimize className="mr-2 h-3.5 w-3.5" />
+                  Salir
+                </Button>
+              </div>
+            </div>
           )}
         </div>
         <div className="line-clamp-1 text-xs text-muted-foreground">{previewItem?.titulo || "—"}</div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
             className="flex-1 bg-amber-500 text-white hover:bg-amber-600"
@@ -80,6 +161,15 @@ export function PantallasPreviewPanel({
           >
             <SkipForward className="mr-2 h-3.5 w-3.5" />
             Siguiente
+          </Button>
+          <Button
+            size="sm"
+            className="flex-1 bg-purple-500 text-white hover:bg-purple-600"
+            onClick={handleDownload}
+            disabled={!previewItem}
+          >
+            <Download className="mr-2 h-3.5 w-3.5" />
+            Descargar
           </Button>
           <Button
             size="sm"

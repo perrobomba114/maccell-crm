@@ -97,7 +97,8 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
             db.repairStatusHistory.findMany({
                 where: {
                     userId: { not: null },
-                    toStatusId: { not: CLAIMED_STATUS_ID },
+                    toStatusId: { in: [5, 6, 7, 10] }, // Only finalized repairs for ranking
+                    fromStatusId: { notIn: [5, 6, 7, 10] }, // Avoid internal transitions
                     createdAt: { gte: start, lte: end },
                     repair: repairWhere,
                 },

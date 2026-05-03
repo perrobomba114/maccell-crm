@@ -44,9 +44,9 @@ export async function getSalesAnalytics(branchId?: string) {
                 take: 10,
                 orderBy: { quantity: 'asc' }
             }),
-            // Finished Repairs This Month
+            // Finished Repairs This Month (Finalized)
             prisma.repair.findMany({
-                where: { ...branchFilter, finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }, statusId: { in: [5, 6, 10] } },
+                where: { ...branchFilter, finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }, statusId: { in: [5, 6, 7, 10] } },
                 select: { statusId: true }
             }),
             // Sales Last Month Detailed for Profit Comparison
@@ -63,11 +63,17 @@ export async function getSalesAnalytics(branchId?: string) {
             })
         ]);
 
-        const deliveredTotal = await prisma.repairStatusHistory.count({
+        const deliveredTotal = await prisma.repair.count({
             where: {
-                toStatusId: 10,
-                createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
-                repair: branchFilter
+                ...branchFilter,
+                statusId: 6, // DELIVERED
+                finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+            }
+        }) + await prisma.repair.count({
+            where: {
+                ...branchFilter,
+                statusId: 10, // INVOICED
+                finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
             }
         });
 
@@ -152,8 +158,8 @@ export async function getSalesAnalytics(branchId?: string) {
             quantity: s.quantity
         }));
 
-        const okCountCount = (repairOutput as any[]).filter(r => r.statusId === 5 || r.statusId === 10).length;
-        const noRepairCountCount = (repairOutput as any[]).filter(r => r.statusId === 6).length;
+        const okCountCount = (repairOutput as any[]).filter(r => r.statusId === 5 || r.statusId === 6 || r.statusId === 10).length;
+        const noRepairCountCount = (repairOutput as any[]).filter(r => r.statusId === 7).length;
 
         // Efficiency calculation: (Successful Repairs) / (Total Finalized)
         const totalFinalized = okCountCount + noRepairCountCount;

@@ -54,17 +54,27 @@ function buildAdminRepairsWhere(params: Required<AdminRepairsQuery>): Prisma.Rep
         whereClause.isWarranty = true;
     }
 
+    // 1. Technician Filter (ID or Name)
     if (params.technicianId) {
-        const { start, end } = getDailyRange(params.date || undefined);
-        andFilters.push({
-            statusHistory: {
-                some: {
-                    userId: params.technicianId,
-                    createdAt: { gte: start, lte: end },
+        if (params.date) {
+            const { start, end } = getDailyRange(params.date);
+            andFilters.push({
+                statusHistory: {
+                    some: {
+                        userId: params.technicianId,
+                        createdAt: { gte: start, lte: end },
+                    },
                 },
-            },
-        });
-    } else if (params.technician || params.date) {
+            });
+        } else {
+            andFilters.push({
+                OR: [
+                    { assignedUserId: params.technicianId },
+                    { statusHistory: { some: { userId: params.technicianId } } }
+                ]
+            });
+        }
+    } else if (params.technician) {
         const { start, end } = getDailyRange(params.date || undefined);
         const finishedOnDate: Prisma.RepairWhereInput = {
             statusHistory: {
@@ -75,33 +85,48 @@ function buildAdminRepairsWhere(params: Required<AdminRepairsQuery>): Prisma.Rep
             },
         };
 
-        if (params.technician) {
-            andFilters.push({
-                statusId: { in: [...FINAL_REPAIR_STATUS_IDS] },
-                OR: [
-                    {
-                        statusHistory: {
-                            some: {
-                                toStatusId: { in: [...FINISHED_HISTORY_STATUS_IDS] },
-                                createdAt: { gte: start, lte: end },
-                                user: { name: params.technician },
-                            },
+        andFilters.push({
+            OR: [
+                {
+                    assignedTo: { name: params.technician },
+                    ...(params.date ? {
+                        OR: [
+                            { createdAt: { gte: start, lte: end } },
+                            finishedOnDate,
+                        ],
+                    } : {}),
+                },
+                {
+                    statusHistory: {
+                        some: {
+                            user: { name: params.technician },
+                            ...(params.date ? { createdAt: { gte: start, lte: end } } : {}),
                         },
                     },
-                    {
-                        assignedTo: { name: params.technician },
-                        ...finishedOnDate,
-                    },
-                ],
-            });
-        } else {
-            andFilters.push({
-                OR: [
-                    { createdAt: { gte: start, lte: end } },
-                    finishedOnDate,
-                ],
-            });
-        }
+                },
+            ],
+        });
+    }
+
+    // 2. Date Filter (Only if no query, unless explicitly requested)
+    if (params.date && !params.technicianId && !params.technician && !params.query) {
+        const { start, end } = getDailyRange(params.date);
+        
+        const finishedOnDate: Prisma.RepairWhereInput = {
+            statusHistory: {
+                some: {
+                    toStatusId: { in: [...FINISHED_HISTORY_STATUS_IDS] },
+                    createdAt: { gte: start, lte: end },
+                },
+            },
+        };
+
+        andFilters.push({
+            OR: [
+                { createdAt: { gte: start, lte: end } },
+                finishedOnDate,
+            ],
+        });
     }
 
     if (andFilters.length > 0) {

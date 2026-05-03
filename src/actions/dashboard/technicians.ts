@@ -1,8 +1,9 @@
 "use server";
 
 import { db as prisma } from "@/lib/db";
-import { getDailyRange, getMonthlyRange, getLastDaysRange, getArgentinaDate } from "@/lib/date-utils";
+import { getDailyRange, getMonthlyRange, getLastDaysRange, getArgentinaDate, TIMEZONE } from "@/lib/date-utils";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { formatInTimeZone } from "date-fns-tz";
 
 
 export async function getTechnicianStats(technicianId: string) {
@@ -12,9 +13,10 @@ export async function getTechnicianStats(technicianId: string) {
         // Only the technician themselves or an admin can view these stats
         if (caller.role !== "ADMIN" && caller.id !== technicianId) return null;
 
-        const { start: todayStart } = getDailyRange();
+        const { start: todayStart, end: todayEnd } = getDailyRange();
         const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange();
         const { start: sevenDaysStart } = getLastDaysRange(6);
+        const { start: thirtyDaysStart } = getLastDaysRange(30);
 
         // Last month range using AR timezone (same pattern as getSalesAnalytics)
         const nowAr = getArgentinaDate();
@@ -22,36 +24,60 @@ export async function getTechnicianStats(technicianId: string) {
         const lastMonthStr = lastMonthAr.toISOString().split('T')[0];
         const { start: lastMonthStart, end: lastMonthEnd } = getMonthlyRange(lastMonthStr);
 
-        // 1. Fetch Key Counts and Distributions
-        const [pendingRepairsCount, activeRepairsCount, completedToday, completedMonth, statusDist, finishedLast30, completedLastMonth] = await Promise.all([
-            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [1, 2, 4] } } }), // Pending, Assigned, Diagnosing
-            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: 3 } }), // In Progress
-            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: todayStart } } }),
-            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } } }),
-            prisma.repair.groupBy({ by: ['statusId'], where: { assignedUserId: technicianId }, _count: { _all: true } }),
-            // Performance Metrics Fetching (Last 30 Days)
-            prisma.repair.findMany({
+        const FINAL_STATUSES = [5, 6, 7, 10];
+
+        // Cuenta tickets únicos donde el técnico transicionó de no-final → final dentro del rango.
+        // Garantiza: 1 ticket = 1 conteo por día, sin importar rebotes ni que el `finishedAt` quede stale.
+        const countCompletedTickets = async (gte: Date, lte?: Date) => {
+            const events = await prisma.repairStatusHistory.findMany({
                 where: {
-                    assignedUserId: technicianId,
-                    statusId: { in: [5, 6, 7, 10] },
-                    finishedAt: { gte: getLastDaysRange(30).start }
+                    userId: technicianId,
+                    toStatusId: { in: FINAL_STATUSES },
+                    fromStatusId: { notIn: FINAL_STATUSES },
+                    createdAt: lte ? { gte, lte } : { gte }
                 },
+                select: { repairId: true }
+            });
+            return new Set(events.map(e => e.repairId)).size;
+        };
+
+        // 1. Fetch Key Counts and Distributions
+        const [pendingRepairsCount, activeRepairsCount, completedToday, completedMonth, statusDist, completedLastMonth] = await Promise.all([
+            // En Cola: solo planificadas/pausadas (status 4). Status 1 (PENDING) y 2 (CLAIMED, retirada del local) NO cuentan para el técnico hasta que asigna tiempo.
+            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: 4 } }),
+            prisma.repair.count({ where: { assignedUserId: technicianId, statusId: 3 } }), // En Mesa
+            countCompletedTickets(todayStart, todayEnd),
+            countCompletedTickets(firstDayOfMonth, lastDayOfMonth),
+            prisma.repair.groupBy({ by: ['statusId'], where: { assignedUserId: technicianId, statusId: { notIn: [1, 2] } }, _count: { _all: true } }),
+            countCompletedTickets(lastMonthStart, lastMonthEnd)
+        ]);
+
+        // Performance Metrics (últimos 30 días) — basadas en eventos reales de finalización
+        const finalEvents30 = await prisma.repairStatusHistory.findMany({
+            where: {
+                userId: technicianId,
+                toStatusId: { in: FINAL_STATUSES },
+                fromStatusId: { notIn: FINAL_STATUSES },
+                createdAt: { gte: thirtyDaysStart }
+            },
+            select: { repairId: true, createdAt: true }
+        });
+        // Primer evento de finalización por ticket (dedupe)
+        const firstFinalByRepair = new Map<string, Date>();
+        for (const e of finalEvents30) {
+            const prev = firstFinalByRepair.get(e.repairId);
+            if (!prev || e.createdAt < prev) firstFinalByRepair.set(e.repairId, e.createdAt);
+        }
+        const finishedLast30 = firstFinalByRepair.size > 0
+            ? await prisma.repair.findMany({
+                where: { id: { in: Array.from(firstFinalByRepair.keys()) } },
                 select: {
                     id: true,
-                    finishedAt: true,
                     promisedAt: true,
-                    warrantyRepairs: { select: { id: true } } // Check if it generated warranties
-                }
-            }),
-            // Completed Last Month for comparison — AR timezone-aware range
-            prisma.repair.count({
-                where: {
-                    assignedUserId: technicianId,
-                    statusId: { in: [5, 6, 7, 10] },
-                    finishedAt: { gte: lastMonthStart, lte: lastMonthEnd }
+                    warrantyRepairs: { select: { id: true } }
                 }
             })
-        ]);
+            : [];
 
         const statusNames = await prisma.repairStatus.findMany();
         const statusDistribution = statusDist.map(item => {
@@ -67,16 +93,16 @@ export async function getTechnicianStats(technicianId: string) {
         const totalFinished30 = finishedLast30.length;
 
         // 1. Quality Score (Repairs without warranty returns)
-        // If has warrantyRepairs > 0, it failed quality.
         const warrantyReturns = finishedLast30.filter(r => r.warrantyRepairs.length > 0).length;
         const qualityScore = totalFinished30 > 0
             ? Math.round(((totalFinished30 - warrantyReturns) / totalFinished30) * 100)
-            : 100; // Default to 100 if no repairs yet
+            : 100;
 
-        // 2. On-Time Rate (Finished <= Promised)
+        // 2. On-Time Rate: comparar la fecha REAL de finalización (primer evento) vs promisedAt
         const onTimeRepairs = finishedLast30.filter(r => {
-            if (!r.finishedAt || !r.promisedAt) return true; // Assume ok if missing data
-            return new Date(r.finishedAt) <= new Date(r.promisedAt);
+            const finishedAt = firstFinalByRepair.get(r.id);
+            if (!finishedAt || !r.promisedAt) return true;
+            return finishedAt <= new Date(r.promisedAt);
         }).length;
         const onTimeRate = totalFinished30 > 0
             ? Math.round((onTimeRepairs / totalFinished30) * 100)
@@ -140,11 +166,11 @@ export async function getTechnicianStats(technicianId: string) {
             isWarranty: r.isWarranty
         }));
 
-        // 3. Queue (Pending/Assigned)
+        // 3. Queue (solo planificadas — status 4). Status 1/2 no son trabajo del técnico.
         const queueRaw = await prisma.repair.findMany({
             where: {
                 assignedUserId: technicianId,
-                statusId: { in: [1, 2, 4] } // Pending, Assigned, Diagnosing
+                statusId: 4
             },
             include: {
                 status: true,
@@ -169,40 +195,40 @@ export async function getTechnicianStats(technicianId: string) {
             isWarranty: r.isWarranty
         }));
 
-        // 4. Weekly Output Chart
-        // Get all completed repairs in last 7 days to group by day
-        const weeklyCompleted = await prisma.repair.findMany({
+        // 4. Weekly Output Chart — eventos de finalización del técnico en últimos 7 días, dedupe por (ticket, día AR).
+        const weeklyEvents = await prisma.repairStatusHistory.findMany({
             where: {
-                assignedUserId: technicianId,
-                statusId: { in: [5, 6, 7, 10] }, // Done
-                finishedAt: { gte: sevenDaysStart }
+                userId: technicianId,
+                toStatusId: { in: FINAL_STATUSES },
+                fromStatusId: { notIn: FINAL_STATUSES },
+                createdAt: { gte: sevenDaysStart }
             },
-            select: { finishedAt: true }
+            select: { repairId: true, createdAt: true }
         });
 
+        // Día en zona AR para evitar desfase por TZ del servidor
+        const dayKey = (d: Date) => formatInTimeZone(d, TIMEZONE, "yyyy-MM-dd");
         const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-        const weeklyOutputMap = new Map<string, number>();
 
-        // Initialize last 7 days in map
-        for (let i = 0; i < 7; i++) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const dayName = days[d.getDay()];
-            if (!weeklyOutputMap.has(dayName)) {
-                weeklyOutputMap.set(dayName, 0);
-            }
+        const seenPerDay = new Set<string>(); // key: `${repairId}|${dayKey}` → cuenta una sola vez por día
+        const countsByDayKey = new Map<string, number>();
+        for (const e of weeklyEvents) {
+            const dk = dayKey(e.createdAt);
+            const k = `${e.repairId}|${dk}`;
+            if (seenPerDay.has(k)) continue;
+            seenPerDay.add(k);
+            countsByDayKey.set(dk, (countsByDayKey.get(dk) || 0) + 1);
         }
 
-        weeklyCompleted.forEach((r: any) => {
-            if (!r.finishedAt) return;
-            const dayName = days[new Date(r.finishedAt).getDay()];
-            weeklyOutputMap.set(dayName, (weeklyOutputMap.get(dayName) || 0) + 1);
-        });
-
-        // Convert to array in correct order (Today is last)
-        const weeklyOutput = Array.from(weeklyOutputMap.entries())
-            .map(([name, count]) => ({ name, count }))
-            .reverse(); // Simplified ordering, might need precise sorting if strict "last 7 days" order needed, but this is okay for "Recent"
+        // Construir últimos 7 días en orden cronológico (oldest → today)
+        const weeklyOutput: { name: string; count: number }[] = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dk = formatInTimeZone(d, TIMEZONE, "yyyy-MM-dd");
+            const dayIdx = Number(formatInTimeZone(d, TIMEZONE, "i")) % 7; // 1=Mon..7=Sun → mod7 → 0=Sun
+            weeklyOutput.push({ name: days[dayIdx], count: countsByDayKey.get(dk) || 0 });
+        }
 
 
         // 5. Avg Repair Time

@@ -4,8 +4,10 @@ import React from "react";
 import { Trophy, Medal, Timer } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface Technician {
+    id: string;
     name: string;
     repairs: number;
     time: number; // in minutes
@@ -16,9 +18,14 @@ interface TechLeaderboardProps {
 }
 
 export function TechLeaderboard({ technicians }: TechLeaderboardProps) {
+    const router = useRouter();
     // Sort by repairs (desc)
     const sortedTechs = [...technicians].sort((a, b) => b.repairs - a.repairs);
     const maxRepairs = sortedTechs[0]?.repairs || 1;
+
+    const handleTechClick = (tech: Technician) => {
+        router.push(`/admin/repairs?techId=${tech.id}&tech=${encodeURIComponent(tech.name)}`);
+    };
 
     return (
         <div className="bg-[#09090b] rounded-3xl p-7 border border-zinc-900 shadow-2xl h-full flex flex-col overflow-hidden relative group">
@@ -54,14 +61,15 @@ export function TechLeaderboard({ technicians }: TechLeaderboardProps) {
 
                         return (
                             <motion.div
-                                key={tech.name}
+                                key={tech.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.1, duration: 0.5 }}
+                                onClick={() => handleTechClick(tech)}
                                 className={cn(
-                                    "group/item relative p-4 rounded-2xl border-2 transition-all duration-500",
+                                    "group/item relative p-4 rounded-2xl border-2 transition-all duration-500 cursor-pointer",
                                     isFirst
-                                        ? "bg-gradient-to-br from-violet-600/10 to-transparent border-violet-500/20 shadow-[0_0_20px_rgba(139,92,246,0.05)]"
+                                        ? "bg-gradient-to-br from-violet-600/10 to-transparent border-violet-500/20 shadow-[0_0_20px_rgba(139,92,246,0.05)] hover:border-violet-500/40"
                                         : "bg-zinc-900/20 border-transparent hover:border-zinc-800 hover:bg-zinc-900/40"
                                 )}
                             >

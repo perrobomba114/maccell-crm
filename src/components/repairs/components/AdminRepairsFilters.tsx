@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Building2, ShieldCheck, CheckCircle2, ShieldAlert } from "lucide-react";
+import { Search, Building2, ShieldCheck, CheckCircle2, ShieldAlert, Calendar, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -140,6 +140,19 @@ export function AdminRepairsFilters({
                     )}
                 </Button>
             </div>
+
+            {/* Clear All Filters */}
+            {(searchParams.get('date') || searchParams.get('techId') || showOnlyWarranty) && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => updateParams({ date: null, techId: null, tech: null, warranty: null })}
+                    className="w-fit text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 px-2 h-8"
+                >
+                    <X className="mr-1 h-3 w-3" />
+                    Limpiar Filtros
+                </Button>
+            )}
 
             {/* Active Tech Filter Badge */}
             {searchParams.get('techId') && (

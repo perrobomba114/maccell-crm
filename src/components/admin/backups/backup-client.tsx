@@ -1,6 +1,6 @@
 "use client";
 
-import { createBackup, deleteBackup, restoreBackup, uploadBackup, type BackupFile } from "@/actions/backup";
+import { createBackup, deleteBackup, restoreBackup, type BackupFile } from "@/actions/backup";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,20 +59,42 @@ export function BackupClient({ initialBackups }: BackupClientProps) {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        const formData = new FormData();
-        formData.append("file", file);
         setActiveAction("upload");
-        toast.loading("Subiendo archivo .sql...", { id: "upload-backup" });
+        const CHUNK_SIZE = 5 * 1024 * 1024;
+        const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
+        const uploadId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+        toast.loading(`Subiendo 0/${totalChunks}...`, { id: "upload-backup" });
         try {
-            const res = await uploadBackup(formData);
-            if (res.success) {
-                toast.success("Backup subido correctamente", { id: "upload-backup" });
-                router.refresh();
-            } else {
-                toast.error(res.error, { id: "upload-backup" });
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunk = file.slice(start, end);
+
+                const res = await fetch("/api/backups/upload", {
+                    method: "POST",
+                    headers: {
+                        "x-filename": encodeURIComponent(file.name),
+                        "x-filesize": String(file.size),
+                        "x-upload-id": uploadId,
+                        "x-chunk-index": String(i),
+                        "x-total-chunks": String(totalChunks),
+                        "content-type": "application/octet-stream",
+                    },
+                    body: chunk,
+                });
+                const data = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
+                if (!res.ok || !data.success) {
+                    toast.error(data.error || `Error en chunk ${i + 1} (${res.status})`, { id: "upload-backup" });
+                    return;
+                }
+                toast.loading(`Subiendo ${i + 1}/${totalChunks}...`, { id: "upload-backup" });
             }
-        } catch {
-            toast.error("Error al subir archivo", { id: "upload-backup" });
+            toast.success("Backup subido correctamente", { id: "upload-backup" });
+            router.refresh();
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Error al subir archivo";
+            toast.error(msg, { id: "upload-backup" });
         } finally {
             setActiveAction(null);
             event.target.value = "";

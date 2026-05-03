@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: ["sistema.maccell.com.ar", "localhost:3000"],
-      bodySizeLimit: '50mb',
+      bodySizeLimit: '500mb',
     },
   },
 };

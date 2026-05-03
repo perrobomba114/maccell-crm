@@ -24,9 +24,9 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
 
         // 1. Parallel Fetching (Independent Queries)
         const [repairsActive, techUsers, partsStats, repairsByStatusRaw, allStatuses, warrantiesCount] = await Promise.all([
-            // Active Repairs
+            // Active Repairs (Pending, Claimed, In Progress, Paused)
             prisma.repair.findMany({
-                where: { ...branchFilter, statusId: { notIn: [10] } },
+                where: { ...branchFilter, statusId: { in: [1, 2, 3, 4] } },
                 select: { promisedAt: true, statusId: true }
             }),
             // Tech Users (needed for next query)
@@ -66,20 +66,28 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
         ]);
 
         // 2. Dependent Queries (require results from above)
-        const [detailedTechRepairs, partsDetails] = await Promise.all([
-            // Tech Detailed Repairs
+        const techIds = techUsers.map(u => u.id);
+        const [activeTechRepairs, finishedEvents, partsDetails] = await Promise.all([
+            // Carga activa actual (para barra de tiempo restante por técnico)
             prisma.repair.findMany({
                 where: {
-                    assignedUserId: { in: techUsers.map(u => u.id) },
-                    OR: [
-                        { statusId: { in: [3, 4] } },
-                        { statusId: { in: [5, 6, 7, 10] }, finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } }
-                    ],
+                    assignedUserId: { in: techIds },
+                    statusId: { in: [3, 4] },
                     ...branchFilter
                 },
-                select: { assignedUserId: true, statusId: true, estimatedTime: true, startedAt: true, finishedAt: true }
+                select: { assignedUserId: true, statusId: true, estimatedTime: true, startedAt: true }
             }),
-            // Part Details
+            // Tickets reparados por técnico ESTE MES — eventos reales no-final → final, dedupe por (repairId, técnico)
+            prisma.repairStatusHistory.findMany({
+                where: {
+                    userId: { in: techIds },
+                    toStatusId: { in: [5, 6, 7, 10] },
+                    fromStatusId: { notIn: [5, 6, 7, 10] },
+                    createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+                    ...(resolvedBranchId ? { repair: { branchId: resolvedBranchId } } : {})
+                },
+                select: { userId: true, repairId: true }
+            }),
             prisma.sparePart.findMany({
                 where: { id: { in: partsStats.map(p => p.sparePartId) } },
                 select: { id: true, name: true, stockLocal: true }
@@ -90,12 +98,22 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
         const activeRepairsCount = repairsActive.length;
         const highPriorityCount = repairsActive.filter(r => r.promisedAt && new Date(r.promisedAt) < tomorrow).length;
 
+        // Tickets reparados por técnico (1 por ticket, sin importar cuántas transiciones hizo)
+        const finishedTicketsByTech = new Map<string, Set<string>>();
+        for (const ev of finishedEvents) {
+            if (!ev.userId) continue;
+            const set = finishedTicketsByTech.get(ev.userId) ?? new Set<string>();
+            set.add(ev.repairId);
+            finishedTicketsByTech.set(ev.userId, set);
+        }
+
+        const now = new Date();
         const topTechnicians = techUsers.map(user => {
-            const userRepairs = detailedTechRepairs.filter(r => r.assignedUserId === user.id);
-            const count = userRepairs.length;
+            const finishedSet = finishedTicketsByTech.get(user.id);
+            const count = finishedSet ? finishedSet.size : 0;
+            const userActive = activeTechRepairs.filter(r => r.assignedUserId === user.id);
             let remainingLoad = 0;
-            const now = new Date();
-            userRepairs.forEach(r => {
+            userActive.forEach(r => {
                 if (r.statusId === 4) remainingLoad += (r.estimatedTime || 0);
                 else if (r.statusId === 3) {
                     if (r.startedAt && r.estimatedTime) {
@@ -108,7 +126,7 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
                     } else remainingLoad += (r.estimatedTime || 0);
                 }
             });
-            return { name: user.name, repairs: count, time: remainingLoad, percent: 0 };
+            return { id: user.id, name: user.name, repairs: count, time: remainingLoad, percent: 0 };
         }).sort((a, b) => b.repairs - a.repairs);
 
         const maxRepairs = topTechnicians.length > 0 ? topTechnicians[0].repairs : 0;
