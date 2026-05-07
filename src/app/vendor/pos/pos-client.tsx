@@ -52,7 +52,8 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
     const cartTotal = cart.reduce((s, i) => s + (i.price * i.quantity), 0);
 
     return (
-        <div className="flex flex-col md:flex-row gap-4 p-4 h-[calc(100vh-4rem)] bg-zinc-950 overflow-hidden font-sans">
+        <div className="relative flex h-full w-full max-w-full flex-col gap-4 overflow-hidden bg-black p-4 font-sans text-white lg:flex-row">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,0.14),transparent_28%),radial-gradient(circle_at_78%_6%,rgba(16,185,129,0.12),transparent_30%),radial-gradient(circle_at_88%_92%,rgba(251,191,36,0.10),transparent_24%),linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[auto,auto,auto,42px_42px,42px_42px]" />
             <AlertDialog open={showCashConfirm} onOpenChange={setShowCashConfirm}>
                 <AlertDialogContent className="w-[95vw] sm:max-w-xl bg-zinc-950 border-zinc-800 border-2 p-8">
                     <AlertDialogHeader className="flex flex-col items-center justify-center space-y-4">
@@ -69,9 +70,10 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 </AlertDialogContent>
             </AlertDialog>
 
-            <div className="w-full md:w-2/3 flex flex-col gap-6">
+            <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col gap-4">
                 <PosHeader
                     cashShift={cashShift} shiftSummary={shiftSummary} pendingTransfers={pendingTransfers}
+                    branchName={branchData.name}
                     onTransferClick={() => setIsTransferModalOpen(true)}
                     onExpenseClick={() => { if (!cashShift) return toast.error("Caja cerrada"); setExpenseAmount(""); setExpenseDescription(""); setIsExpenseModalOpen(true); }}
                     onRegisterClick={async () => {
@@ -101,27 +103,29 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 />
             </div>
 
-            <PosCart
-                cart={cart} cashShift={cashShift}
-                onUpdateQuantity={(uid, delta) => {
-                    if (delta > 0) {
-                        const item = cart.find(i => i.uniqueId === uid && i.type === "PRODUCT");
-                        if (item && item.maxStock !== undefined && item.quantity + delta > item.maxStock) {
-                            toast.warning("Stock agotado — venta en negativo. Se notificará al administrador.");
+            <div className="relative z-10 h-[42vh] min-w-0 shrink-0 lg:h-full">
+                <PosCart
+                    cart={cart} cashShift={cashShift}
+                    onUpdateQuantity={(uid, delta) => {
+                        if (delta > 0) {
+                            const item = cart.find(i => i.uniqueId === uid && i.type === "PRODUCT");
+                            if (item && item.maxStock !== undefined && item.quantity + delta > item.maxStock) {
+                                toast.warning("Stock agotado — venta en negativo. Se notificará al administrador.");
+                            }
                         }
-                    }
-                    setCart(prev => prev.map(i =>
-                        i.uniqueId === uid && i.type === "PRODUCT"
-                            ? { ...i, quantity: Math.max(1, i.quantity + delta) }
-                            : i
-                    ));
-                }}
-                onRemoveFromCart={(uid) => setCart(prev => prev.filter(i => i.uniqueId !== uid))}
-                onItemClick={(item) => { setSelectedCartItem(item); setOverridePrice(item.price.toString()); setOverrideReason(item.priceChangeReason || ""); setIsPriceOverrideModalOpen(true); }}
-                onCheckoutClick={handleCheckoutClick}
-                subtotal={cartTotal}
-                total={cartTotal}
-            />
+                        setCart(prev => prev.map(i =>
+                            i.uniqueId === uid && i.type === "PRODUCT"
+                                ? { ...i, quantity: Math.max(1, i.quantity + delta) }
+                                : i
+                        ));
+                    }}
+                    onRemoveFromCart={(uid) => setCart(prev => prev.filter(i => i.uniqueId !== uid))}
+                    onItemClick={(item) => { setSelectedCartItem(item); setOverridePrice(item.price.toString()); setOverrideReason(item.priceChangeReason || ""); setIsPriceOverrideModalOpen(true); }}
+                    onCheckoutClick={handleCheckoutClick}
+                    subtotal={cartTotal}
+                    total={cartTotal}
+                />
+            </div>
 
             <RegisterDialog
                 isOpen={isRegisterModalOpen} onClose={() => setIsRegisterModalOpen(false)}

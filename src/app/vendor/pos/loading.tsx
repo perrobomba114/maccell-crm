@@ -1,117 +1,101 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Search, ShoppingCart, User, Plus, Package } from "lucide-react";
+import { CreditCard, PackageCheck, Search, ShoppingCart, Smartphone, Store, type LucideIcon } from "lucide-react";
 
 export default function Loading() {
     return (
-        <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] gap-6 p-6 animate-in fade-in duration-500 max-w-[1800px] mx-auto">
+        <div className="relative flex h-full w-full max-w-full flex-col gap-4 overflow-hidden bg-black p-4 text-white lg:flex-row">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,0.14),transparent_28%),radial-gradient(circle_at_78%_6%,rgba(16,185,129,0.12),transparent_30%),radial-gradient(circle_at_88%_92%,rgba(251,191,36,0.10),transparent_24%),linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[auto,auto,auto,42px_42px,42px_42px]" />
 
-            {/* LEFT PANEL - Product Selection */}
-            <div className="flex-1 flex flex-col gap-6 min-w-0">
-
-                {/* Search Bar Skeleton */}
-                <div className="relative">
-                    <div className="absolute left-4 top-3.5 text-zinc-400">
-                        <Search className="h-5 w-5" />
+            <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+                <section className="relative overflow-hidden rounded-xl border border-white/10 bg-zinc-950/80 p-4 shadow-2xl shadow-black/20">
+                    <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-emerald-300" />
+                    <div className="flex items-center gap-4 pl-2">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-200">
+                            <Store className="h-6 w-6" />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-2">
+                            <Skeleton className="h-5 w-44 rounded-md bg-white/10" />
+                            <Skeleton className="h-8 w-72 max-w-full rounded-md bg-white/10" />
+                        </div>
                     </div>
-                    <Skeleton className="h-12 w-full rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm" />
+                </section>
+
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+                    <SearchBlock icon={Search} tone="cyan" />
+                    <SearchBlock icon={Smartphone} tone="blue" />
                 </div>
 
-                {/* Categories & Products Grid */}
-                <div className="flex-1 overflow-hidden flex flex-col gap-4">
-                    {/* Category Tabs Skeleton */}
-                    <div className="flex gap-2 overflow-x-hidden pb-2">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                            <Skeleton key={i} className="h-9 w-24 rounded-full bg-zinc-200 dark:bg-zinc-800 flex-shrink-0" />
-                        ))}
+                <section className="min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10 bg-zinc-950/80 p-4 shadow-xl shadow-black/20">
+                    <div className="mb-4 flex items-center gap-2">
+                        <span className="h-9 w-1 rounded-r-full bg-cyan-300" />
+                        <Skeleton className="h-5 w-48 rounded-md bg-white/10" />
                     </div>
-
-                    {/* Products Grid Skeleton */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-hidden pr-2">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
-                            <Card key={i} className="border-0 shadow-sm bg-white dark:bg-zinc-900 ring-1 ring-zinc-100 dark:ring-zinc-800 overflow-hidden flex flex-col h-[220px]">
-                                <div className="h-32 bg-zinc-100 dark:bg-zinc-800 relative flex items-center justify-center">
-                                    <Package className="h-8 w-8 text-zinc-300" />
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
+                            <div key={item} className="relative overflow-hidden rounded-xl border border-cyan-300/20 bg-cyan-300/10 p-4 pl-5">
+                                <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-cyan-300" />
+                                <div className="mb-5 flex items-start justify-between">
+                                    <Skeleton className="h-6 w-24 rounded-md bg-white/10" />
+                                    <Skeleton className="h-6 w-16 rounded-md bg-white/10" />
                                 </div>
-                                <div className="p-3 flex flex-col gap-2 flex-1">
-                                    <Skeleton className="h-4 w-3/4 bg-zinc-200 dark:bg-zinc-700" />
-                                    <Skeleton className="h-3 w-1/2 bg-zinc-100 dark:bg-zinc-800" />
-                                    <div className="mt-auto flex justify-between items-center pt-2">
-                                        <Skeleton className="h-5 w-16 bg-zinc-200 dark:bg-zinc-700 rounded-md" />
-                                        <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800" />
+                                <div className="flex gap-3">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-cyan-300 text-cyan-950">
+                                        <PackageCheck className="h-5 w-5" />
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        <Skeleton className="h-4 w-full rounded-md bg-white/10" />
+                                        <Skeleton className="h-4 w-2/3 rounded-md bg-white/10" />
                                     </div>
                                 </div>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* RIGHT PANEL - Cart Summary */}
-            <div className="w-full lg:w-[420px] xl:w-[480px] flex flex-col h-full bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden">
-                {/* Cart Header */}
-                <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2">
-                            <ShoppingCart className="h-5 w-5 text-zinc-500" />
-                            <h2 className="font-bold text-zinc-800 dark:text-zinc-200">Orden Actual</h2>
-                        </div>
-                        <Skeleton className="h-6 w-16 rounded-full bg-zinc-200 dark:bg-zinc-800" />
-                    </div>
-
-                    {/* Customer Selection Skeleton */}
-                    <div className="relative">
-                        <div className="absolute left-3 top-2.5 text-zinc-400">
-                            <User className="h-4 w-4" />
-                        </div>
-                        <Skeleton className="h-9 w-full rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800" />
-                        <div className="absolute right-2 top-2">
-                            <Plus className="h-5 w-5 text-zinc-300" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Cart Items List */}
-                <div className="flex-1 p-4 space-y-4 overflow-hidden">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex gap-3">
-                            <Skeleton className="h-12 w-12 rounded-md bg-zinc-100 dark:bg-zinc-800 shrink-0" />
-                            <div className="flex-1 space-y-2">
-                                <Skeleton className="h-4 w-3/4 bg-zinc-200 dark:bg-zinc-700" />
-                                <div className="flex justify-between">
-                                    <Skeleton className="h-3 w-12 bg-zinc-100 dark:bg-zinc-800" />
-                                    <Skeleton className="h-3 w-16 bg-zinc-100 dark:bg-zinc-800" />
+                                <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-3">
+                                    <Skeleton className="h-4 w-14 rounded-md bg-white/10" />
+                                    <Skeleton className="h-7 w-24 rounded-md bg-white/10" />
                                 </div>
                             </div>
-                        </div>
+                        ))}
+                    </div>
+                </section>
+            </div>
+
+            <aside className="relative z-10 flex h-[42vh] w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-xl border border-emerald-300/20 bg-zinc-950/80 shadow-2xl shadow-black/25 lg:h-full lg:w-[22rem] xl:w-[26rem]">
+                <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-emerald-300" />
+                <div className="flex items-center gap-3 border-b border-white/10 bg-emerald-300/5 p-5 pl-6">
+                    <div className="rounded-lg bg-emerald-300 p-2 text-emerald-950">
+                        <ShoppingCart className="h-5 w-5" />
+                    </div>
+                    <Skeleton className="h-6 w-28 rounded-md bg-white/10" />
+                </div>
+                <div className="flex-1 space-y-3 p-5">
+                    {[1, 2, 3].map((item) => (
+                        <Skeleton key={item} className="h-20 rounded-lg bg-white/10" />
                     ))}
                 </div>
-
-                {/* Cart Footer / Totals */}
-                <div className="bg-zinc-50 dark:bg-zinc-900 p-6 space-y-4 border-t border-zinc-100 dark:border-zinc-800">
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                            <Skeleton className="h-4 w-20 bg-zinc-200 dark:bg-zinc-700" />
-                            <Skeleton className="h-4 w-16 bg-zinc-200 dark:bg-zinc-700" />
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <Skeleton className="h-4 w-24 bg-zinc-200 dark:bg-zinc-700" />
-                            <Skeleton className="h-4 w-16 bg-zinc-200 dark:bg-zinc-700" />
-                        </div>
-                        <Separator className="my-2" />
-                        <div className="flex justify-between items-center">
-                            <Skeleton className="h-6 w-24 bg-zinc-300 dark:bg-zinc-600 rounded-md" />
-                            <Skeleton className="h-8 w-32 bg-zinc-300 dark:bg-zinc-600 rounded-md" />
-                        </div>
+                <div className="border-t border-white/10 bg-black/30 p-5">
+                    <div className="mb-5 flex items-end justify-between">
+                        <Skeleton className="h-5 w-24 rounded-md bg-white/10" />
+                        <Skeleton className="h-10 w-36 rounded-md bg-white/10" />
                     </div>
-
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                        <Skeleton className="h-12 w-full rounded-xl bg-zinc-200 dark:bg-zinc-800" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-blue-600/20" />
+                    <div className="flex h-14 items-center justify-center rounded-lg bg-emerald-400 text-emerald-950">
+                        <CreditCard className="h-5 w-5" />
                     </div>
                 </div>
-            </div>
+            </aside>
         </div>
+    );
+}
+
+function SearchBlock({ icon: Icon, tone }: { icon: LucideIcon; tone: "cyan" | "blue" }) {
+    const color = tone === "cyan" ? "border-cyan-300/20 bg-cyan-300/10 text-cyan-100" : "border-blue-300/20 bg-blue-300/10 text-blue-100";
+    const rail = tone === "cyan" ? "bg-cyan-300" : "bg-blue-300";
+
+    return (
+        <section className={`relative overflow-hidden rounded-xl border p-4 shadow-xl shadow-black/15 ${color}`}>
+            <span className={`absolute inset-y-4 left-0 w-1 rounded-r-full ${rail}`} />
+            <div className="mb-3 flex items-center gap-2 pl-2 text-xs font-black uppercase">
+                <Icon className="h-4 w-4" />
+                <Skeleton className="h-4 w-28 rounded-md bg-white/10" />
+            </div>
+            <Skeleton className="h-14 rounded-lg bg-black/35" />
+        </section>
     );
 }

@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { getUserData } from "@/actions/get-user";
 import { PresenceHeartbeat } from "@/components/shared/presence-heartbeat";
 import { getTechniciansWorkload } from "@/actions/dashboard-actions";
+import { cn } from "@/lib/utils";
 
 interface LinkItem {
     href: string;
@@ -25,6 +26,8 @@ interface VendorLayoutClientProps {
     groups: SidebarGroup[];
 }
 
+type TechnicianWorkload = Awaited<ReturnType<typeof getTechniciansWorkload>>;
+
 export function VendorLayoutClient({
     children,
     groups,
@@ -36,7 +39,8 @@ export function VendorLayoutClient({
     const [userId, setUserId] = useState<string | undefined>("");
     const pathname = usePathname();
 
-    const [techniciansWorkload, setTechniciansWorkload] = useState<any[]>([]);
+    const [techniciansWorkload, setTechniciansWorkload] = useState<TechnicianWorkload>([]);
+    const isPosRoute = pathname === "/vendor/pos";
 
     const fetchData = async () => {
         const user = await getUserData();
@@ -50,12 +54,11 @@ export function VendorLayoutClient({
 
     useEffect(() => {
         const handleUserUpdate = () => {
-            console.log("User data update detected, refetching...");
-            fetchData();
+            void fetchData();
         };
 
-        window.addEventListener('user-data-updated' as any, handleUserUpdate);
-        return () => window.removeEventListener('user-data-updated' as any, handleUserUpdate);
+        window.addEventListener("user-data-updated", handleUserUpdate);
+        return () => window.removeEventListener("user-data-updated", handleUserUpdate);
     }, []);
 
     useEffect(() => {
@@ -104,7 +107,7 @@ export function VendorLayoutClient({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <div className="flex min-h-screen" suppressHydrationWarning>
+        <div className={cn("flex min-h-screen", isPosRoute && "h-dvh overflow-hidden")} suppressHydrationWarning>
             <PresenceHeartbeat />
             <Sidebar
                 groups={groups}
@@ -120,7 +123,7 @@ export function VendorLayoutClient({
                     duration: 0.3,
                     ease: [0.4, 0, 0.2, 1],
                 }}
-                className="flex-1"
+                className={cn("min-w-0 flex-1", isPosRoute && "h-dvh overflow-hidden")}
             >
                 <Header
                     title=""
@@ -132,7 +135,12 @@ export function VendorLayoutClient({
                     profileHref="/vendor/profile"
                     onMenuClick={() => setIsSidebarOpen(true)}
                 />
-                <div className="p-6 pt-[5.5rem] md:pt-6">
+                <div
+                    className={cn(
+                        "p-6 pt-[5.5rem] md:pt-6",
+                        isPosRoute && "h-[calc(100dvh-4rem)] overflow-hidden p-3 pt-[5.5rem] md:p-4 md:pt-4"
+                    )}
+                >
                     {children}
                 </div>
             </motion.div>

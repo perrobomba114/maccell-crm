@@ -1,30 +1,14 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, Smartphone, Monitor, Lock } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Lock, Monitor, Search, Smartphone, Sparkles } from "lucide-react";
+import { type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-interface PosProduct {
-    id: string;
-    sku: string;
-    name: string;
-    price: number;
-    stock: number;
-    category?: string;
-}
-
-interface PosRepair {
-    id: string;
-    ticketNumber: string;
-    device: string;
-    customerName: string;
-    price: number;
-    status: string;
-}
+import { type PosProduct, type PosRepair } from "@/lib/actions/pos";
+import { type CashShiftResult } from "@/lib/actions/cash-register";
+import { PosProductCard, PosRepairCard } from "@/components/pos/PosResultCards";
 
 interface PosSearchProps {
     searchQuery: string;
@@ -33,13 +17,37 @@ interface PosSearchProps {
     setRepairQuery: (v: string) => void;
     isSearching: boolean;
     isSearchingRepairs: boolean;
-    cashShift: any;
+    cashShift: CashShiftResult | null;
     repairs: PosRepair[];
     products: PosProduct[];
     bestSellers: PosProduct[];
     onAddRepairToCart: (repair: PosRepair) => void;
     onAddToCartProduct: (product: PosProduct) => void;
     onClearProducts: () => void;
+}
+
+function EmptyState({
+    icon,
+    title,
+    description
+}: {
+    icon: ReactNode;
+    title: string;
+    description: string;
+}) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex h-full min-h-[20rem] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center"
+        >
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-zinc-950 text-zinc-500">
+                {icon}
+            </div>
+            <h3 className="text-lg font-black text-white">{title}</h3>
+            <p className="mt-2 max-w-sm text-sm font-medium text-zinc-500">{description}</p>
+        </motion.div>
+    );
 }
 
 export function PosSearch({
@@ -57,271 +65,164 @@ export function PosSearch({
     onAddToCartProduct,
     onClearProducts
 }: PosSearchProps) {
+    const isProductMode = searchQuery.length >= 2 || products.length > 0;
+    const isRepairMode = repairQuery.length >= 2;
+
     return (
-        <div className="flex flex-col gap-6 h-full min-h-0">
+        <div className="flex h-full min-h-0 flex-col gap-4">
             <motion.div
-                initial={{ y: -20, opacity: 0 }}
+                initial={{ y: -12, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]"
             >
-                {/* Product Search */}
-                <div className="md:col-span-2 relative group z-20">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/30 to-purple-600/30 rounded-xl blur opacity-30 group-hover:opacity-75 transition duration-500"></div>
-                    <div className="relative bg-card/80 backdrop-blur-xl rounded-xl border border-secondary/20 p-4 shadow-lg">
-                        <div className="flex justify-between items-center mb-2">
-                            <Label htmlFor="product-search-input" className="sr-only">Buscar productos</Label>
-                            <h3 className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-2 tracking-wider">
-                                <Search className="w-3 h-3" /> Catálogo
-                            </h3>
-                            {isSearching && <span className="animate-spin h-3 w-3 border-2 border-primary border-t-transparent rounded-full" />}
-                        </div>
-                        <Input
-                            name="product-search"
-                            id="product-search-input"
-                            aria-label="Buscar producto"
-                            placeholder="Buscar producto (Nombre, SKU)..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && searchQuery.trim().length >= 2 && products.length > 0) {
-                                    // If there's an exact SKU match or just one result, pick it
-                                    const exactMatch = products.find(p => p.sku.toLowerCase() === searchQuery.trim().toLowerCase()) || products[0];
-                                    if (exactMatch) {
-                                        onAddToCartProduct(exactMatch);
-                                        setSearchQuery("");
-                                        onClearProducts();
-                                    }
-                                }
-                            }}
-                            className="bg-background/50 border-primary/20 focus:border-primary/50 text-lg h-12 transition-all hover:bg-background/80"
-                            autoFocus
-                            disabled={!cashShift}
-                        />
+                <div className="relative overflow-hidden rounded-xl border border-cyan-300/20 bg-cyan-300/10 p-4 shadow-xl shadow-black/15">
+                    <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-cyan-300" />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent" />
+                    <div className="mb-3 flex items-center justify-between pl-2">
+                        <Label htmlFor="product-search-input" className="flex items-center gap-2 text-xs font-black uppercase tracking-normal text-cyan-100">
+                            <Search className="h-4 w-4" />
+                            catálogo
+                        </Label>
+                        {isSearching && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-cyan-300 border-t-transparent" />}
                     </div>
+                    <Input
+                        name="product-search"
+                        id="product-search-input"
+                        aria-label="Buscar producto"
+                        placeholder="Escaneá SKU o buscá por nombre"
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter" && searchQuery.trim().length >= 2 && products.length > 0) {
+                                const exactMatch = products.find((product) => product.sku.toLowerCase() === searchQuery.trim().toLowerCase()) || products[0];
+                                onAddToCartProduct(exactMatch);
+                                setSearchQuery("");
+                                onClearProducts();
+                            }
+                        }}
+                        className="h-14 rounded-lg border-white/10 bg-black/35 px-4 text-lg font-bold text-white shadow-inner shadow-black/20 transition-all placeholder:text-zinc-500 focus:border-cyan-300/50 focus:bg-black/55"
+                        autoFocus
+                        disabled={!cashShift}
+                    />
                 </div>
 
-                {/* Repair Search Input */}
-                <div className="relative group z-20">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/30 to-cyan-400/30 rounded-xl blur opacity-30 group-hover:opacity-75 transition duration-500"></div>
-                    <div className="relative bg-card/80 backdrop-blur-xl rounded-xl border border-secondary/20 p-4 shadow-lg h-full flex flex-col justify-start">
-                        <div className="flex justify-between items-center mb-2">
-                            <Label htmlFor="repair-search-input" className="sr-only">Buscar reparaciones</Label>
-                            <h3 className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-2 tracking-wider">
-                                <Smartphone className="w-3 h-3" /> Buscar Reparación
-                            </h3>
-                            {isSearchingRepairs && <span className="animate-spin h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full" />}
-                        </div>
-                        <Input
-                            name="repair-search"
-                            id="repair-search-input"
-                            aria-label="Buscar reparación"
-                            placeholder="Ticket, Nombre, Teléfono..."
-                            value={repairQuery}
-                            onChange={(e) => {
-                                setRepairQuery(e.target.value);
-                                if (e.target.value.length >= 2) {
-                                    setSearchQuery(""); // Clear product search to switch context
-                                    onClearProducts();
-                                }
-                            }}
-                            className="bg-background/50 border-primary/20 h-10 transition-all hover:bg-background/80"
-                            disabled={!cashShift}
-                        />
+                <div className="relative overflow-hidden rounded-xl border border-blue-300/20 bg-blue-300/10 p-4 shadow-xl shadow-black/15">
+                    <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-blue-300" />
+                    <div className="mb-3 flex items-center justify-between pl-2">
+                        <Label htmlFor="repair-search-input" className="flex items-center gap-2 text-xs font-black uppercase tracking-normal text-blue-100">
+                            <Smartphone className="h-4 w-4" />
+                            reparación
+                        </Label>
+                        {isSearchingRepairs && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-300 border-t-transparent" />}
                     </div>
+                    <Input
+                        name="repair-search"
+                        id="repair-search-input"
+                        aria-label="Buscar reparación"
+                        placeholder="Ticket, cliente o teléfono"
+                        value={repairQuery}
+                        onChange={(event) => {
+                            setRepairQuery(event.target.value);
+                            if (event.target.value.length >= 2) {
+                                setSearchQuery("");
+                                onClearProducts();
+                            }
+                        }}
+                        className="h-14 rounded-lg border-white/10 bg-black/35 px-4 font-bold text-white shadow-inner shadow-black/20 transition-all placeholder:text-zinc-500 focus:border-blue-300/50 focus:bg-black/55"
+                        disabled={!cashShift}
+                    />
                 </div>
             </motion.div>
 
-            {/* Products & Repairs Grid */}
-            <div className="flex-1 overflow-auto rounded-2xl p-2 -m-2 custom-scrollbar relative">
+            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-white/10 bg-zinc-950/80 p-4 shadow-xl shadow-black/20 custom-scrollbar">
                 {!cashShift ? (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
+                    <EmptyState
+                        icon={<Lock className="h-8 w-8 text-emerald-300" />}
+                        title="Abrí la caja para empezar"
+                        description="Con la caja abierta se habilitan búsquedas, cobros, transferencias y carga de gastos."
+                    />
+                ) : isRepairMode ? (
+                    <ResultGrid
+                        title="Reparaciones listas para cobrar"
+                        tone="blue"
+                        isEmpty={repairs.length === 0 && !isSearchingRepairs}
+                        emptyText="No se encontraron reparaciones para esa búsqueda."
                     >
-                        <div className="relative mb-6">
-                            <div className="absolute -inset-4 bg-emerald-500/20 rounded-full blur-2xl animate-pulse"></div>
-                            <div className="relative p-6 bg-zinc-900 border-2 border-emerald-500/30 rounded-full shadow-2xl">
-                                <Lock className="w-16 h-16 text-emerald-500" />
-                            </div>
-                        </div>
-                        <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-2">Caja Cerrada</h2>
-                        <p className="text-zinc-400 max-w-xs mb-8 font-medium">
-                            Debe abrir la caja registradora para comenzar a buscar productos, realizar ventas o cobrar reparaciones.
-                        </p>
-
-                        {/* Note: In a real app we might pass the onUpdateRegister handler here too, 
-                            but since it's already in the header, we just point them there or add instructions.
-                            Actually, let's keep it simple and just show the message, the header button is now very visible.
-                        */}
-                        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-3 animate-bounce">
-                            <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white ring-4 ring-emerald-500/20">
-                                <Monitor className="w-4 h-4" />
-                            </div>
-                            <span className="text-emerald-400 font-bold">Use el botón "Abrir Caja" arriba a la derecha</span>
-                        </div>
-                    </motion.div>
-                ) : repairQuery.length >= 2 ? (
-                    /* CASE 1: REPAIR SEARCH ACTIVE */
-                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
                         <AnimatePresence>
-                            {repairs.length === 0 && !isSearchingRepairs ? (
-                                <div className="col-span-full flex flex-col items-center justify-center p-10 text-muted-foreground opacity-50">
-                                    <Search className="w-12 h-12 mb-2" />
-                                    <p>No se encontraron reparaciones</p>
-                                </div>
-                            ) : (
-                                repairs.map((repair, i) => (
-                                    <motion.div
-                                        key={repair.id}
-                                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        transition={{ delay: i * 0.05 }}
-                                        onClick={() => onAddRepairToCart(repair)}
-                                    >
-                                        <Card className="h-full cursor-pointer group hover:border-blue-500/50 transition-all hover:shadow-xl hover:shadow-blue-500/10 overflow-hidden bg-card/40 backdrop-blur-sm relative border-white/5">
-                                            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
-                                            <CardContent className="p-4 flex flex-col h-full gap-2">
-                                                <div className="flex justify-between items-start">
-                                                    <Badge variant="outline" className="text-[10px] tracking-tight backdrop-blur-md bg-blue-500/10 text-blue-500 border-blue-500/20">
-                                                        #{repair.ticketNumber}
-                                                    </Badge>
-                                                    <span className="text-[10px] text-muted-foreground font-mono bg-background/50 px-1 rounded truncate max-w-[80px]">
-                                                        {repair.status}
-                                                    </span>
-                                                </div>
-
-                                                <h3 className="font-medium text-sm text-foreground/90 mt-2 group-hover:text-blue-500 transition-colors line-clamp-1">
-                                                    {repair.device}
-                                                </h3>
-                                                <p className="text-[10px] text-muted-foreground line-clamp-1">
-                                                    {repair.customerName}
-                                                </p>
-
-                                                <div className="pt-2 mt-auto flex items-end justify-between border-t border-border/30">
-                                                    <span className="text-xs text-muted-foreground">Total</span>
-                                                    <span className="text-lg font-bold text-foreground">
-                                                        ${repair.price.toLocaleString()}
-                                                    </span>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </motion.div>
-                                ))
-                            )}
+                            {repairs.map((repair, index) => (
+                                <PosRepairCard key={repair.id} repair={repair} index={index} onAdd={onAddRepairToCart} />
+                            ))}
                         </AnimatePresence>
-                    </div>
-                ) : searchQuery.length >= 2 || products.length > 0 ? (
-                    /* CASE 2: PRODUCT SEARCH ACTIVE */
-                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
+                    </ResultGrid>
+                ) : isProductMode ? (
+                    <ResultGrid
+                        title="Resultados del catálogo"
+                        tone="cyan"
+                        isEmpty={products.length === 0 && !isSearching}
+                        emptyText="No se encontraron productos para esa búsqueda."
+                    >
                         <AnimatePresence>
-                            {products.length === 0 && !isSearching ? (
-                                <div className="col-span-full flex flex-col items-center justify-center p-10 text-muted-foreground opacity-50">
-                                    <Search className="w-12 h-12 mb-2" />
-                                    <p>No se encontraron productos</p>
-                                </div>
-                            ) : (
-                                products.map((product, i) => (
-                                    <motion.div
-                                        key={product.id}
-                                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        transition={{ delay: i * 0.05 }}
-                                        onClick={() => onAddToCartProduct(product)}
-                                    >
-                                        <Card className="h-full cursor-pointer group hover:border-primary/50 transition-all hover:shadow-xl hover:shadow-primary/10 overflow-hidden bg-card/40 backdrop-blur-sm relative border-white/5">
-                                            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-primary to-purple-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
-                                            <CardContent className="p-4 flex flex-col h-full gap-2">
-                                                <div className="flex justify-between items-start">
-                                                    <Badge variant="outline" className={cn(
-                                                        "text-[10px] tracking-tight backdrop-blur-md",
-                                                        product.stock > 0 ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
-                                                    )}>
-                                                        STOCK: {product.stock}
-                                                    </Badge>
-                                                    <span className="text-[9px] text-muted-foreground font-mono bg-background/50 px-1 rounded truncate max-w-[80px]">
-                                                        {product.sku}
-                                                    </span>
-                                                </div>
-
-                                                <h3 className="font-medium text-sm text-foreground/90 mt-2 group-hover:text-primary transition-colors line-clamp-2 min-h-[40px]">
-                                                    {product.name}
-                                                </h3>
-
-                                                <div className="pt-2 mt-auto flex items-end justify-between border-t border-border/30">
-                                                    <span className="text-xs text-muted-foreground">Precio</span>
-                                                    <span className="text-lg font-bold text-foreground">
-                                                        ${product.price.toLocaleString()}
-                                                    </span>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </motion.div>
-                                ))
-                            )}
+                            {products.map((product, index) => (
+                                <PosProductCard key={product.id} product={product} index={index} onAdd={onAddToCartProduct} />
+                            ))}
                         </AnimatePresence>
-                    </div>
+                    </ResultGrid>
+                ) : bestSellers.length > 0 ? (
+                    <ResultGrid title="Atajos de más vendidos" tone="amber" isEmpty={false} emptyText="">
+                        <AnimatePresence>
+                            {bestSellers.map((product, index) => (
+                                <PosProductCard key={`best-${product.id}`} product={product} index={index} variant="best-seller" onAdd={onAddToCartProduct} />
+                            ))}
+                        </AnimatePresence>
+                    </ResultGrid>
                 ) : (
-                    /* CASE 3: NO SEARCH -> SHOW BEST SELLERS */
-                    <>
-                        {bestSellers.length > 0 ? (
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="h-8 w-1 bg-gradient-to-b from-primary to-purple-500 rounded-full" />
-                                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Más Vendidos</h3>
-                                </div>
-                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
-                                    <AnimatePresence>
-                                        {bestSellers.map((product, i) => (
-                                            <motion.div
-                                                key={`best-${product.id}`}
-                                                initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                transition={{ delay: i * 0.05 }}
-                                                onClick={() => onAddToCartProduct(product)}
-                                            >
-                                                <Card className="h-full cursor-pointer group hover:border-primary/50 transition-all hover:shadow-xl hover:shadow-primary/10 overflow-hidden bg-card/40 backdrop-blur-sm relative border-white/5">
-                                                    <div className="absolute top-0 right-0 p-2 z-10">
-                                                        <Badge variant="secondary" className="text-[9px] font-bold bg-amber-500/10 text-amber-500 border-amber-500/20">HOT</Badge>
-                                                    </div>
-                                                    <CardContent className="p-4 flex flex-col h-full gap-2">
-                                                        <div className="flex justify-between items-start mt-4">
-                                                            <Badge variant="outline" className={cn(
-                                                                "text-[10px] tracking-tight backdrop-blur-md",
-                                                                product.stock > 0 ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
-                                                            )}>
-                                                                STOCK: {product.stock}
-                                                            </Badge>
-                                                        </div>
-                                                        <h3 className="font-medium text-sm line-clamp-2 flex-grow mt-2 group-hover:text-primary transition-colors">
-                                                            {product.name}
-                                                        </h3>
-                                                        <div className="pt-2 flex items-end justify-between border-t border-border/30 mt-auto">
-                                                            <span className="text-xs text-muted-foreground">Precio</span>
-                                                            <span className="text-lg font-bold text-foreground">
-                                                                ${product.price.toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            </motion.div>
-                                        ))}
-                                    </AnimatePresence>
-                                </div>
-                            </div>
-                        ) : (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-30 pt-20"
-                            >
-                                <Search className="w-20 h-20 mb-4" />
-                                <p className="text-xl font-bold">Comienza a buscar...</p>
-                            </motion.div>
-                        )}
-                    </>
+                    <EmptyState
+                        icon={<Monitor className="h-8 w-8" />}
+                        title="Listo para vender"
+                        description="Escaneá un SKU, buscá un producto o cargá una reparación desde el campo superior."
+                    />
                 )}
             </div>
+        </div>
+    );
+}
+
+function ResultGrid({
+    title,
+    tone,
+    isEmpty,
+    emptyText,
+    children
+}: {
+    title: string;
+    tone: "cyan" | "blue" | "amber";
+    isEmpty: boolean;
+    emptyText: string;
+    children: ReactNode;
+}) {
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+                <span
+                    className={cn(
+                        "h-9 w-1 rounded-r-full",
+                        tone === "cyan" && "bg-cyan-300",
+                        tone === "blue" && "bg-blue-300",
+                        tone === "amber" && "bg-amber-300"
+                    )}
+                />
+                <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-normal text-zinc-300">
+                    <Sparkles className="h-4 w-4 text-zinc-500" />
+                    {title}
+                </h3>
+            </div>
+            {isEmpty ? (
+                <EmptyState icon={<Search className="h-8 w-8" />} title="Sin resultados" description={emptyText} />
+            ) : (
+                <div className="grid grid-cols-1 gap-3 pb-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {children}
+                </div>
+            )}
         </div>
     );
 }

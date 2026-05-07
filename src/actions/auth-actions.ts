@@ -1,9 +1,7 @@
 "use server";
 
 import { db as prisma } from "@/lib/db";
-import * as bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 export async function login(email: string, password: string) {
 
@@ -22,6 +20,7 @@ export async function login(email: string, password: string) {
 
 
         // Verify password
+        const bcrypt = await import("bcryptjs");
         const passwordMatch = await bcrypt.compare(password, user.password);
 
 

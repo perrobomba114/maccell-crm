@@ -111,7 +111,11 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
         setIsLoadingShift(true);
         const shift = await getOpenShift(vendorId);
         setCashShift(shift);
-        if (shift) updateShiftSummary(shift.id);
+        if (shift) {
+            await updateShiftSummary(shift.id);
+        } else {
+            setShiftSummary(null);
+        }
         setIsLoadingShift(false);
     };
 
@@ -251,15 +255,29 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
         const val = parseFloat(amountInput.replace(/\./g, "").replace(",", ".")) || 0;
         if (modalAction === "OPEN") {
             const res = await openRegister(vendorId, branchId, val);
-            if (res.success) (toast.success("Caja abierta"), loadInitialData(), setIsRegisterModalOpen(false));
-            else toast.error(res.error || "Error al abrir caja");
+            if (res.success) {
+                toast.success("Caja abierta");
+                await loadInitialData();
+                setIsRegisterModalOpen(false);
+            } else {
+                toast.error(res.error || "Error al abrir caja");
+            }
         } else {
             if (!cashShift || !shiftSummary) return;
             const res = await closeRegister(cashShift.id, val, employeeCount);
             if (res.success) {
                 printCashShiftClosureTicket({ branch: branchData, user: { name: "Cajero" }, shift: { startAmount: cashShift.startAmount, startTime: cashShift.startTime }, summary: shiftSummary, billCounts, finalCount: val, employeeCount });
-                toast.success("Caja cerrada"); setBillCounts({}); loadInitialData(); setIsRegisterModalOpen(false);
-            } else toast.error(res.error || "Error al cerrar caja");
+                setCashShift(null);
+                setShiftSummary(null);
+                setBillCounts({});
+                setModalAction("OPEN");
+                setAmountInput("");
+                setIsRegisterModalOpen(false);
+                toast.success("Caja cerrada");
+                await loadInitialData();
+            } else {
+                toast.error(res.error || "Error al cerrar caja");
+            }
         }
     };
 
