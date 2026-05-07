@@ -46,16 +46,16 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="hidden overflow-hidden rounded-lg border bg-card shadow-sm md:block">
+            <div className="hidden overflow-hidden rounded-xl border bg-card shadow-sm md:block">
                 <Table>
-                    <TableHeader>
-                        <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-[150px] pl-6">Fecha</TableHead>
-                            <TableHead>Detalle</TableHead>
-                            <TableHead className="w-[190px]">Registró</TableHead>
-                            <TableHead className="w-[180px]">Sucursal</TableHead>
-                            <TableHead className="w-[150px] text-right">Monto</TableHead>
-                            <TableHead className="w-[110px] text-right">Acciones</TableHead>
+                    <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
+                        <TableRow className="hover:bg-transparent border-none">
+                            <TableHead className="w-[150px] pl-6 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Fecha</TableHead>
+                            <TableHead className="text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Detalle</TableHead>
+                            <TableHead className="w-[190px] text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Registró</TableHead>
+                            <TableHead className="w-[180px] text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Sucursal</TableHead>
+                            <TableHead className="w-[150px] text-right text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Monto</TableHead>
+                            <TableHead className="w-[110px] text-right pr-6 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -74,7 +74,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                             expenses.map((expense) => (
                                 <TableRow
                                     key={expense.id}
-                                    className="group"
+                                    className="border-b border-border/60 transition-colors hover:bg-muted/40 group"
                                 >
                                     <TableCell className="pl-6 py-4">
                                         <div className="flex flex-col">
@@ -113,7 +113,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                                             - {currencyFormatter.format(expense.amount)}
                                         </span>
                                     </TableCell>
-                                    <TableCell className="py-4 text-right">
+                                    <TableCell className="py-4 text-right pr-6">
                                         <div className="inline-flex items-center justify-end gap-1">
                                             <Button
                                                 variant="ghost"
@@ -150,7 +150,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                         No hay gastos registrados
                     </div>
                 ) : expenses.map((expense) => (
-                    <article key={expense.id} className="rounded-lg border bg-card p-4 shadow-sm">
+                    <article key={expense.id} className="rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:border-blue-500/30">
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <p className="font-bold leading-snug">{expense.description}</p>

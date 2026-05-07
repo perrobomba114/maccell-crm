@@ -12,7 +12,7 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { Ticket, User, Phone, ClipboardList, Clock, ShieldCheck, Droplets } from "lucide-react";
+import { ClipboardList, Droplets, ShieldCheck } from "lucide-react";
 
 interface ReturnRequest {
     id: string;
@@ -36,54 +36,66 @@ interface ReturnRequest {
 
 export default function TechnicianReturnsClient({ returns }: { returns: ReturnRequest[] }) {
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
-            <h1 className="text-2xl font-bold">Mis Solicitudes de Devolución</h1>
+        <div className="space-y-6">
+            <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                <div className="relative flex flex-col gap-1 border-b p-5 sm:p-6">
+                    <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-orange-400 to-rose-600" />
+                    <div className="flex items-center gap-4">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-500">
+                            <ClipboardList className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">Mis Solicitudes de Devolución</h2>
+                            <p className="text-sm text-muted-foreground">
+                                Historial y estado de los repuestos que devolviste al inventario.
+                            </p>
+                        </div>
+                    </div>
+                </div>
 
-            <div className="border-2 border-slate-800/60 rounded-[2rem] overflow-hidden bg-slate-950/40 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                <Table>
-                    <TableHeader className="bg-slate-900/80 border-b border-slate-800">
-                        <TableRow className="hover:bg-transparent border-none">
-                            <TableHead className="text-center w-[140px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14">Protocolo</TableHead>
-                            <TableHead className="text-center text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14">Cliente</TableHead>
-                            <TableHead className="text-center w-[140px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14">Contacto</TableHead>
-                            <TableHead className="text-center w-[160px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14">Estado Reparación</TableHead>
-                            <TableHead className="text-left text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14">Observación Técnica</TableHead>
-                            <TableHead className="text-center w-[140px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14">Resolución</TableHead>
-                            <TableHead className="text-center w-[140px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14">Sincronización</TableHead>
-                        </TableRow>
-                    </TableHeader>
+                <div className="p-0">
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
+                                <TableRow className="hover:bg-transparent border-none">
+                                    <TableHead className="text-center w-[130px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Protocolo</TableHead>
+                                    <TableHead className="text-center px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Cliente</TableHead>
+                                    <TableHead className="text-center w-[120px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Contacto</TableHead>
+                                    <TableHead className="text-center w-[140px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Estado Reparación</TableHead>
+                                    <TableHead className="text-left px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Observación Técnica</TableHead>
+                                    <TableHead className="text-center w-[120px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Resolución</TableHead>
+                                    <TableHead className="text-center w-[140px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Sincronización</TableHead>
+                                </TableRow>
+                            </TableHeader>
                     <TableBody>
                         {returns.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-60 text-center">
+                                <TableCell colSpan={7} className="h-60 text-center bg-muted/10">
                                     <div className="flex flex-col items-center justify-center gap-2">
-                                        <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-800 mb-2">
-                                            <ClipboardList className="w-6 h-6 text-slate-700" />
-                                        </div>
-                                        <h3 className="text-lg font-black text-slate-400 uppercase tracking-widest italic">Historial Vacío</h3>
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">No hay solicitudes pendientes…</p>
+                                        <ClipboardList className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                                        <h3 className="text-lg font-black text-muted-foreground uppercase tracking-widest italic">Historial Vacío</h3>
+                                        <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-[0.2em]">No hay solicitudes pendientes…</p>
                                     </div>
                                 </TableCell>
                             </TableRow>
                         ) : (
                             returns.map((req) => (
-                                <TableRow key={req.id} className="hover:bg-white/[0.02] border-b border-white/[0.03] group transition-[background-color] duration-300">
-                                    <TableCell className="text-center py-5">
+                                <TableRow key={req.id} className="border-b border-border/60 transition-colors hover:bg-muted/40 group">
+                                    <TableCell className="text-center py-5 px-3">
                                         <div className={cn(
                                             "inline-flex flex-col items-center justify-center min-w-[95px] p-2.5 rounded-2xl border-2 transition-[transform,box-shadow,background-color] duration-300 group-hover:scale-105 tabular-nums",
                                             req.repair.isWet ? "bg-blue-600/10 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]" :
                                                 req.repair.isWarranty ? "bg-amber-600/10 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]" :
-                                                    "bg-slate-900 border-slate-800 shadow-xl"
+                                                    "bg-card border-border shadow-sm"
                                         )}>
                                             <span className={cn(
                                                 "text-[9px] font-black tracking-[0.2em] leading-none mb-1.5 uppercase",
-                                                req.repair.isWet ? "text-blue-400" : req.repair.isWarranty ? "text-amber-500" : "text-slate-500"
+                                                req.repair.isWet ? "text-blue-500" : req.repair.isWarranty ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"
                                             )}>
                                                 {req.repair.ticketNumber?.split("-")[0] || "MAC"}
                                             </span>
                                             <span className={cn(
-                                                "text-base font-black font-mono leading-none tracking-tighter",
-                                                req.repair.isWet ? "text-white" : req.repair.isWarranty ? "text-white" : "text-slate-100"
+                                                "text-base font-black font-mono leading-none tracking-tighter text-foreground"
                                             )}>
                                                 {req.repair.ticketNumber?.split("-").pop()}
                                             </span>
@@ -92,45 +104,45 @@ export default function TechnicianReturnsClient({ returns }: { returns: ReturnRe
                                         </div>
                                     </TableCell>
 
-                                    <TableCell className="text-center">
-                                        <span className="font-black text-[13px] text-white uppercase tracking-tight leading-tight group-hover:text-blue-500 transition-colors duration-300">
+                                    <TableCell className="text-center px-3">
+                                        <span className="font-black text-[13px] text-foreground uppercase tracking-tight leading-tight group-hover:text-blue-500 transition-colors duration-300">
                                             {req.repair.customer.name}
                                         </span>
                                     </TableCell>
 
-                                    <TableCell className="text-center">
-                                        <div className="inline-flex items-center justify-center bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-800/50 tabular-nums shadow-sm group-hover:border-blue-500/30 transition-colors duration-300">
-                                            <span className="text-sm font-black text-slate-300 uppercase tracking-tight">
+                                    <TableCell className="text-center px-3">
+                                        <div className="inline-flex items-center justify-center bg-muted/50 px-3 py-1.5 rounded-xl border border-border tabular-nums shadow-sm group-hover:border-blue-500/30 transition-colors duration-300">
+                                            <span className="text-sm font-black text-foreground uppercase tracking-tight">
                                                 {req.repair.customer.phone || "———"}
                                             </span>
                                         </div>
                                     </TableCell>
 
-                                    <TableCell className="text-center">
-                                        <Badge variant="outline" className="font-black border-slate-800 bg-slate-900/50 text-slate-400 px-3 py-1 text-[10px] uppercase tracking-widest rounded-lg">
+                                    <TableCell className="text-center px-3">
+                                        <Badge variant="outline" className="font-black border-border bg-card text-muted-foreground px-3 py-1 text-[10px] uppercase tracking-widest rounded-lg">
                                             {req.repair.status.name}
                                         </Badge>
                                     </TableCell>
 
-                                    <TableCell className="text-left py-5">
+                                    <TableCell className="text-left py-5 px-3">
                                         <div className="max-w-[250px] space-y-1">
-                                            <p className="text-xs font-bold text-slate-300 leading-relaxed italic line-clamp-2">
+                                            <p className="text-xs font-bold text-muted-foreground leading-relaxed italic line-clamp-2">
                                                 “{req.technicianNote || "Sin observaciones adicionales…"}”
                                             </p>
                                         </div>
                                     </TableCell>
 
-                                    <TableCell className="text-center">
+                                    <TableCell className="text-center px-3">
                                         <StatusBadge status={req.status} />
                                     </TableCell>
 
-                                    <TableCell className="text-center">
+                                    <TableCell className="text-center px-3">
                                         <div className="flex flex-col items-center tabular-nums">
-                                            <span className="text-sm font-black text-emerald-400 tracking-tight leading-none">
+                                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tracking-tight leading-none">
                                                 {format(new Date(req.createdAt), "dd/MM/yy", { locale: es })}
                                             </span>
                                             <div className="flex items-center gap-1.5 mt-2 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                                                <span className="text-[9px] font-black text-emerald-500/80 uppercase tracking-widest">
+                                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
                                                     {format(new Date(req.createdAt), "HH:mm", { locale: es })} HS
                                                 </span>
                                             </div>
@@ -141,7 +153,9 @@ export default function TechnicianReturnsClient({ returns }: { returns: ReturnRe
                         )}
                     </TableBody>
                 </Table>
-            </div>
+                </div>
+                </div>
+            </section>
         </div>
     );
 }

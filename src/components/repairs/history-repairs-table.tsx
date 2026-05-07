@@ -16,9 +16,27 @@ import { getRepairByIdAction } from "@/lib/actions/repairs";
 import { toast } from "sonner";
 import { printRepairTicket, printWarrantyTicket, printWetReport } from "@/lib/print-utils";
 import { cn } from "@/lib/utils";
+import { RepairDetails } from "./repair-details-dialog";
+
+type RepairData = {
+    id: string;
+    ticketNumber: string;
+    deviceBrand: string;
+    deviceModel: string;
+    isWet: boolean;
+    isWarranty: boolean;
+    startedAt: Date | string | null;
+    finishedAt: Date | string | null;
+    updatedAt: Date | string | null;
+    customer: { name: string; phone?: string | null };
+    status: { id: number; name: string; color: string | null };
+    statusId?: number;
+    statusHistory?: Array<{ fromStatus?: { name: string } | null }>;
+    branch?: { name?: string | null; address?: string | null; phone?: string | null; imageUrl?: string | null } | null;
+};
 
 interface HistoryRepairsTableProps {
-    repairs: any[];
+    repairs: RepairData[];
     currentPage: number;
     totalPages: number;
 }
@@ -44,14 +62,14 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
     const [searchTerm, setSearchTerm] = useState(initialQuery);
     const debouncedSearch = useDebounce(searchTerm, 500);
 
-    const [selectedRepair, setSelectedRepair] = useState<any>(null);
+    const [selectedRepair, setSelectedRepair] = useState<RepairDetails | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [loadingId, setLoadingId] = useState<string | null>(null);
 
-    const handlePrint = (repair: any) => {
+    const handlePrint = (repair: RepairData) => {
         // Always print the repair ticket
-        printRepairTicket(repair);
+        printRepairTicket(repair as unknown as NonNullable<Parameters<typeof printRepairTicket>[0]>);
 
         // If status is "Entregado" (ID 10), also print warranty and wet report (if applicable)
         if (repair.statusId === 10 || repair.status?.id === 10 || repair.status?.name === "Entregado") {
@@ -66,11 +84,11 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
 
             setTimeout(() => {
                 console.log("Printing extra docs for delivered repair:", repair.ticketNumber);
-                printWarrantyTicket(repairStub);
+                printWarrantyTicket(repairStub as unknown as NonNullable<Parameters<typeof printWarrantyTicket>[0]>);
 
                 if (repair.isWet) {
                     setTimeout(() => {
-                        printWetReport(repairStub);
+                        printWetReport(repairStub as unknown as NonNullable<Parameters<typeof printWetReport>[0]>);
                     }, 1200);
                 }
             }, 1000);
@@ -83,12 +101,13 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
             try {
                 const data = await getRepairByIdAction(repairId);
                 if (data) {
-                    setSelectedRepair(data);
+                    setSelectedRepair(data as unknown as RepairDetails);
                     setIsDetailsOpen(true);
                 } else {
                     toast.error("No se pudieron cargar los detalles.");
                 }
             } catch (error) {
+                console.error("Error al cargar detalles:", error);
                 toast.error("Error al cargar detalles.");
             } finally {
                 setLoadingId(null);
@@ -105,6 +124,7 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
         }
         params.set("page", "1"); // Reset to page 1 on search
         router.push(`?${params.toString()}`);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedSearch]);
 
     const handlePageChange = (page: number) => {
@@ -114,53 +134,56 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
     };
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center gap-2">
-                <div className="relative flex-1 max-w-sm">
-                    <Label htmlFor="history-repairs-search" className="sr-only">Buscar en historial</Label>
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        id="history-repairs-search"
-                        name="history-repairs-search"
-                        aria-label="Buscar por ticket, cliente, dispositivo"
-                        placeholder="Buscar por ticket, cliente, dispositivo…"
-                        className="pl-9 bg-slate-900/50 border-slate-800 focus:ring-2 focus:ring-blue-500/50 transition-[border-color,box-shadow] duration-200"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        autoComplete="off"
-                        spellCheck={false}
-                    />
+        <div className="space-y-0">
+            <div className="bg-gradient-to-r from-emerald-500/5 via-blue-500/5 to-purple-500/5 p-4 sm:p-5 border-b">
+                <div className="flex items-center gap-2">
+                    <div className="relative flex-1 group max-w-lg">
+                        <Label htmlFor="history-repairs-search" className="sr-only">Buscar en historial</Label>
+                        <div className={cn("pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 transition-opacity duration-300 blur", searchTerm ? "opacity-25" : "opacity-0 group-focus-within:opacity-20")} />
+                        <Search className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground z-20" />
+                        <Input
+                            id="history-repairs-search"
+                            name="history-repairs-search"
+                            aria-label="Buscar por ticket, cliente, dispositivo"
+                            placeholder="Buscar por ticket, cliente, dispositivo…"
+                            className={cn("h-12 rounded-xl border-2 pl-12 pr-10 text-base font-medium transition-all relative z-10 bg-background", searchTerm ? "border-blue-500 bg-blue-500/5" : "border-border")}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            autoComplete="off"
+                            spellCheck={false}
+                        />
+                    </div>
                 </div>
             </div>
 
             {(!repairs || repairs.length === 0) ? (
-                <div className="text-center p-12 border rounded-lg bg-muted/10">
+                <div className="text-center p-12 bg-muted/10">
                     <History className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-                    <h3 className="text-lg font-black text-slate-400 uppercase tracking-widest italic">
+                    <h3 className="text-lg font-black text-muted-foreground uppercase tracking-widest italic">
                         {searchTerm ? "Sin resultados" : "Historial Vacío"}
                     </h3>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-2">
+                    <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-[0.2em] mt-2">
                         {searchTerm ? "Intenta con otro término de búsqueda…" : "No hay reparaciones finalizadas todavía…"}
                     </p>
                 </div>
             ) : (
-                <div className="border-2 border-slate-800/60 rounded-[2rem] overflow-hidden bg-slate-950/40 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                <div className="overflow-x-auto">
                     <Table>
-                        <TableHeader className="bg-slate-900/80 border-b border-slate-800">
+                        <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
                             <TableRow className="hover:bg-transparent border-none">
-                                <TableHead className="text-center w-[130px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Protocolo</TableHead>
-                                <TableHead className="text-center w-[140px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Sincronización</TableHead>
-                                <TableHead className="text-center w-[120px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Ciclo</TableHead>
-                                <TableHead className="text-center text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Cliente</TableHead>
-                                <TableHead className="text-center w-[120px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Contacto</TableHead>
-                                <TableHead className="text-center text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Unidad Hardware</TableHead>
-                                <TableHead className="text-center w-[140px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14 text-pretty">Estado Global</TableHead>
-                                <TableHead className="text-center w-[100px] text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 h-14">Acciones</TableHead>
+                                <TableHead className="text-center w-[130px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Protocolo</TableHead>
+                                <TableHead className="text-center w-[140px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Sincronización</TableHead>
+                                <TableHead className="text-center w-[120px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Ciclo</TableHead>
+                                <TableHead className="text-center px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Cliente</TableHead>
+                                <TableHead className="text-center w-[120px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Contacto</TableHead>
+                                <TableHead className="text-center px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Unidad Hardware</TableHead>
+                                <TableHead className="text-center w-[140px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Estado Global</TableHead>
+                                <TableHead className="text-center w-[100px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {repairs.map((repair) => {
-                                const colorClass = statusColorMap[repair.status.color] || "bg-gray-100 text-gray-800";
+                                const colorClass = statusColorMap[repair.status.color ?? ""] || "bg-gray-100 text-gray-800";
 
                                 // Calculate Real Duration
                                 let duration = "-";
@@ -178,82 +201,81 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
                                 }
 
                                 return (
-                                    <TableRow key={repair.id} className="hover:bg-white/[0.02] border-b border-white/[0.03] group transition-[background-color] duration-300">
-                                        <TableCell className="text-center py-5">
+                                    <TableRow key={repair.id} className="border-b border-border/60 transition-colors hover:bg-muted/40 group">
+                                        <TableCell className="text-center py-5 px-3">
                                             <div className={cn(
                                                 "inline-flex flex-col items-center justify-center min-w-[95px] p-2.5 rounded-2xl border-2 transition-[transform,box-shadow,background-color] duration-300 group-hover:scale-105 tabular-nums",
                                                 repair.isWet ? "bg-blue-600/10 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]" :
                                                     repair.isWarranty ? "bg-amber-600/10 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]" :
-                                                        "bg-slate-900 border-slate-800 shadow-xl"
+                                                        "bg-card border-border shadow-sm"
                                             )}>
                                                 <span className={cn(
                                                     "text-[9px] font-black tracking-[0.2em] leading-none mb-1.5 uppercase",
-                                                    repair.isWet ? "text-blue-400" : repair.isWarranty ? "text-amber-500" : "text-slate-500"
+                                                    repair.isWet ? "text-blue-500" : repair.isWarranty ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"
                                                 )}>
                                                     {repair.ticketNumber.split("-")[0]}
                                                 </span>
                                                 <span className={cn(
-                                                    "text-base font-black font-mono leading-none tracking-tighter",
-                                                    repair.isWet ? "text-white" : repair.isWarranty ? "text-white" : "text-slate-100"
+                                                    "text-base font-black font-mono leading-none tracking-tighter text-foreground"
                                                 )}>
                                                     {repair.ticketNumber.split("-").pop()}
                                                 </span>
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="text-center">
+                                        <TableCell className="text-center px-3">
                                             <div className="flex flex-col items-center tabular-nums">
-                                                <span className="text-sm font-black text-emerald-400 tracking-tight leading-none">
+                                                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tracking-tight leading-none">
                                                     {repair.updatedAt ? format(new Date(repair.updatedAt), "dd/MM/yy", { locale: es }) : "–"}
                                                 </span>
                                                 <div className="flex items-center gap-1.5 mt-2 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                                                    <span className="text-[9px] font-black text-emerald-500/80 uppercase tracking-widest">
+                                                    <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
                                                         {repair.updatedAt ? format(new Date(repair.updatedAt), "HH:mm", { locale: es }) : ""} HS
                                                     </span>
                                                 </div>
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="text-center">
+                                        <TableCell className="text-center px-3">
                                             {(() => {
-                                                let dColor = "text-blue-400 bg-blue-500/10 border-blue-500/20";
-                                                if (duration.includes("h")) dColor = "text-purple-400 bg-purple-500/10 border-purple-500/20";
-                                                if (duration.includes("min") && parseInt(duration) < 30) dColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+                                                let dColor = "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20";
+                                                if (duration.includes("h")) dColor = "text-purple-600 dark:text-purple-400 bg-purple-500/10 border-purple-500/20";
+                                                if (duration.includes("min") && parseInt(duration) < 30) dColor = "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
 
                                                 return (
-                                                    <div className={cn("inline-flex items-center justify-center px-4 py-1 rounded-full border border-white/5 font-black text-[11px] italic tracking-tight tabular-nums", dColor)}>
+                                                    <div className={cn("inline-flex items-center justify-center px-4 py-1 rounded-full border font-black text-[11px] italic tracking-tight tabular-nums", dColor)}>
                                                         {duration}
                                                     </div>
                                                 );
                                             })()}
                                         </TableCell>
 
-                                        <TableCell className="text-center">
-                                            <span className="font-black text-[13px] text-white uppercase tracking-tight leading-tight group-hover:text-blue-400 transition-colors duration-300">
+                                        <TableCell className="text-center px-3">
+                                            <span className="font-black text-[13px] text-foreground uppercase tracking-tight leading-tight group-hover:text-blue-500 transition-colors duration-300">
                                                 {repair.customer.name}
                                             </span>
                                         </TableCell>
 
-                                        <TableCell className="text-center">
-                                            <div className="inline-flex items-center justify-center bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-800/50 tabular-nums shadow-sm group-hover:border-blue-500/30 transition-colors duration-300">
-                                                <span className="text-sm font-black text-slate-300 uppercase tracking-tight">
+                                        <TableCell className="text-center px-3">
+                                            <div className="inline-flex items-center justify-center bg-muted/50 px-3 py-1.5 rounded-xl border border-border tabular-nums shadow-sm group-hover:border-blue-500/30 transition-colors duration-300">
+                                                <span className="text-sm font-black text-foreground uppercase tracking-tight">
                                                     {repair.customer.phone || "———"}
                                                 </span>
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="text-center">
-                                            <div className="inline-flex flex-col items-center justify-center bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl shadow-lg group-hover:border-blue-500/30 transition-colors duration-300">
-                                                <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1.5 italic">
+                                        <TableCell className="text-center px-3">
+                                            <div className="inline-flex flex-col items-center justify-center bg-card border border-border px-3 py-2 rounded-xl shadow-sm group-hover:border-blue-500/30 transition-colors duration-300">
+                                                <span className="text-[11px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1.5 italic">
                                                     {repair.deviceBrand}
                                                 </span>
-                                                <span className="text-[11px] font-black text-white uppercase tracking-tight leading-none">
+                                                <span className="text-[11px] font-black text-foreground uppercase tracking-tight leading-none">
                                                     {repair.deviceModel}
                                                 </span>
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="text-center">
+                                        <TableCell className="text-center px-3">
                                             <div className="flex flex-col items-center gap-1.5">
                                                 <Badge className={`font-black rounded-lg px-3 py-1 text-[10px] uppercase tracking-wider border-2 ${colorClass}`}>
                                                     {repair.status.name}
@@ -261,34 +283,34 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
 
                                                 {repair.statusHistory && repair.statusHistory[0] && (
                                                     <div className="text-[9px] text-muted-foreground mt-1 tabular-nums font-bold uppercase tracking-tighter">
-                                                        Prev: <span className="text-blue-500/80">{repair.statusHistory[0].fromStatus?.name || 'Registro'}</span>
+                                                        Prev: <span className="text-blue-500">{repair.statusHistory[0].fromStatus?.name || 'Registro'}</span>
                                                     </div>
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-center">
+                                        <TableCell className="text-center px-3">
                                             <div className="flex items-center justify-center gap-1.5 h-7">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon-xs"
                                                     onClick={() => handlePrint(repair)}
-                                                    className="text-slate-500 hover:text-white hover:bg-white/10 transition-[color,background-color] duration-200"
+                                                    className="text-muted-foreground hover:text-foreground hover:bg-muted transition-[color,background-color] duration-200"
                                                     title="Imprimir Ticket"
                                                 >
-                                                    <Printer className="h-3.5 w-3.5" />
+                                                    <Printer className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon-xs"
                                                     onClick={() => handleViewDetails(repair.id)}
                                                     disabled={isPending && loadingId === repair.id}
-                                                    className="text-slate-500 hover:text-blue-400 hover:bg-white/10 transition-[color,background-color] duration-200"
+                                                    className="text-muted-foreground hover:text-blue-500 hover:bg-muted transition-[color,background-color] duration-200"
                                                     title="Ver Detalles"
                                                 >
                                                     {isPending && loadingId === repair.id ? (
-                                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
+                                                        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
                                                     ) : (
-                                                        <Eye className="h-3.5 w-3.5" />
+                                                        <Eye className="h-4 w-4" />
                                                     )}
                                                 </Button>
                                             </div>
@@ -305,7 +327,7 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
             {/* Pagination Controls */}
             {
                 totalPages > 1 && (
-                    <div className="flex items-center justify-end space-x-2">
+                    <div className="flex items-center justify-end space-x-2 p-4 border-t">
                         <Button
                             variant="outline"
                             size="sm"

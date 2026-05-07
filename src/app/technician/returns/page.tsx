@@ -9,5 +9,5 @@ export default async function TechnicianReturnsPage() {
     const result = await getReturnRequests("TECHNICIAN", user.id);
     const returns = result.success ? result.data : [];
 
-    return <TechnicianReturnsClient returns={returns as any} />;
+    return <TechnicianReturnsClient returns={returns as unknown as React.ComponentProps<typeof TechnicianReturnsClient>["returns"]} />;
 }

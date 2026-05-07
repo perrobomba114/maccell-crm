@@ -18,14 +18,14 @@ interface SalesTableProps {
 export function SalesTable({ sales, loading, onView, onPrint, onEdit, clearFilters }: SalesTableProps) {
     return (
         <Table>
-            <TableHeader className="bg-blue-600 dark:bg-blue-900 border-none">
-                <TableRow className="hover:bg-blue-600">
-                    <TableHead className="w-[180px] font-black text-white uppercase text-[11px] tracking-widest text-center pl-6">Fecha & Hora</TableHead>
-                    <TableHead className="font-black text-white uppercase text-[11px] tracking-widest text-center">Ticket</TableHead>
-                    <TableHead className="font-black text-white uppercase text-[11px] tracking-widest text-center">Detalle Items</TableHead>
-                    <TableHead className="font-black text-white uppercase text-[11px] tracking-widest text-center">Método</TableHead>
-                    <TableHead className="font-black text-white uppercase text-[11px] tracking-widest text-right pr-8">Total</TableHead>
-                    <TableHead className="w-[100px] font-black text-white uppercase text-[11px] tracking-widest text-center">Acción</TableHead>
+            <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
+                <TableRow className="hover:bg-transparent border-none">
+                    <TableHead className="w-[180px] font-extrabold uppercase text-[11px] tracking-widest text-center pl-6 text-foreground">Fecha & Hora</TableHead>
+                    <TableHead className="font-extrabold uppercase text-[11px] tracking-widest text-center text-foreground">Ticket</TableHead>
+                    <TableHead className="font-extrabold uppercase text-[11px] tracking-widest text-center text-foreground">Detalle Items</TableHead>
+                    <TableHead className="font-extrabold uppercase text-[11px] tracking-widest text-center text-foreground">Método</TableHead>
+                    <TableHead className="font-extrabold uppercase text-[11px] tracking-widest text-right pr-8 text-foreground">Total</TableHead>
+                    <TableHead className="w-[100px] font-extrabold uppercase text-[11px] tracking-widest text-center text-foreground">Acción</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -54,10 +54,10 @@ export function SalesTable({ sales, loading, onView, onPrint, onEdit, clearFilte
                     sales.map((sale) => (
                         <TableRow
                             key={sale.id}
-                            className="group hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors border-b border-zinc-100 dark:border-zinc-800 cursor-pointer"
+                            className="group hover:bg-muted/40 transition-colors border-b border-border/60 cursor-pointer"
                             onClick={() => onView(sale)}
                         >
-                            <TableCell className="pl-6 text-center font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">
+                            <TableCell className="pl-6 text-center font-medium tabular-nums">
                                 <div className="flex flex-col items-center">
                                     <span>{format(new Date(sale.createdAt), "dd MMM yyyy", { locale: es })}</span>
                                     <span className="text-xs text-zinc-400">{format(new Date(sale.createdAt), "HH:mm")} hs</span>

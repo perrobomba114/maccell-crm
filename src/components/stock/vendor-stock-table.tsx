@@ -75,17 +75,17 @@ export function VendorStockTable({ data, totalPages, currentPage, totalItems, us
 
     return (
         <div className="space-y-4">
-            <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
+            <div className="border rounded-xl overflow-hidden bg-card shadow-sm">
                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[120px] text-center">SKU</TableHead>
-                            <TableHead className="text-center">Nombre</TableHead>
-                            <TableHead className="w-[150px] text-center">Marca</TableHead>
-                            <TableHead className="w-[150px] text-center">Categoría</TableHead>
-                            <TableHead className="w-[100px] text-center">Precio Fijo</TableHead>
-                            <TableHead className="w-[100px] text-center">Stock</TableHead>
-                            {isMaccell2 && <TableHead className="w-[100px] text-center">Acciones</TableHead>}
+                    <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
+                        <TableRow className="hover:bg-transparent border-none">
+                            <TableHead className="text-center w-[120px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">SKU</TableHead>
+                            <TableHead className="text-center px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Nombre</TableHead>
+                            <TableHead className="text-center w-[150px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Marca</TableHead>
+                            <TableHead className="text-center w-[150px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Categoría</TableHead>
+                            <TableHead className="text-center w-[100px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Precio Fijo</TableHead>
+                            <TableHead className="text-center w-[100px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Stock</TableHead>
+                            {isMaccell2 && <TableHead className="text-center w-[100px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Acciones</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -97,43 +97,47 @@ export function VendorStockTable({ data, totalPages, currentPage, totalItems, us
                             </TableRow>
                         ) : (
                             data.map((item) => (
-                                <TableRow key={item.id} className="hover:bg-muted/10">
-                                    <TableCell className="text-center font-mono font-bold text-base bg-muted/5">{item.sku}</TableCell>
-                                    <TableCell className="text-center font-medium text-base">{item.name}</TableCell>
+                                <TableRow key={item.id} className="border-b border-border/60 transition-colors hover:bg-muted/40 group">
+                                    <TableCell className="text-center font-mono font-bold text-base text-foreground">
+                                        <div className="inline-flex items-center justify-center bg-muted/50 px-2 py-1 rounded-md border border-border/50 tabular-nums">
+                                            {item.sku}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-center font-bold text-[13px] text-foreground uppercase tracking-tight leading-tight group-hover:text-blue-500 transition-colors duration-300">{item.name}</TableCell>
                                     <TableCell className="text-center">
-                                        <Badge className="font-bold bg-blue-600 text-white hover:bg-blue-700 border-none">
+                                        <Badge className="font-black bg-blue-600/10 text-blue-600 dark:text-blue-400 hover:bg-blue-600/20 border border-blue-500/50 uppercase tracking-widest text-[10px] px-3 py-1">
                                             {item.brand}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        <Badge className="font-bold bg-slate-700 text-white hover:bg-slate-800 border-none">
+                                        <Badge variant="outline" className="font-black bg-muted/50 text-muted-foreground hover:bg-muted/70 border-border uppercase tracking-widest text-[10px] px-3 py-1">
                                             {item.categoryName}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-center font-bold text-base">
+                                    <TableCell className="text-center font-bold text-base tabular-nums">
                                         ${Number(item.pricePos || 0).toLocaleString('es-AR')}
                                     </TableCell>
                                     <TableCell className="text-center">
                                         {isMaccell2 ? (
                                             /* MACCELL 2: Show Exact Number */
                                             item.stockLocal > 0 ? (
-                                                <Badge className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-1">
+                                                <Badge className="bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/50 font-black px-4 py-1 text-base tabular-nums">
                                                     {item.stockLocal}
                                                 </Badge>
                                             ) : (
-                                                <Badge variant="destructive" className="font-bold px-4 py-1">
+                                                <Badge className="bg-rose-600/10 hover:bg-rose-600/20 text-rose-600 dark:text-rose-400 border border-rose-500/50 font-black px-4 py-1 text-base tabular-nums">
                                                     0
                                                 </Badge>
                                             )
                                         ) : (
                                             /* OTHERS: Show Status Text */
                                             item.stockLocal > 0 ? (
-                                                <Badge className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-1">
+                                                <Badge className="bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/50 font-black px-3 py-1 text-[10px] uppercase tracking-widest">
                                                     DISPONIBLE
                                                 </Badge>
                                             ) : (
-                                                <Badge variant="destructive" className="font-bold px-4 py-1">
-                                                    NO DISPONIBLE
+                                                <Badge className="bg-rose-600/10 hover:bg-rose-600/20 text-rose-600 dark:text-rose-400 border border-rose-500/50 font-black px-3 py-1 text-[10px] uppercase tracking-widest">
+                                                    AGOTADO
                                                 </Badge>
                                             )
                                         )}

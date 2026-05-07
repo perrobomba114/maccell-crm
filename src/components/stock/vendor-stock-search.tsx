@@ -38,9 +38,10 @@ export function VendorStockSearch() {
     }, 500);
 
     return (
-        <div className="relative">
+        <div className="relative group">
             <Label htmlFor="stock-search-input" className="sr-only">Buscar en stock</Label>
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 transition-opacity duration-300 blur opacity-0 group-focus-within:opacity-20" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-blue-500 z-10" />
             <Input
                 id="stock-search-input"
                 name="stock-search"
@@ -51,11 +52,11 @@ export function VendorStockSearch() {
                     debouncedSearch(e.target.value);
                 }}
                 value={inputValue} // Controlled input, but decoupled from URL param state
-                className="pl-9 h-12 text-lg"
+                className="relative z-0 pl-11 h-14 text-lg bg-card border-2 border-border shadow-sm transition-all focus-visible:border-blue-500 focus-visible:ring-4 focus-visible:ring-blue-500/20 rounded-xl"
             />
             {isPending && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
             )}
         </div>
@@ -65,10 +66,10 @@ export function VendorStockSearch() {
 // Hook definition inside file for simplicity
 import { useEffect, useRef } from "react";
 
-function useDebounce<T extends (...args: any[]) => void>(callback: T, delay: number) {
+function useDebounce<Args extends unknown[]>(callback: (...args: Args) => void, delay: number) {
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    return (...args: Parameters<T>) => {
+    return (...args: Args) => {
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
         }

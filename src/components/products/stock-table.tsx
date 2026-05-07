@@ -181,7 +181,7 @@ export function StockTable({
                         onChange={(e) => setSearchTerm(e.target.value)}
                         onFocus={() => setIsSearching(true)}
                         onBlur={() => setIsSearching(false)}
-                        className="pl-9 bg-background border-muted-foreground/20 focus-visible:ring-primary/20"
+                        className="pl-9 bg-background border-muted-foreground/20 focus-visible:ring-primary/20 focus-visible:ring-4 transition-all duration-300"
                     />
                 </div>
                 <div className="text-xs text-muted-foreground font-medium px-2 bg-muted/30 py-1.5 rounded-full border">
@@ -192,8 +192,8 @@ export function StockTable({
             {/* Modern Table Card */}
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader>
-                        <TableRow className="hover:bg-transparent border-b border-border/60">
+                    <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
+                        <TableRow className="hover:bg-transparent border-none">
                             <SortableHeader label="SKU" column="sku" />
                             <SortableHeader label="Producto" column="name" className="w-[25%]" />
                             <SortableHeader label="Categoría" column="categoryName" />

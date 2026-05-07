@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Search, CheckCircle, XCircle, AlertTriangle, ShieldCheck, Smartphone } from "lucide-react";
@@ -61,62 +61,46 @@ export function ImeiChecker() {
 
     return (
         <div className="space-y-6 max-w-3xl mx-auto">
-            <Card className="bg-gradient-to-br from-background to-muted/20">
-                <CardHeader>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                            <ShieldCheck className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                            <CardTitle>Consulta Oficial ENACOM</CardTitle>
-                            <CardDescription>
-                                Verificación de estado de IMEI en base de datos nacional e internacional
-                            </CardDescription>
-                        </div>
+            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1 group">
+                    <Label htmlFor="imei-input" className="sr-only">Número de IMEI</Label>
+                    <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 transition-opacity duration-300 blur opacity-0 group-focus-within:opacity-20" />
+                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
+                        <Smartphone className="h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-blue-500" />
                     </div>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-1">
-                            <Label htmlFor="imei-input" className="sr-only">Número de IMEI</Label>
-                            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                <Smartphone className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <Input
-                                id="imei-input"
-                                name="imei-number"
-                                aria-label="Número de IMEI"
-                                placeholder="Ingrese el número IMEI (15 dígitos)"
-                                value={imei}
-                                onChange={(e) => {
-                                    const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 15);
-                                    setImei(val);
-                                }}
-                                className="pl-10 text-lg tracking-widest font-mono"
-                                disabled={isLoading}
-                            />
-                        </div>
-                        <Button type="submit" size="lg" disabled={isLoading || imei.length < 14} className="min-w-[140px]">
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Consultando
-                                </>
-                            ) : (
-                                <>
-                                    <Search className="mr-2 h-4 w-4" />
-                                    Consultar
-                                </>
-                            )}
-                        </Button>
-                    </form>
+                    <Input
+                        id="imei-input"
+                        name="imei-number"
+                        aria-label="Número de IMEI"
+                        placeholder="Ingrese el número IMEI (15 dígitos)"
+                        value={imei}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 15);
+                            setImei(val);
+                        }}
+                        className="relative z-0 pl-12 h-14 text-lg bg-card border-2 border-border shadow-sm transition-all focus-visible:border-blue-500 focus-visible:ring-4 focus-visible:ring-blue-500/20 rounded-xl tracking-widest font-mono"
+                        disabled={isLoading}
+                    />
+                </div>
+                <Button type="submit" size="lg" disabled={isLoading || imei.length < 14} className="h-14 min-w-[140px] rounded-xl text-md font-bold">
+                    {isLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Consultando
+                        </>
+                    ) : (
+                        <>
+                            <Search className="mr-2 h-5 w-5" />
+                            Consultar
+                        </>
+                    )}
+                </Button>
+            </form>
 
-                    <div className="mt-4 flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                        <span>Marque <strong>*#06#</strong> en el teclado de llamadas del dispositivo para obtener el número de IMEI Real (físico).</span>
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 p-4 rounded-xl border border-border/50">
+                <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+                <span>Marque <strong>*#06#</strong> en el teclado de llamadas del dispositivo para obtener el número de IMEI Real (físico).</span>
+            </div>
 
             {error && (
                 <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2">

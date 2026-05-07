@@ -139,9 +139,10 @@ export function ActiveRepairsTable({
     return (
         <div className="space-y-4">
             <div className="flex gap-2">
-                <div className="relative flex-1">
+                <div className="relative flex-1 group">
                     <Label htmlFor="active-repairs-search" className="sr-only">Buscar reparaciones activas</Label>
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 transition-opacity duration-300 blur opacity-0 group-focus-within:opacity-20" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-blue-500 z-10" />
                     <Input
                         id="active-repairs-search"
                         name="active-repairs-search"
@@ -149,12 +150,12 @@ export function ActiveRepairsTable({
                         placeholder="Buscar por Ticket, Cliente o Dispositivo..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 h-12 text-lg" // Larger search bar for ease
+                        className="relative z-0 pl-11 h-14 text-lg bg-card border-2 border-border shadow-sm transition-all focus-visible:border-blue-500 focus-visible:ring-4 focus-visible:ring-blue-500/20 rounded-xl"
                     />
                 </div>
                 <Button
                     variant="outline"
-                    className="h-12 w-12 shrink-0"
+                    className="h-14 w-14 shrink-0 rounded-xl border-2"
                     onClick={() => router.refresh()}
                     title="Actualizar lista"
                 >
@@ -162,20 +163,20 @@ export function ActiveRepairsTable({
                 </Button>
             </div>
 
-            <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
+            <div className="border rounded-xl overflow-hidden bg-card shadow-sm">
                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="text-center w-[50px] px-1">Pos.</TableHead>
-                            <TableHead className="text-center w-[90px] px-1">Ticket</TableHead>
-                            <TableHead className="text-center w-[120px] px-1">Entrega</TableHead>
-                            <TableHead className="text-center w-[90px] px-1 whitespace-nowrap">Est.</TableHead>
-                            <TableHead className="text-center px-2">Cliente</TableHead>
-                            <TableHead className="text-center px-2">Dispositivo</TableHead>
-                            <TableHead className="text-center w-[100px] px-1">Técnico</TableHead>
-                            <TableHead className="text-center w-[90px] px-1">Precio</TableHead>
-                            <TableHead className="text-center w-[110px] px-1">Estado</TableHead>
-                            {(enableTakeover || enableManagement || enableImageUpload) && <TableHead className="text-center w-[130px] px-1">Acciones</TableHead>}
+                    <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
+                        <TableRow className="hover:bg-transparent border-none">
+                            <TableHead className="text-center w-[50px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Pos.</TableHead>
+                            <TableHead className="text-center w-[90px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Ticket</TableHead>
+                            <TableHead className="text-center w-[120px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Entrega</TableHead>
+                            <TableHead className="text-center w-[90px] px-1 whitespace-nowrap text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Est.</TableHead>
+                            <TableHead className="text-center px-2 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Cliente</TableHead>
+                            <TableHead className="text-center px-2 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Dispositivo</TableHead>
+                            <TableHead className="text-center w-[100px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Técnico</TableHead>
+                            <TableHead className="text-center w-[90px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Precio</TableHead>
+                            <TableHead className="text-center w-[110px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Estado</TableHead>
+                            {(enableTakeover || enableManagement || enableImageUpload) && <TableHead className="text-center w-[130px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Acciones</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -190,7 +191,7 @@ export function ActiveRepairsTable({
                                 const colorClass = statusColorMap[repair.status.color ?? ""] || "bg-gray-100 text-gray-800";
                                 const position = index + 1;
                                 return (
-                                    <TableRow key={repair.id} className="hover:bg-muted/10">
+                                    <TableRow key={repair.id} className="border-b border-border/60 transition-colors hover:bg-muted/40 group">
                                         <TableCell className="text-center px-1">
                                             <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full font-bold text-xs ${position <= 3
                                                 ? "bg-red-100 text-red-700 border border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700"
