@@ -5,6 +5,8 @@ import { HistoryRepairsTable } from "@/components/repairs/history-repairs-table"
 import { redirect } from "next/navigation";
 import { History } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 export default async function RepairHistoryPage({
     searchParams,
 }: {
@@ -20,9 +22,9 @@ export default async function RepairHistoryPage({
         return <div>Error: Usuario sin sucursal asignada.</div>;
     }
 
-    const { q, page } = await searchParams;
-    const query = q || "";
-    const currentPage = parseInt(page || "1");
+    const resolvedParams = await searchParams;
+    const query = resolvedParams.q || "";
+    const currentPage = Math.max(1, parseInt(resolvedParams.page || "1"));
     const pageSize = 20;
 
     const { repairs, totalPages } = await getRepairHistoryAction(user.branch.id, query, currentPage, pageSize);
