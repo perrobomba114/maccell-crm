@@ -104,11 +104,28 @@ export function ActiveRepairCard({
                 </div>
                 <div className="flex flex-col items-end">
                     <span className="font-semibold text-sm text-right leading-tight">{repair.deviceBrand} {repair.deviceModel}</span>
-                    {showIssueSummary && repair.problemDescription && (
-                        <span className="text-[10px] text-muted-foreground text-right truncate max-w-[160px]">{repair.problemDescription}</span>
-                    )}
                 </div>
             </div>
+
+            {/* Diagnóstico / Problema (Destacado para técnicos) */}
+            {showIssueSummary && (repair.problemDescription || repair.diagnosis) && (
+                <div className="p-3 bg-zinc-100 dark:bg-zinc-900 border border-border/50 rounded-lg shadow-inner">
+                    {repair.problemDescription && (
+                        <div className="mb-1.5">
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 flex items-center gap-1.5">
+                                <AlertTriangle className="h-3 w-3" /> Falla reportada
+                            </p>
+                            <p className="text-xs font-medium leading-snug">{repair.problemDescription}</p>
+                        </div>
+                    )}
+                    {repair.diagnosis && (
+                        <div className={cn(repair.problemDescription ? "pt-1.5 border-t border-border/50" : "")}>
+                            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-0.5">Diagnóstico Previo</p>
+                            <p className="text-xs font-medium leading-snug">{repair.diagnosis}</p>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Row 3: Entrega + Tiempo + Precio + Técnico */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
