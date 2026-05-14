@@ -115,13 +115,13 @@ export function ActiveRepairCard({
                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 flex items-center gap-1.5">
                                 <AlertTriangle className="h-3 w-3" /> Falla reportada
                             </p>
-                            <p className="text-xs font-medium leading-snug">{repair.problemDescription}</p>
+                            <p className="text-xs font-medium leading-snug break-words whitespace-normal break-all sm:break-normal">{repair.problemDescription}</p>
                         </div>
                     )}
                     {repair.diagnosis && (
                         <div className={cn(repair.problemDescription ? "pt-1.5 border-t border-border/50" : "")}>
                             <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-0.5">Diagnóstico Previo</p>
-                            <p className="text-xs font-medium leading-snug">{repair.diagnosis}</p>
+                            <p className="text-xs font-medium leading-snug break-words whitespace-normal break-all sm:break-normal">{repair.diagnosis}</p>
                         </div>
                     )}
                 </div>

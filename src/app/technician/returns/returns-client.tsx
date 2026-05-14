@@ -54,7 +54,53 @@ export default function TechnicianReturnsClient({ returns }: { returns: ReturnRe
                 </div>
 
                 <div className="p-0">
-                    <div className="overflow-x-auto">
+                    {/* Mobile View */}
+                    <div className="sm:hidden flex flex-col divide-y divide-border/50">
+                        {returns.length === 0 ? (
+                            <div className="p-8 flex flex-col items-center justify-center gap-2 bg-muted/10">
+                                <ClipboardList className="w-10 h-10 text-muted-foreground/50 mb-2" />
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-center">No hay solicitudes</p>
+                            </div>
+                        ) : (
+                            returns.map((req) => (
+                                <div key={req.id} className="p-4 flex flex-col gap-3 bg-card hover:bg-muted/30 transition-colors">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className={cn(
+                                                "font-black font-mono text-sm",
+                                                req.repair.isWet ? "text-blue-500" : req.repair.isWarranty ? "text-amber-600 dark:text-amber-500" : "text-foreground"
+                                            )}>
+                                                {req.repair.ticketNumber}
+                                            </span>
+                                        </div>
+                                        <StatusBadge status={req.status} />
+                                    </div>
+                                    
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-sm text-foreground">{req.repair.customer.name}</span>
+                                        <span className="text-[10px] text-muted-foreground">{req.repair.customer.phone || "Sin teléfono"}</span>
+                                    </div>
+
+                                    {req.technicianNote && (
+                                        <div className="p-2.5 bg-zinc-100 dark:bg-zinc-900 border border-border/50 rounded-lg">
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Nota del Técnico</p>
+                                            <p className="text-xs font-medium italic">"{req.technicianNote}"</p>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{req.repair.status.name}</span>
+                                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                                            {format(new Date(req.createdAt), "dd/MM HH:mm", { locale: es })}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Desktop View */}
+                    <div className="hidden sm:block overflow-x-auto">
                         <Table>
                             <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
                                 <TableRow className="hover:bg-transparent border-none">
