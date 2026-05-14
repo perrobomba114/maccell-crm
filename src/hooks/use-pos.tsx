@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CheckCircle2 } from "lucide-react";
 import { searchProductsForPos, searchRepairsForPos, processPosSale, type PosProduct, type PosRepair } from "@/lib/actions/pos";
@@ -99,6 +100,7 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
 
     const processingRef = useRef(false);
     const cashWarningAccepted = useRef(false);
+    const router = useRouter();
 
     useEffect(() => {
         if (branchId) {
@@ -331,7 +333,7 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
                 setProducts(results);
                 const exactMatch = results.find(p => p.sku.toLowerCase() === searchQuery.trim().toLowerCase()) || (results.length === 1 ? results[0] : null);
                 if (exactMatch && cashShift) { addToCartProduct(exactMatch); setSearchQuery(""); setProducts([]); }
-            } catch (err) { console.error(err); toast.error("Error al buscar productos."); } finally { setIsSearching(false); }
+            } catch { toast.error("Error al buscar productos."); } finally { setIsSearching(false); }
         }, 300);
         return () => clearTimeout(timer);
     }, [searchQuery, branchId, cashShift]);
@@ -341,7 +343,7 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
             if (repairQuery.trim().length < 2) return setRepairs([]);
             setIsSearchingRepairs(true);
             try { setRepairs(await searchRepairsForPos(repairQuery, branchId)); }
-            catch (err) { console.error(err); toast.error("Error al buscar reparaciones."); } finally { setIsSearchingRepairs(false); }
+            catch { toast.error("Error al buscar reparaciones."); } finally { setIsSearchingRepairs(false); }
         }, 300);
         return () => clearTimeout(timer);
     }, [repairQuery, branchId]);
@@ -369,8 +371,8 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
             try {
                 const results = await searchProductsForPos(transferSearchQuery, branchId);
                 setTransferProducts(results);
-            } catch (err) {
-                console.error(err);
+            } catch {
+                // silent — transfer search errors are non-critical
             } finally {
                 setIsSearchingTransfer(false);
             }
@@ -398,16 +400,20 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
         try {
             const res = await respondToTransfer(id, action, vendorId);
             if (res.success) {
-                toast.success("Respuesta enviada");
-                getPendingTransfers(branchId).then(r => {
-                    if (r.success && r.transfers) {
-                        setPendingTransfers(r.transfers);
-                    }
-                });
+                toast.success(action === "ACCEPT" ? "Transferencia aceptada — stock actualizado" : "Transferencia rechazada");
+                // Remove from pending list immediately
+                setPendingTransfers(prev => prev.filter(t => t.id !== id));
+                if (action === "ACCEPT") {
+                    // Refresh the page so Next.js re-fetches server data and the
+                    // vendor sees the updated stock without a manual reload.
+                    router.refresh();
+                    // Also re-fetch best sellers so quick-add tiles show correct stock.
+                    getBestSellingProducts(branchId).then(setBestSellers);
+                }
             } else {
                 toast.error(res.error || "Error al procesar la respuesta a la transferencia");
             }
-        } catch (error) {
+        } catch {
             toast.error("Error inesperado al responder transferencia");
         }
     };
