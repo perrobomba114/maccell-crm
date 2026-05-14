@@ -45,7 +45,7 @@ export function PosCart({
         <motion.div
             initial={{ x: 20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            className="relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-xl border border-emerald-300/20 bg-zinc-950/80 shadow-2xl shadow-black/25 backdrop-blur-2xl lg:w-[22rem] xl:w-[26rem]"
+            className="relative flex w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-xl border border-emerald-300/20 bg-zinc-950/80 shadow-2xl shadow-black/25 backdrop-blur-2xl lg:h-full lg:w-[22rem] xl:w-[26rem]"
         >
             <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-emerald-300" />
             <div className="flex items-center justify-between border-b border-white/10 bg-emerald-300/5 p-5 pl-6">
@@ -66,9 +66,9 @@ export function PosCart({
                 </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 custom-scrollbar">
+            <div className="shrink-0 overflow-visible px-5 py-4 custom-scrollbar lg:flex-1 lg:overflow-y-auto">
                 {cart.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-4 text-zinc-500">
+                    <div className="flex h-[200px] lg:h-full flex-col items-center justify-center gap-4 text-zinc-500">
                         <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-6">
                             <ShoppingCart className="h-12 w-12 opacity-50" />
                         </div>

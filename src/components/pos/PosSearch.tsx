@@ -69,7 +69,7 @@ export function PosSearch({
     const isRepairMode = repairQuery.length >= 2;
 
     return (
-        <div className="flex h-full min-h-0 flex-col gap-4">
+        <div className="flex shrink-0 flex-col gap-4 lg:h-full lg:min-h-0">
             <motion.div
                 initial={{ y: -12, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -134,7 +134,7 @@ export function PosSearch({
                 </div>
             </motion.div>
 
-            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-white/10 bg-zinc-950/80 p-4 shadow-xl shadow-black/20 custom-scrollbar">
+            <div className="shrink-0 overflow-visible rounded-xl border border-white/10 bg-zinc-950/80 p-4 shadow-xl shadow-black/20 custom-scrollbar lg:min-h-0 lg:flex-1 lg:overflow-auto">
                 {!cashShift ? (
                     <EmptyState
                         icon={<Lock className="h-8 w-8 text-emerald-300" />}
