@@ -69,6 +69,7 @@ afip-certs/
 !.agents/skills/frontend-design/
 !.agents/skills/frontend-design/**
 AGENT.md
+GEMINI.md
 .claude/
 .kiro/
 .qwen/

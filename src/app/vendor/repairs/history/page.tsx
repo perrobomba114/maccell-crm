@@ -20,9 +20,12 @@ export default async function RepairHistoryPage({
         return <div>Error: Usuario sin sucursal asignada.</div>;
     }
 
-    const { q } = await searchParams;
+    const { q, page } = await searchParams;
     const query = q || "";
-    const repairs = await getRepairHistoryAction(user.branch.id, query);
+    const currentPage = parseInt(page || "1");
+    const pageSize = 20;
+
+    const { repairs, totalPages } = await getRepairHistoryAction(user.branch.id, query, currentPage, pageSize);
 
     return (
         <div className="space-y-6 pb-24">
@@ -44,8 +47,8 @@ export default async function RepairHistoryPage({
                 <div className="p-0 sm:p-6">
                     <HistoryRepairsTable
                         repairs={repairs}
-                        currentPage={1}
-                        totalPages={1}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
                     />
                 </div>
             </section>

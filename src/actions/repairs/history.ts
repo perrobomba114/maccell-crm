@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { Prisma } from "@prisma/client";
 
 export async function getActiveRepairsAction(branchId: string, statusIds?: number[]) {
     const caller = await getCurrentUser();
@@ -11,7 +12,7 @@ export async function getActiveRepairsAction(branchId: string, statusIds?: numbe
     const filterStatuses = statusIds && statusIds.length > 0 ? statusIds : defaultStatuses;
 
     try {
-        const whereClause: any = {
+        const whereClause: Prisma.RepairWhereInput = {
             statusId: {
                 in: filterStatuses
             }
@@ -48,18 +49,23 @@ export async function getActiveRepairsAction(branchId: string, statusIds?: numbe
 
         return JSON.parse(JSON.stringify(repairs));
     } catch (error) {
-        console.error("Error fetching active repairs:", error);
+        console.warn("[ERROR] Error fetching active repairs:", error);
         return [];
     }
 }
 
-export async function getRepairHistoryAction(branchId: string, query: string = "") {
-    if (!branchId) return [];
+export async function getRepairHistoryAction(
+    branchId: string,
+    query: string = "",
+    page: number = 1,
+    pageSize: number = 20
+) {
+    if (!branchId) return { repairs: [], totalPages: 0, totalCount: 0 };
     const caller = await getCurrentUser();
-    if (!caller) return [];
+    if (!caller) return { repairs: [], totalPages: 0, totalCount: 0 };
 
     try {
-        const whereClause: any = {
+        const whereClause: Prisma.RepairWhereInput = {
             branchId,
             statusId: {
                 in: [5, 6, 7, 10]
@@ -81,34 +87,45 @@ export async function getRepairHistoryAction(branchId: string, query: string = "
             }
         }
 
-        const repairs = await db.repair.findMany({
-            where: whereClause,
-            include: {
-                customer: true,
-                status: true,
-                assignedTo: true,
-                branch: true,
-                originalRepair: true,
-                parts: {
-                    include: { sparePart: true }
+        const [repairs, totalCount] = await Promise.all([
+            db.repair.findMany({
+                where: whereClause,
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+                include: {
+                    customer: true,
+                    status: true,
+                    assignedTo: true,
+                    branch: true,
+                    originalRepair: true,
+                    parts: {
+                        include: { sparePart: true }
+                    },
+                    observations: {
+                        orderBy: { createdAt: 'desc' },
+                        include: { user: true }
+                    },
+                    statusHistory: {
+                        orderBy: { createdAt: 'desc' },
+                        include: { fromStatus: true, toStatus: true, user: true }
+                    }
                 },
-                observations: {
-                    orderBy: { createdAt: 'desc' },
-                    include: { user: true }
-                },
-                statusHistory: {
-                    orderBy: { createdAt: 'desc' },
-                    include: { fromStatus: true, toStatus: true, user: true }
+                orderBy: {
+                    updatedAt: 'desc'
                 }
-            },
-            orderBy: {
-                updatedAt: 'desc'
-            }
-        });
+            }),
+            db.repair.count({ where: whereClause })
+        ]);
 
-        return repairs;
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        return JSON.parse(JSON.stringify({
+            repairs,
+            totalPages,
+            totalCount
+        }));
     } catch (error) {
-        console.error("Error fetching repair history:", error);
-        return [];
+        console.warn("[ERROR] Error fetching repair history:", error);
+        return { repairs: [], totalPages: 0, totalCount: 0 };
     }
 }
