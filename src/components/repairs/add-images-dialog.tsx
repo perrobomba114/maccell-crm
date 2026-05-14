@@ -12,7 +12,8 @@ import { RepairImages } from "./repair-images";
 interface AddImagesDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    repair: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    repair: any; // TECH_DEBT(2026-06): tipar con el shape real de ActiveRepair
 }
 
 export function AddImagesDialog({ isOpen, onClose, repair }: AddImagesDialogProps) {
@@ -27,10 +28,6 @@ export function AddImagesDialog({ isOpen, onClose, repair }: AddImagesDialogProp
             // Append repairId if not present (it should be if we add a hidden input, or just append here)
             formData.append("repairId", repair.id);
 
-            // Debug: Check if files are present
-            const files = formData.getAll("images");
-            console.log("Submitting images:", files.length);
-
             const result = await addRepairImagesAction(formData);
 
             if (result.success) {
@@ -39,9 +36,9 @@ export function AddImagesDialog({ isOpen, onClose, repair }: AddImagesDialogProp
             } else {
                 toast.error(result.error || "Error al subir imágenes.");
             }
-        } catch (error: any) {
-            console.error("Submission error:", error);
-            toast.error(`Error: ${error.message || "Ocurrió un error inesperado"}`);
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : "Ocurrió un error inesperado";
+            toast.error(`Error: ${msg}`);
         } finally {
             setIsLoading(false);
         }
