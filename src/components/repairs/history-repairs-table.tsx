@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, ChevronLeft, ChevronRight, History, Eye, Loader2, Printer } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RepairDetailsDialog } from "@/components/repairs/repair-details-dialog";
 import { getRepairByIdAction } from "@/lib/actions/repairs";
@@ -61,6 +61,7 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
 
     const [searchTerm, setSearchTerm] = useState(initialQuery);
     const debouncedSearch = useDebounce(searchTerm, 500);
+    const isMounted = useRef(false);
 
     const [selectedRepair, setSelectedRepair] = useState<RepairDetails | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -83,7 +84,6 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
             };
 
             setTimeout(() => {
-                console.log("Printing extra docs for delivered repair:", repair.ticketNumber);
                 printWarrantyTicket(repairStub as unknown as NonNullable<Parameters<typeof printWarrantyTicket>[0]>);
 
                 if (repair.isWet) {
@@ -116,6 +116,11 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
     };
 
     useEffect(() => {
+        // Guard: skip the initial mount — only trigger on actual user searches
+        if (!isMounted.current) {
+            isMounted.current = true;
+            return;
+        }
         const params = new URLSearchParams(searchParams);
         if (debouncedSearch) {
             params.set("q", debouncedSearch);
