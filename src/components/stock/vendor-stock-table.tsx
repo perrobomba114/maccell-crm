@@ -76,8 +76,80 @@ export function VendorStockTable({ data, totalPages, currentPage, totalItems, us
     return (
         <div className="space-y-4">
             <div className="border rounded-xl overflow-hidden bg-card shadow-sm">
-                <Table>
-                    <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
+                
+                {/* Mobile View */}
+                <div className="sm:hidden flex flex-col divide-y divide-border/50">
+                    {data.length === 0 ? (
+                        <div className="p-8 text-center text-muted-foreground text-sm font-medium">
+                            No se encontraron productos.
+                        </div>
+                    ) : (
+                        data.map((item) => (
+                            <div key={item.id} className="p-4 flex flex-col gap-3 bg-card hover:bg-muted/30 transition-colors">
+                                <div className="flex items-center justify-between">
+                                    <div className="inline-flex items-center justify-center bg-muted/50 px-2 py-1 rounded-md border border-border/50 font-mono font-bold text-xs text-foreground tabular-nums">
+                                        {item.sku}
+                                    </div>
+                                    <Badge variant="outline" className="font-black bg-muted/50 text-muted-foreground uppercase tracking-widest text-[10px] px-2 py-0.5 border-border">
+                                        {item.categoryName}
+                                    </Badge>
+                                </div>
+                                
+                                <div className="flex flex-col items-start gap-1.5">
+                                    <span className="font-bold text-[13px] text-foreground uppercase tracking-tight leading-snug">{item.name}</span>
+                                    <Badge className="font-black bg-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-500/50 uppercase tracking-widest text-[9px] px-2 py-0.5">
+                                        {item.brand}
+                                    </Badge>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-border/50 mt-1">
+                                    <span className="font-bold text-base tabular-nums">${Number(item.pricePos || 0).toLocaleString('es-AR')}</span>
+                                    
+                                    <div className="flex items-center gap-2">
+                                        {isMaccell2 ? (
+                                            item.stockLocal > 0 ? (
+                                                <Badge className="bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/50 font-black px-3 py-1 text-sm tabular-nums">
+                                                    {item.stockLocal}
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-rose-600/10 text-rose-600 dark:text-rose-400 border border-rose-500/50 font-black px-3 py-1 text-sm tabular-nums">
+                                                    0
+                                                </Badge>
+                                            )
+                                        ) : (
+                                            item.stockLocal > 0 ? (
+                                                <Badge className="bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/50 font-black px-2 py-1 text-[9px] uppercase tracking-widest">
+                                                    DISPONIBLE
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-rose-600/10 text-rose-600 dark:text-rose-400 border border-rose-500/50 font-black px-2 py-1 text-[9px] uppercase tracking-widest">
+                                                    AGOTADO
+                                                </Badge>
+                                            )
+                                        )}
+                                        {isMaccell2 && (
+                                            <Button
+                                                variant="destructive"
+                                                size="icon"
+                                                className="h-8 w-8 ml-1"
+                                                disabled={item.stockLocal <= 0}
+                                                onClick={() => setItemToRemove(item)}
+                                                title="Dar de baja una unidad"
+                                            >
+                                                <MinusCircle className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Desktop View */}
+                <div className="hidden sm:block overflow-x-auto">
+                    <Table>
+                        <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
                         <TableRow className="hover:bg-transparent border-none">
                             <TableHead className="text-center w-[120px] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">SKU</TableHead>
                             <TableHead className="text-center px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Nombre</TableHead>
@@ -160,6 +232,7 @@ export function VendorStockTable({ data, totalPages, currentPage, totalItems, us
                         )}
                     </TableBody>
                 </Table>
+            </div>
             </div>
 
             {/* Pagination Controls */}
