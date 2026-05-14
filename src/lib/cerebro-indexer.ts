@@ -3,8 +3,10 @@
  *
  * Genera embeddings locales (Transformers.js / all-MiniLM-L6-v2)
  * para cada reparación terminada y los guarda en:
- *  1. RepairKnowledge → texto plano (para búsqueda híbrida)
- *  2. repair_embeddings   → vector 384-dims para pgvector (si disponible)
+ *  1. repair_embeddings → vector 384-dims para pgvector (si disponible)
+ *
+ * La wiki (repairKnowledge) es SOLO manual — el técnico decide qué guardar
+ * usando el botón "Guardar a Wiki" en Cerebro. Esto mantiene la wiki curada.
  */
 
 import { generateEmbedding } from '@/lib/local-embeddings';
@@ -16,6 +18,12 @@ type ExistingRepairEmbeddingRow = {
 function errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
+
+/**
+ * Flag de sesión para no reintentar pgvector una vez que confirmamos que
+ * la extensión no está disponible en este servidor. Se resetea al reiniciar.
+ */
+let pgvectorUnavailable = false;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Indexar una reparación individual
@@ -48,7 +56,7 @@ export async function indexRepair(repair: {
         lines.push(`REPUESTOS: ${repair.parts.map(p => `${p.sparePart.name} (${p.sparePart.brand})`).join(', ')}`);
     }
 
-    // Detectar y agregar campo SOLUCIÓN desde diagnóstico u observaciones
+    // Detectar campo SOLUCIÓN desde diagnóstico u observaciones
     const fixKeywords = ['reemplaz', 'realiz', 'sold', 'cambi', 'reballing', 'jumper', 'swap', 'arregl', 'recuper', 'reparar'];
     let solucion = '';
     if (repair.diagnosis) {
@@ -69,12 +77,10 @@ export async function indexRepair(repair: {
     try {
         const { db } = await import('@/lib/db');
 
-        // ── Solo indexar en RAG vectorial (automático, silencioso) ──────────
-        // La wiki (repairKnowledge) es SOLO manual — el técnico decide qué guardar
-        // usando el botón "Guardar a Wiki" en Cerebro tras un buen diagnóstico.
-        // Esto mantiene la wiki curada y de alta calidad.
+        // Si ya confirmamos que pgvector no está disponible, no generamos
+        // el embedding (ahorra CPU/mem del modelo Xenova en cada cron).
+        if (pgvectorUnavailable) return true;
 
-        console.warn(`[DEBUG] [CEREBRO_INDEXER] 🧠 Generando embedding para: ${repair.ticketNumber}`);
         const embedding = await generateEmbedding(document);
 
         if (embedding) {
@@ -90,17 +96,17 @@ export async function indexRepair(repair: {
                         embedding     = EXCLUDED.embedding,
                         "updatedAt"   = now()
                 `, repair.id, repair.ticketNumber, repair.deviceBrand, repair.deviceModel, document, vectorStr);
-                console.warn(`[DEBUG] [CEREBRO_INDEXER] ✅ RAG indexado: ${repair.ticketNumber}`);
             } catch (pgErr: unknown) {
-                console.warn(`[CEREBRO_INDEXER] ⚠️ pgvector no disponible: ${errorMessage(pgErr).slice(0, 80)}`);
+                // pgvector no está instalado en este servidor — marcar y silenciar
+                // futuros intentos para no spamear logs ni desperdiciar recursos.
+                pgvectorUnavailable = true;
+                console.warn(`[CEREBRO_INDEXER] pgvector no disponible en este servidor — RAG semántico desactivado. Error: ${errorMessage(pgErr).slice(0, 120)}`);
             }
-        } else {
-            console.warn(`[CEREBRO_INDEXER] ⚠️ No se pudo generar embedding para: ${repair.ticketNumber}`);
         }
 
         return true;
     } catch (err: unknown) {
-        console.error(`[CEREBRO_INDEXER] ❌ Error procesando ${repair.ticketNumber}:`, errorMessage(err));
+        console.warn(`[CEREBRO_INDEXER] Error procesando ${repair.ticketNumber}: ${errorMessage(err)}`);
         return false;
     }
 
@@ -111,24 +117,26 @@ export async function indexRepair(repair: {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function indexPendingRepairs(): Promise<void> {
     const { db } = await import('@/lib/db');
-    console.warn('[DEBUG] [CEREBRO_INDEXER] 🔍 Buscando reparaciones sin indexar...');
+
+    // Si pgvector no está disponible no hay nada que indexar vectorialmente.
+    if (pgvectorUnavailable) return;
 
     try {
-        // Obtener IDs ya indexados en pgvector (si está disponible)
+        // Obtener IDs ya indexados en pgvector
         let existingIds = new Set<string>();
         try {
             const existingRes = await db.$queryRawUnsafe<ExistingRepairEmbeddingRow[]>('SELECT "repairId" FROM repair_embeddings');
             existingIds = new Set(existingRes.map(r => r.repairId));
-            console.warn(`[DEBUG] [CEREBRO_INDEXER] Ya indexadas en pgvector: ${existingIds.size}`);
         } catch {
-            console.warn('[CEREBRO_INDEXER] pgvector no disponible, indexando todo en wiki text.');
+            // pgvector no disponible — marcar y salir sin procesar
+            pgvectorUnavailable = true;
+            console.warn('[CEREBRO_INDEXER] pgvector no disponible — RAG semántico desactivado para esta sesión.');
+            return;
         }
 
-        // Buscar reparaciones terminadas: con diagnóstico O con observaciones
-        // (más agresivo: cualquier reparación terminada con info útil)
         const pending = await db.repair.findMany({
             where: {
-                statusId: { in: [5, 6, 7, 8, 9, 10] }, // Estados: terminadas
+                statusId: { in: [5, 6, 7, 8, 9, 10] },
                 NOT: { id: { in: Array.from(existingIds) } },
                 OR: [
                     { diagnosis: { not: null, notIn: [''] } },
@@ -140,15 +148,10 @@ export async function indexPendingRepairs(): Promise<void> {
                 observations: { select: { content: true } },
                 parts: { include: { sparePart: { select: { name: true, brand: true } } } },
             },
-            take: 50, // Procesar más reparaciones por lote
+            take: 50,
         });
 
-        if (pending.length === 0) {
-            console.warn('[DEBUG] [CEREBRO_INDEXER] ✅ Todo está indexado. Nada que procesar.');
-            return;
-        }
-
-        console.warn(`[DEBUG] [CEREBRO_INDEXER] ⚙️ Indexando ${pending.length} reparaciones...`);
+        if (pending.length === 0) return;
 
         let success = 0;
         const BATCH_SIZE = 5;
@@ -156,10 +159,14 @@ export async function indexPendingRepairs(): Promise<void> {
             const batch = pending.slice(i, i + BATCH_SIZE);
             const results = await Promise.allSettled(batch.map(r => indexRepair(r)));
             success += results.filter(r => r.status === 'fulfilled' && r.value).length;
+            // Si pgvector se marcó como no disponible durante el batch, abortar
+            if (pgvectorUnavailable) break;
         }
 
-        console.warn(`[DEBUG] [CEREBRO_INDEXER] ✅ Completado: ${success}/${pending.length} reparaciones indexadas.`);
+        if (success > 0) {
+            console.warn(`[CEREBRO_INDEXER] ${success}/${pending.length} reparaciones indexadas.`);
+        }
     } catch (err: unknown) {
-        console.error('[CEREBRO_INDEXER] ❌ Error en indexación masiva:', errorMessage(err));
+        console.warn(`[CEREBRO_INDEXER] Error en indexación masiva: ${errorMessage(err)}`);
     }
 }

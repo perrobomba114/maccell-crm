@@ -128,7 +128,6 @@ async function semanticSearch(
         );
 
         if (rows?.length > 0) {
-            console.warn(`[DEBUG] [RAG] 🧠 Semántica: ${rows.length} resultados`);
             return rows.map(r => ({
                 ticketNumber: r.ticketNumber,
                 deviceBrand: r.deviceBrand,
@@ -188,7 +187,6 @@ async function keywordSearch(
         );
 
         if (rows?.length > 0) {
-            console.warn(`[DEBUG] [RAG] 🔑 Keyword: ${rows.length} resultados (terms: ${terms.join(', ')})`);
             return rows.map(r => ({
                 ticketNumber: r.ticketNumber,
                 deviceBrand: r.deviceBrand,
@@ -282,17 +280,14 @@ export async function findSimilarRepairs(
 
     if (semantic.length > 0 && keyword.length > 0) {
         const merged = rrfMerge(semantic, keyword, 60, preferredBrand);
-        console.warn(`[DEBUG] [RAG] ⚡ Híbrida RRF (marca: ${preferredBrand || 'cualquiera'}): ${merged.slice(0, limit).length} resultados`);
         return merged.slice(0, limit);
     }
 
     if (semantic.length > 0) {
-        console.warn(`[DEBUG] [RAG] 🧠 Solo semántica: ${Math.min(semantic.length, limit)} resultados`);
         return semantic.slice(0, limit);
     }
 
     if (keyword.length > 0) {
-        console.warn(`[DEBUG] [RAG] 🔑 Solo keyword: ${Math.min(keyword.length, limit)} resultados`);
         return keyword.slice(0, limit);
     }
 
@@ -301,7 +296,6 @@ export async function findSimilarRepairs(
         if (minSimilarity > retryThreshold) {
             const retry = await semanticSearch(embedding, limit, retryThreshold);
             if (retry.length > 0) {
-                console.warn(`[DEBUG] [RAG] 🧠 Semántica (Retry threshold): ${retry.length} resultados`);
                 return retry;
             }
         }
@@ -326,7 +320,6 @@ export async function findSimilarRepairs(
                     .slice(0, limit);
 
                 if (results.length > 0) {
-                    console.warn(`[DEBUG] [RAG] 📦 Fallback in-memory: ${results.length} resultados`);
                     return results;
                 }
             }
@@ -335,7 +328,6 @@ export async function findSimilarRepairs(
         }
     }
 
-    console.warn('[DEBUG] [RAG] Sin resultados.');
     return [];
 }
 
