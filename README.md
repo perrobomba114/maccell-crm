@@ -1,356 +1,298 @@
-# MacCell CRM - Sistema de Gestión Integral para Centros Tecnológicos
+# MACCELL CRM
 
-![MacCell CRM Banner](https://img.shields.io/badge/MacCell-CRM-blue?style=for-the-badge&logo=next.js)
-![Version](https://img.shields.io/badge/version-2.0.0-emerald?style=for-the-badge)
-![License](https://img.shields.io/badge/license-Proprietary-red?style=for-the-badge)
+Sistema integral para operaciones de MACCELL: ventas, caja, reparaciones, stock multi-sucursal, facturación AFIP/ARCA, reportes y asistencia técnica con Cerebro AI.
 
-MacCell CRM es una plataforma de gestión empresarial (ERP/CRM) de alto rendimiento diseñada específicamente para laboratorios de reparación de dispositivos móviles y tiendas de tecnología. Construida con tecnologías de vanguardia, ofrece un control absoluto sobre el flujo de trabajo, desde la recepción de un equipo hasta la auditoría financiera avanzada.
+Este README es la entrada rápida del proyecto. Las reglas obligatorias para agentes y desarrollo diario viven en:
 
----
+- [AGENTS.md](./AGENTS.md): contrato operativo resumido.
+- [AGENT.md](./AGENT.md): contexto histórico y patrones del repo.
+- [.claude/claude.md](./.claude/claude.md): guía equivalente para Claude.
+- [.agents/skills/maccell/SKILL.md](./.agents/skills/maccell/SKILL.md): skill activa para agentes.
+- [docs/agent-tooling.md](./docs/agent-tooling.md): Codex, Claude, skills y MCP recomendados.
+- [docs/technical-debt-roadmap.md](./docs/technical-debt-roadmap.md): checklist vivo de deuda técnica.
 
-## 📑 Índice de Contenidos
+## Estado Actual
 
-- [Visión General](#-visión-general)
-- [Arquitectura del Sistema](#-arquitectura-del-sistema)
-- [Módulos Principales](#-módulos-principales)
-  - [Panel de Administración](#panel-de-administración-admin)
-  - [Módulo de Ventas](#módulo-de-ventas-vendor)
-  - [Laboratorio Técnico](#laboratorio-técnico-technician)
-- [Características Desacadas](#-características-destacadas)
-- [Stack Tecnológico](#-stack-tecnológico)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
-- [Instalación y Configuración](#-instalación-y-configuración)
-- [Guía de Desarrollo](#-guía-de-desarrollo)
-- [Optimización y Rendimiento](#-optimización-y-rendimiento)
-- [Soporte Móvil y Cámara](#-soporte-móvil-y-cámara)
+MACCELL CRM es un producto en producción con ritmo de iteración alto. El sistema funciona como ERP/CRM operativo, pero tiene deuda técnica conocida en seguridad de rutas API, TypeScript, tests críticos, polling, estados mágicos de reparación, AFIP y Cerebro AI.
 
----
+Antes de sumar features grandes, priorizar el roadmap de deuda:
 
-## 🚀 Visión General
-
-MacCell CRM no es solo un gestor de ventas; es un ecosistema que unifica tres pilares fundamentales del negocio tecnológico:
-
-1.  **Auditoría Financiera**: Control de caja chica, cierres de caja por turno, seguimiento de gastos y cálculo automático de comisiones (premios).
-2.  **Gestión de Reparaciones**: Seguimiento detallado del ciclo de vida de cada dispositivo, con documentación fotográfica y trazabilidad de técnicos.
-3.  **Control de Inventario Multi-Sucursal**: Sincronización en tiempo real de stock de productos y repuestos entre diferentes ubicaciones físicas.
-
-El sistema prioriza la **experiencia de usuario (UX)** con una interfaz tipo "Premium Dark" que utiliza micro-animaciones para mejorar la interactividad y reducir la carga cognitiva.
-
----
-
-## 🏗 Arquitectura del Sistema
-
-La aplicación sigue una arquitectura moderna basada en el **App Router de Next.js**, utilizando **Server Actions** para la lógica de negocio y **Prisma ORM** para la persistencia de datos.
-
-### Seguridad y Roles (RBAC)
-El sistema utiliza un control de acceso basado en roles (Role-Based Access Control):
-- **ADMIN**: Acceso total a estadísticas, configuración de sucursales, auditoría de cajas y gestión de usuarios.
-- **VENDOR**: Enfocado en la atención al cliente, ventas rápidas, recepción de equipos y apertura/cierre de su propia caja.
-- **TECHNICIAN**: Interfaz optimizada para el laboratorio, gestión de tareas asignadas, diagnóstico y consumo de repuestos.
-
----
-
-## 📦 Módulos Principales
-
-### Panel de Administración (ADMIN)
-Es el cerebro del sistema. Permite a los dueños de negocio supervisar el rendimiento global.
-- **Dashboard Financiero**: Visualización de KPIs (Ingresos, Ventas, Gastos, Ticket Promedio) con comparativas mensuales automáticas.
-- **Participación de Ganancia**: Gráficos interactivos de Recharts que muestran qué categorías generan más margen.
-- **Cierre de Caja Global**: Calendario optimizado para auditar cada turno de cada sucursal en milisegundos.
-- **Gestión de Sucursales**: Configuración de prefijos de tickets, direcciones y stock específico.
-
-### Módulo de Ventas (VENDOR)
-Diseñado para la agilidad en el punto de venta (POS).
-- **Venta Rápida**: Buscador inteligente de productos por SKU o nombre.
-- **Métodos de Pago Flexibles**: Soporte para Efectivo, Tarjeta, Mercado Pago y Pagos Divididos (Split).
-- **Impresión de Tickets**: Generación de comprobantes térmicos optimizados para impresoras de 80mm.
-- **Recepción de Equipos**: Proceso simplificado para registrar ingresos al servicio técnico.
-
-### Laboratorio Técnico (TECHNICIAN)
-Optimizado para la productividad en el banco de trabajo.
-- **Cola de Trabajo**: Lista priorizada de reparaciones según fecha comprometida.
-- **Diagnóstico y Observaciones**: Registro de cada paso de la reparación para transparencia con el cliente.
-- **Consumo de Repuestos**: Descuento automático del inventario de repuestos al asignar piezas a una reparación.
-- **Widget de Carga**: Sistema de visualización de carga de trabajo para una mejor distribución de tareas.
-
----
-
-## ✨ Características Destacadas
-
-### 📊 Análisis de Datos en Tiempo Real
-Utilizamos **Recharts** con protecciones de SSR para garantizar gráficos fluidos que muestran el crecimiento del negocio día a día. Los cálculos de beneficios se realizan a nivel de servidor para asegurar precisión centesimal.
-
-### 🖼 Gestión de Evidencia Fotográfica
-El sistema permite capturar y almacenar imágenes de los dispositivos al ingresar y al finalizar, protegiendo tanto al cliente como al servicio técnico ante posibles reclamos por daños estéticos.
-
-### ⚙️ Optimización de Cierres de Caja
-Implementamos consultas agrupadas (Batching) y agregaciones a nivel de base de datos para manejar miles de movimientos financieros sin degradar el rendimiento de la interfaz.
-
-### 🔔 Notificaciones Inteligentes
-Sistema integrado de avisos para alertar a los técnicos sobre nuevas asignaciones o a los administradores sobre cierres de caja pendientes.
-
----
-
-## 🛠 Stack Tecnológico
-
-| Tecnología | Uso |
-| :--- | :--- |
-| **Next.js 15 (App Router)** | Framework principal y SSR |
-| **TypeScript** | Tipado estático para robustez del código |
-| **Prisma ORM** | Modelado de datos y consultas a DB |
-| **PostgreSQL** | Base de datos relacional |
-| **Tailwind CSS** | Estilizado moderno y responsivo |
-| **Framer Motion** | Animaciones y transiciones suaves |
-| **Lucide React** | Librería de iconos vectoriales |
-| **Recharts** | Visualización de datos y estadísticas |
-| **Zustand / React Context** | Gestión de estado global |
-| **Sonner** | Sistema de notificaciones tipo Toast |
-
----
-
-## 📂 Estructura del Proyecto
-
-```text
-maccell-crm/
-├── src/
-│   ├── app/                # Rutas y páginas (Next.js App Router)
-│   │   ├── admin/          # Panel de administración
-│   │   ├── vendor/         # Módulo de ventas
-│   │   ├── technician/     # Módulo de laboratorio
-│   │   └── api/            # Endpoints de API rest (Webhooks/Integraciones)
-│   ├── actions/            # Server Actions (Lógica de negocio principal)
-│   │   ├── auth-actions.ts # Gestión de sesiones
-│   │   ├── cash-shift.ts   # Lógica financiera
-│   │   └── repairs.ts      # Flujo de servicio técnico
-│   ├── components/         # Componentes reutilizables
-│   │   ├── ui/             # Componentes base (Shadcn/UI)
-│   │   ├── admin/          # Componentes específicos de administración
-│   │   ├── layout/         # Sidebar, Header, Breadcrumbs
-│   │   └── shared/         # Utilidades comunes visuales
-│   ├── lib/                # Utilidades de configuración (DB, Utils)
-│   └── hooks/              # Custom hooks de React
-├── prisma/                 # Esquema de base de datos y migraciones
-├── public/                 # Assets estáticos (Logo, Imágenes)
-└── .env                    # Variables de entorno
+```bash
+open docs/technical-debt-roadmap.md
 ```
 
----
+## Stack
 
-## ⚙️ Instalación y Configuración
+| Área | Tecnología |
+| --- | --- |
+| Framework | Next.js 15 App Router, React 19 |
+| Lenguaje | TypeScript |
+| Base de datos | PostgreSQL con Prisma ORM |
+| UI | Tailwind CSS v4, shadcn/ui, Recharts, Lucide |
+| Formularios | React Hook Form, Zod |
+| AI | Groq, OpenRouter fallback, Vercel AI SDK |
+| RAG | Xenova embeddings 384 dims, pgvector/fallback |
+| Facturación | AFIP/ARCA |
+| Impresión | Tickets térmicos, Zebra/ZPL |
+| Infra | Docker, Dokploy, `output: "standalone"` |
 
-### Requisitos Previos
-- Node.js 18.x o superior
-- PostgreSQL instalado o una instancia en la nube (ej. Supabase)
+## Módulos
 
-### Pasos
-1.  **Clonar el repositorio**:
-    ```bash
-    git clone https://github.com/perrobomba114/maccell-crm.git
-    cd maccell-crm
-    ```
+| Módulo | Ruta principal | Responsabilidad |
+| --- | --- | --- |
+| Admin | `src/app/admin` | KPIs, caja, gastos, facturas, usuarios, backups, reportes |
+| Vendor | `src/app/vendor` | POS, ventas, recepción de equipos, stock de sucursal |
+| Technician | `src/app/technician` | Cola de trabajo, diagnóstico, repuestos, historial técnico |
+| Repairs | `src/actions/repairs`, `src/components/repairs` | Ciclo completo de reparación y trazabilidad |
+| Stock | `src/actions/stock*`, `src/actions/transfers` | Inventario, repuestos, transferencias multi-sucursal |
+| Cerebro | `src/lib/cerebro*`, `src/app/api/cerebro` | Asistente AI, RAG, wiki técnica, schemáticos |
+| Public | `src/app/estado`, `src/app/api/public` | Seguimiento público por QR y pantallas digitales |
 
-2.  **Instalar dependencias**:
-    ```bash
-    npm install
-    ```
+## Requisitos
 
-3.  **Configurar variables de entorno**:
-    Crea un archivo `.env` en la raíz con el siguiente contenido:
-    ```env
-    DATABASE_URL="postgresql://usuario:password@localhost:5432/maccell_crm"
-    NEXT_PUBLIC_APP_URL="http://localhost:3000"
-    ```
+- Node.js 20 recomendado.
+- npm.
+- PostgreSQL accesible por `DATABASE_URL`.
+- Variables de entorno de AFIP/ARCA si se prueba facturación.
+- Usar `--legacy-peer-deps` si npm encuentra conflictos por React 19.
 
-4.  **Sincronizar base de datos**:
-    ```bash
-    npx prisma generate
-    npx prisma db push
-    ```
+## Instalación Local
 
-5.  **Iniciar servidor de desarrollo**:
-    ```bash
-    npm run dev
-    ```
-
----
-
-## 💡 Guía de Desarrollo
-
-### Convenciones de Código
-- **Componentes**: Deben ser lo más granulares posible y estar ubicados en la carpeta correspondiente a su dominio.
-- **Server Actions**: Toda mutación de datos debe pasar por una Server Action para garantizar validaciones de seguridad en el servidor.
-- **Estilos**: Utilizar clases de Tailwind CSS. Evitar estilos integrados a menos que sean cálculos dinámicos de Framer Motion.
-
-### Gestión de Imágenes
-Para el despliegue local, las imágenes se almacenan en `public/profiles` y se referencian mediante la utilidad `getImgUrl`. En producción, el sistema está preparado para ser extendido a servicios como AWS S3 o Cloudinary.
-
----
-
-## ⚡ Optimización y Rendimiento
-
-El sistema incluye varias capas de optimización:
-- **Hydration Guards**: Todos los gráficos y componentes complejos tienen validaciones de montaje (`isMounted`) para evitar errores de hidratación típicos de Next.js.
-- **Consultas Optimizadas**: El cierre de caja utiliza un modelo de carga de datos que reduce el tiempo de proceso en un 90% comparado con implementaciones estándar.
-- **Memoización**: Uso estratégico de `useMemo` y `useCallback` en listas largas de repuestos y productos.
-
----
-
-## 📱 Soporte Móvil y Cámara
-
-Para que el escáner de códigos de barras y la captura de fotos funcionen en dispositivos móviles durante el desarrollo local (vía HTTP), debes seguir estos pasos en Chrome:
-
-1.  Abre Chrome en tu celular.
-2.  Navega a: `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
-3.  Habilita la opción **"Insecure origins treated as secure"**.
-4.  En el cuadro de texto, ingresa la IP de tu computadora (ej: `http://192.168.1.15:3000`).
-5.  Haz clic en **"Relaunch"**.
-
-*Nota: En producción, el uso de HTTPS elimina la necesidad de esta configuración.*
-
-## 🗄️ Diccionario de Datos (Modelo Prisma)
-
-El corazón de MacCell CRM reside en su robusto esquema relacional. A continuación, se detallan las entidades principales y sus interacciones:
-
-### 1. Núcleo Organizacional (`Branch`)
-Define las sucursales físicas. Cada sucursal actúa como un contenedor de aislamiento para inventario, ventas y reparaciones, aunque los administradores pueden ver datos agregados.
-- **Campos Clave**: `ticketPrefix`, `code`, `address`.
-
-### 2. Control de Acceso (`User`)
-Soporta tres roles principales (`ADMIN`, `VENDOR`, `TECHNICIAN`). 
-- **Integraciones**: Vinculado a `Branch` para restringir el alcance de visualización.
-
-### 3. Sistema de Reparaciones (`Repair` & `Customer`)
-El módulo más complejo. Maneja el flujo de trabajo técnico.
-- **Repair**: Contiene metadatos del dispositivo (`deviceBrand`, `deviceModel`), estados dinámicos vinculados a `RepairStatus`, y trazabilidad de tiempos (`startedAt`, `finishedAt`).
-- **Warranty**: Sistema integrado para reparaciones bajo garantía mediante una relación autorreferencial (`originalRepairId`).
-
-### 4. Transacciones y Finanzas (`Sale`, `CashShift`, `Expense`)
-- **Sale**: Soporta múltiples ítems y métodos de pago. Incluye banderas de auditoría como `wasPaymentModified`.
-- **CashShift**: Registra la apertura y cierre de caja, calculando automáticamente balances basados en ventas y gastos reales del periodo.
-
----
-
-## 🛠 Desafíos Técnicos y Soluciones
-
-### 🚀 Optimización de Consultas (Performance)
-**Desafío**: La vista de administrador del historial de cajas tardaba hasta 5 segundos en cargar debido a consultas redundantes dentro de bucles (N+1).
-**Solución**: Se implementó una lógica de **Batch Fetching**. Al cargar un mes, el sistema captura todos los movimientos financieros en tres consultas masivas y realiza la asociación en la memoria del servidor de aplicaciones, reduciendo el tiempo de carga a milisegundos.
-
-### 📈 Visualización de Datos (Hydration Issues)
-**Desafío**: Las librerías de gráficos basadas en SVG generan inconsistencias entre el renderizado del servidor (SSR) y el cliente.
-**Solución**: Implementamos un patrón de `isMounted` en todos los componentes de Recharts. El servidor entrega un "esqueleto" (Skeleton UI) y el cliente monta el gráfico interactivo una vez que el DOM está listo, eliminando advertencias en consola y parpadeos visuales.
-
-### ⚙️ Cálculo de Premios (Comisiones)
-**Desafío**: El cálculo de premios por ventas es dinámico y depende de umbrales de facturación mensuales.
-**Solución**: Se integró un motor de reglas en las Server Actions de caja que aplica porcentajes variables según el volumen de ventas:
-- Menos de 1M: 1%
-- Más de 1M: 2%
-- Redondeo automático a unidades de 500 para facilitar pagos físicos de comisiones.
-
----
-
-## 📂 Documentación de Componentes Clave
-
-### `src/components/layout/sidebar.tsx`
-Gestiona la navegación dinámica. Utiliza `framer-motion` para transiciones suaves entre estados colapsados y expandidos. Incluye lógica de persistencia para recordar la preferencia del usuario.
-
-### `src/components/admin/dashboard/ProfitDonut.tsx`
-Calcula la rentabilidad real de cada categoría cruzando datos de ventas con el costo de los productos. Utiliza colores de marca curados para una representación visual premium.
-
-### `src/components/repairs/repair-details-modal.tsx`
-Un centro de comando para la reparación. Permite a los técnicos:
-- Ver historial de observaciones.
-- Cambiar estados con un clic.
-- Ver fotos en una galería interactiva.
-
----
-
-## 📋 Estándares de Código y Recomendaciones
-
-Si estás contribuyendo a este proyecto o realizando modificaciones, por favor sigue estas reglas:
-
-1.  **Strict Typing**: No uses `any` a menos que sea estrictamente necesario por una librería externa sin tipos. Define interfaces precisas en cada componente.
-2.  **Server VS Client**: Marca siempre tus archivos con `"use client"` o `"use server"` de manera explícita en la primera línea.
-3.  **Manejo de Errores**: Todas las Server Actions deben retornar un objeto `{ success: boolean, data?: any, error?: string }` para un manejo de errores consistente en la UI.
-4.  **Aesthetics First**: El diseño es una prioridad. Si creas una nueva tabla, asegúrate de que use las clases de `bg-card`, `hover:bg-muted` y bordes sutiles según el sistema de diseño visual establecido.
-
----
-
-## 📈 Roadmap y Mejoras Futuras
-- [x] **Cerebro AI**: Integración de LLM local (Ollama) para asistencia en el laboratorio.
-- [x] **Base de Conocimiento**: Wiki técnica colaborativa con búsqueda inteligente.
-- [ ] Integración con APIs de transportistas para seguimiento de envíos de stock entre sucursales.
-- [ ] Exportación avanzada de reportes a PDF/Excel con plantillas personalizadas.
-- [ ] Módulo nativo de cámara para escaneo directo de piezas mediante OCR.
-
----
-
-## 📱 Soporte Móvil y Cámara (Detalle Técnico)
-
-La tecnología de escáner utiliza la librería `html5-qrcode`. Para habilitar el uso de la cámara en entornos de desarrollo:
-
-1.  **IP Estática**: Asegúrate de que tu computadora tenga una IP fija en la red local.
-2.  **HTTPS Local**: Opcionalmente, puedes usar librerías como `next-dev-https` para simular un entorno seguro TLS localmente.
-3.  **Permisos de Origen**: En dispositivos Android, Chrome bloquea la cámara por defecto en sitios `http://`. Es mandatorio usar el flag `unsafely-treat-insecure-origin-as-secure` mencionado en la sección de instalación.
-
----
-
-## 📄 Notas de Versión
-
-### v2.0.0 (Actual)
-- Implementación de App Router.
-- Nuevo sistema de auditoría financiera acelerada.
-- Refactorización de la sidebar con soporte para logos dinámicos.
-- Optimización de gráficos Recharts con client-side mounting.
-
----
-
-## 🤝 Contacto y Soporte
-Si encuentras un bug o tienes una sugerencia de mejora, por favor abre un *Issue* en el repositorio de GitHub o contacta al equipo de desarrollo de **David**.
-
----
-
-## 🛠️ Referencia Técnica de Server Actions
-
-Para los desarrolladores que necesiten extender la funcionalidad, aquí se documentan las acciones críticas del sistema:
-
-### Gestión de Cajas (`/actions/cash-shift-actions.ts`)
-- `getCashDashboardStats(year, month, branchId)`: La función principal del dashboard. Calcula KPIs y recupera turnos optimizados mediante batching.
-- `getDeepCashShiftsForDate(date, branchId)`: Recupera el detalle atómico de ventas y gastos para un día específico.
-- `updateUserImage(userId, imageUrl)`: Actualiza la referencia de la foto de perfil en la DB y dispara la revalidación de rutas.
-
-### Servicio Técnico (`/actions/repairs/`)
-- `createRepair(data)`: Crea una nueva entrada de servicio técnico, genera el número de ticket basado en el prefijo de la sucursal y notifica a los técnicos si hay uno asignado.
-- `updateRepairStatus(repairId, statusId)`: Cambia el estado y registra automáticamente la transición en el historial para auditoría del cliente.
-
-### Inventario y Stock (`/actions/products.ts`)
-- `updateProductStock(productId, branchId, quantity)`: Ajusta niveles de stock con validación de existencia previa para prevenir inconsistencias.
-- `processStockTransfer(source, target, items)`: Gestiona el movimiento de mercancía entre sucursales, restando en origen y sumando en destino en una sola transacción atómica.
-
----
-
-## 📊 Flujo de Datos Financieros (Diagrama Conceptual)
-
-```mermaid
-graph TD
-    A[Venta Realizada] --> B{Método de Pago}
-    B -- Efectivo --> C[Balance Caja Chica]
-    B -- Tarjeta/MP --> D[Balance Digital]
-    C --> E[Cierre de Turno]
-    D --> E
-    E --> F[Auditoría Admin]
-    G[Gasto Operativo] --> C
-    H[Premio/Comisión] --> C
+```bash
+npm install --legacy-peer-deps
+npx prisma generate
+npx prisma db push
+npm run dev
 ```
 
----
+El script `dev` actual usa HTTPS experimental y desactiva verificación TLS para desarrollo:
 
-## 📄 Licencia y Propiedad
+```bash
+NODE_TLS_REJECT_UNAUTHORIZED='0' next dev --experimental-https -p 3000
+```
 
-Este software es propiedad privada de **MACCELL Technology**. Queda estrictamente prohibida su redistribución o uso no autorizado en entornos de producción ajenos a la organización original.
+No usar ese patrón como referencia para producción.
 
----
-Generado con ❤️ por el equipo de **Desarrollo de Software de MACCELL** para **MAC CELL SAN LUIS SRL**.
-| Estabilidad | Rendimiento | Estética |
-| :---: | :---: | :---: |
-| 100% | Ultra Fast | Premium |
+## Variables de Entorno
+
+Mínimas para levantar el sistema:
+
+```env
+DATABASE_URL="postgresql://usuario:password@host:5432/maccell"
+NEXTAUTH_SECRET="cambiar-en-produccion"
+NEXTAUTH_URL="http://localhost:3000"
+CRON_SECRET="secreto-para-crons"
+```
+
+AFIP/ARCA:
+
+```env
+AFIP_CERT="certificado-base64-o-path"
+AFIP_KEY="clave-privada-base64-o-path"
+AFIP_CUIT="CUIT"
+AFIP_PRODUCTION="false"
+
+# Opcional para entidad 8BIT
+AFIP_CERT_8BIT="..."
+AFIP_KEY_8BIT="..."
+AFIP_CUIT_8BIT="..."
+```
+
+AI:
+
+```env
+GROQ_API_KEY_1="..."
+GROQ_API_KEY_2="..."
+OPENROUTER_API_KEY="..."
+```
+
+## Comandos
+
+| Comando | Uso |
+| --- | --- |
+| `npm run dev` | Servidor local con HTTPS experimental |
+| `npm run dev:clean` | Limpia `.next` y levanta dev |
+| `npm run build` | Build standalone de Next |
+| `npm run start` | Ejecuta `.next/standalone/server.js` |
+| `npm run lint` | ESLint completo |
+| `npx tsc --noEmit` | Type-check real |
+| `npx prisma generate` | Genera Prisma Client |
+| `npx prisma db push` | Sincroniza schema en desarrollo |
+| `npm run wiki:sync` | Seed/sync de wiki desde reparaciones |
+| `npm run wiki:reindex` | Reindex de reparaciones para RAG |
+
+Importante: hoy `npm test` no existe en `package.json`. Agregar Vitest es una deuda P0 documentada.
+
+## Verificación Antes de Cerrar Cambios
+
+`npm run build` no alcanza como señal de producción porque `next.config.ts` todavía ignora errores de TypeScript y ESLint. Usar:
+
+```bash
+.agents/skills/maccell/scripts/verify-production-safety.sh --with-build
+```
+
+Si el script no se puede usar, correr como mínimo:
+
+```bash
+npx tsc --noEmit
+git diff --check
+CHANGED_TS="$( { git diff --name-only --diff-filter=ACMR; git ls-files --others --exclude-standard; } | sort -u | grep -E '\.(ts|tsx)$' || true )"
+if [ -n "$CHANGED_TS" ]; then
+  printf '%s\n' "$CHANGED_TS" | xargs npx eslint --quiet
+fi
+npm run build
+```
+
+Si existe `npm test`, correrlo antes y después de tocar código crítico.
+
+## Agentes, Skills y MCP
+
+Este proyecto incluye tooling para trabajar con Codex y Claude sin duplicar reglas:
+
+- Codex usa las skills versionadas en `.agents/skills/`.
+- Claude usa `.claude/claude.md`, que apunta a la misma skill principal de MACCELL.
+- MCPs recomendados y plantillas locales están documentados en [docs/agent-tooling.md](./docs/agent-tooling.md).
+
+Skills principales:
+
+| Skill | Ruta | Uso |
+| --- | --- | --- |
+| `maccell` | `.agents/skills/maccell/SKILL.md` | Reglas del proyecto |
+| `frontend-design` | `.agents/skills/frontend-design/SKILL.md` | UI y experiencia visual |
+| `vercel-react-best-practices` | `.agents/skills/vercel-react-best-practices/SKILL.md` | React/Next.js |
+| `vercel-react-view-transitions` | `.agents/skills/vercel-react-view-transitions/SKILL.md` | Animaciones/transiciones |
+| `find-skills` | `.agents/skills/find-skills/SKILL.md` | Descubrir skills extra |
+
+No commitear configs MCP con secretos. Usar variables de entorno locales para tokens.
+
+## Reglas De Oro
+
+1. No agregar `console.log` en `src/actions`, `src/lib` ni backend.
+2. Toda API privada debe validar sesión antes de leer body, DB, AI keys o archivos.
+3. No usar `any` ni `as any` en archivos tocados salvo frontera inevitable con `TECH_DEBT`.
+4. Usar `src/lib/date-utils.ts` para Argentina UTC-3. No reimplementar offsets.
+5. No usar números mágicos para estados de reparación. Crear/usar constantes.
+6. Stock concurrente siempre con transacciones y verificación optimista.
+7. Fire-and-forget siempre loggea errores. Prohibido `.catch(() => {})`.
+8. No agregar código a archivos de más de 300 líneas sin dividir responsabilidad.
+9. Tests obligatorios para dinero, fechas, estados, stock, AFIP, AI fallback e impresoras.
+10. Cerebro AI no debe mezclar marcas ni exponer precios internos.
+
+## Estados De Reparación
+
+Usar constantes compartidas, no números directos:
+
+```ts
+export const REPAIR_STATUS = {
+  PENDING: 1,
+  CLAIMED: 2,
+  IN_PROGRESS: 3,
+  PAUSED: 4,
+  OK: 5,
+  DELIVERED: 6,
+  NO_REPAIR: 7,
+  INVOICED: 10,
+} as const;
+```
+
+Nota crítica: `PAUSED` es `4`. No tratarlo como listo o entregado.
+
+## Arquitectura De Datos
+
+Entidades principales:
+
+- `Branch`: sucursales, prefijos de tickets, aislamiento operativo.
+- `User`: roles `ADMIN`, `VENDOR`, `TECHNICIAN`.
+- `Customer`: clientes asociados a ventas/reparaciones.
+- `Repair`: dispositivo, diagnóstico, estado, técnico, garantía e historial.
+- `RepairStatusHistory`: auditoría de transición de estados.
+- `Product`, `ProductStock`: productos y stock por sucursal.
+- `SparePart`, `SparePartHistory`: repuestos e historial de movimientos.
+- `Sale`, `SaleItem`, `SalePayment`, `SaleInvoice`: ventas, pagos, factura.
+- `CashShift`, `Expense`: caja, cierres y gastos.
+- `RepairKnowledge`, `RepairEmbedding`: wiki y RAG de Cerebro.
+
+## Cerebro AI
+
+Cerebro combina:
+
+- Chat técnico con Groq.
+- Fallback por OpenRouter.
+- Wiki técnica colaborativa.
+- RAG con embeddings Xenova.
+- Búsqueda híbrida semántica + keyword.
+- Schemáticos con límite de contexto.
+
+Reglas críticas:
+
+- Priorizar wiki/RAG sobre conocimiento general.
+- No mezclar contexto entre marcas/plataformas.
+- Detectar iOS/Android antes de mencionar ICs específicos.
+- No mencionar precios internos.
+- No usar `maxRetries` con Groq free tier.
+- Procesar lotes con límites pequeños para evitar 429/OOM.
+
+## POS, Caja y AFIP
+
+Las áreas de dinero son críticas:
+
+- Checkout debe mantener venta, pagos, stock y factura consistentes.
+- AFIP debe fallar de forma visible, sin secretos en logs.
+- Cierres de caja deben calcular gastos, efectivo, digital, ventas modificadas y premios con tests.
+- Facturas A/B/C y consumidor final deben salir de datos reales, no hardcode.
+
+## Stock y Reparaciones
+
+Reglas de consistencia:
+
+- Transferencias multi-sucursal con `$transaction`.
+- Consumo y devolución de repuestos con historial.
+- Nada de autorización por nombre de sucursal. Usar `branchId` y permisos.
+- Toda transición de reparación registra historial.
+
+## Frontend y UX
+
+El sistema se usa en mostrador y taller, muchas veces desde celular. La UI debe ser densa, clara y operativa.
+
+- Tablas grandes necesitan alternativa mobile.
+- KPIs admin deben usar patrón visual uniforme.
+- Recharts debe montarse con guard de cliente y contenedores con tamaño mínimo.
+- No agregar polling manual si puede resolverse con SWR o un `usePolling` reutilizable.
+- Componentes con muchos estados deben migrar a `useReducer` o dividirse.
+
+## Deploy
+
+- Docker debe usar `node:20-slim`, no Alpine.
+- Prisma Client se genera en build time.
+- Migraciones o `db push` corren en runtime según estrategia de deploy.
+- Build Next usa `output: "standalone"`.
+- Backups viven en filesystem con volumen persistente en Dokploy.
+
+## Roadmap Funcional
+
+Pendiente funcional declarado en README histórico:
+
+- Integración con transportistas para seguimiento de envíos entre sucursales.
+- Exportación avanzada a PDF/Excel con plantillas.
+- Cámara/OCR para escaneo directo de piezas.
+
+Antes de avanzar con eso, revisar [docs/technical-debt-roadmap.md](./docs/technical-debt-roadmap.md), especialmente P0.
+
+## Contribución
+
+Formato de commits preferido:
+
+```bash
+fix(cerebro): descripcion corta en minusculas
+feat(pos): descripcion corta en minusculas
+refactor(repairs): descripcion corta en minusculas
+perf(admin): descripcion corta en minusculas
+```
+
+Scopes comunes: `cerebro`, `admin`, `repairs`, `pos`, `vendor`, `technician`, `statistics`, `deploy`.
+
+La regla práctica: cambios chicos, verificables y con causa clara. Si se arregla deuda del roadmap, marcar el item correspondiente.
+
+## Licencia
+
+Software privado de MACCELL. Uso y redistribución no autorizados están prohibidos.

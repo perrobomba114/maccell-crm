@@ -73,4 +73,8 @@ AGENT.md
 .kiro/
 .qwen/
 
+# Docs generados por agentes
+docs/agent-tooling.md
+docs/technical-debt-roadmap.md
+
 /AGENTS.md
