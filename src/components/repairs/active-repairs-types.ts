@@ -48,3 +48,18 @@ export function calcRepairDuration(startedAt?: Date | string | null, finishedAt?
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
+
+/** Returns true if the promised delivery date has already passed */
+export function isOverdue(promisedAt: string | Date): boolean {
+    return new Date(promisedAt).getTime() < Date.now();
+}
+
+/** Status chip options for quick filtering. statusId === 0 means "All". */
+export const STATUS_CHIPS = [
+    { label: "Todas", statusId: 0 },
+    { label: "Pendiente", statusId: 1 },
+    { label: "Tomada", statusId: 2 },
+    { label: "En Proceso", statusId: 3 },
+    { label: "Pausada", statusId: 4 },
+    { label: "Lista", statusId: 5 },
+] as const;

@@ -1,9 +1,9 @@
 "use client";
 
-// Orchestrates search, mobile cards, desktop table, and all dialogs
-// for the vendor/technician active repairs view.
+// Orchestrates search, stats banner, chip filters, mobile cards, desktop table,
+// pull-to-refresh (mobile), and all dialogs for the active repairs view.
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Search, Camera, Printer, Eye, RefreshCcw } from "lucide-react";
+import { Search, Camera, Printer, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TechnicianActionButton } from "./technician-action-button";
 import { TakeRepairDialog } from "./take-repair-dialog";
@@ -24,7 +24,9 @@ import { printRepairTicket, printWarrantyTicket, printWetReport } from "@/lib/pr
 import { Share2 } from "lucide-react";
 import { AddPartDialog } from "./add-part-dialog";
 import { ActiveRepairCard } from "./active-repair-card";
-import { type ActiveRepair, type ActiveRepairsTableProps, ACTIVE_STATUS_COLOR_MAP, positionBadgeClass, calcRepairDuration } from "./active-repairs-types";
+import { ActiveRepairsStats } from "./active-repairs-stats";
+import { type ActiveRepair, type ActiveRepairsTableProps, ACTIVE_STATUS_COLOR_MAP, positionBadgeClass, calcRepairDuration, isOverdue } from "./active-repairs-types";
+import { cn } from "@/lib/utils";
 
 export function ActiveRepairsTable({
     repairs,
@@ -36,6 +38,7 @@ export function ActiveRepairsTable({
     showIssueSummary = false
 }: ActiveRepairsTableProps) {
     const [searchTerm, setSearchTerm] = useState("");
+    const [activeChip, setActiveChip] = useState(0);
     const [takeoverRepair, setTakeoverRepair] = useState<ActiveRepair | null>(null);
     const [assignmentRepair, setAssignmentRepair] = useState<ActiveRepair | null>(null);
     const [imageUploadRepair, setImageUploadRepair] = useState<ActiveRepair | null>(null);
@@ -43,6 +46,36 @@ export function ActiveRepairsTable({
     const [transferRepair, setTransferRepair] = useState<ActiveRepair | null>(null);
     const [addPartRepair, setAddPartRepair] = useState<ActiveRepair | null>(null);
     const router = useRouter();
+
+    // ── Pull-to-refresh (mobile) ───────────────────────────────────────────
+    const listRef = useRef<HTMLUListElement>(null);
+    const touchStartY = useRef(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleTouchStart = useCallback((e: TouchEvent) => {
+        touchStartY.current = e.touches[0].clientY;
+    }, []);
+
+    const handleTouchEnd = useCallback((e: TouchEvent) => {
+        const delta = e.changedTouches[0].clientY - touchStartY.current;
+        const el = listRef.current;
+        if (delta > 70 && el && el.scrollTop === 0 && !isRefreshing) {
+            setIsRefreshing(true);
+            router.refresh();
+            setTimeout(() => setIsRefreshing(false), 1500);
+        }
+    }, [isRefreshing, router]);
+
+    useEffect(() => {
+        const el = listRef.current;
+        if (!el) return;
+        el.addEventListener("touchstart", handleTouchStart, { passive: true });
+        el.addEventListener("touchend", handleTouchEnd, { passive: true });
+        return () => {
+            el.removeEventListener("touchstart", handleTouchStart);
+            el.removeEventListener("touchend", handleTouchEnd);
+        };
+    }, [handleTouchStart, handleTouchEnd]);
 
     const handlePrint = (repair: ActiveRepair) => {
         printRepairTicket(repair as Parameters<typeof printRepairTicket>[0]);
@@ -64,10 +97,11 @@ export function ActiveRepairsTable({
     const filteredRepairs = useMemo(() => {
         const words = searchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
         return sortedRepairs.filter(repair => {
+            if (activeChip !== 0 && repair.statusId !== activeChip) return false;
             const fields = [repair.ticketNumber, repair.customer.name, repair.customer.phone || "", repair.deviceBrand, repair.deviceModel].map(f => f.toLowerCase());
             return words.length === 0 || words.every(w => fields.some(f => f.includes(w)));
         });
-    }, [sortedRepairs, searchTerm]);
+    }, [sortedRepairs, searchTerm, activeChip]);
 
     const cardProps = {
         enableTakeover, enableManagement, enableImageUpload, currentUserId, showIssueSummary,
@@ -85,6 +119,9 @@ export function ActiveRepairsTable({
 
     return (
         <div className="space-y-4">
+            {/* Stats banner + chip filters */}
+            <ActiveRepairsStats repairs={sortedRepairs} activeChip={activeChip} onChipChange={setActiveChip} />
+
             {/* Search */}
             <div className="flex gap-2">
                 <div className="relative flex-1 group">
@@ -98,16 +135,16 @@ export function ActiveRepairsTable({
                         placeholder="Buscar por Ticket, Cliente o Dispositivo..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="relative z-0 pl-11 h-14 text-lg bg-card border-2 border-border shadow-sm transition-all focus-visible:border-blue-500 focus-visible:ring-4 focus-visible:ring-blue-500/20 rounded-xl"
+                        className="relative z-0 pl-11 h-12 bg-card border-2 border-border shadow-sm transition-all focus-visible:border-blue-500 focus-visible:ring-4 focus-visible:ring-blue-500/20 rounded-xl"
                     />
                 </div>
-                <Button variant="outline" className="h-14 w-14 shrink-0 rounded-xl border-2" onClick={() => router.refresh()} title="Actualizar lista">
-                    <RefreshCcw className="h-5 w-5 text-muted-foreground" />
-                </Button>
             </div>
 
-            {/* Mobile: cards */}
-            <ul className="sm:hidden border rounded-xl overflow-hidden bg-card shadow-sm divide-y divide-border/60">
+            {/* Mobile: pull-to-refresh hint + cards */}
+            <ul ref={listRef} className={cn("sm:hidden border rounded-xl overflow-hidden bg-card shadow-sm divide-y divide-border/60 overflow-y-auto", isRefreshing && "opacity-60 pointer-events-none")}>
+                {isRefreshing && (
+                    <li className="text-center py-3 text-xs text-muted-foreground font-bold uppercase tracking-widest animate-pulse">Actualizando…</li>
+                )}
                 {filteredRepairs.length === 0 ? (
                     <li className="text-center p-8 text-muted-foreground">No se encontraron resultados.</li>
                 ) : (
@@ -122,16 +159,12 @@ export function ActiveRepairsTable({
                 <Table>
                     <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
                         <TableRow className="hover:bg-transparent border-none">
-                            <TableHead className="text-center w-[50px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Pos.</TableHead>
-                            <TableHead className="text-center w-[90px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Ticket</TableHead>
-                            <TableHead className="text-center w-[120px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Entrega</TableHead>
-                            <TableHead className="text-center w-[90px] px-1 whitespace-nowrap text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Est.</TableHead>
-                            <TableHead className="text-center px-2 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Cliente</TableHead>
-                            <TableHead className="text-center px-2 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Dispositivo</TableHead>
-                            <TableHead className="text-center w-[100px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Técnico</TableHead>
-                            <TableHead className="text-center w-[90px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Precio</TableHead>
-                            <TableHead className="text-center w-[110px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Estado</TableHead>
-                            {(enableTakeover || enableManagement || enableImageUpload) && <TableHead className="text-center w-[130px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Acciones</TableHead>}
+                            {["Pos.", "Ticket", "Entrega", "Est.", "Cliente", "Dispositivo", "Técnico", "Precio", "Estado"].map(h => (
+                                <TableHead key={h} className="text-center px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">{h}</TableHead>
+                            ))}
+                            {(enableTakeover || enableManagement || enableImageUpload) && (
+                                <TableHead className="text-center w-[130px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Acciones</TableHead>
+                            )}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -144,8 +177,12 @@ export function ActiveRepairsTable({
                                 const colorClass = ACTIVE_STATUS_COLOR_MAP[repair.status.color ?? ""] || "bg-gray-100 text-gray-800";
                                 const position = index + 1;
                                 const duration = calcRepairDuration(repair.startedAt, repair.finishedAt);
+                                const overdue = isOverdue(repair.promisedAt);
                                 return (
-                                    <TableRow key={repair.id} className="border-b border-border/60 transition-colors hover:bg-muted/40 group">
+                                    <TableRow key={repair.id} className={cn(
+                                        "border-b border-border/60 transition-colors group",
+                                        overdue ? "bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500" : "hover:bg-muted/40"
+                                    )}>
                                         <TableCell className="text-center px-1">
                                             <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full font-bold text-xs ${positionBadgeClass(position)}`}>{position}</span>
                                         </TableCell>
@@ -153,9 +190,10 @@ export function ActiveRepairsTable({
                                             {repair.ticketNumber}
                                         </TableCell>
                                         <TableCell className="text-center px-1">
-                                            <span className="text-sm font-bold text-green-600 dark:text-green-400 whitespace-nowrap">
+                                            <span className={cn("text-sm font-bold whitespace-nowrap", overdue ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400")}>
                                                 {format(new Date(repair.promisedAt), "dd/MM HH:mm", { locale: es })}
                                             </span>
+                                            {overdue && <div className="text-[9px] font-black text-red-500 uppercase tracking-wider">Vencida</div>}
                                         </TableCell>
                                         <TableCell className="text-center px-1">
                                             <div className="flex items-center justify-center h-7">
@@ -185,7 +223,9 @@ export function ActiveRepairsTable({
                                                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 text-[10px] py-0">
                                                     {repair.assignedTo.name?.split(' ')[0]}
                                                 </Badge>
-                                            ) : <span className="text-muted-foreground text-[10px] italic">-</span>}
+                                            ) : (
+                                                <span className="text-amber-500 text-[10px] font-black italic">Sin técnico</span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-center font-bold text-sm px-1 whitespace-nowrap">
                                             {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice!.toLocaleString()}` : "-"}
