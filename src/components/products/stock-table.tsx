@@ -191,85 +191,154 @@ export function StockTable({
 
             {/* Modern Table Card */}
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
-                <Table>
-                    <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
-                        <TableRow className="hover:bg-transparent border-none">
-                            <SortableHeader label="SKU" column="sku" />
-                            <SortableHeader label="Producto" column="name" className="w-[25%]" />
-                            <SortableHeader label="Categoría" column="categoryName" />
-                            <SortableHeader label="Precio POS" column="price" />
-                            <SortableHeader label="Stock" column="quantity" />
-                            <SortableHeader label="Último Control" column="lastCheckedAt" />
-                            <TableHead className="text-right font-bold text-xs uppercase tracking-wider pr-6">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {products.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={7} className="h-48 text-center">
-                                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                                        <Package2 className="h-8 w-8 opacity-20" />
-                                        <p>No se encontraron productos que coincidan.</p>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            products.map((product) => (
-                                <TableRow key={product.id} className="group hover:bg-muted/30 transition-colors border-border/40">
-                                    <TableCell className="font-mono text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                                        {product.sku}
-                                    </TableCell>
-                                    <TableCell className="font-medium text-foreground">
-                                        {product.name}
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">
-                                        <Badge variant="outline" className="font-normal bg-background/50">
+                {/* Mobile View */}
+                <div className="sm:hidden flex flex-col divide-y divide-border/60">
+                    {products.length === 0 ? (
+                        <div className="h-48 flex flex-col items-center justify-center gap-2 text-muted-foreground p-8 text-center">
+                            <Package2 className="h-8 w-8 opacity-20" />
+                            <p>No se encontraron productos.</p>
+                        </div>
+                    ) : (
+                        products.map((product) => (
+                            <div key={product.id} className="p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-mono text-sm font-black text-primary">
+                                            {product.sku}
+                                        </span>
+                                        <h3 className="font-bold text-sm leading-tight">{product.name}</h3>
+                                        <Badge variant="outline" className="w-fit text-[10px] font-bold bg-background/50 h-5">
                                             {product.categoryName}
                                         </Badge>
-                                    </TableCell>
-                                    <TableCell className="font-mono font-bold text-sm text-foreground">
-                                        ${product.price.toLocaleString('es-AR')}
-                                    </TableCell>
-                                    <TableCell>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2">
                                         <div className={cn(
-                                            "font-mono font-bold text-sm bg-background border rounded px-2 py-0.5 inline-block min-w-[2.5rem] text-center shadow-sm",
+                                            "font-mono font-black text-sm bg-background border rounded-lg px-3 py-1 shadow-sm",
                                             product.quantity <= 0 ? "text-red-500 border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900" :
                                                 product.quantity < 5 ? "text-orange-500 border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900" :
                                                     "text-green-600 border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900"
                                         )}>
                                             {product.quantity}
                                         </div>
-                                    </TableCell>
-                                    <TableCell className="text-sm">
+                                        <span className="font-mono font-bold text-xs text-muted-foreground">
+                                            ${product.price.toLocaleString('es-AR')}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-3 border-t border-border/40">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Último Control</span>
                                         {product.lastCheckedAt ? (
-                                            <div className="flex flex-col">
-                                                <span className="font-medium text-foreground/90">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold">
                                                     {format(new Date(product.lastCheckedAt), "dd/MM/yyyy", { locale: es })}
                                                 </span>
-                                                <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                                                <span className="text-[10px] text-muted-foreground font-medium">
                                                     {format(new Date(product.lastCheckedAt), "HH:mm", { locale: es })} hs
                                                 </span>
                                             </div>
                                         ) : (
-                                            <Badge variant="destructive" className="text-[10px] px-2 py-0.5 h-auto">
+                                            <Badge variant="destructive" className="text-[10px] px-2 py-0.5 h-auto font-black uppercase tracking-tighter">
                                                 Sin Control
                                             </Badge>
                                         )}
-                                    </TableCell>
-                                    <TableCell className="text-right pr-6">
-                                        <StockCheckButtons
-                                            stockId={product.stockId}
-                                            productName={product.name}
-                                            quantity={product.quantity}
-                                            userId={userId}
-                                            lastCheckedAt={product.lastCheckedAt}
-                                        />
+                                    </div>
+                                    <StockCheckButtons
+                                        stockId={product.stockId}
+                                        productName={product.name}
+                                        quantity={product.quantity}
+                                        userId={userId}
+                                        lastCheckedAt={product.lastCheckedAt}
+                                    />
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Desktop View */}
+                <div className="hidden sm:block overflow-x-auto">
+                    <Table>
+                        <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
+                            <TableRow className="hover:bg-transparent border-none">
+                                <SortableHeader label="SKU" column="sku" />
+                                <SortableHeader label="Producto" column="name" className="w-[25%]" />
+                                <SortableHeader label="Categoría" column="categoryName" />
+                                <SortableHeader label="Precio POS" column="price" />
+                                <SortableHeader label="Stock" column="quantity" />
+                                <SortableHeader label="Último Control" column="lastCheckedAt" />
+                                <TableHead className="text-right font-bold text-xs uppercase tracking-wider pr-6">Acciones</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {products.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="h-48 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                                            <Package2 className="h-8 w-8 opacity-20" />
+                                            <p>No se encontraron productos que coincidan.</p>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                            ) : (
+                                products.map((product) => (
+                                    <TableRow key={product.id} className="group hover:bg-muted/30 transition-colors border-border/40">
+                                        <TableCell className="font-mono text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                                            {product.sku}
+                                        </TableCell>
+                                        <TableCell className="font-medium text-foreground">
+                                            {product.name}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">
+                                            <Badge variant="outline" className="font-normal bg-background/50">
+                                                {product.categoryName}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="font-mono font-bold text-sm text-foreground">
+                                            ${product.price.toLocaleString('es-AR')}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className={cn(
+                                                "font-mono font-bold text-sm bg-background border rounded px-2 py-0.5 inline-block min-w-[2.5rem] text-center shadow-sm",
+                                                product.quantity <= 0 ? "text-red-500 border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900" :
+                                                    product.quantity < 5 ? "text-orange-500 border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900" :
+                                                        "text-green-600 border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900"
+                                            )}>
+                                                {product.quantity}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-sm">
+                                            {product.lastCheckedAt ? (
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-foreground/90">
+                                                        {format(new Date(product.lastCheckedAt), "dd/MM/yyyy", { locale: es })}
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                                                        {format(new Date(product.lastCheckedAt), "HH:mm", { locale: es })} hs
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <Badge variant="destructive" className="text-[10px] px-2 py-0.5 h-auto">
+                                                    Sin Control
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right pr-6">
+                                            <StockCheckButtons
+                                                stockId={product.stockId}
+                                                productName={product.name}
+                                                quantity={product.quantity}
+                                                userId={userId}
+                                                lastCheckedAt={product.lastCheckedAt}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
 
             {/* Pagination Controls */}

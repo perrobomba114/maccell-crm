@@ -96,102 +96,186 @@ export function UsersTable({ users, branches }: UsersTableProps) {
                     </Button>
                 </div>
 
-                <div className="border rounded-lg">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="text-center">Nombre</TableHead>
-                                <TableHead className="hidden md:table-cell text-center">Email</TableHead>
-                                <TableHead className="text-center">Rol</TableHead>
-                                <TableHead className="text-center">Sucursal</TableHead>
-                                <TableHead className="text-center">Fecha de Creación</TableHead>
-                                <TableHead className="text-center">Acciones</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {users.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                                        No hay usuarios registrados
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                users.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell className="text-center">
-                                            <div className="flex items-center justify-center gap-3">
-                                                <Avatar className="h-9 w-9 border-2 border-background shadow-sm">
-                                                    <AvatarFallback className={cn(
-                                                        "text-xs font-bold text-white",
-                                                        user.role === "ADMIN" ? "bg-indigo-600" :
-                                                            user.role === "TECHNICIAN" ? "bg-amber-600" :
-                                                                "bg-emerald-600"
-                                                    )}>
-                                                        {getInitials(user.name)}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex flex-col items-start">
-                                                    <span className="font-medium">{user.name}</span>
-                                                    <span className="text-xs text-muted-foreground hidden sm:inline-block md:hidden">{user.email}</span>
-                                                </div>
+                <div className="overflow-hidden border rounded-lg">
+                    {/* Mobile View */}
+                    <div className="sm:hidden flex flex-col divide-y divide-border/60">
+                        {users.length === 0 ? (
+                            <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
+                                No hay usuarios registrados
+                            </div>
+                        ) : (
+                            users.map((user) => (
+                                <div key={user.id} className="p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
+                                                <AvatarFallback className={cn(
+                                                    "text-xs font-bold text-white",
+                                                    user.role === "ADMIN" ? "bg-indigo-600" :
+                                                        user.role === "TECHNICIAN" ? "bg-amber-600" :
+                                                            "bg-emerald-600"
+                                                )}>
+                                                    {getInitials(user.name)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col min-w-0">
+                                                <h3 className="font-bold text-sm leading-tight truncate">{user.name}</h3>
+                                                <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
                                             </div>
-                                        </TableCell>
-                                        <TableCell className="hidden md:table-cell text-center">{user.email}</TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge className={cn("rounded-md shadow-sm font-medium", getRoleBadgeVariant(user.role))}>
-                                                {getRoleLabel(user.role)}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
+                                        </div>
+                                        <Badge className={cn("shrink-0 rounded-md shadow-sm font-black text-[10px] px-1.5 h-5 border-0", getRoleBadgeVariant(user.role))}>
+                                            {getRoleLabel(user.role)}
+                                        </Badge>
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Sucursal</span>
                                             {user.branch ? (
-                                                <Badge
-                                                    variant="outline"
-                                                    className={cn("rounded-md shadow-sm font-medium border-0", getBranchColor(user.branch.name))}
-                                                >
+                                                <Badge variant="outline" className={cn("rounded-md shadow-sm font-bold text-[10px] border-0 h-5 mt-0.5", getBranchColor(user.branch.name))}>
                                                     {user.branch.name}
                                                 </Badge>
                                             ) : (
-                                                <span className="text-muted-foreground text-sm italic">Sin Asignar</span>
+                                                <span className="text-xs text-muted-foreground italic">Sin Asignar</span>
                                             )}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <span className="text-muted-foreground text-sm">
-                                                {new Date(user.createdAt).toLocaleDateString("es-ES", {
-                                                    day: "2-digit",
-                                                    month: "short",
-                                                    year: "numeric"
-                                                })}
+                                        </div>
+                                        <div className="flex flex-col text-right">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Creado el</span>
+                                            <span className="text-xs font-bold tabular-nums">
+                                                {new Date(user.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
                                             </span>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex justify-center gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setSelectedUser(user);
-                                                        setEditDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setSelectedUser(user);
-                                                        setDeleteDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end gap-2 pt-1">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 px-4 font-bold"
+                                            onClick={() => {
+                                                setSelectedUser(user);
+                                                setEditDialogOpen(true);
+                                            }}
+                                        >
+                                            <Pencil className="h-3.5 w-3.5 mr-2" />
+                                            Editar
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 px-4 font-bold text-destructive hover:bg-destructive/10"
+                                            onClick={() => {
+                                                setSelectedUser(user);
+                                                setDeleteDialogOpen(true);
+                                            }}
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                            Eliminar
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Desktop View */}
+                    <div className="hidden sm:block overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="text-center">Nombre</TableHead>
+                                    <TableHead className="hidden md:table-cell text-center">Email</TableHead>
+                                    <TableHead className="text-center">Rol</TableHead>
+                                    <TableHead className="text-center">Sucursal</TableHead>
+                                    <TableHead className="text-center">Fecha de Creación</TableHead>
+                                    <TableHead className="text-center">Acciones</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {users.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                            No hay usuarios registrados
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : (
+                                    users.map((user) => (
+                                        <TableRow key={user.id}>
+                                            <TableCell className="text-center">
+                                                <div className="flex items-center justify-center gap-3">
+                                                    <Avatar className="h-9 w-9 border-2 border-background shadow-sm">
+                                                        <AvatarFallback className={cn(
+                                                            "text-xs font-bold text-white",
+                                                            user.role === "ADMIN" ? "bg-indigo-600" :
+                                                                user.role === "TECHNICIAN" ? "bg-amber-600" :
+                                                                    "bg-emerald-600"
+                                                        )}>
+                                                            {getInitials(user.name)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="font-medium">{user.name}</span>
+                                                        <span className="text-xs text-muted-foreground hidden sm:inline-block md:hidden">{user.email}</span>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="hidden md:table-cell text-center">{user.email}</TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge className={cn("rounded-md shadow-sm font-medium", getRoleBadgeVariant(user.role))}>
+                                                    {getRoleLabel(user.role)}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {user.branch ? (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={cn("rounded-md shadow-sm font-medium border-0", getBranchColor(user.branch.name))}
+                                                    >
+                                                        {user.branch.name}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-sm italic">Sin Asignar</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <span className="text-muted-foreground text-sm">
+                                                    {new Date(user.createdAt).toLocaleDateString("es-ES", {
+                                                        day: "2-digit",
+                                                        month: "short",
+                                                        year: "numeric"
+                                                    })}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <div className="flex justify-center gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSelectedUser(user);
+                                                            setEditDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSelectedUser(user);
+                                                            setDeleteDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
             </div>
 

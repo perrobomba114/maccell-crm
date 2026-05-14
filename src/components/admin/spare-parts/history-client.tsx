@@ -172,76 +172,145 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[110px]">Fecha / Hora</TableHead>
-                                <TableHead className="w-[220px]">Repuesto</TableHead>
-                                <TableHead className="w-[100px]">SKU</TableHead>
-                                <TableHead className="w-[70px] text-center">Cant.</TableHead>
-                                <TableHead className="w-[160px]">Usuario</TableHead>
-                                <TableHead className="w-[140px]">Sucursal</TableHead>
-                                <TableHead className="min-w-[260px]">Motivo</TableHead>
-                                <TableHead className="w-[90px] text-center">Control</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {visibleData.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                                        No hay movimientos que coincidan con los filtros.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                visibleData.map((item) => (
-                                    <TableRow key={item.id} className={item.isChecked ? "bg-muted/30" : ""}>
-                                        <TableCell className="font-medium">
-                                            {format(new Date(item.createdAt), "HH:mm")}
-                                            <span className="block text-xs text-muted-foreground">
-                                                {format(new Date(item.createdAt), "dd/MM/yyyy")}
+                <div className="overflow-hidden">
+                    {/* Mobile View */}
+                    <div className="sm:hidden flex flex-col divide-y divide-border/60">
+                        {visibleData.length === 0 ? (
+                            <div className="h-24 flex items-center justify-center text-muted-foreground p-4">
+                                No hay movimientos que coincidan con los filtros.
+                            </div>
+                        ) : (
+                            visibleData.map((item) => (
+                                <div key={item.id} className={cn(
+                                    "p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors",
+                                    item.isChecked && "bg-muted/20"
+                                )}>
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex flex-col gap-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                                                    {item.sparePart.sku}
+                                                </span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                    {format(new Date(item.createdAt), "HH:mm")}
+                                                </span>
+                                            </div>
+                                            <h3 className="font-bold text-sm leading-tight break-words">{item.sparePart.name}</h3>
+                                        </div>
+                                        <div className="flex flex-col items-end shrink-0">
+                                            <span className={cn(
+                                                "text-lg font-black tabular-nums tracking-tighter",
+                                                item.quantity < 0 ? "text-rose-600" : "text-emerald-600"
+                                            )}>
+                                                {item.quantity}
                                             </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="max-w-[220px] truncate font-medium" title={item.sparePart.name}>
-                                                {item.sparePart.name}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="font-mono text-xs">{item.sparePart.sku}</TableCell>
-                                        <TableCell className={cn("text-center font-bold", item.quantity < 0 ? "text-rose-600" : "text-emerald-600")}>
-                                            {item.quantity}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span>{item.user.name}</span>
-                                                <span className="text-[10px] text-muted-foreground">{item.user.email}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span>{item.branch.name}</span>
-                                                <span className="text-[10px] text-muted-foreground">{item.branch.code}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="whitespace-normal text-sm text-muted-foreground">
-                                            {item.reason || "-"}
-                                        </TableCell>
-                                        <TableCell className="text-center">
                                             <Button
                                                 variant={item.isChecked ? "default" : "outline"}
                                                 size="sm"
                                                 onClick={() => handleToggleCheck(item.id, item.isChecked)}
-                                                className={cn("h-8 w-8 p-0", item.isChecked && "bg-emerald-600 hover:bg-emerald-700")}
-                                                aria-label={item.isChecked ? "Marcar como pendiente" : "Marcar como controlado"}
+                                                className={cn("h-7 w-7 p-0 rounded-full", item.isChecked && "bg-emerald-600 hover:bg-emerald-700")}
                                             >
-                                                {item.isChecked && <Check className="h-4 w-4" />}
+                                                {item.isChecked ? <Check className="h-3 w-3" /> : <ClipboardCheck className="h-3 w-3 opacity-50" />}
                                             </Button>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 py-2 border-t border-border/40">
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Usuario</span>
+                                            <span className="text-[11px] font-bold truncate">{item.user.name}</span>
+                                        </div>
+                                        <div className="flex flex-col gap-0.5 border-l border-border/40 pl-4">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Sucursal</span>
+                                            <span className="text-[11px] font-bold truncate">{item.branch.name}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1 pt-2 border-t border-border/40 bg-muted/30 p-2 rounded-md">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Motivo</span>
+                                        <p className="text-xs text-muted-foreground break-words">{item.reason || "-"}</p>
+                                    </div>
+                                    
+                                    <div className="text-[9px] text-muted-foreground font-medium text-right italic">
+                                        {format(new Date(item.createdAt), "PPP", { locale: es })}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Desktop View */}
+                    <div className="hidden sm:block overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[110px]">Fecha / Hora</TableHead>
+                                    <TableHead className="w-[220px]">Repuesto</TableHead>
+                                    <TableHead className="w-[100px]">SKU</TableHead>
+                                    <TableHead className="w-[70px] text-center">Cant.</TableHead>
+                                    <TableHead className="w-[160px]">Usuario</TableHead>
+                                    <TableHead className="w-[140px]">Sucursal</TableHead>
+                                    <TableHead className="min-w-[260px]">Motivo</TableHead>
+                                    <TableHead className="w-[90px] text-center">Control</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {visibleData.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                                            No hay movimientos que coincidan con los filtros.
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : (
+                                    visibleData.map((item) => (
+                                        <TableRow key={item.id} className={item.isChecked ? "bg-muted/30" : ""}>
+                                            <TableCell className="font-medium">
+                                                {format(new Date(item.createdAt), "HH:mm")}
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {format(new Date(item.createdAt), "dd/MM/yyyy")}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="max-w-[220px] truncate font-medium" title={item.sparePart.name}>
+                                                    {item.sparePart.name}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="font-mono text-xs">{item.sparePart.sku}</TableCell>
+                                            <TableCell className={cn("text-center font-bold", item.quantity < 0 ? "text-rose-600" : "text-emerald-600")}>
+                                                {item.quantity}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span>{item.user.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground">{item.user.email}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span>{item.branch.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground">{item.branch.code}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="whitespace-normal text-sm text-muted-foreground">
+                                                {item.reason || "-"}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Button
+                                                    variant={item.isChecked ? "default" : "outline"}
+                                                    size="sm"
+                                                    onClick={() => handleToggleCheck(item.id, item.isChecked)}
+                                                    className={cn("h-8 w-8 p-0", item.isChecked && "bg-emerald-600 hover:bg-emerald-700")}
+                                                    aria-label={item.isChecked ? "Marcar como pendiente" : "Marcar como controlado"}
+                                                >
+                                                    {item.isChecked && <Check className="h-4 w-4" />}
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
 
                 {totalPages > 1 && (

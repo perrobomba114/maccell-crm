@@ -170,69 +170,123 @@ export default async function InvoicesPage({
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-hidden rounded-lg border">
-                        <Table>
-                        <TableHeader>
-                            <TableRow className="hover:bg-transparent">
-                                <TableHead>Fecha</TableHead>
-                                <TableHead>Entidad / local</TableHead>
-                                <TableHead>Comprobante</TableHead>
-                                <TableHead>Cliente</TableHead>
-                                <TableHead>CAE</TableHead>
-                                <TableHead className="text-right">IVA</TableHead>
-                                <TableHead className="text-right">Total</TableHead>
-                                <TableHead className="text-right">Acciones</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                        {/* Mobile View */}
+                        <div className="sm:hidden flex flex-col divide-y divide-border/60">
                             {invoices.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
-                                        No se encontraron facturas {date ? "para esta fecha" : "emitidas"}.
-                                    </TableCell>
-                                </TableRow>
+                                <div className="h-32 flex flex-col items-center justify-center gap-2 text-muted-foreground p-8 text-center">
+                                    <ReceiptText className="h-8 w-8 opacity-20" />
+                                    <p>No se encontraron facturas {date ? "para esta fecha" : "emitidas"}.</p>
+                                </div>
                             ) : (
                                 invoices.map((inv) => (
-                                    <TableRow key={inv.id}>
-                                        <TableCell className="font-medium">
-                                            {format(inv.createdAt, "dd/MM/yyyy HH:mm", { locale: es })}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="font-bold">{inv.billingEntity === "8BIT" ? "8 Bit Accesorios" : "MACCELL"}</span>
+                                    <div key={inv.id} className="p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="rounded-md bg-background font-mono text-[10px] font-bold">
+                                                        {inv.invoiceType} - {inv.invoiceNumber}
+                                                    </Badge>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                        {format(inv.createdAt, "dd/MM/yyyy HH:mm", { locale: es })}
+                                                    </span>
+                                                </div>
+                                                <span className="font-bold text-sm">{inv.billingEntity === "8BIT" ? "8 Bit Accesorios" : "MACCELL"}</span>
                                                 <span className="text-xs text-muted-foreground">{inv.sale.branch.name}</span>
                                             </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className="rounded-md bg-background font-mono">
-                                                {inv.invoiceType} - {inv.invoiceNumber}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="font-medium truncate max-w-[150px]" title={inv.customerName}>{inv.customerName}</span>
-                                                <span className="text-xs text-muted-foreground">{inv.customerDocType}: {inv.customerDoc}</span>
+                                            <div className="text-right flex flex-col items-end gap-1">
+                                                <span className="text-lg font-black text-emerald-700 dark:text-emerald-400 tabular-nums tracking-tighter">
+                                                    {currencyFormatter.format(inv.totalAmount)}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest">
+                                                    IVA: {currencyFormatter.format(inv.vatAmount)}
+                                                </span>
                                             </div>
-                                        </TableCell>
-                                        <TableCell className="font-mono text-xs text-muted-foreground">
-                                            {inv.cae}
-                                        </TableCell>
-                                        <TableCell className="text-right font-semibold text-sky-700 dark:text-sky-300">
-                                            {currencyFormatter.format(inv.vatAmount)}
-                                        </TableCell>
-                                        <TableCell className="text-right font-black text-emerald-700 dark:text-emerald-300">
-                                            {currencyFormatter.format(inv.totalAmount)}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-1">
+                                        </div>
+
+                                        <div className="flex flex-col gap-0.5 pt-2 border-t border-border/40">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Cliente</span>
+                                            <span className="text-xs font-bold truncate">{inv.customerName}</span>
+                                            <span className="text-[10px] text-muted-foreground">{inv.customerDocType}: {inv.customerDoc}</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-2">
+                                            <span className="font-mono text-[10px] text-muted-foreground">CAE: {inv.cae}</span>
+                                            <div className="flex gap-1">
                                                 <InvoiceDetailModal invoice={inv} />
                                                 <InvoicePrintButton invoice={inv} />
                                             </div>
-                                        </TableCell>
-                                    </TableRow>
+                                        </div>
+                                    </div>
                                 ))
                             )}
-                        </TableBody>
-                    </Table>
+                        </div>
+
+                        {/* Desktop View */}
+                        <div className="hidden sm:block overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead>Fecha</TableHead>
+                                        <TableHead>Entidad / local</TableHead>
+                                        <TableHead>Comprobante</TableHead>
+                                        <TableHead>Cliente</TableHead>
+                                        <TableHead>CAE</TableHead>
+                                        <TableHead className="text-right">IVA</TableHead>
+                                        <TableHead className="text-right">Total</TableHead>
+                                        <TableHead className="text-right">Acciones</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {invoices.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
+                                                No se encontraron facturas {date ? "para esta fecha" : "emitidas"}.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        invoices.map((inv) => (
+                                            <TableRow key={inv.id}>
+                                                <TableCell className="font-medium">
+                                                    {format(inv.createdAt, "dd/MM/yyyy HH:mm", { locale: es })}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold">{inv.billingEntity === "8BIT" ? "8 Bit Accesorios" : "MACCELL"}</span>
+                                                        <span className="text-xs text-muted-foreground">{inv.sale.branch.name}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className="rounded-md bg-background font-mono">
+                                                        {inv.invoiceType} - {inv.invoiceNumber}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium truncate max-w-[150px]" title={inv.customerName}>{inv.customerName}</span>
+                                                        <span className="text-xs text-muted-foreground">{inv.customerDocType}: {inv.customerDoc}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="font-mono text-xs text-muted-foreground">
+                                                    {inv.cae}
+                                                </TableCell>
+                                                <TableCell className="text-right font-semibold text-sky-700 dark:text-sky-300">
+                                                    {currencyFormatter.format(inv.vatAmount)}
+                                                </TableCell>
+                                                <TableCell className="text-right font-black text-emerald-700 dark:text-emerald-300">
+                                                    {currencyFormatter.format(inv.totalAmount)}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <InvoiceDetailModal invoice={inv} />
+                                                        <InvoicePrintButton invoice={inv} />
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
 
                     <InvoicePagination currentPage={currentPage} totalPages={totalPages} />

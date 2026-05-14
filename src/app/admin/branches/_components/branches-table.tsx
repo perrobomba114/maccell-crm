@@ -55,103 +55,182 @@ export function BranchesTable({ branches }: BranchesTableProps) {
                     </Button>
                 </div>
 
-                <div className="border rounded-lg">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="text-center">Imagen</TableHead>
-                                <TableHead className="text-center">Código</TableHead>
-                                <TableHead className="text-center">Nombre</TableHead>
-                                <TableHead className="text-center">Dirección</TableHead>
-                                <TableHead className="text-center">Teléfono</TableHead>
-                                <TableHead className="text-center">Fecha de Creación</TableHead>
-                                <TableHead className="text-center">Acciones</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {branches.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                                        No hay sucursales registradas
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                branches.map((branch) => (
-                                    <TableRow key={branch.id}>
-                                        <TableCell className="text-center">
-                                            <div className="flex justify-center">
-                                                {branch.imageUrl ? (
-                                                    <img
-                                                        src={getImgUrl(branch.imageUrl)}
-                                                        alt={branch.name}
-                                                        className="w-12 h-12 object-cover rounded-md border"
-                                                    />
-                                                ) : (
-                                                    <div className="w-12 h-12 bg-gray-100 rounded-md border flex items-center justify-center">
-                                                        <Building2 className="h-6 w-6 text-gray-400" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center font-mono font-medium">
-                                            {branch.code}
-                                        </TableCell>
-                                        <TableCell className="text-center font-medium">
-                                            <Badge className={cn("rounded-md shadow-sm font-medium border-0", getBranchColor(branch.name))}>
-                                                {branch.name}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            {branch.address || (
-                                                <span className="text-muted-foreground italic">
-                                                    Sin dirección
-                                                </span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            {branch.phone ? (
-                                                <div className="flex items-center justify-center gap-1">
-                                                    <Phone className="h-3 w-3 text-muted-foreground" />
-                                                    {branch.phone}
-                                                </div>
+                <div className="overflow-hidden border rounded-lg">
+                    {/* Mobile View */}
+                    <div className="sm:hidden flex flex-col divide-y divide-border/60">
+                        {branches.length === 0 ? (
+                            <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
+                                No hay sucursales registradas
+                            </div>
+                        ) : (
+                            branches.map((branch) => (
+                                <div key={branch.id} className="p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors">
+                                    <div className="flex items-start gap-4">
+                                        <div className="shrink-0">
+                                            {branch.imageUrl ? (
+                                                <img
+                                                    src={getImgUrl(branch.imageUrl)}
+                                                    alt={branch.name}
+                                                    className="w-16 h-16 object-cover rounded-xl border-2 border-background shadow-sm"
+                                                />
                                             ) : (
-                                                <span className="text-muted-foreground italic">
-                                                    Sin teléfono
-                                                </span>
+                                                <div className="w-16 h-16 bg-muted/50 rounded-xl border-2 border-background shadow-sm flex items-center justify-center">
+                                                    <Building2 className="h-8 w-8 text-muted-foreground/50" />
+                                                </div>
                                             )}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            {new Date(branch.createdAt).toLocaleDateString("es-ES")}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex justify-center gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setSelectedBranch(branch);
-                                                        setEditDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setSelectedBranch(branch);
-                                                        setDeleteDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                        </div>
+                                        <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <Badge className={cn("rounded-md shadow-sm font-black text-[10px] px-1.5 h-5 border-0 truncate", getBranchColor(branch.name))}>
+                                                    {branch.name}
+                                                </Badge>
+                                                <span className="font-mono text-[10px] font-black uppercase tracking-widest text-muted-foreground shrink-0">
+                                                    {branch.code}
+                                                </span>
                                             </div>
+                                            <div className="flex flex-col gap-1 mt-1">
+                                                <p className="text-xs font-medium text-muted-foreground flex items-start gap-1.5">
+                                                    <Building2 className="h-3 w-3 mt-0.5 shrink-0" />
+                                                    <span className="truncate">{branch.address || "Sin dirección"}</span>
+                                                </p>
+                                                <p className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                                                    <Phone className="h-3 w-3 shrink-0" />
+                                                    <span className="tabular-nums">{branch.phone || "Sin teléfono"}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end gap-2 pt-1 border-t border-border/40 mt-1">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 flex-1 font-bold"
+                                            onClick={() => {
+                                                setSelectedBranch(branch);
+                                                setEditDialogOpen(true);
+                                            }}
+                                        >
+                                            <Pencil className="h-3.5 w-3.5 mr-2" />
+                                            Editar
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 flex-1 font-bold text-destructive hover:bg-destructive/10"
+                                            onClick={() => {
+                                                setSelectedBranch(branch);
+                                                setDeleteDialogOpen(true);
+                                            }}
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                            Eliminar
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Desktop View */}
+                    <div className="hidden sm:block overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="text-center">Imagen</TableHead>
+                                    <TableHead className="text-center">Código</TableHead>
+                                    <TableHead className="text-center">Nombre</TableHead>
+                                    <TableHead className="text-center">Dirección</TableHead>
+                                    <TableHead className="text-center">Teléfono</TableHead>
+                                    <TableHead className="text-center">Fecha de Creación</TableHead>
+                                    <TableHead className="text-center">Acciones</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {branches.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center text-muted-foreground">
+                                            No hay sucursales registradas
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : (
+                                    branches.map((branch) => (
+                                        <TableRow key={branch.id}>
+                                            <TableCell className="text-center">
+                                                <div className="flex justify-center">
+                                                    {branch.imageUrl ? (
+                                                        <img
+                                                            src={getImgUrl(branch.imageUrl)}
+                                                            alt={branch.name}
+                                                            className="w-12 h-12 object-cover rounded-md border"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-12 h-12 bg-gray-100 rounded-md border flex items-center justify-center">
+                                                            <Building2 className="h-6 w-6 text-gray-400" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center font-mono font-medium">
+                                                {branch.code}
+                                            </TableCell>
+                                            <TableCell className="text-center font-medium">
+                                                <Badge className={cn("rounded-md shadow-sm font-medium border-0", getBranchColor(branch.name))}>
+                                                    {branch.name}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {branch.address || (
+                                                    <span className="text-muted-foreground italic">
+                                                        Sin dirección
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {branch.phone ? (
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <Phone className="h-3 w-3 text-muted-foreground" />
+                                                        {branch.phone}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground italic">
+                                                        Sin teléfono
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {new Date(branch.createdAt).toLocaleDateString("es-ES")}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <div className="flex justify-center gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSelectedBranch(branch);
+                                                            setEditDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSelectedBranch(branch);
+                                                            setDeleteDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
             </div>
 

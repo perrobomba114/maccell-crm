@@ -184,7 +184,86 @@ export function AdminDiscountsClient() {
             </div>
 
             <div className="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-                <div className="overflow-x-auto">
+                {/* Mobile View */}
+                <div className="sm:hidden flex flex-col divide-y divide-border/60">
+                    {loading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="p-4 space-y-3">
+                                <div className="h-4 w-1/3 bg-muted animate-pulse rounded" />
+                                <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
+                                <div className="h-12 bg-muted animate-pulse rounded" />
+                            </div>
+                        ))
+                    ) : filteredItems.length === 0 ? (
+                        <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
+                            No se encontraron registros para los filtros seleccionados.
+                        </div>
+                    ) : (
+                        filteredItems.map((item) => {
+                            const original = item.originalPrice || 0;
+                            const diff = item.price - original;
+                            const percent = original ? Math.round((Math.abs(diff) / original) * 100) : 0;
+                            const isDiscount = diff < 0;
+                            const isRepair = Boolean(item.repair);
+
+                            return (
+                                <div key={item.id} className="p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex flex-col gap-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className={cn("text-[10px] font-bold uppercase h-5", isRepair ? "border-amber-500/20 bg-amber-500/10 text-amber-600" : "border-blue-500/20 bg-blue-500/10 text-blue-600")}>
+                                                    {isRepair ? "Reparación" : "Producto"}
+                                                </Badge>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                    {format(new Date(item.sale.createdAt), "HH:mm")}
+                                                </span>
+                                            </div>
+                                            <h3 className="font-bold text-sm leading-tight break-words">{item.product?.name || item.repair?.deviceModel || item.name}</h3>
+                                        </div>
+                                        <div className="flex flex-col items-end shrink-0">
+                                            <Badge variant="outline" className={cn("font-black text-[10px] px-1.5 h-5", isDiscount ? "border-rose-200 bg-rose-50 text-rose-600" : "border-emerald-200 bg-emerald-50 text-emerald-600")}>
+                                                {isDiscount ? "-" : "+"}{percent}%
+                                            </Badge>
+                                            <span className={cn("text-xs font-bold mt-1", isDiscount ? "text-rose-600" : "text-emerald-600")}>
+                                                {isDiscount ? "-" : "+"}${Math.abs(diff).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 py-2 px-3 bg-muted/50 rounded-lg border border-border/50">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Original</span>
+                                            <span className="text-xs font-medium line-through text-muted-foreground">${original.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex flex-col border-l border-border/50 pl-4 text-right">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Final</span>
+                                            <span className="text-sm font-black text-primary">${item.price.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">{item.sale.branch.name}</span>
+                                            <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+                                                <User className="h-2.5 w-2.5" />{item.sale.vendor.name}
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] font-black text-muted-foreground">
+                                            {format(new Date(item.sale.createdAt), "dd MMM", { locale: es })}
+                                        </span>
+                                    </div>
+
+                                    <div className="bg-muted/30 p-2 rounded text-[11px] text-muted-foreground italic border-l-2 border-muted leading-relaxed">
+                                        "{item.priceChangeReason || "Sin motivo especificado"}"
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* Desktop View */}
+                <div className="hidden sm:block overflow-x-auto">
                     <Table>
                         <TableHeader className="bg-muted/40">
                             <TableRow className="hover:bg-transparent">

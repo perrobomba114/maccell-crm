@@ -46,7 +46,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="hidden overflow-hidden rounded-xl border bg-card shadow-sm md:block">
+            <div className="hidden overflow-hidden rounded-xl border bg-card shadow-sm md:block overflow-x-auto">
                 <Table>
                     <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
                         <TableRow className="hover:bg-transparent border-none">
@@ -144,39 +144,47 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                 </Table>
             </div>
 
-            <div className="grid gap-3 md:hidden">
+            <div className="grid gap-4 md:hidden">
                 {expenses.length === 0 ? (
-                    <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+                    <div className="rounded-xl border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
                         No hay gastos registrados
                     </div>
                 ) : expenses.map((expense) => (
-                    <article key={expense.id} className="rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:border-blue-500/30">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <p className="font-bold leading-snug">{expense.description}</p>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                    {format(new Date(expense.createdAt), "dd MMM yyyy · HH:mm 'hs'", { locale: es })}
-                                </p>
+                    <article key={expense.id} className="rounded-xl border bg-card p-4 shadow-sm relative overflow-hidden transition-all hover:border-rose-500/30">
+                        <div className="absolute inset-y-0 left-0 w-1 bg-rose-500" />
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="space-y-1">
+                                <p className="font-bold leading-snug text-foreground uppercase tracking-tight">{expense.description}</p>
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                    <span>{format(new Date(expense.createdAt), "dd MMM yyyy", { locale: es })}</span>
+                                    <span>•</span>
+                                    <span>{format(new Date(expense.createdAt), "HH:mm", { locale: es })} hs</span>
+                                </div>
                             </div>
-                            <span className="shrink-0 rounded-md bg-rose-50 px-2 py-1 font-black text-rose-700">
+                            <span className="shrink-0 rounded-md bg-rose-600/10 border border-rose-500/20 px-2.5 py-1 font-black text-rose-600 tabular-nums">
                                 -{currencyFormatter.format(expense.amount)}
                             </span>
                         </div>
-                        <div className="mt-4 flex items-center justify-between gap-3">
-                            <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-                                <UserRound className="h-4 w-4 shrink-0" />
-                                <span className="truncate">{expense.user.name}</span>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                            <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6 border">
+                                    <AvatarImage src={getImgUrl(expense.user.imageUrl)} />
+                                    <AvatarFallback className="text-[10px]">{expense.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-xs font-bold text-muted-foreground truncate max-w-[100px]">{expense.user.name}</span>
                             </div>
-                            <span className="rounded-md bg-muted px-2 py-1 text-xs font-bold">{expense.branch.name}</span>
+                            <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground border">{expense.branch.name}</span>
                         </div>
+
                         <div className="mt-4 grid grid-cols-2 gap-2">
-                            <Button variant="outline" size="sm" onClick={() => setEditingExpense(expense)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
+                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold text-xs" onClick={() => setEditingExpense(expense)}>
+                                <Edit className="mr-2 h-3.5 w-3.5" />
+                                EDITAR
                             </Button>
-                            <Button variant="outline" size="sm" className="border-rose-200 text-rose-700 hover:bg-rose-50" onClick={() => handleDelete(expense.id)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar
+                            <Button variant="outline" size="sm" className="h-9 rounded-lg border-rose-200 text-rose-700 hover:bg-rose-50 font-bold text-xs" onClick={() => handleDelete(expense.id)}>
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                ELIMINAR
                             </Button>
                         </div>
                     </article>
