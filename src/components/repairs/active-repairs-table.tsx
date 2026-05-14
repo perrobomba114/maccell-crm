@@ -1,5 +1,8 @@
 "use client";
 
+// Orchestrates search, mobile cards, desktop table, and all dialogs
+// for the vendor/technician active repairs view.
+
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,43 +18,13 @@ import { TakeRepairDialog } from "./take-repair-dialog";
 import { RepairTimer } from "./repair-timer";
 import { AssignmentModal } from "./assignment-modal";
 import { AddImagesDialog } from "./add-images-dialog";
-import { RepairDetailsDialog, type RepairDetails } from "./repair-details-dialog"; // Import Dialog
+import { RepairDetailsDialog } from "./repair-details-dialog";
 import { TransferRepairDialog } from "./transfer-repair-dialog";
 import { printRepairTicket, printWarrantyTicket, printWetReport } from "@/lib/print-utils";
 import { Share2 } from "lucide-react";
 import { AddPartDialog } from "./add-part-dialog";
-
-type ActiveRepair = RepairDetails & {
-    statusId: number;
-    status: RepairDetails["status"] & { id?: number };
-    startedAt?: Date | string | null;
-    finishedAt?: Date | string | null;
-    estimatedTime?: number | null;
-    estimatedPrice?: number | null;
-};
-
-interface ActiveRepairsTableProps {
-    repairs: ActiveRepair[];
-    emptyMessage?: string;
-    enableTakeover?: boolean;
-    enableManagement?: boolean;
-    enableImageUpload?: boolean;
-    currentUserId?: string;
-    showIssueSummary?: boolean;
-}
-
-const statusColorMap: Record<string, string> = {
-    blue: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
-    indigo: "bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700", // Tomado por Técnico - Stronger
-    yellow: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800",
-    gray: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/50 dark:text-gray-300 dark:border-gray-700",
-    green: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
-    red: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
-    purple: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
-    orange: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
-    amber: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
-    slate: "bg-slate-800 text-white border-slate-900 hover:bg-slate-900", // Entregado - Stronger
-};
+import { ActiveRepairCard } from "./active-repair-card";
+import { type ActiveRepair, type ActiveRepairsTableProps, ACTIVE_STATUS_COLOR_MAP, positionBadgeClass, calcRepairDuration } from "./active-repairs-types";
 
 export function ActiveRepairsTable({
     repairs,
@@ -69,75 +42,50 @@ export function ActiveRepairsTable({
     const [viewDetailsRepair, setViewDetailsRepair] = useState<ActiveRepair | null>(null);
     const [transferRepair, setTransferRepair] = useState<ActiveRepair | null>(null);
     const [addPartRepair, setAddPartRepair] = useState<ActiveRepair | null>(null);
-
     const router = useRouter();
 
     const handlePrint = (repair: ActiveRepair) => {
-        // Always print the repair ticket
-        // Cast: print-utils espera shape de Prisma con `parts.quantity`; aquí reusamos
-        // RepairDetails que solo expone los campos de UI. Los runtime objects sí traen quantity.
         printRepairTicket(repair as Parameters<typeof printRepairTicket>[0]);
-
-        // If status is "Entregado" (ID 10), also print warranty and wet report (if applicable)
         if (repair.statusId === 10 || repair.status?.id === 10 || repair.status?.name === "Entregado") {
-            const repairStub = {
-                ticketNumber: repair.ticketNumber,
-                deviceBrand: repair.deviceBrand,
-                deviceModel: repair.deviceModel,
-                customer: { name: repair.customer.name },
-                isWet: repair.isWet,
-                branch: repair.branch
-            };
-
+            const stub = { ticketNumber: repair.ticketNumber, deviceBrand: repair.deviceBrand, deviceModel: repair.deviceModel, customer: { name: repair.customer.name }, isWet: repair.isWet, branch: repair.branch };
             setTimeout(() => {
-                console.log("Printing extra docs for delivered repair:", repair.ticketNumber);
-                printWarrantyTicket(repairStub);
-
-                if (repair.isWet) {
-                    setTimeout(() => {
-                        printWetReport(repairStub);
-                    }, 1200);
-                }
+                printWarrantyTicket(stub);
+                if (repair.isWet) setTimeout(() => printWetReport(stub), 1200);
             }, 1000);
         }
     };
 
-    // Sort repairs by promisedAt (earliest first) so technicians prioritize urgent deliveries
-    const sortedRepairs = useMemo(() => {
-        return [...repairs].sort((a, b) => {
-            const dateA = a.promisedAt ? new Date(a.promisedAt).getTime() : Infinity;
-            const dateB = b.promisedAt ? new Date(b.promisedAt).getTime() : Infinity;
-            return dateA - dateB;
-        });
-    }, [repairs]);
+    const sortedRepairs = useMemo(() => [...repairs].sort((a, b) => {
+        const dateA = a.promisedAt ? new Date(a.promisedAt).getTime() : Infinity;
+        const dateB = b.promisedAt ? new Date(b.promisedAt).getTime() : Infinity;
+        return dateA - dateB;
+    }), [repairs]);
 
     const filteredRepairs = useMemo(() => {
-        const searchWords = searchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
+        const words = searchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
         return sortedRepairs.filter(repair => {
-            const searchableFields = [
-                repair.ticketNumber,
-                repair.customer.name,
-                repair.customer.phone || "",
-                repair.deviceBrand,
-                repair.deviceModel,
-            ].map(f => f.toLowerCase());
-
-            return searchWords.length === 0 || searchWords.every(word =>
-                searchableFields.some(field => field.includes(word))
-            );
+            const fields = [repair.ticketNumber, repair.customer.name, repair.customer.phone || "", repair.deviceBrand, repair.deviceModel].map(f => f.toLowerCase());
+            return words.length === 0 || words.every(w => fields.some(f => f.includes(w)));
         });
     }, [sortedRepairs, searchTerm]);
 
+    const cardProps = {
+        enableTakeover, enableManagement, enableImageUpload, currentUserId, showIssueSummary,
+        onViewDetails: setViewDetailsRepair,
+        onTakeover: setTakeoverRepair,
+        onImageUpload: setImageUploadRepair,
+        onAssignment: setAssignmentRepair,
+        onTransfer: setTransferRepair,
+        onPrint: handlePrint,
+    };
+
     if (!repairs || repairs.length === 0) {
-        return (
-            <div className="text-center p-8 border rounded-lg bg-muted/10">
-                <p className="text-muted-foreground font-medium">{emptyMessage}</p>
-            </div>
-        );
+        return <div className="text-center p-8 border rounded-lg bg-muted/10"><p className="text-muted-foreground font-medium">{emptyMessage}</p></div>;
     }
 
     return (
         <div className="space-y-4">
+            {/* Search */}
             <div className="flex gap-2">
                 <div className="relative flex-1 group">
                     <Label htmlFor="active-repairs-search" className="sr-only">Buscar reparaciones activas</Label>
@@ -153,17 +101,24 @@ export function ActiveRepairsTable({
                         className="relative z-0 pl-11 h-14 text-lg bg-card border-2 border-border shadow-sm transition-all focus-visible:border-blue-500 focus-visible:ring-4 focus-visible:ring-blue-500/20 rounded-xl"
                     />
                 </div>
-                <Button
-                    variant="outline"
-                    className="h-14 w-14 shrink-0 rounded-xl border-2"
-                    onClick={() => router.refresh()}
-                    title="Actualizar lista"
-                >
+                <Button variant="outline" className="h-14 w-14 shrink-0 rounded-xl border-2" onClick={() => router.refresh()} title="Actualizar lista">
                     <RefreshCcw className="h-5 w-5 text-muted-foreground" />
                 </Button>
             </div>
 
-            <div className="border rounded-xl overflow-hidden bg-card shadow-sm">
+            {/* Mobile: cards */}
+            <ul className="sm:hidden border rounded-xl overflow-hidden bg-card shadow-sm divide-y divide-border/60">
+                {filteredRepairs.length === 0 ? (
+                    <li className="text-center p-8 text-muted-foreground">No se encontraron resultados.</li>
+                ) : (
+                    filteredRepairs.map((repair, index) => (
+                        <ActiveRepairCard key={repair.id} repair={repair} position={index + 1} {...cardProps} />
+                    ))
+                )}
+            </ul>
+
+            {/* Desktop: table */}
+            <div className="hidden sm:block border rounded-xl overflow-hidden bg-card shadow-sm">
                 <Table>
                     <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
                         <TableRow className="hover:bg-transparent border-none">
@@ -182,62 +137,32 @@ export function ActiveRepairsTable({
                     <TableBody>
                         {filteredRepairs.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={(enableTakeover || enableManagement || enableImageUpload) ? 10 : 9} className="h-24 text-center">
-                                    No se encontraron resultados.
-                                </TableCell>
+                                <TableCell colSpan={(enableTakeover || enableManagement || enableImageUpload) ? 10 : 9} className="h-24 text-center">No se encontraron resultados.</TableCell>
                             </TableRow>
                         ) : (
                             filteredRepairs.map((repair, index) => {
-                                const colorClass = statusColorMap[repair.status.color ?? ""] || "bg-gray-100 text-gray-800";
+                                const colorClass = ACTIVE_STATUS_COLOR_MAP[repair.status.color ?? ""] || "bg-gray-100 text-gray-800";
                                 const position = index + 1;
+                                const duration = calcRepairDuration(repair.startedAt, repair.finishedAt);
                                 return (
                                     <TableRow key={repair.id} className="border-b border-border/60 transition-colors hover:bg-muted/40 group">
                                         <TableCell className="text-center px-1">
-                                            <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full font-bold text-xs ${position <= 3
-                                                ? "bg-red-100 text-red-700 border border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700"
-                                                : position <= 6
-                                                    ? "bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700"
-                                                    : "bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600"
-                                                }`}>
-                                                {position}
-                                            </span>
+                                            <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full font-bold text-xs ${positionBadgeClass(position)}`}>{position}</span>
                                         </TableCell>
                                         <TableCell className={`text-center font-bold font-mono text-sm px-1 ${repair.isWet ? "text-blue-500" : repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
                                             {repair.ticketNumber}
                                         </TableCell>
                                         <TableCell className="text-center px-1">
-                                            <div className="flex flex-col items-center">
-                                                <span className="text-sm font-bold text-green-600 dark:text-green-400 whitespace-nowrap">
-                                                    {format(new Date(repair.promisedAt), "dd/MM HH:mm", { locale: es })}
-                                                </span>
-                                            </div>
+                                            <span className="text-sm font-bold text-green-600 dark:text-green-400 whitespace-nowrap">
+                                                {format(new Date(repair.promisedAt), "dd/MM HH:mm", { locale: es })}
+                                            </span>
                                         </TableCell>
                                         <TableCell className="text-center px-1">
                                             <div className="flex items-center justify-center h-7">
-                                                {repair.finishedAt && repair.startedAt ? (
-                                                    (() => {
-                                                        const start = new Date(repair.startedAt).getTime();
-                                                        const end = new Date(repair.finishedAt).getTime();
-                                                        const diff = end - start;
-                                                        let duration = "-";
-                                                        if (diff > 0) {
-                                                            const hours = Math.floor(diff / (1000 * 60 * 60));
-                                                            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                                                            duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-                                                        }
-                                                        return (
-                                                            <span className="font-bold text-sm text-yellow-600 dark:text-yellow-400 tabular-nums">
-                                                                {duration}
-                                                            </span>
-                                                        );
-                                                    })()
+                                                {duration ? (
+                                                    <span className="font-bold text-sm text-yellow-600 dark:text-yellow-400 tabular-nums">{duration}</span>
                                                 ) : (
-                                                    <RepairTimer
-                                                        startedAt={repair.startedAt ?? null}
-                                                        estimatedMinutes={repair.estimatedTime ?? null}
-                                                        statusId={repair.statusId}
-                                                        onAdd={enableManagement ? () => setAssignmentRepair(repair) : undefined}
-                                                    />
+                                                    <RepairTimer startedAt={repair.startedAt ?? null} estimatedMinutes={repair.estimatedTime ?? null} statusId={repair.statusId} onAdd={enableManagement ? () => setAssignmentRepair(repair) : undefined} />
                                                 )}
                                             </div>
                                         </TableCell>
@@ -251,31 +176,23 @@ export function ActiveRepairsTable({
                                             <div className="flex flex-col items-center">
                                                 <span className="font-semibold text-sm whitespace-normal leading-tight">{repair.deviceBrand} {repair.deviceModel}</span>
                                                 {showIssueSummary && repair.problemDescription && (
-                                                    <span className="text-[10px] text-muted-foreground mt-1 truncate max-w-[150px] block" title={repair.problemDescription}>
-                                                        {repair.problemDescription}
-                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground mt-1 truncate max-w-[150px] block" title={repair.problemDescription}>{repair.problemDescription}</span>
                                                 )}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center w-[100px] px-1">
-                                            <div className="flex flex-col items-center justify-center">
-                                                {repair.assignedTo ? (
-                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 text-[10px] py-0">
-                                                        {repair.assignedTo.name?.split(' ')[0]}
-                                                    </Badge>
-                                                ) : (
-                                                    <span className="text-muted-foreground text-[10px] italic">-</span>
-                                                )}
-                                            </div>
+                                            {repair.assignedTo ? (
+                                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 text-[10px] py-0">
+                                                    {repair.assignedTo.name?.split(' ')[0]}
+                                                </Badge>
+                                            ) : <span className="text-muted-foreground text-[10px] italic">-</span>}
                                         </TableCell>
                                         <TableCell className="text-center font-bold text-sm px-1 whitespace-nowrap">
                                             {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice!.toLocaleString()}` : "-"}
                                         </TableCell>
                                         <TableCell className="text-center px-1">
-                                            <Badge variant="outline" className={`font-bold border text-[10px] py-0 uppercase ${colorClass}`}>
-                                                {repair.status.name}
-                                            </Badge>
-                                            {repair.statusHistory && repair.statusHistory[0] && (
+                                            <Badge variant="outline" className={`font-bold border text-[10px] py-0 uppercase ${colorClass}`}>{repair.status.name}</Badge>
+                                            {repair.statusHistory?.[0] && (
                                                 <div className="text-[9px] text-muted-foreground mt-1 tabular-nums font-bold uppercase tracking-tighter">
                                                     Prev: <span className="text-blue-500/80">{repair.statusHistory[0].fromStatus?.name || 'Registro'}</span>
                                                 </div>
@@ -285,71 +202,32 @@ export function ActiveRepairsTable({
                                             <TableCell className="text-center px-1">
                                                 <div className="flex items-center justify-start gap-1 h-7 pl-6">
                                                     <div className="w-8 flex justify-center shrink-0">
-                                                        <Button
-                                                            size="icon-xs"
-                                                            variant="ghost"
-                                                            onClick={() => setViewDetailsRepair(repair)}
-                                                            className="text-muted-foreground hover:text-blue-500"
-                                                            title="Ver Detalles"
-                                                        >
+                                                        <Button size="icon-xs" variant="ghost" onClick={() => setViewDetailsRepair(repair)} className="text-muted-foreground hover:text-blue-500" title="Ver Detalles">
                                                             <Eye className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
-
                                                     {enableTakeover && (
-                                                        <Button
-                                                            size="xs"
-                                                            onClick={() => setTakeoverRepair(repair)}
-                                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold w-[85px] justify-center px-2"
-                                                        >
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="truncate">Retirar</span>
-                                                            </div>
+                                                        <Button size="xs" onClick={() => setTakeoverRepair(repair)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold w-[85px] justify-center px-2">
+                                                            <span className="truncate">Retirar</span>
                                                         </Button>
                                                     )}
-
                                                     {enableImageUpload && (!repair.deviceImages || repair.deviceImages.length < 3) && (
-                                                        <Button
-                                                            size="icon-xs"
-                                                            variant="ghost"
-                                                            onClick={() => setImageUploadRepair(repair)}
-                                                            className="text-muted-foreground hover:text-primary"
-                                                            title="Fotos"
-                                                        >
+                                                        <Button size="icon-xs" variant="ghost" onClick={() => setImageUploadRepair(repair)} className="text-muted-foreground hover:text-primary" title="Fotos">
                                                             <Camera className="h-3.5 w-3.5" />
                                                         </Button>
                                                     )}
-
                                                     {!enableManagement && (
-                                                        <Button
-                                                            size="icon-xs"
-                                                            variant="ghost"
-                                                            onClick={() => handlePrint(repair)}
-                                                            className="text-muted-foreground hover:text-primary"
-                                                            title="Imprimir"
-                                                        >
+                                                        <Button size="icon-xs" variant="ghost" onClick={() => handlePrint(repair)} className="text-muted-foreground hover:text-primary" title="Imprimir">
                                                             <Printer className="h-3.5 w-3.5" />
                                                         </Button>
                                                     )}
-
                                                     {enableManagement && (
-                                                        <>
-                                                            <div className="flex gap-1">
-                                                                <TechnicianActionButton
-                                                                    repair={repair}
-                                                                    currentUserId={currentUserId}
-                                                                />
-                                                                <Button
-                                                                    size="icon-xs"
-                                                                    variant="ghost"
-                                                                    onClick={() => setTransferRepair(repair)}
-                                                                    className="text-muted-foreground hover:text-blue-500"
-                                                                    title="Transferir"
-                                                                >
-                                                                    <Share2 className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                            </div>
-                                                        </>
+                                                        <div className="flex gap-1">
+                                                            <TechnicianActionButton repair={repair} currentUserId={currentUserId} />
+                                                            <Button size="icon-xs" variant="ghost" onClick={() => setTransferRepair(repair)} className="text-muted-foreground hover:text-blue-500" title="Transferir">
+                                                                <Share2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </TableCell>
@@ -362,61 +240,21 @@ export function ActiveRepairsTable({
                 </Table>
             </div>
 
-            <TakeRepairDialog
-                isOpen={!!takeoverRepair}
-                onClose={() => setTakeoverRepair(null)}
-                repair={takeoverRepair}
-                currentUserId={currentUserId}
-            />
-
-            {assignmentRepair && (
-                <AssignmentModal
-                    isOpen={!!assignmentRepair}
-                    onClose={() => setAssignmentRepair(null)}
-                    repair={assignmentRepair}
-                    currentUserId={currentUserId}
-                />
-            )}
-
-            {imageUploadRepair && (
-                <AddImagesDialog
-                    isOpen={!!imageUploadRepair}
-                    onClose={() => setImageUploadRepair(null)}
-                    repair={imageUploadRepair}
-                />
-            )}
-
+            {/* Dialogs */}
+            <TakeRepairDialog isOpen={!!takeoverRepair} onClose={() => setTakeoverRepair(null)} repair={takeoverRepair} currentUserId={currentUserId} />
+            {assignmentRepair && <AssignmentModal isOpen={!!assignmentRepair} onClose={() => setAssignmentRepair(null)} repair={assignmentRepair} currentUserId={currentUserId} />}
+            {imageUploadRepair && <AddImagesDialog isOpen={!!imageUploadRepair} onClose={() => setImageUploadRepair(null)} repair={imageUploadRepair} />}
             {viewDetailsRepair && (
                 <RepairDetailsDialog
                     isOpen={!!viewDetailsRepair}
                     onClose={() => setViewDetailsRepair(null)}
                     repair={viewDetailsRepair}
                     currentUserId={currentUserId}
-                    onAddPart={() => {
-                        // Switch to the dedicated Add Part dialog
-                        setAddPartRepair(viewDetailsRepair);
-                        setViewDetailsRepair(null);
-                    }}
+                    onAddPart={() => { setAddPartRepair(viewDetailsRepair); setViewDetailsRepair(null); }}
                 />
             )}
-
-            {transferRepair && (
-                <TransferRepairDialog
-                    isOpen={!!transferRepair}
-                    onClose={() => setTransferRepair(null)}
-                    repair={transferRepair}
-                    currentUserId={currentUserId}
-                />
-            )}
-
-            {addPartRepair && (
-                <AddPartDialog
-                    isOpen={!!addPartRepair}
-                    onClose={() => setAddPartRepair(null)}
-                    repair={addPartRepair}
-                    currentUserId={currentUserId}
-                />
-            )}
+            {transferRepair && <TransferRepairDialog isOpen={!!transferRepair} onClose={() => setTransferRepair(null)} repair={transferRepair} currentUserId={currentUserId} />}
+            {addPartRepair && <AddPartDialog isOpen={!!addPartRepair} onClose={() => setAddPartRepair(null)} repair={addPartRepair} currentUserId={currentUserId} />}
         </div>
     );
 }
