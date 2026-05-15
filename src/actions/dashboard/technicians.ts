@@ -42,14 +42,15 @@ export async function getTechnicianStats(technicianId: string) {
         };
 
         // 1. Fetch Key Counts and Distributions
-        const [pendingRepairsCount, activeRepairsCount, completedToday, completedMonth, statusDist, completedLastMonth] = await Promise.all([
+        const [pendingRepairsCount, activeRepairsCount, completedToday, completedMonth, statusDist, completedLastMonth, globalPendingCount] = await Promise.all([
             // En Cola: solo planificadas/pausadas (status 4). Status 1 (PENDING) y 2 (CLAIMED, retirada del local) NO cuentan para el técnico hasta que asigna tiempo.
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: 4 } }),
             prisma.repair.count({ where: { assignedUserId: technicianId, statusId: 3 } }), // En Mesa
             countCompletedTickets(todayStart, todayEnd),
             countCompletedTickets(firstDayOfMonth, lastDayOfMonth),
             prisma.repair.groupBy({ by: ['statusId'], where: { assignedUserId: technicianId, statusId: { notIn: [1, 2] } }, _count: { _all: true } }),
-            countCompletedTickets(lastMonthStart, lastMonthEnd)
+            countCompletedTickets(lastMonthStart, lastMonthEnd),
+            prisma.repair.count({ where: { statusId: 1 } }) // Global pending in state 1
         ]);
 
         // Performance Metrics (últimos 30 días) — basadas en eventos reales de finalización
@@ -282,7 +283,8 @@ export async function getTechnicianStats(technicianId: string) {
             statusDistribution,
             activeWorkspace,
             queue,
-            weeklyOutput
+            weeklyOutput,
+            globalPendingCount
         };
     } catch (error) {
         console.error("Error fetching technician stats:", error);

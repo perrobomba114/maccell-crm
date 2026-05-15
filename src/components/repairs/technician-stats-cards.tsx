@@ -17,12 +17,13 @@ type TechnicianStatsCardsProps = {
     query: string;
     branchId: string;
     warrantyOnly: boolean;
+    initialData?: TechnicianPerformance[];
 };
 
-export function TechnicianStatsCards({ query, branchId, warrantyOnly }: TechnicianStatsCardsProps) {
+export function TechnicianStatsCards({ query, branchId, warrantyOnly, initialData }: TechnicianStatsCardsProps) {
     const [date, setDate] = useState<Date | undefined>(undefined);
-    const [stats, setStats] = useState<TechnicianPerformance[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState<TechnicianPerformance[]>(initialData || []);
+    const [loading, setLoading] = useState(!initialData);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
     const router = useRouter();
@@ -40,10 +41,10 @@ export function TechnicianStatsCards({ query, branchId, warrantyOnly }: Technici
     }, [searchParams]);
 
     useEffect(() => {
-        if (date) {
+        if (date && !initialData) {
             loadStats();
         }
-    }, [date, query, branchId, warrantyOnly]);
+    }, [date, query, branchId, warrantyOnly, initialData]);
 
     const loadStats = async () => {
         setLoading(true);

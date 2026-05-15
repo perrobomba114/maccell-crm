@@ -3,6 +3,7 @@ import { getAllRepairsForAdminAction } from "@/lib/actions/repairs";
 import { getAllBranches } from "@/actions/get-branches";
 import { AdminRepairsTable } from "@/components/repairs/admin-repairs-table";
 import { TechnicianStatsCards } from "@/components/repairs/technician-stats-cards";
+import { getTechnicianPerformance } from "@/actions/repair-actions-extra";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { getArgentinaDate } from "@/lib/date-utils";
@@ -34,10 +35,13 @@ export default async function AdminRepairsPage(
     const user = await getUserData();
     if (!user || user.role !== "ADMIN") redirect("/");
 
-    const [repairsData, branches] = await Promise.all([
+    const [repairsData, branches, statsRes] = await Promise.all([
         getAllRepairsForAdminAction({ query, branchId, technician, technicianId, date, page, warrantyOnly }),
-        getAllBranches()
+        getAllBranches(),
+        getTechnicianPerformance({ date, query, branchId, warrantyOnly })
     ]);
+
+    const initialStats = statsRes.success && statsRes.data ? [...statsRes.data].sort((a, b) => b.seenCount - a.seenCount) : [];
 
     return (
         <div className="space-y-6">
@@ -52,7 +56,12 @@ export default async function AdminRepairsPage(
             </div>
 
             {/* Performance Cards */}
-            <TechnicianStatsCards query={query} branchId={branchId} warrantyOnly={warrantyOnly} />
+            <TechnicianStatsCards 
+                query={query} 
+                branchId={branchId} 
+                warrantyOnly={warrantyOnly} 
+                initialData={initialStats} 
+            />
 
             <Card>
                 <CardHeader>

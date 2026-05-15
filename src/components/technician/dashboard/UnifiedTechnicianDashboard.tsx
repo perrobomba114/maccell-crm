@@ -26,10 +26,10 @@ import { es } from "date-fns/locale";
 // --- Standard Metrics Component ---
 function TechMetric({ title, value, icon: Icon, color, subtext, trend, href }: any) {
     const strategies: any = {
-        violet: { bg: "bg-violet-600", text: "text-white", icon: "bg-violet-500", border: "border-violet-400" },
-        blue: { bg: "bg-blue-600", text: "text-white", icon: "bg-blue-500", border: "border-blue-400" },
-        emerald: { bg: "bg-emerald-600", text: "text-white", icon: "bg-emerald-500", border: "border-emerald-400" },
-        orange: { bg: "bg-orange-600", text: "text-white", icon: "bg-orange-500", border: "border-orange-400" },
+        violet: { bg: "bg-gradient-to-br from-violet-600 to-indigo-700", text: "text-white", icon: "bg-white/20", border: "border-violet-400/50" },
+        blue: { bg: "bg-gradient-to-br from-blue-600 to-indigo-600", text: "text-white", icon: "bg-white/20", border: "border-blue-400/50" },
+        emerald: { bg: "bg-gradient-to-br from-emerald-600 to-teal-700", text: "text-white", icon: "bg-white/20", border: "border-emerald-400/50" },
+        orange: { bg: "bg-gradient-to-br from-orange-500 to-amber-600", text: "text-white", icon: "bg-white/20", border: "border-orange-400/50" },
     };
 
     const style = strategies[color] || strategies.blue;
@@ -260,13 +260,13 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
             {/* Metrics Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <TechMetric title="En Mesa" value={stats.activeRepairs} subtext="En Proceso" icon={PlayCircle} color="blue" href="/technician/repairs" />
-                <TechMetric title="En Cola" value={stats.pendingTickets} subtext="Pendientes" icon={ListTodo} color="emerald" href="/technician/tickets" />
-                <TechMetric title="Finalizados" value={stats.completedToday} subtext="Turno Hoy" icon={CheckCircle2} color="orange" href="/technician/history" />
-                <TechMetric title="Eficiencia" value={stats.avgRepairTime} subtext="Tiempo Promedio" icon={Timer} color="violet" href="/technician/history" />
+                <TechMetric title="En Cola" value={stats.pendingTickets} subtext="Tu Fila" icon={ListTodo} color="violet" href="/technician/tickets" />
+                <TechMetric title="Ingresados" value={stats.globalPendingCount || 0} subtext="Global (Estado 1)" icon={Smartphone} color="orange" href="/technician/tickets" />
+                <TechMetric title="Finalizados" value={stats.completedToday} subtext="Turno Hoy" icon={CheckCircle2} color="emerald" href="/technician/history" />
 
-                <TechMetric title="Calidad" value={`${stats.qualityScore || 100}%`} subtext="Sin Garantías" icon={ShieldCheck} color="orange" href="/technician/profile" />
-                <TechMetric title="Puntualidad" value={`${stats.onTimeRate || 100}%`} subtext="Entregas OK" icon={CalendarCheck} color="blue" href="/technician/profile" />
+                <TechMetric title="Eficiencia" value={stats.avgRepairTime} subtext="Tiempo Promedio" icon={Timer} color="blue" href="/technician/history" />
                 <TechMetric title="Producción" value={stats.completedMonth} subtext="Mensual" icon={Calendar} color="emerald" href="/technician/history" />
+                <TechMetric title="Calidad" value={`${stats.qualityScore || 100}%`} subtext="Sin Garantías" icon={ShieldCheck} color="orange" href="/technician/profile" />
                 {(() => {
                     const current = stats.completedMonth || 0;
                     const last = stats.completedLastMonth || 0;
