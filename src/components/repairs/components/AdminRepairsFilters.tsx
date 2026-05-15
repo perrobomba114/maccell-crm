@@ -33,7 +33,6 @@ export function AdminRepairsFilters({
     updateParams,
     searchParams
 }: AdminRepairsFiltersProps) {
-    return (
     const activeDate = searchParams.get('date');
     const todayStr = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
 
