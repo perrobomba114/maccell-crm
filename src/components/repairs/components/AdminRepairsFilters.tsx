@@ -63,8 +63,8 @@ export function AdminRepairsFilters({
                             onClick={() => updateParams({ date: period.value })}
                             className={cn(
                                 "h-11 px-4 font-bold flex-1 md:flex-none transition-all",
-                                period.active && period.label === "Hoy" && "bg-blue-600 hover:bg-blue-700",
-                                period.active && period.label === "Este Mes" && "bg-purple-600 hover:bg-purple-700"
+                                period.active && period.label === "Hoy" && "bg-blue-600 hover:bg-blue-700 text-white shadow-md border-blue-600",
+                                period.active && period.label === "Este Mes" && "bg-purple-600 hover:bg-purple-700 text-white shadow-md border-purple-600"
                             )}
                         >
                             {period.label}
@@ -86,8 +86,10 @@ export function AdminRepairsFilters({
                             size="sm"
                             onClick={() => updateParams({ branch: "ALL" })}
                             className={cn(
-                                "h-10 px-4 font-bold transition-all",
-                                selectedBranchId === "ALL" && "bg-slate-900 dark:bg-slate-50"
+                                "h-10 px-4 font-bold transition-all border-2",
+                                selectedBranchId === "ALL" 
+                                    ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800 shadow-md" 
+                                    : "text-muted-foreground border-dashed hover:border-solid"
                             )}
                         >
                             Todas
@@ -145,7 +147,7 @@ export function AdminRepairsFilters({
                             onClick={() => setShowOnlyWarranty(!showOnlyWarranty)}
                             className={cn(
                                 "h-10 font-bold justify-start gap-2",
-                                showOnlyWarranty ? "bg-yellow-500 hover:bg-yellow-600 text-white" : "text-yellow-600 border-yellow-500/30 hover:bg-yellow-50"
+                                showOnlyWarranty ? "bg-yellow-500 hover:bg-yellow-600 text-white shadow-md border-yellow-600" : "text-yellow-600 border-yellow-500/30 hover:bg-yellow-50"
                             )}
                         >
                             {showOnlyWarranty ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
@@ -178,7 +180,6 @@ export function AdminRepairsFilters({
                     </Badge>
                 </div>
             )}
-        </div>
         </div>
     );
 }
