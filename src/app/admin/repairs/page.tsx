@@ -27,7 +27,7 @@ export default async function AdminRepairsPage(
     const branchId = typeof searchParams?.branch === "string" ? searchParams.branch : "ALL";
     const technician = typeof searchParams?.tech === "string" ? searchParams.tech : "";
     const technicianId = typeof searchParams?.techId === "string" ? searchParams.techId : "";
-    const date = typeof searchParams?.date === "string" ? searchParams.date : format(getArgentinaDate(), "yyyy-MM-dd");
+    const date = typeof searchParams?.date === "string" ? searchParams.date : "";
     const page = typeof searchParams?.page === "string" ? Number(searchParams.page) : 1;
     const warrantyOnly = searchParams?.warranty === "1";
 

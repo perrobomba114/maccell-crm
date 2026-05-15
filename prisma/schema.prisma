@@ -383,6 +383,9 @@ model Repair {
   @@index([branchId])
   @@index([customerId])
   @@index([statusId])
+  @@index([isWarranty])
+  @@index([createdAt])
+  @@index([assignedUserId])
   @@map("repairs")
 }
 
@@ -620,6 +623,9 @@ model RepairStatusHistory {
   user         User?         @relation(fields: [userId], references: [id])
 
   @@index([repairId])
+  @@index([userId])
+  @@index([toStatusId])
+  @@index([createdAt])
   @@map("repair_status_history")
 }
 

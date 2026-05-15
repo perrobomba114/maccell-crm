@@ -110,35 +110,86 @@ export function AdminRepairsFilters({
                 </div>
             </div>
 
-            {/* Warranty Filter Toggle */}
+            {/* Date Presets */}
             <div className="flex flex-col gap-2">
                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Garantías
+                    <Calendar className="h-3.5 w-3.5" />
+                    Periodo
                 </Label>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowOnlyWarranty(!showOnlyWarranty)}
-                    className={cn(
-                        "h-9 px-4 transition-all duration-300 font-bold border w-full sm:w-auto justify-start",
-                        showOnlyWarranty
-                            ? "bg-yellow-500 text-white border-yellow-600 shadow-md hover:bg-yellow-600"
-                            : "text-muted-foreground border-dashed hover:border-solid hover:bg-yellow-50 dark:hover:bg-yellow-900/20 hover:text-yellow-600"
-                    )}
-                >
-                    {showOnlyWarranty ? (
-                        <>
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Mostrando Garantías
-                        </>
-                    ) : (
-                        <>
-                            <ShieldAlert className="mr-2 h-4 w-4" />
-                            Solo Garantías
-                        </>
-                    )}
-                </Button>
+                <div className="flex flex-wrap gap-2.5">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateParams({ date: null })}
+                        className={cn(
+                            "h-9 px-4 transition-all duration-300 font-bold border",
+                            !searchParams.get('date')
+                                ? "bg-slate-900 text-white border-slate-900 shadow-md dark:bg-slate-50 dark:text-slate-900"
+                                : "text-muted-foreground border-dashed hover:border-solid hover:bg-slate-100 dark:hover:bg-slate-800"
+                        )}
+                    >
+                        Todo el historial
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            const today = new Date();
+                            updateParams({ date: today.toISOString().split('T')[0] });
+                        }}
+                        className={cn(
+                            "h-9 px-4 transition-all duration-300 font-bold border",
+                            searchParams.get('date') === new Date().toISOString().split('T')[0]
+                                ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                                : "text-muted-foreground border-dashed hover:border-solid hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600"
+                        )}
+                    >
+                        Hoy
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            // We don't have a direct "month" filter in the backend yet,
+                            // but we can pass a special string or just the first of the month
+                            // Actually, let's just make it clear that Todo el historial covers everything.
+                            // To actually filter by month, we'd need backend support for date ranges.
+                            // For now, Todo el historial is the best way to see the 29.
+                            updateParams({ date: "MONTH" });
+                        }}
+                        className={cn(
+                            "h-9 px-4 transition-all duration-300 font-bold border",
+                            searchParams.get('date') === "MONTH"
+                                ? "bg-purple-600 text-white border-purple-600 shadow-md"
+                                : "text-muted-foreground border-dashed hover:border-solid hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600"
+                        )}
+                    >
+                        Este Mes
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowOnlyWarranty(!showOnlyWarranty)}
+                        className={cn(
+                            "h-9 px-4 transition-all duration-300 font-bold border",
+                            showOnlyWarranty
+                                ? "bg-yellow-500 text-white border-yellow-600 shadow-md hover:bg-yellow-600"
+                                : "text-muted-foreground border-dashed hover:border-solid hover:bg-yellow-50 dark:hover:bg-yellow-900/20 hover:text-yellow-600"
+                        )}
+                    >
+                        {showOnlyWarranty ? (
+                            <>
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                Garantías
+                            </>
+                        ) : (
+                            <>
+                                <ShieldAlert className="mr-2 h-4 w-4" />
+                                Solo Garantías
+                            </>
+                        )}
+                    </Button>
+                </div>
             </div>
 
             {/* Clear All Filters */}

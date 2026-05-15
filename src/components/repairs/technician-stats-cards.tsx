@@ -32,10 +32,10 @@ export function TechnicianStatsCards({ query, branchId, warrantyOnly }: Technici
     useEffect(() => {
         // Initialize from URL or default to today
         const dateParam = searchParams.get("date");
-        if (dateParam) {
+        if (dateParam && dateParam !== "MONTH") {
             setDate(new Date(dateParam));
         } else {
-            setDate(new Date());
+            setDate(undefined);
         }
     }, [searchParams]);
 
@@ -100,7 +100,7 @@ export function TechnicianStatsCards({ query, branchId, warrantyOnly }: Technici
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "PPP", { locale: es }) : <Skeleton className="h-4 w-32" />}
+                            {searchParams.get("date") === "MONTH" ? "Este Mes" : date ? format(date, "PPP", { locale: es }) : "Últimos 30 días"}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">

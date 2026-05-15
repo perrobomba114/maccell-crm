@@ -84,8 +84,23 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
             return { success: false, error: "Unauthorized", data: [] };
         }
 
-        const dateStr = normalizePerformanceDate(filters.date ?? getArgentinaDate());
-        const { start, end } = getDailyRange(dateStr);
+        let dateStr = filters.date ? normalizePerformanceDate(filters.date) : "";
+        let start: Date, end: Date;
+
+        if (dateStr === "MONTH") {
+            const now = new Date();
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        } else if (dateStr) {
+            const range = getDailyRange(dateStr);
+            start = range.start;
+            end = range.end;
+        } else {
+            // Default to last 30 days if no date is provided
+            end = getArgentinaDate();
+            start = new Date(end);
+            start.setDate(start.getDate() - 30);
+        }
         const repairWhere = buildPerformanceRepairWhere(filters);
 
         const [techs, historyEntries] = await Promise.all([

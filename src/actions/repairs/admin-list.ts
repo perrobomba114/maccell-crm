@@ -22,7 +22,7 @@ function normalizeAdminRepairsQuery(input: string | AdminRepairsQuery = ""): Req
         warrantyOnly: params.warrantyOnly ?? false,
         technician: params.technician?.trim() || "",
         technicianId: params.technicianId?.trim() || "",
-        date,
+        date: date === "undefined" || !date ? "" : date,
         page: Math.max(Number(params.page) || 1, 1),
         pageSize,
     };
@@ -83,9 +83,19 @@ function buildAdminRepairsWhere(params: Required<AdminRepairsQuery>): Prisma.Rep
                 },
             },
         });
-    } else if (params.date && !params.query) {
-        // 2. Global Date Filter (Only if no tech is selected and no query)
-        const { start, end } = getDailyRange(params.date);
+    } else if (params.date) {
+        // 2. Global Date Filter
+        let start: Date, end: Date;
+
+        if (params.date === "MONTH") {
+            const now = new Date();
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        } else {
+            const range = getDailyRange(params.date);
+            start = range.start;
+            end = range.end;
+        }
         
         const finishedOnDate: Prisma.RepairWhereInput = {
             statusHistory: {
