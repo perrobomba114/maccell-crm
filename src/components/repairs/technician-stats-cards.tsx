@@ -101,7 +101,7 @@ export function TechnicianStatsCards({ query, branchId, warrantyOnly, initialDat
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {searchParams.get("date") === "MONTH" ? "Este Mes" : date ? format(date, "PPP", { locale: es }) : "Últimos 30 días"}
+                            {searchParams.get("date") === "MONTH" ? "Este Mes" : date ? format(date, "PPP", { locale: es }) : "Hoy"}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">

@@ -38,7 +38,9 @@ export default async function AdminRepairsPage(
     const [repairsData, branches, statsRes] = await Promise.all([
         getAllRepairsForAdminAction({ query, branchId, technician, technicianId, date, page, warrantyOnly }),
         getAllBranches(),
-        getTechnicianPerformance({ date, query, branchId, warrantyOnly })
+        // Las tarjetas de rendimiento siempre muestran "Hoy" por defecto según pedido del usuario,
+        // ignorando el filtro global de fecha de la tabla.
+        getTechnicianPerformance({ query, branchId, warrantyOnly })
     ]);
 
     const initialStats = statsRes.success && statsRes.data ? [...statsRes.data].sort((a, b) => b.seenCount - a.seenCount) : [];

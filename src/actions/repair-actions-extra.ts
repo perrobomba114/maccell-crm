@@ -96,10 +96,10 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
             start = range.start;
             end = range.end;
         } else {
-            // Default to last 30 days if no date is provided
-            end = getArgentinaDate();
-            start = new Date(end);
-            start.setDate(start.getDate() - 30);
+            // Default to TODAY if no date is provided
+            const range = getDailyRange();
+            start = range.start;
+            end = range.end;
         }
         const repairWhere = buildPerformanceRepairWhere(filters);
 

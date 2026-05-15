@@ -1,5 +1,8 @@
 "use client";
 
+import { getArgentinaDate, TIMEZONE } from "@/lib/date-utils";
+import { formatInTimeZone } from "date-fns-tz";
+
 import { Search, Building2, ShieldCheck, CheckCircle2, ShieldAlert, Calendar, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -134,8 +137,8 @@ export function AdminRepairsFilters({
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                            const today = new Date();
-                            updateParams({ date: today.toISOString().split('T')[0] });
+                            const todayStr = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
+                            updateParams({ date: todayStr });
                         }}
                         className={cn(
                             "h-9 px-4 transition-all duration-300 font-bold border",
