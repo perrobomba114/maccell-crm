@@ -13,9 +13,17 @@ interface ActiveRepairsStatsProps {
     repairs: ActiveRepair[];
     activeChip: number;
     onChipChange: (statusId: number) => void;
+    completedToday?: number;
+    globalPendingCount?: number;
 }
 
-export function ActiveRepairsStats({ repairs, activeChip, onChipChange }: ActiveRepairsStatsProps) {
+export function ActiveRepairsStats({ 
+    repairs, 
+    activeChip, 
+    onChipChange,
+    completedToday = 0,
+    globalPendingCount = 0
+}: ActiveRepairsStatsProps) {
     const router = useRouter();
 
     const total = repairs.length;
@@ -25,7 +33,19 @@ export function ActiveRepairsStats({ repairs, activeChip, onChipChange }: Active
 
     const stats = [
         {
-            label: "Total activas",
+            label: "Hoy",
+            value: completedToday,
+            icon: CheckCircle2,
+            className: "text-white bg-gradient-to-br from-emerald-500 to-teal-600 border-emerald-400/30 shadow-lg shadow-emerald-500/10",
+        },
+        {
+            label: "Ingresos",
+            value: globalPendingCount,
+            icon: RefreshCcw,
+            className: "text-white bg-gradient-to-br from-amber-500 to-orange-600 border-orange-400/30 shadow-lg shadow-orange-500/10",
+        },
+        {
+            label: "Activas",
             value: total,
             icon: Wrench,
             className: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20",
@@ -59,7 +79,7 @@ export function ActiveRepairsStats({ repairs, activeChip, onChipChange }: Active
     return (
         <div className="space-y-3">
             {/* Stats row */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {stats.map(({ label, value, icon: Icon, className }) => (
                     <div
                         key={label}

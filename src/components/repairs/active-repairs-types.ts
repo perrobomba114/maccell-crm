@@ -19,6 +19,8 @@ export interface ActiveRepairsTableProps {
     enableImageUpload?: boolean;
     currentUserId?: string;
     showIssueSummary?: boolean;
+    completedToday?: number;
+    globalPendingCount?: number;
 }
 
 export const ACTIVE_STATUS_COLOR_MAP: Record<string, string> = {

@@ -35,7 +35,9 @@ export function ActiveRepairsTable({
     enableManagement = false,
     enableImageUpload = false,
     currentUserId = "",
-    showIssueSummary = false
+    showIssueSummary = false,
+    completedToday = 0,
+    globalPendingCount = 0
 }: ActiveRepairsTableProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [activeChip, setActiveChip] = useState(0);
@@ -120,7 +122,13 @@ export function ActiveRepairsTable({
     return (
         <div className="space-y-4">
             {/* Stats banner + chip filters */}
-            <ActiveRepairsStats repairs={sortedRepairs} activeChip={activeChip} onChipChange={setActiveChip} />
+            <ActiveRepairsStats 
+                repairs={sortedRepairs} 
+                activeChip={activeChip} 
+                onChipChange={setActiveChip} 
+                completedToday={completedToday}
+                globalPendingCount={globalPendingCount}
+            />
 
             {/* Search */}
             <div className="flex gap-2">
