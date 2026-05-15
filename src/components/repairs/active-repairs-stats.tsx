@@ -58,28 +58,12 @@ export function ActiveRepairsStats({
                 ? "text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20"
                 : "text-muted-foreground bg-muted/40 border-border",
         },
-        {
-            label: "Sin técnico",
-            value: unassignedCount,
-            icon: UserX,
-            className: unassignedCount > 0
-                ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
-                : "text-muted-foreground bg-muted/40 border-border",
-        },
-        {
-            label: "Listas",
-            value: readyCount,
-            icon: CheckCircle2,
-            className: readyCount > 0
-                ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-                : "text-muted-foreground bg-muted/40 border-border",
-        },
     ];
 
     return (
         <div className="space-y-3">
             {/* Stats row */}
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {stats.map(({ label, value, icon: Icon, className }) => (
                     <div
                         key={label}
