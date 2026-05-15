@@ -48,14 +48,14 @@ export function ActiveRepairsStats({
             label: "Activas",
             value: total,
             icon: Wrench,
-            className: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20",
+            className: "text-white bg-gradient-to-br from-blue-500 to-indigo-600 border-blue-400/30 shadow-lg shadow-blue-500/10",
         },
         {
             label: "Vencidas",
             value: overdueCount,
             icon: AlertTriangle,
             className: overdueCount > 0
-                ? "text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20"
+                ? "text-white bg-gradient-to-br from-red-500 to-rose-600 border-red-400/30 shadow-lg shadow-red-500/10"
                 : "text-muted-foreground bg-muted/40 border-border",
         },
     ];
