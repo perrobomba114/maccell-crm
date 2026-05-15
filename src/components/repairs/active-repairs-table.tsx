@@ -195,7 +195,17 @@ export function ActiveRepairsTable({
                                             <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full font-bold text-xs ${positionBadgeClass(position)}`}>{position}</span>
                                         </TableCell>
                                         <TableCell className={`text-center font-bold font-mono text-sm px-1 ${repair.isWet ? "text-blue-500" : repair.isWarranty ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
-                                            {repair.ticketNumber}
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span>{repair.ticketNumber}</span>
+                                                <div className="flex gap-1">
+                                                    {repair.isWet && (
+                                                        <span className="bg-blue-600 text-white text-[8px] font-black px-1 rounded shadow-sm animate-pulse">MOJADO</span>
+                                                    )}
+                                                    {repair.isWarranty && (
+                                                        <span className="bg-amber-500 text-white text-[8px] font-black px-1 rounded shadow-sm">GARANTÍA</span>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-center px-1">
                                             <span className={cn("text-sm font-bold whitespace-nowrap", overdue ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400")}>

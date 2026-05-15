@@ -72,6 +72,16 @@ export function ActiveRepairCard({
                     <Badge variant="outline" className={`font-bold border text-[10px] py-0 uppercase ${colorClass}`}>
                         {repair.status.name}
                     </Badge>
+                    {repair.isWet && (
+                        <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0 text-[10px] font-black uppercase px-2 py-0 shadow-sm animate-pulse">
+                            MOJADO
+                        </Badge>
+                    )}
+                    {repair.isWarranty && (
+                        <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0 text-[10px] font-black uppercase px-2 py-0 shadow-sm">
+                            GARANTÍA
+                        </Badge>
+                    )}
                 </div>
                 {/* Quick actions */}
                 <div className="flex items-center gap-1 shrink-0">
