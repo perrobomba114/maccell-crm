@@ -6,17 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Flashlight, Loader2 } from "lucide-react";
 
 interface BarcodeScannerProps {
-    onResult: (result: string) => void;
+    onResult: (result: string) => boolean | void | Promise<boolean | void>;
     onClose: () => void;
 }
 
 export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
     const scannerRef = useRef<Html5Qrcode | null>(null);
+    const onResultRef = useRef(onResult);
     const hasScannedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
     const [isScanning, setIsScanning] = useState(false);
     const [canUseTorch, setCanUseTorch] = useState(false);
     const [torchOn, setTorchOn] = useState(false);
+    const [isResolving, setIsResolving] = useState(false);
+    const [detectedCode, setDetectedCode] = useState<string | null>(null);
+
+    useEffect(() => {
+        onResultRef.current = onResult;
+    }, [onResult]);
 
     useEffect(() => {
         if (typeof window !== "undefined" && window.isSecureContext === false) {
@@ -53,6 +60,30 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
             }
         };
 
+        const handleDecodedText = async (decodedText: string) => {
+            const code = decodedText.trim();
+            if (!mounted || !code || hasScannedRef.current) return;
+
+            hasScannedRef.current = true;
+            setDetectedCode(code);
+            setIsResolving(true);
+
+            try {
+                const shouldKeepLocked = await onResultRef.current(code);
+                if (mounted && shouldKeepLocked === false) {
+                    hasScannedRef.current = false;
+                    setDetectedCode(null);
+                    setIsResolving(false);
+                }
+            } catch (resultError) {
+                if (!mounted) return;
+                console.warn("Scanner result warning:", resultError);
+                hasScannedRef.current = false;
+                setDetectedCode(null);
+                setIsResolving(false);
+            }
+        };
+
         const startScanner = async () => {
             try {
                 setIsScanning(false);
@@ -60,11 +91,7 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
                     { facingMode: "environment" },
                     config,
                     (decodedText) => {
-                        const code = decodedText.trim();
-                        if (mounted && code && !hasScannedRef.current) {
-                            hasScannedRef.current = true;
-                            onResult(code);
-                        }
+                        void handleDecodedText(decodedText);
                     },
                     () => undefined
                 );
@@ -131,7 +158,7 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
             }
             scannerRef.current = null;
         };
-    }, [onResult]);
+    }, []);
 
     const handleToggleTorch = async () => {
         if (!scannerRef.current) return;
@@ -170,6 +197,14 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm z-20">
                         <Loader2 className="animate-spin h-10 w-10 text-blue-500 mb-2" />
                         <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Iniciando Cámara...</span>
+                    </div>
+                )}
+
+                {isResolving && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm z-20 px-4">
+                        <Loader2 className="mb-3 h-10 w-10 animate-spin text-blue-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-300">Buscando repuesto</span>
+                        {detectedCode && <span className="mt-2 max-w-full truncate font-mono text-xs font-bold text-white/80">{detectedCode}</span>}
                     </div>
                 )}
             </div>

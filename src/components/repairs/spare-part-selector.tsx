@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Trash2, Search } from "lucide-react";
+import { Loader2, Trash2, Search } from "lucide-react";
 import { searchSparePartsAction } from "@/lib/actions/repairs";
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -30,10 +28,26 @@ interface SparePartSelectorProps {
     hidePrice?: boolean;
 }
 
+type SparePartSearchResult = SparePartItem & {
+    pricePos?: number;
+};
+
+function normalizeScannedCode(value: string) {
+    return value.trim().toUpperCase();
+}
+
+function findExactScannedPart(parts: SparePartSearchResult[], code: string) {
+    const normalizedCode = normalizeScannedCode(code);
+    return parts.find((part) => {
+        const normalizedSku = normalizeScannedCode(part.sku);
+        return normalizedSku === normalizedCode || normalizedSku.endsWith(normalizedCode);
+    });
+}
+
 export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, hidePrice = false }: SparePartSelectorProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [results, setResults] = useState<any[]>([]);
+    const [results, setResults] = useState<SparePartSearchResult[]>([]);
     const [showScanner, setShowScanner] = useState(false);
 
     const handleSearch = async (term: string) => {
@@ -50,9 +64,15 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
         }
     };
 
-    const handleSelect = (part: any) => {
-        if (selectedParts.length >= maxParts) return;
-        if (selectedParts.some(p => p.id === part.id)) return;
+    const handleSelect = (part: SparePartSearchResult) => {
+        if (selectedParts.length >= maxParts) {
+            toast.error("Ya alcanzaste el máximo de repuestos para esta reparación.");
+            return false;
+        }
+        if (selectedParts.some(p => p.id === part.id)) {
+            toast.info(`"${part.name}" ya está asignado a esta reparación.`);
+            return false;
+        }
 
         onPartsChange([...selectedParts, {
             id: part.id,
@@ -62,6 +82,7 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
             stock: part.stock
         }]);
         setOpen(false);
+        return true;
     };
 
     const handleRemove = (id: string) => {
@@ -147,7 +168,6 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
                     <DialogTitle className="sr-only">Escanear repuesto</DialogTitle>
                     <BarcodeScanner
                         onResult={async (code) => {
-                            setShowScanner(false);
                             setLoading(true);
                             toast.loading(`Buscando: ${code}`, { id: "scan-search" });
 
@@ -159,22 +179,33 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
                                 if (data.length === 0) {
                                     toast.error(`No se encontró repuesto con código: ${code}`);
                                     setOpen(true);
+                                    return false;
                                 } else if (data.length === 1) {
-                                    handleSelect(data[0]);
-                                    toast.success(`Agregado: ${data[0].name}`);
+                                    const added = handleSelect(data[0]);
+                                    if (added) {
+                                        toast.success(`Agregado: ${data[0].name}`);
+                                        setShowScanner(false);
+                                    }
+                                    return added;
                                 } else {
-                                    const exactMatch = data.find((p: any) => p.sku === code || p.sku?.endsWith(code));
+                                    const exactMatch = findExactScannedPart(data, code);
                                     if (exactMatch) {
-                                        handleSelect(exactMatch);
-                                        toast.success(`Agregado: ${exactMatch.name}`);
+                                        const added = handleSelect(exactMatch);
+                                        if (added) {
+                                            toast.success(`Agregado: ${exactMatch.name}`);
+                                            setShowScanner(false);
+                                        }
+                                        return added;
                                     } else {
+                                        setShowScanner(false);
                                         setOpen(true);
                                         toast.info("Múltiples coincidencias, seleccione una.");
+                                        return true;
                                     }
                                 }
-                            } catch (error) {
-                                console.error(error);
+                            } catch {
                                 toast.error("Error al buscar el repuesto");
+                                return false;
                             } finally {
                                 setLoading(false);
                             }
