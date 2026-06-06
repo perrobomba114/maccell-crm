@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode, Html5QrcodeSupportedFormats, type Html5QrcodeCameraScanConfig } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Flashlight, Loader2 } from "lucide-react";
+import type Quagga from "@ericblade/quagga2";
+import type { QuaggaJSResultObject } from "@ericblade/quagga2";
 
 interface BarcodeScannerProps {
     onResult: (result: string) => boolean | void | Promise<boolean | void>;
@@ -11,7 +12,8 @@ interface BarcodeScannerProps {
 }
 
 export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
-    const scannerRef = useRef<Html5Qrcode | null>(null);
+    const quaggaRef = useRef<typeof Quagga | null>(null);
+    const readerRef = useRef<HTMLDivElement | null>(null);
     const onResultRef = useRef(onResult);
     const hasScannedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
@@ -32,33 +34,8 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
             return;
         }
 
-        const scanner = new Html5Qrcode("reader", {
-            verbose: false,
-            formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
-            useBarCodeDetectorIfSupported: true,
-            experimentalFeatures: {
-                useBarCodeDetectorIfSupported: true
-            }
-        });
-        scannerRef.current = scanner;
         let mounted = true;
         let isStarted = false;
-
-        const config: Html5QrcodeCameraScanConfig = {
-            fps: 12,
-            disableFlip: true,
-            qrbox: (viewfinderWidth, viewfinderHeight) => {
-                const width = Math.floor(Math.min(viewfinderWidth * 0.86, 420));
-                const height = Math.floor(Math.max(86, Math.min(viewfinderHeight * 0.22, 130)));
-                return { width, height };
-            },
-            videoConstraints: {
-                facingMode: { ideal: "environment" },
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
-                frameRate: { ideal: 30, max: 30 }
-            }
-        };
 
         const handleDecodedText = async (decodedText: string) => {
             const code = decodedText.trim();
@@ -84,36 +61,84 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
             }
         };
 
+        const handleDetected = (result: QuaggaJSResultObject) => {
+            const code = result.codeResult?.code?.trim();
+            if (!code) return;
+
+            void handleDecodedText(code);
+        };
+
         const startScanner = async () => {
+            if (!readerRef.current) return;
+
             try {
                 setIsScanning(false);
-                await scanner.start(
-                    { facingMode: "environment" },
-                    config,
-                    (decodedText) => {
-                        void handleDecodedText(decodedText);
+                const quaggaModule = await import("@ericblade/quagga2");
+                const quagga = quaggaModule.default;
+                quaggaRef.current = quagga;
+
+                await quagga.init({
+                    inputStream: {
+                        type: "LiveStream",
+                        target: readerRef.current,
+                        willReadFrequently: true,
+                        constraints: {
+                            facingMode: "environment",
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 },
+                            frameRate: { ideal: 30, max: 30 }
+                        },
+                        area: {
+                            top: "28%",
+                            right: "4%",
+                            bottom: "28%",
+                            left: "4%"
+                        }
                     },
-                    () => undefined
-                );
+                    locate: true,
+                    frequency: 8,
+                    numOfWorkers: Math.max(0, Math.min((navigator.hardwareConcurrency || 2) - 1, 2)),
+                    decoder: {
+                        readers: ["code_128_reader"],
+                        multiple: false
+                    },
+                    locator: {
+                        patchSize: "medium",
+                        halfSample: false,
+                        willReadFrequently: true
+                    },
+                    canvas: {
+                        createOverlay: false
+                    }
+                });
+
+                quagga.onDetected(handleDetected);
+                quagga.start();
 
                 isStarted = true;
                 setIsScanning(true);
 
                 try {
-                    const capabilities = scanner.getRunningTrackCameraCapabilities();
-                    setCanUseTorch(capabilities.torchFeature().isSupported());
+                    const track = quagga.CameraAccess.getActiveTrack();
+                    const capabilities = track?.getCapabilities();
+                    setCanUseTorch(Boolean(capabilities && "torch" in capabilities));
 
-                    const zoom = capabilities.zoomFeature();
-                    if (zoom.isSupported()) {
-                        const targetZoom = Math.min(Math.max(zoom.value() || 1.6, zoom.min()), zoom.max(), 2);
-                        await zoom.apply(targetZoom);
+                    if (track && capabilities && "zoom" in capabilities) {
+                        const zoomCapability = capabilities.zoom;
+                        if (typeof zoomCapability === "object" && zoomCapability && "min" in zoomCapability && "max" in zoomCapability) {
+                            const min = Number(zoomCapability.min) || 1;
+                            const max = Number(zoomCapability.max) || 1;
+                            const targetZoom = Math.min(Math.max(1.4, min), max, 1.8);
+                            await track.applyConstraints({ advanced: [{ zoom: targetZoom } as MediaTrackConstraintSet] });
+                        }
                     }
                 } catch (capabilityError) {
                     console.warn("Scanner camera capability warning:", capabilityError);
                 }
 
                 if (!mounted) {
-                    await scanner.stop();
+                    quagga.offDetected(handleDetected);
+                    await quagga.stop();
                 }
 
             } catch (err) {
@@ -146,28 +171,27 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
             // Only stop if we know it started successfully.
             // If it's still starting (isStarted == false), the startScanner function
             // will detect !mounted and stop it.
-            if (isStarted && scannerRef.current) {
-                scannerRef.current.stop().catch(err => {
-                    // Suppress "not running" errors which happen if we cleanup before start finishes
-                    // or if start failed.
-                    const msg = err?.toString() || "";
-                    if (!msg.includes("not running")) {
-                        console.warn("Scanner cleanup warning:", err);
-                    }
+            if (isStarted && quaggaRef.current) {
+                quaggaRef.current.offDetected(handleDetected);
+                quaggaRef.current.stop().catch(err => {
+                    console.warn("Scanner cleanup warning:", err);
                 });
             }
-            scannerRef.current = null;
+            quaggaRef.current = null;
         };
     }, []);
 
     const handleToggleTorch = async () => {
-        if (!scannerRef.current) return;
+        if (!quaggaRef.current) return;
 
         try {
-            const torch = scannerRef.current.getRunningTrackCameraCapabilities().torchFeature();
-            const nextValue = !torchOn;
-            await torch.apply(nextValue);
-            setTorchOn(nextValue);
+            if (torchOn) {
+                await quaggaRef.current.CameraAccess.disableTorch();
+                setTorchOn(false);
+            } else {
+                await quaggaRef.current.CameraAccess.enableTorch();
+                setTorchOn(true);
+            }
         } catch (torchError) {
             console.warn("Scanner torch warning:", torchError);
         }
@@ -183,7 +207,7 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
             </div>
 
             <div className="relative w-full max-w-[380px] sm:max-w-md aspect-[4/3] rounded-2xl overflow-hidden border-2 border-slate-800 bg-black group transition-all hover:border-blue-500/50">
-                <div id="reader" className="w-full h-full" />
+                <div id="reader" ref={readerRef} className="relative h-full w-full overflow-hidden" />
 
                 {/* Visual Guide Overlay */}
                 <div className="absolute inset-0 pointer-events-none z-10 flex flex-col items-center justify-center">
@@ -215,10 +239,15 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
                     100% { transform: translateY(15vh); }
                 }
                 #reader video {
+                    width: 100% !important;
+                    height: 100% !important;
                     object-fit: cover !important;
                 }
-                #reader__scan_region {
-                    min-height: 100% !important;
+                #reader canvas {
+                    position: absolute !important;
+                    inset: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
                 }
             `}</style>
 
