@@ -37,7 +37,7 @@ export function generateZpl(part: { name: string; sku: string; brand: string }, 
     const dd = dateObj.getDate().toString().padStart(2, '0');
     const dateStr = `${yy}${mm}${dd}`;
 
-    let zpl = `
+    const zpl = `
 ^XA
 ^CI28
 ^CW1,E:MACCELL.TTF
@@ -73,6 +73,50 @@ export function generateZpl(part: { name: string; sku: string; brand: string }, 
     return zpl;
 }
 
+function sanitizeZplText(value: string): string {
+    return value.replace(/[\^~]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function normalizeProductLabelName(value: string): string {
+    return sanitizeZplText(value).replace(/([/_-])/g, " $1 ").replace(/\s+/g, " ").trim().toUpperCase();
+}
+
+function getProductNameFont(name: string, factor: number): { height: number; width: number; lines: number; y: number } {
+    if (name.length > 42) {
+        return {
+            height: Math.round(16 * factor),
+            width: Math.round(16 * factor),
+            lines: 2,
+            y: Math.round(6 * factor)
+        };
+    }
+
+    if (name.length > 28) {
+        return {
+            height: Math.round(18 * factor),
+            width: Math.round(18 * factor),
+            lines: 2,
+            y: Math.round(6 * factor)
+        };
+    }
+
+    if (name.length > 18) {
+        return {
+            height: Math.round(21 * factor),
+            width: Math.round(21 * factor),
+            lines: 2,
+            y: Math.round(5 * factor)
+        };
+    }
+
+    return {
+        height: Math.round(24 * factor),
+        width: Math.round(24 * factor),
+        lines: 1,
+        y: Math.round(10 * factor)
+    };
+}
+
 // VERSION 7.0 - PROVEN FORMULA
 // Based on user's working example: ^FO100,30^BY3,6,80^BCN,100
 // Research confirms: Code 128 ignores ratio parameter (fixed ratio symbology)
@@ -84,9 +128,9 @@ export function generateProductZpl(
     is300Dpi: boolean = false,
     manualOffset: number = 0
 ): string {
-    const name = product.name.toUpperCase();
-    const sku = product.sku;
-    const safePrefix = (prefix || "").toUpperCase().slice(0, 4);
+    const name = normalizeProductLabelName(product.name);
+    const sku = sanitizeZplText(product.sku);
+    const safePrefix = sanitizeZplText(prefix || "").toUpperCase().slice(0, 4);
 
     // Scaling
     const factor = is300Dpi ? 1.5 : 1;
@@ -97,19 +141,19 @@ export function generateProductZpl(
     // Module Width: 2 for safe fitting (3 was causing overflow on right for some SKUs)
     const modWidth = Math.round(2 * factor);
 
-    // Barcode Height: 85 dots for better spacing
-    const barHeight = Math.round(85 * factor);
+    // Barcode Height: leaves room for a two-line product name without overlap.
+    const barHeight = Math.round(78 * factor);
 
-    // Y Position: 40 dots from top (more space from product name)
-    const bcY = Math.round(40 * factor);
+    const nameFont = getProductNameFont(name, factor);
+    const nameBlockWidth = totalW - Math.round(16 * factor);
+
+    // Y Position: dynamic spacing based on one/two-line product name.
+    const bcY = Math.round((nameFont.lines === 1 ? 39 : 47) * factor);
 
     // X Position: Move to the left (decreased from 100 to 30)
     const baseX = Math.round(30 * factor);
     const bcX = baseX + manualOffset;
 
-    // Font Config - Condensed for long product names
-    const fontNameH = Math.round(25 * factor);
-    const fontNameW = Math.round(12 * factor);  // Narrow width for condensed look
     const fontSkuH = Math.round(24 * factor);
     const fontSkuW = Math.round(20 * factor);
     const skuY = Math.round(128 * factor);  // Closer to barcode
@@ -123,7 +167,7 @@ export function generateProductZpl(
 `;
 
     zpl += `
-^FO0,${Math.round(12 * factor)}^A0N,${fontNameH},${fontNameW}^FB${totalW},1,0,C^FD${name}^FS
+^FO${Math.round(8 * factor)},${nameFont.y}^A0N,${nameFont.height},${nameFont.width}^FB${nameBlockWidth},${nameFont.lines},0,C^FD${name}^FS
 
 ^FO${bcX},${bcY}^BY${modWidth},3,${barHeight}^BCN,${barHeight},N,N,N^FD${sku}^FS
 

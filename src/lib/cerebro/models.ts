@@ -1,4 +1,3 @@
-"use client";
 
 export const TEXT_MODELS = [
     { label: 'Kimi K2', id: 'moonshotai/kimi-k2-instruct' },

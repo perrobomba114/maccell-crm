@@ -131,8 +131,9 @@ export async function POST(req: NextRequest) {
             for (const key of keys) {
                 try {
                     const visionGroq = createGroq({ apiKey: key });
+                    const modelId = VISION_MODEL?.id || 'llama-3.2-11b-vision-preview';
                     visionStream = streamText({
-                        model: visionGroq(VISION_MODEL.id),
+                        model: visionGroq(modelId),
                         messages: visionMessages,
                         system: finalSystemPrompt,
                         maxOutputTokens: MAX_OUTPUT_TOKENS,
@@ -149,6 +150,11 @@ export async function POST(req: NextRequest) {
         }
 
         const textModelsConfig: TextModelConfig[] = [];
+        if (!TEXT_MODELS || TEXT_MODELS.length < 2) {
+            console.error("[CEREBRO] Error: TEXT_MODELS no está definido o es insuficiente.");
+            return new Response(JSON.stringify({ error: "Configuración de modelos incompleta" }), { status: 500 });
+        }
+
         for (const key of keys) {
             textModelsConfig.push({ instance: createGroq({ apiKey: key })(TEXT_MODELS[0].id), label: TEXT_MODELS[0].label, keyId: key.slice(-4) });
         }

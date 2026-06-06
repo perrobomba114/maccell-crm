@@ -139,7 +139,12 @@ async function semanticSearch(
             }));
         }
     } catch (err: unknown) {
-        console.warn(`[RAG] pgvector error: ${errorMessage(err).slice(0, 80)}`);
+        const msg = errorMessage(err);
+        if (msg.includes('58P01')) {
+            console.warn(`[RAG] ⚠️ pgvector extension NOT enabled or missing (Code 58P01). Using fallbacks.`);
+        } else {
+            console.warn(`[RAG] pgvector error: ${msg.slice(0, 100)}`);
+        }
     }
     return [];
 }
