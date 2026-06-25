@@ -22,6 +22,7 @@ interface RepairData {
         imageUrl: string | null;
     };
     isWet?: boolean;
+    deviceImages?: string[];
 }
 
 export default function RepairStatusPage({ params }: { params: Promise<{ id: string }> }) {

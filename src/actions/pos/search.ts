@@ -22,6 +22,8 @@ export type PosRepair = {
     isWet?: boolean;
 };
 
+const DELIVERED_REPAIR_STATUS_IDS = [10] as const;
+
 export async function searchProductsForPos(term: string, branchId: string): Promise<PosProduct[]> {
     const caller = await getCurrentUser();
     if (!caller) return [];
@@ -73,7 +75,7 @@ export async function searchRepairsForPos(term: string, branchId: string): Promi
         const repairs = await db.repair.findMany({
             where: {
                 branchId,
-                statusId: { notIn: [1, 2, 3] },
+                statusId: { notIn: [...DELIVERED_REPAIR_STATUS_IDS] },
                 OR: [
                     { ticketNumber: { contains: term, mode: "insensitive" } },
                     { customer: { name: { contains: term, mode: "insensitive" } } },
@@ -123,6 +125,9 @@ export async function getRepairForPos(ticketNumber: string, branchId: string): P
 
         if (!repair) {
             return { success: false, error: "Reparación no encontrada o no pertenece a esta sucursal." };
+        }
+        if (DELIVERED_REPAIR_STATUS_IDS.includes(repair.statusId as typeof DELIVERED_REPAIR_STATUS_IDS[number])) {
+            return { success: false, error: "Esta reparación ya fue cobrada y no puede volver a cargar." };
         }
 
         const price = repair.estimatedPrice || 0;

@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -29,7 +30,7 @@ import { SalesPagination } from "./components/sales-pagination";
 import { SaleDetailDialog } from "./components/sale-detail-dialog";
 import { EditPaymentDialog } from "./components/edit-payment-dialog";
 import { DeleteSaleDialog } from "./components/delete-sale-dialog";
-import type { EditablePaymentMethod, PaymentMethodLike } from "@/types/sales";
+import type { EditablePaymentMethod, PaymentMethodLike, SaleWithDetails } from "@/types/sales";
 
 const currencyFormatter = new Intl.NumberFormat("es-AR", {
     style: "currency",
@@ -42,6 +43,7 @@ function toEditablePaymentMethod(method: PaymentMethodLike): EditablePaymentMeth
 }
 
 export default function AdminSalesClient() {
+    const router = useRouter();
     const {
         sales,
         rankingData,
@@ -88,6 +90,17 @@ export default function AdminSalesClient() {
         setSearchTerm("");
         setDate(new Date());
         setSelectedBranch("ALL");
+    };
+
+    const handleViewSale = (sale: SaleWithDetails) => {
+        const repairId = sale.items.find((item) => item.repairId)?.repairId;
+
+        if (repairId) {
+            router.push(`/admin/repairs/${repairId}/edit`);
+            return;
+        }
+
+        setViewingSale(sale);
     };
 
     return (
@@ -318,7 +331,7 @@ export default function AdminSalesClient() {
                     <SalesTable
                         sales={sales}
                         loading={loading}
-                        onView={setViewingSale}
+                        onView={handleViewSale}
                         onEdit={(sale) => {
                             setNewPaymentMethod(toEditablePaymentMethod(sale.paymentMethod));
                             setEditingSale(sale);

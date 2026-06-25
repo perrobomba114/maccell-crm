@@ -1,9 +1,25 @@
 
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { getImgUrl, isValidImg } from "@/lib/utils";
+
+function getRepairImages(rawImages: unknown): string[] {
+    if (!Array.isArray(rawImages)) return [];
+
+    const seen = new Set<string>();
+
+    return rawImages
+        .filter(isValidImg)
+        .map((image) => getImgUrl(image))
+        .filter((image): image is string => typeof image === "string" && image.trim() !== "")
+        .filter((image) => {
+            if (seen.has(image)) return false;
+            seen.add(image);
+            return true;
+        });
+}
 
 export async function GET(request: Request) {
-    console.time("API_TOTAL_DURATION");
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -20,7 +36,6 @@ export async function GET(request: Request) {
 
         // Heuristic: Ticket numbers usually have prefixes or specific formats, CUIDs are long alphanumeric
         // If it looks like a generated CUID (25+ chars, no hyphens usually, but let's be safe)
-        console.time("DB_QUERY_DURATION");
         if (cleanId.length >= 20 && !cleanId.includes("MAC")) {
             repair = await db.repair.findUnique({
                 where: { id: cleanId },
@@ -64,14 +79,10 @@ export async function GET(request: Request) {
                 }
             });
         }
-        console.timeEnd("DB_QUERY_DURATION");
 
         if (!repair) {
-            console.log("[API] Repair NOT FOUND");
             return NextResponse.json({ error: "Repair not found" }, { status: 404 });
         }
-
-        console.log("[API] Repair FOUND");
 
         // Return only necessary public info
         const response = NextResponse.json({
@@ -86,16 +97,14 @@ export async function GET(request: Request) {
             statusId: repair.statusId,
             branch: repair.branch,
             isWet: (repair as any).isWet,
-            deviceImages: (repair as any).deviceImages || [],
+            deviceImages: getRepairImages((repair as any).deviceImages),
             statusHistory: (repair as any).statusHistory || []
         });
 
-        console.timeEnd("API_TOTAL_DURATION");
         return response;
 
     } catch (error) {
         console.error("API Error:", error);
-        console.timeEnd("API_TOTAL_DURATION");
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

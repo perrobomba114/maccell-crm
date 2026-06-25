@@ -10,11 +10,20 @@ export function getImgUrl(url: string | null | undefined): string {
     if (url.startsWith("http")) return url;
     if (url.startsWith("data:")) return url;
 
-    const trimmedUrl = url.trim();
+    const trimmedUrl = url.trim().replace(/\\/g, "/");
+
+    // Keep already-public /api/uploads paths as-is
+    if (trimmedUrl.startsWith("/api/uploads")) return trimmedUrl;
+    if (trimmedUrl.startsWith("api/uploads")) return `/${trimmedUrl}`;
 
     // Ensure it starts with /api/uploads if it's a local path
     if (trimmedUrl.startsWith("/repairs/images") || trimmedUrl.startsWith("/branches") || trimmedUrl.startsWith("/profiles")) {
         return `/api/uploads${trimmedUrl.startsWith("/") ? "" : "/"}${trimmedUrl}`;
+    }
+
+    // Handle legacy paths missing leading slash
+    if (trimmedUrl.startsWith("repairs/images/") || trimmedUrl.startsWith("branches/") || trimmedUrl.startsWith("profiles/")) {
+        return `/api/uploads/${trimmedUrl}`;
     }
 
     // Handle raw filenames that might be missing the folder prefix

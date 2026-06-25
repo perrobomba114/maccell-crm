@@ -11,14 +11,14 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Building2, DollarSign, Landmark, Percent, ReceiptText, Store } from "lucide-react";
+import { ReceiptText } from "lucide-react";
 import { CreateInvoiceModal } from "./create-invoice-modal";
 import { InvoicePrintButton } from "./invoice-print-button";
 import { getInvoices } from "@/actions/invoice-actions";
 import { InvoiceDateFilter } from "./invoice-date-filter";
 import { InvoicePagination } from "./invoice-pagination";
 import { InvoiceDetailModal } from "./invoice-detail-modal";
-import type { ReactNode } from "react";
+import { InvoiceSummaryCards } from "./invoice-summary-cards";
 
 
 export const dynamic = 'force-dynamic';
@@ -55,15 +55,17 @@ export default async function InvoicesPage({
     const branches = await db.branch.findMany({ select: { id: true, name: true, code: true } });
 
     // Fetch Invoices via Server Action
-    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalVat, entitySummaries } = await getInvoices({
+    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalNet, totalVat, receivedSummary, vatPayableSummary, systemAfipDiffSummary } = await getInvoices({
         page,
         limit: 25,
         date
     });
 
-    const maccellSummary = entitySummaries.find((summary) => summary.entity === "MACCELL");
-    const eightBitSummary = entitySummaries.find((summary) => summary.entity === "8BIT");
-    const periodLabel = date && date.length === 10 ? "del día seleccionado" : "del mes seleccionado";
+    const periodLabel = !date
+        ? "del historial completo"
+        : date.length === 10
+            ? "del día seleccionado"
+            : "del mes seleccionado";
 
     return (
         <div className="space-y-6 p-4 sm:p-6 lg:p-8" suppressHydrationWarning>
@@ -104,58 +106,16 @@ export default async function InvoicesPage({
                     </div>
                 </div>
 
-                <div className="grid gap-6 p-4 sm:p-5 md:grid-cols-2 lg:grid-cols-4">
-                    <Card className="relative overflow-hidden border-none bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg">
-                        <CardContent className="flex min-h-[218px] flex-col p-6">
-                            <div className="flex items-start justify-between gap-4">
-                                <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-emerald-100">Total facturado</p>
-                                <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-                                    <DollarSign className="h-6 w-6 text-white" />
-                                </div>
-                            </div>
-                            <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalAmount)}</h3>
-                            <div className="mt-auto flex items-center gap-2 pt-4">
-                                <span className="rounded-full bg-white/20 px-2 py-1 text-xs font-bold">{totalCount} comprobantes</span>
-                                <span className="text-xs text-emerald-100">{periodLabel}</span>
-                            </div>
-                        </CardContent>
-                        <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-                    </Card>
-
-                    <Card className="relative overflow-hidden border-none bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
-                        <CardContent className="flex min-h-[218px] flex-col p-6">
-                            <div className="flex items-start justify-between gap-4">
-                                <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-blue-100">IVA facturado</p>
-                                <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-                                    <Percent className="h-6 w-6 text-white" />
-                                </div>
-                            </div>
-                            <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(totalVat)}</h3>
-                            <div className="mt-auto pt-4 text-sm text-blue-100">Solo facturación nueva configurada al 21%</div>
-                        </CardContent>
-                        <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-                    </Card>
-
-                    {maccellSummary && (
-                        <FiscalEntityCard
-                            title="MACCELL"
-                            subtitle="3 locales, mismo certificado"
-                            icon={<Landmark className="h-6 w-6 text-white" />}
-                            summary={maccellSummary}
-                            tone="amber"
-                        />
-                    )}
-
-                    {eightBitSummary && (
-                        <FiscalEntityCard
-                            title="8 Bit Accesorios"
-                            subtitle="certificado AFIP propio"
-                            icon={<Store className="h-6 w-6 text-white" />}
-                            summary={eightBitSummary}
-                            tone="purple"
-                        />
-                    )}
-                </div>
+                <InvoiceSummaryCards
+                    totalAmount={totalAmount}
+                    totalNet={totalNet}
+                    totalVat={totalVat}
+                    totalCount={totalCount}
+                    periodLabel={periodLabel}
+                    receivedSummary={receivedSummary}
+                    vatPayableSummary={vatPayableSummary}
+                    systemAfipDiffSummary={systemAfipDiffSummary}
+                />
             </section>
 
             <Card className="border bg-card shadow-sm">
@@ -293,53 +253,5 @@ export default async function InvoicesPage({
                 </CardContent>
             </Card>
         </div>
-    );
-}
-
-function FiscalEntityCard({
-    title,
-    subtitle,
-    icon,
-    summary,
-    tone,
-}: {
-    title: string;
-    subtitle: string;
-    icon: ReactNode;
-    summary: Awaited<ReturnType<typeof getInvoices>>["entitySummaries"][number];
-    tone: "amber" | "purple";
-}) {
-    const color = tone === "amber"
-        ? "from-amber-400 to-orange-600"
-        : "from-purple-500 to-pink-600";
-    const mutedText = tone === "amber" ? "text-amber-100" : "text-purple-100";
-
-    return (
-        <Card className={`relative overflow-hidden border-none bg-gradient-to-br ${color} text-white shadow-lg`}>
-            <CardContent className="flex min-h-[218px] flex-col p-6">
-                <div className="flex items-start justify-between gap-4">
-                    <p className={`line-clamp-2 min-h-[2.5rem] text-sm font-medium ${mutedText}`}>{title}</p>
-                    <div className="shrink-0 rounded-xl bg-white/20 p-3 backdrop-blur-sm">
-                        {icon}
-                    </div>
-                </div>
-                <h3 className="mt-3 whitespace-nowrap text-3xl font-bold leading-none tracking-tight tabular-nums">{currencyFormatter.format(summary.totalVat)}</h3>
-                <p className={`mt-2 text-xs font-semibold ${mutedText}`}>IVA facturado · {summary.count} comprobantes · {subtitle}</p>
-                <div className="mt-auto space-y-1.5 border-t border-white/20 pt-4">
-                    {summary.branches.length === 0 ? (
-                        <p className={`text-xs ${mutedText}`}>Sin comprobantes en el período.</p>
-                    ) : summary.branches.map((branch) => (
-                        <div key={branch.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-xs">
-                            <span className="flex min-w-0 items-center gap-1.5 font-semibold">
-                                <Building2 className="h-3.5 w-3.5 shrink-0 text-white/80" />
-                                <span className="truncate">{branch.name}</span>
-                            </span>
-                            <span className="text-right font-mono font-bold tabular-nums">{currencyFormatter.format(branch.totalVat)}</span>
-                        </div>
-                    ))}
-                </div>
-            </CardContent>
-            <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        </Card>
     );
 }

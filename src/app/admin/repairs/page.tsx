@@ -5,8 +5,6 @@ import { AdminRepairsTable } from "@/components/repairs/admin-repairs-table";
 import { TechnicianStatsCards } from "@/components/repairs/technician-stats-cards";
 import { getTechnicianPerformance } from "@/actions/repair-actions-extra";
 import { redirect } from "next/navigation";
-import { format } from "date-fns";
-import { getArgentinaDate } from "@/lib/date-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -38,9 +36,7 @@ export default async function AdminRepairsPage(
     const [repairsData, branches, statsRes] = await Promise.all([
         getAllRepairsForAdminAction({ query, branchId, technician, technicianId, date, page, warrantyOnly }),
         getAllBranches(),
-        // Las tarjetas de rendimiento siempre muestran "Hoy" por defecto según pedido del usuario,
-        // ignorando el filtro global de fecha de la tabla.
-        getTechnicianPerformance({ query, branchId, warrantyOnly })
+        getTechnicianPerformance({ query, branchId, date, warrantyOnly })
     ]);
 
     const initialStats = statsRes.success && statsRes.data ? [...statsRes.data].sort((a, b) => b.seenCount - a.seenCount) : [];
@@ -62,6 +58,7 @@ export default async function AdminRepairsPage(
                 query={query} 
                 branchId={branchId} 
                 warrantyOnly={warrantyOnly} 
+                selectedDate={date}
                 initialData={initialStats} 
             />
 

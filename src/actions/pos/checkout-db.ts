@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { PaymentMethod } from "@prisma/client";
 
+const DELIVERED_REPAIR_STATUS_IDS = [10] as const;
+
 export async function saveSaleTransaction(
     data: any,
     vendorId: string,
@@ -110,6 +112,12 @@ export async function saveSaleTransaction(
                     where: { id: item.id },
                     select: { statusId: true }
                 });
+                if (!oldRepair) {
+                    throw new Error("No se encontró la reparación para cobrar.");
+                }
+                if (DELIVERED_REPAIR_STATUS_IDS.includes(oldRepair.statusId as typeof DELIVERED_REPAIR_STATUS_IDS[number])) {
+                    throw new Error("La reparación ya fue cobrada y no puede volver a cargar.");
+                }
 
                 await tx.repair.update({
                     where: { id: item.id },

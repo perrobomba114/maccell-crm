@@ -16,7 +16,7 @@ export function SaleDetailDialog({ sale, onClose }: SaleDetailDialogProps) {
 
     return (
         <Dialog open={!!sale} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-2 border-zinc-200 dark:border-zinc-800 shadow-2xl">
+            <DialogContent className="sm:max-w-[700px] max-h-[92vh] p-0 overflow-hidden border-2 border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col">
                 <div className="bg-zinc-950 text-white p-6 relative overflow-hidden">
                     <div className="relative z-10 flex flex-col gap-4">
                         <div className="flex justify-between items-start">
@@ -44,7 +44,7 @@ export function SaleDetailDialog({ sale, onClose }: SaleDetailDialogProps) {
                     </div>
                 </div>
 
-                <div className="p-6 space-y-8 bg-zinc-50/50 dark:bg-zinc-900/50">
+                <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-8 bg-zinc-50/50 dark:bg-zinc-900/50">
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 p-3 rounded-lg flex flex-col gap-1 shadow-sm">
                             <div className="flex items-center gap-1.5 text-zinc-500 mb-1">
@@ -78,7 +78,7 @@ export function SaleDetailDialog({ sale, onClose }: SaleDetailDialogProps) {
                         </div>
                     </div>
 
-                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-black shadow-sm">
+                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto bg-white dark:bg-black shadow-sm">
                         <Table>
                             <TableHeader className="bg-zinc-50 dark:bg-zinc-900">
                                 <TableRow>
@@ -126,7 +126,7 @@ export function SaleDetailDialog({ sale, onClose }: SaleDetailDialogProps) {
                         </div>
                     </div>
                 </div>
-                <div className="bg-zinc-100 dark:bg-zinc-900 p-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+                <div className="bg-zinc-100 dark:bg-zinc-900 p-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end shrink-0">
                     <Button onClick={onClose} className="font-bold">Cerrar</Button>
                 </div>
             </DialogContent>

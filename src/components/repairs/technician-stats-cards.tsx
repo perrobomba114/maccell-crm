@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Clock, Trophy, Wrench } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Trophy, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -16,12 +16,19 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 type TechnicianStatsCardsProps = {
     query: string;
     branchId: string;
+    selectedDate?: string;
     warrantyOnly: boolean;
     initialData?: TechnicianPerformance[];
 };
 
-export function TechnicianStatsCards({ query, branchId, warrantyOnly, initialData }: TechnicianStatsCardsProps) {
-    const [date, setDate] = useState<Date | undefined>(undefined);
+export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOnly, initialData }: TechnicianStatsCardsProps) {
+    const parseSelectedDate = (value?: string) => {
+        if (!value || value === "MONTH") return undefined;
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+    };
+
+    const [date, setDate] = useState<Date | undefined>(() => parseSelectedDate(selectedDate));
     const [stats, setStats] = useState<TechnicianPerformance[]>(initialData || []);
     const [loading, setLoading] = useState(!initialData);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -30,21 +37,22 @@ export function TechnicianStatsCards({ query, branchId, warrantyOnly, initialDat
     const searchParams = useSearchParams();
     const pathname = usePathname();
 
-    useEffect(() => {
-        // Initialize from URL or default to today
-        const dateParam = searchParams.get("date");
-        if (dateParam && dateParam !== "MONTH") {
-            setDate(new Date(dateParam));
-        } else {
-            setDate(undefined);
-        }
-    }, [searchParams]);
+    const isMonthFilter = selectedDate === "MONTH" || searchParams.get("date") === "MONTH";
 
     useEffect(() => {
-        if (date && !initialData) {
-            loadStats();
+        const parsedFromProp = parseSelectedDate(selectedDate);
+        if (parsedFromProp) {
+            setDate(parsedFromProp);
+            return;
         }
-    }, [date, query, branchId, warrantyOnly, initialData]);
+
+        const dateParam = searchParams.get("date");
+        if (dateParam === "MONTH" || !dateParam) {
+            setDate(undefined);
+            return;
+        }
+        setDate(parseSelectedDate(dateParam));
+    }, [selectedDate, searchParams]);
 
     const loadStats = async () => {
         setLoading(true);
@@ -54,13 +62,17 @@ export function TechnicianStatsCards({ query, branchId, warrantyOnly, initialDat
             setStats(sorted);
         }
         setLoading(false);
-    }
+    };
+
+    useEffect(() => {
+        loadStats();
+    }, [date, query, branchId, warrantyOnly]);
 
     const getCardStyles = (index: number) => {
         if (index === 0) return "bg-purple-600 text-white border-none shadow-xl transform hover:scale-105 transition-all duration-300 cursor-pointer hover:ring-4 hover:ring-purple-300/50";
         if (index === 1) return "bg-blue-600 text-white border-none shadow-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:ring-4 hover:ring-blue-300/50";
         return "bg-orange-500 text-white border-none shadow-md cursor-pointer transition-all duration-300 hover:scale-105 hover:ring-4 hover:ring-orange-300/50";
-    }
+    };
 
     const handleTechClick = (tech: TechnicianPerformance) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -75,21 +87,63 @@ export function TechnicianStatsCards({ query, branchId, warrantyOnly, initialDat
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     };
 
+    const applyDateParams = (nextDate: Date | null) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (nextDate) {
+            params.set("date", format(nextDate, "yyyy-MM-dd"));
+        } else {
+            params.delete("date");
+        }
+        params.delete("page");
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    };
+
     const handleDateChange = (d: Date | undefined) => {
+        setIsCalendarOpen(false);
         if (d) {
             setDate(d);
-            setIsCalendarOpen(false);
-            const params = new URLSearchParams(searchParams.toString());
-            params.set("date", format(d, "yyyy-MM-dd"));
-            params.delete("page");
-            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+            applyDateParams(d);
+            return;
         }
+        setDate(undefined);
+        applyDateParams(null);
     };
+
+    const handleDateShift = (days: number) => {
+        const anchor = date || new Date();
+        const target = addDays(anchor, days);
+        setDate(target);
+        applyDateParams(target);
+    };
+
+    const hasDateFilter = Boolean(searchParams.get("date") || selectedDate);
 
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-2 bg-muted/30 p-2 rounded-lg w-fit">
                 <span className="text-sm font-medium text-muted-foreground pl-2">Filtrar rendimiento por fecha:</span>
+                {!isMonthFilter && (
+                    <>
+                        <Button
+                            variant={"outline"}
+                            size="icon"
+                            onClick={() => handleDateShift(-1)}
+                            className="h-8 w-8"
+                            title="Día anterior"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant={"outline"}
+                            size="icon"
+                            onClick={() => handleDateShift(1)}
+                            className="h-8 w-8"
+                            title="Día siguiente"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </>
+                )}
                 <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <PopoverTrigger asChild>
                         <Button
@@ -101,7 +155,12 @@ export function TechnicianStatsCards({ query, branchId, warrantyOnly, initialDat
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {searchParams.get("date") === "MONTH" ? "Este Mes" : date ? format(date, "PPP", { locale: es }) : "Hoy"}
+                            {isMonthFilter
+                                ? "Este Mes"
+                                : hasDateFilter && date
+                                    ? format(date, "PPP", { locale: es })
+                                    : "Hoy"
+                            }
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -162,7 +221,6 @@ export function TechnicianStatsCards({ query, branchId, warrantyOnly, initialDat
                                         </div>
                                     </div>
                                 </CardContent>
-                                {/* Decorative background element */}
                                 <div className="absolute -bottom-4 -right-4 bg-white/10 w-20 h-20 rounded-full blur-2xl pointer-events-none" />
                             </Card>
                         );
