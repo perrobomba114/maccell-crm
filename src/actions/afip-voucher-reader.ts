@@ -31,6 +31,7 @@ const MAX_SCAN_PER_RANGE_DEFAULT = 120;
 const MAX_PARALLEL_REQUESTS = 4;
 const LOOKUP_TIMEOUT_MS = 2500;
 const LOOKUP_BUDGET_MS = 12000;
+const CLIENT_INIT_TIMEOUT_MS = 1500;
 
 function normalizeLookupKey(key: string) {
     return key.replace(/[^a-z0-9]/gi, "").toLowerCase();
@@ -172,7 +173,7 @@ async function readVoucherSummary(
     const net = toNumber(findValue(response, ["ImpNeto", "impNeto", "neto"])) || 0;
     const vat = toNumber(findValue(response, ["ImpIVA", "impIva", "iva", "IVA"])) || 0;
 
-    return { total, net, vat };
+    return { total, net, vat, voucherDate };
 }
 
 function emptySummaries() {
@@ -217,6 +218,9 @@ export async function getAfipVoucherReadSummaries({
     const summaries = emptySummaries();
     const warnings: string[] = [];
     const startedAt = Date.now();
+    const clientsByEntity = new Map<InvoiceFiscalEntity, {
+        getVoucherInfo?: (voucherNumber: number, salesPoint: number, voucherType: number) => Promise<unknown>;
+    }>();
 
     for (const range of ranges) {
         if (range.minVoucherNumber > range.maxVoucherNumber) {
@@ -232,10 +236,23 @@ export async function getAfipVoucherReadSummaries({
             warnings.push(`Rango ACTIVO para ${range.entity} (${range.voucherType}) truncado a ${maxScanPerRange} comprobantes por rendimiento.`);
         }
 
-        const service = await getAfipClient(undefined, range.entity);
-        const svc = service.electronicBillingService as {
-            getVoucherInfo?: (voucherNumber: number, salesPoint: number, voucherType: number) => Promise<unknown>;
-        };
+        let svc = clientsByEntity.get(range.entity);
+        if (!svc) {
+            try {
+                const service = await withTimeout(
+                    getAfipClient(undefined, range.entity),
+                    CLIENT_INIT_TIMEOUT_MS
+                );
+                svc = service.electronicBillingService as {
+                    getVoucherInfo?: (voucherNumber: number, salesPoint: number, voucherType: number) => Promise<unknown>;
+                };
+                clientsByEntity.set(range.entity, svc);
+            } catch (error: unknown) {
+                const reason = error instanceof Error ? error.message : String(error);
+                warnings.push(`No se pudo inicializar cliente AFIP para ${range.entity}: ${reason}`);
+                continue;
+            }
+        }
 
         if (typeof svc.getVoucherInfo !== "function") {
             warnings.push(`No se encontró getVoucherInfo en el cliente AFIP para ${range.entity}.`);
@@ -243,7 +260,7 @@ export async function getAfipVoucherReadSummaries({
         }
 
         const voucherNumbers = [];
-        for (let voucherNumber = effectiveStart; voucherNumber <= range.maxVoucherNumber; voucherNumber += 1) {
+        for (let voucherNumber = range.maxVoucherNumber; voucherNumber >= effectiveStart; voucherNumber -= 1) {
             voucherNumbers.push(voucherNumber);
         }
 
@@ -260,6 +277,8 @@ export async function getAfipVoucherReadSummaries({
                 batch.map((voucherNumber) => readVoucherSummary(svc, range, voucherNumber, startDate, endDate))
             );
 
+            let shouldStop = false;
+
             for (const result of batchResults) {
                 if (result.status !== "fulfilled" || !result.value) continue;
 
@@ -270,6 +289,16 @@ export async function getAfipVoucherReadSummaries({
                 summary.totalAmount = roundCurrency(summary.totalAmount + (result.value.total || result.value.net + result.value.vat));
                 summary.totalNet = roundCurrency(summary.totalNet + result.value.net);
                 summary.totalVat = roundCurrency(summary.totalVat + result.value.vat);
+
+                if (startDate && result.value.voucherDate && result.value.voucherDate.getTime() < startDate.getTime()) {
+                    shouldStop = true;
+                    break;
+                }
+            }
+
+            if (shouldStop) {
+                warnings.push(`Lectura AFIP de ${range.entity} detenida por rango temporal anterior al solicitado.`);
+                break;
             }
         }
     }
