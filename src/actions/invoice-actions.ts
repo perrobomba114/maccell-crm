@@ -271,13 +271,19 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
     const entitySummaries = buildEntitySummaries(summaryInvoices);
     const systemEntitySummaries = buildEntitySummaries(systemSummaryInvoices);
 
-    const afipReadResult = start && end
-        ? await getAfipVoucherReadSummaries({
-            ranges: buildAfipRanges(systemSummaryInvoices as InvoiceForAfipSeed[]),
-            startDate: start,
-            endDate: end,
-        })
-        : emptyAfipReadResult();
+    let afipReadResult = emptyAfipReadResult();
+    if (start && end) {
+        try {
+            afipReadResult = await getAfipVoucherReadSummaries({
+                ranges: buildAfipRanges(systemSummaryInvoices as InvoiceForAfipSeed[]),
+                startDate: start,
+                endDate: end,
+            });
+        } catch (error: unknown) {
+            console.error("AFIP Read Summary Error:", error);
+            afipReadResult = emptyAfipReadResult();
+        }
+    }
 
     const systemAfipDiffSummary = buildSystemAfipDiffSummary(systemEntitySummaries, afipReadResult.summaries);
 

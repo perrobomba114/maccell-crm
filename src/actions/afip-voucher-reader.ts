@@ -27,7 +27,10 @@ type AfipReadRangeOptions = {
     maxScanPerRange?: number;
 };
 
-const MAX_SCAN_PER_RANGE_DEFAULT = 500;
+const MAX_SCAN_PER_RANGE_DEFAULT = 120;
+const MAX_PARALLEL_REQUESTS = 4;
+const LOOKUP_TIMEOUT_MS = 2500;
+const LOOKUP_BUDGET_MS = 12000;
 
 function normalizeLookupKey(key: string) {
     return key.replace(/[^a-z0-9]/gi, "").toLowerCase();
@@ -113,6 +116,65 @@ function isInRange(date: Date, start?: Date, end?: Date) {
     return value >= start.getTime() && value <= end.getTime();
 }
 
+function chunkArray<T>(items: T[], size: number) {
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+    }
+    return chunks;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            reject(new Error("AFIP lookup timeout"));
+        }, timeoutMs);
+
+        promise
+            .then((value) => {
+                clearTimeout(timeout);
+                resolve(value);
+            })
+            .catch((error) => {
+                clearTimeout(timeout);
+                reject(error);
+            });
+    });
+}
+
+async function readVoucherSummary(
+    svc: {
+        getVoucherInfo?: (voucherNumber: number, salesPoint: number, voucherType: number) => Promise<unknown>;
+    },
+    range: AfipVoucherReadRange,
+    voucherNumber: number,
+    startDate?: Date,
+    endDate?: Date
+) {
+    if (!svc.getVoucherInfo) return null;
+
+    const response = await withTimeout(
+        svc.getVoucherInfo(voucherNumber, range.salesPoint, range.voucherType),
+        LOOKUP_TIMEOUT_MS
+    );
+    if (!response) return null;
+
+    const cae = String(findValue(response, ["CAE", "cae"]) || "").trim();
+    if (!cae || cae === "0") return null;
+
+    const dateRaw = findValue(response, ["CbteFch", "cbteFch", "FchCbte", "fecha", "fechaComprobante"]);
+    const voucherDate = toDate(dateRaw);
+    if (voucherDate && !isInRange(voucherDate, startDate, endDate)) {
+        return null;
+    }
+
+    const total = toNumber(findValue(response, ["ImpTotal", "impTotal", "total"])) || 0;
+    const net = toNumber(findValue(response, ["ImpNeto", "impNeto", "neto"])) || 0;
+    const vat = toNumber(findValue(response, ["ImpIVA", "impIva", "iva", "IVA"])) || 0;
+
+    return { total, net, vat };
+}
+
 function emptySummaries() {
     return new Map<InvoiceFiscalEntity, InvoiceEntitySummary>([
         ["MACCELL", {
@@ -154,6 +216,7 @@ export async function getAfipVoucherReadSummaries({
 
     const summaries = emptySummaries();
     const warnings: string[] = [];
+    const startedAt = Date.now();
 
     for (const range of ranges) {
         if (range.minVoucherNumber > range.maxVoucherNumber) {
@@ -175,39 +238,38 @@ export async function getAfipVoucherReadSummaries({
         };
 
         if (typeof svc.getVoucherInfo !== "function") {
-            return {
-                summaries: Array.from(summaries.values()),
-                warnings: [...warnings, "No se encontró getVoucherInfo en el cliente AFIP."],
-            };
+            warnings.push(`No se encontró getVoucherInfo en el cliente AFIP para ${range.entity}.`);
+            continue;
         }
 
+        const voucherNumbers = [];
         for (let voucherNumber = effectiveStart; voucherNumber <= range.maxVoucherNumber; voucherNumber += 1) {
-            try {
-                const response = await svc.getVoucherInfo(voucherNumber, range.salesPoint, range.voucherType);
-                if (!response) continue;
+            voucherNumbers.push(voucherNumber);
+        }
 
-                const cae = String(findValue(response, ["CAE", "cae"]) || "").trim();
-                if (!cae || cae === "0") continue;
+        for (const batch of chunkArray(voucherNumbers, MAX_PARALLEL_REQUESTS)) {
+            if (Date.now() - startedAt > LOOKUP_BUDGET_MS) {
+                warnings.push("Tiempo de lectura AFIP excedido. Se deja en valores parciales.");
+                return {
+                    summaries: Array.from(summaries.values()),
+                    warnings,
+                };
+            }
 
-                const dateRaw = findValue(response, ["CbteFch", "cbteFch", "FchCbte", "fecha", "fechaComprobante"]);
-                const voucherDate = toDate(dateRaw);
-                if (voucherDate && !isInRange(voucherDate, startDate, endDate)) {
-                    continue;
-                }
+            const batchResults = await Promise.allSettled(
+                batch.map((voucherNumber) => readVoucherSummary(svc, range, voucherNumber, startDate, endDate))
+            );
 
-                const total = toNumber(findValue(response, ["ImpTotal", "impTotal", "total"])) || 0;
-                const net = toNumber(findValue(response, ["ImpNeto", "impNeto", "neto"])) || 0;
-                const vat = toNumber(findValue(response, ["ImpIVA", "impIva", "iva", "IVA"])) || 0;
+            for (const result of batchResults) {
+                if (result.status !== "fulfilled" || !result.value) continue;
 
                 const summary = summaries.get(range.entity);
                 if (!summary) continue;
 
                 summary.count += 1;
-                summary.totalAmount = roundCurrency(summary.totalAmount + (total || net + vat));
-                summary.totalNet = roundCurrency(summary.totalNet + net);
-                summary.totalVat = roundCurrency(summary.totalVat + vat);
-            } catch {
-                continue;
+                summary.totalAmount = roundCurrency(summary.totalAmount + (result.value.total || result.value.net + result.value.vat));
+                summary.totalNet = roundCurrency(summary.totalNet + result.value.net);
+                summary.totalVat = roundCurrency(summary.totalVat + result.value.vat);
             }
         }
     }
@@ -217,4 +279,3 @@ export async function getAfipVoucherReadSummaries({
         warnings,
     };
 }
-
