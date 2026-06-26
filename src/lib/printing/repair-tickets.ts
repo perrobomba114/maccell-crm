@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { printHtml, SHARED_CSS, wrapHtml } from "./core";
+import { REPAIR_DATA_RESPONSIBILITY_TERMS } from "./repair-terms";
 
 type RepairTicketData = {
     ticketNumber: string;
@@ -94,7 +95,7 @@ export const printRepairTicket = (repair: RepairTicketData | null | undefined) =
             2. GARANTÍA LIMITADA: Validez de 30 días corridos. Cubre exclusivamente la mano de obra realizada y los repuestos reemplazados en esta orden.<br/>
             3. EXCLUSIONES: La garantía se anula automáticamente por: Golpes, trizaduras o presión en pantalla. Signos de humedad, sulfatación o mojaduras. Fajas de garantía rotas o manipulación ajena.<br/>
             4. ABANDONO: El cliente dispone de 90 días corridos para retirar el equipo tras el aviso. Pasado este plazo, el equipo se considerará abandonado, pasando a disposición de la empresa para cubrir costos, sin derecho a reclamo posterior.<br/>
-            5. RESPONSABILIDAD DE DATOS: La empresa no se responsabiliza por la pérdida de información (fotos, contactos, etc.). Se sugiere backup previo.
+            ${REPAIR_DATA_RESPONSIBILITY_TERMS}
         </div>
 
         <div class="qr-container">

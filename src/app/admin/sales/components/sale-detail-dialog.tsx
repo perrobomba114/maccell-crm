@@ -1,9 +1,11 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import Link from "next/link";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DollarSign, CalendarIcon, Building2, User, AlertCircle } from "lucide-react";
+import { DollarSign, CalendarIcon, Building2, User, AlertCircle, ExternalLink } from "lucide-react";
+import { buildAdminRepairSearchHref } from "./sale-detail-links";
 import type { SalePaymentSummary, SaleWithDetails } from "@/types/sales";
 
 interface SaleDetailDialogProps {
@@ -88,20 +90,35 @@ export function SaleDetailDialog({ sale, onClose }: SaleDetailDialogProps) {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {sale.items.map((item) => (
-                                    <TableRow key={item.id} className="border-b border-zinc-100 dark:border-zinc-900 last:border-0">
-                                        <TableCell className="font-bold text-center text-zinc-500">{item.quantity}</TableCell>
-                                        <TableCell className="font-medium text-zinc-900 dark:text-zinc-100">
-                                            <div className="flex flex-col">
-                                                <span>{item.name}</span>
-                                                <span className="text-[10px] text-zinc-400 font-mono">${item.price.toLocaleString()} un.</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right font-bold text-zinc-700 dark:text-zinc-300">
-                                            ${(item.quantity * item.price).toLocaleString()}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                {sale.items.map((item) => {
+                                    const repairHref = buildAdminRepairSearchHref(item);
+
+                                    return (
+                                        <TableRow key={item.id} className="border-b border-zinc-100 dark:border-zinc-900 last:border-0">
+                                            <TableCell className="font-bold text-center text-zinc-500">{item.quantity}</TableCell>
+                                            <TableCell className="font-medium text-zinc-900 dark:text-zinc-100">
+                                                <div className="flex flex-col">
+                                                    {repairHref ? (
+                                                        <Link
+                                                            href={repairHref}
+                                                            onClick={onClose}
+                                                            className="inline-flex w-fit items-center gap-1 text-blue-600 transition-colors hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                                                        >
+                                                            <span>{item.name}</span>
+                                                            <ExternalLink className="h-3 w-3" />
+                                                        </Link>
+                                                    ) : (
+                                                        <span>{item.name}</span>
+                                                    )}
+                                                    <span className="text-[10px] text-zinc-400 font-mono">${item.price.toLocaleString()} un.</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-zinc-700 dark:text-zinc-300">
+                                                ${(item.quantity * item.price).toLocaleString()}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>

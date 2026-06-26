@@ -2,7 +2,6 @@
 
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -43,7 +42,6 @@ function toEditablePaymentMethod(method: PaymentMethodLike): EditablePaymentMeth
 }
 
 export default function AdminSalesClient() {
-    const router = useRouter();
     const {
         sales,
         rankingData,
@@ -93,13 +91,6 @@ export default function AdminSalesClient() {
     };
 
     const handleViewSale = (sale: SaleWithDetails) => {
-        const repairId = sale.items.find((item) => item.repairId)?.repairId;
-
-        if (repairId) {
-            router.push(`/admin/repairs/${repairId}/edit`);
-            return;
-        }
-
         setViewingSale(sale);
     };
 

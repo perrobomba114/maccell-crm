@@ -1,0 +1,2 @@
+export const REPAIR_DATA_RESPONSIBILITY_TERMS =
+    "5. RESPONSABILIDAD DE DATOS, SIM Y MEMORIAS: La empresa no se responsabiliza por la pérdida de información (fotos, contactos, documentos, tesis u otros archivos). Tampoco se responsabiliza por tarjeta SIM ni tarjetas de memoria, estén o no declaradas al momento de la recepción. Se sugiere retirar SIM/memorias y realizar backup previo antes de entregar el equipo.";
