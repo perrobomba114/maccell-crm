@@ -58,6 +58,7 @@ afip-certs/
 .idea/
 
 # Agent related
+.codebase-memory/
 .agent/
 .agents/
 !.agents/
