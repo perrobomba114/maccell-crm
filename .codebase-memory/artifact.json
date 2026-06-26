@@ -1,11 +1,11 @@
 {
     "schema_version": 1,
-    "commit": "eefdbd19a85e58b1aedc83bc6cfe6f84baac87fb",
-    "indexed_at": "2026-06-26T14:35:11Z",
+    "commit": "9d7087ca5247db5451271bb0670ef3ca0dc7f9b1",
+    "indexed_at": "2026-06-26T14:35:52Z",
     "project": "Users-david-Desktop-MACCELL",
     "nodes": 2975,
     "edges": 6140,
     "original_size": 9109504,
-    "compressed_size": 1906203,
+    "compressed_size": 1906202,
     "compression_level": 3
 }
