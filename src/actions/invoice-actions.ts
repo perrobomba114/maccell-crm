@@ -1,13 +1,7 @@
 import { db } from "@/lib/db";
-import { getMonthlyRange, getDailyRange } from "@/lib/date-utils";
 import type { Prisma } from "@prisma/client";
 import {
-    getAfipVoucherReadSummaries,
-    type AfipReadResult,
-} from "./afip-voucher-reader";
-import {
     buildEntitySummaries,
-    buildSystemAfipDiffSummary,
     estimateVatFromGross,
     normalizeFiscalEntityFromBranch,
     roundCurrency,
@@ -15,6 +9,7 @@ import {
     type InvoiceReceivedSummary,
     type InvoiceVatPayableSummary,
 } from "./invoice-summary-helpers";
+import { resolveInvoiceDateRange } from "./invoice-afip-control-helpers";
 export type {
     InvoiceEntitySummary,
     InvoiceFiscalEntity,
@@ -22,105 +17,6 @@ export type {
     InvoiceSystemAfipDiffSummary,
     InvoiceVatPayableSummary,
 } from "./invoice-summary-helpers";
-
-type InvoiceForAfipSeed = {
-    billingEntity: string | null;
-    totalAmount: number;
-    netAmount: number;
-    vatAmount: number;
-    invoiceType: string;
-    invoiceNumber: string;
-    createdAt: Date;
-    sale: {
-        branch: {
-            name: string | null;
-            code: string | null;
-        } | null;
-    } | null;
-};
-
-type AfipReadRangeAccumulator = {
-    min: number;
-    max: number;
-};
-
-const ENTITY_SALES_POINT: Record<InvoiceFiscalEntity, number> = {
-    MACCELL: 10,
-    "8BIT": 3,
-};
-
-function invoiceTypeToVoucherType(invoiceType: string): 1 | 6 | 11 | null {
-    const normalized = invoiceType.trim().toUpperCase();
-
-    if (normalized === "A") return 1;
-    if (normalized === "B") return 6;
-    if (normalized === "C") return 11;
-
-    return null;
-}
-
-function parseVoucherNumber(invoiceNumber: string) {
-    const parts = invoiceNumber.split("-");
-    if (parts.length < 2) return null;
-
-    const parsed = Number(parts[1]);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-        return null;
-    }
-
-    return parsed;
-}
-
-function buildAfipRanges(invoices: InvoiceForAfipSeed[]) {
-    const rangesByEntityAndType = new Map<InvoiceFiscalEntity, Map<1 | 6 | 11, AfipReadRangeAccumulator>>([
-        ["MACCELL", new Map()],
-        ["8BIT", new Map()],
-    ]);
-
-    for (const invoice of invoices) {
-        const entity = normalizeFiscalEntityFromBranch(invoice.sale?.branch);
-        const voucherType = invoiceTypeToVoucherType(invoice.invoiceType);
-        const voucherNumber = parseVoucherNumber(invoice.invoiceNumber);
-
-        if (!voucherType || !voucherNumber) continue;
-
-        const byType = rangesByEntityAndType.get(entity);
-        if (!byType) continue;
-
-        const currentRange = byType.get(voucherType);
-        if (!currentRange) {
-            byType.set(voucherType, { min: voucherNumber, max: voucherNumber });
-            continue;
-        }
-
-        byType.set(voucherType, {
-            min: Math.min(currentRange.min, voucherNumber),
-            max: Math.max(currentRange.max, voucherNumber),
-        });
-    }
-
-    return Array.from(rangesByEntityAndType.entries()).flatMap(([entity, byType]) =>
-        Array.from(byType.entries())
-            .filter(([, boundaries]) => boundaries.max >= boundaries.min)
-            .map(([voucherType, boundaries]) => ({
-                entity,
-                salesPoint: ENTITY_SALES_POINT[entity],
-                voucherType,
-                minVoucherNumber: boundaries.min,
-                maxVoucherNumber: boundaries.max,
-            }))
-    );
-}
-
-function emptyAfipReadResult(): AfipReadResult {
-    return {
-        summaries: [
-            { entity: "MACCELL", label: "MACCELL - 3 locales", count: 0, totalAmount: 0, totalNet: 0, totalVat: 0, branches: [] },
-            { entity: "8BIT", label: "8 Bit Accesorios", count: 0, totalAmount: 0, totalNet: 0, totalVat: 0, branches: [] },
-        ],
-        warnings: [],
-    };
-}
 
 interface GetInvoicesOptions {
     page?: number;
@@ -131,43 +27,21 @@ interface GetInvoicesOptions {
 export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOptions) {
     const skip = (page - 1) * limit;
 
-    const systemWhere: Prisma.SaleInvoiceWhereInput = {};
     const where: Prisma.SaleInvoiceWhereInput = {
         cae: { not: "" },
     };
     const receivedWhere: Prisma.ExpenseWhereInput = {};
 
-    let start: Date;
-    let end: Date;
-
-    if (date) {
-        if (date.length === 7) {
-            // Month Filter: YYYY-MM — use AR timezone-aware monthly range
-            const range = getMonthlyRange(`${date}-01`);
-            start = range.start;
-            end = range.end;
-        } else {
-            // Day Filter: YYYY-MM-DD — use AR timezone-aware daily range
-            const range = getDailyRange(date);
-            start = range.start;
-            end = range.end;
-        }
-
-        // Validate
-        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-            where.createdAt = {
-                gte: start,
-                lte: end
-            };
-            systemWhere.createdAt = {
-                gte: start,
-                lte: end
-            };
-            receivedWhere.createdAt = {
-                gte: start,
-                lte: end
-            };
-        }
+    const dateRange = resolveInvoiceDateRange(date);
+    if (dateRange) {
+        where.createdAt = {
+            gte: dateRange.start,
+            lte: dateRange.end
+        };
+        receivedWhere.createdAt = {
+            gte: dateRange.start,
+            lte: dateRange.end
+        };
     }
 
     const invoiceInclude = {
@@ -187,7 +61,6 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
         receivedCount,
         receivedAggregations,
         receivedBranchGroups,
-        systemSummaryInvoices,
     ] = await db.$transaction([
         db.saleInvoice.findMany({
             where,
@@ -236,29 +109,6 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
             _sum: { amount: true },
             _count: { _all: true },
             orderBy: { _sum: { amount: "desc" } },
-        }),
-        db.saleInvoice.findMany({
-            where: systemWhere,
-            select: {
-                id: true,
-                billingEntity: true,
-                totalAmount: true,
-                netAmount: true,
-                vatAmount: true,
-                invoiceType: true,
-                invoiceNumber: true,
-                createdAt: true,
-                sale: {
-                    select: {
-                        branch: {
-                            select: {
-                                name: true,
-                                code: true,
-                            }
-                        }
-                    }
-                }
-            }
         })
     ]);
 
@@ -269,23 +119,6 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
     const totalVat = aggregations._sum.vatAmount || 0;
 
     const entitySummaries = buildEntitySummaries(summaryInvoices);
-    const systemEntitySummaries = buildEntitySummaries(systemSummaryInvoices);
-
-    let afipReadResult = emptyAfipReadResult();
-    if (start && end) {
-        try {
-            afipReadResult = await getAfipVoucherReadSummaries({
-                ranges: buildAfipRanges(systemSummaryInvoices as InvoiceForAfipSeed[]),
-                startDate: start,
-                endDate: end,
-            });
-        } catch (error: unknown) {
-            console.error("AFIP Read Summary Error:", error);
-            afipReadResult = emptyAfipReadResult();
-        }
-    }
-
-    const systemAfipDiffSummary = buildSystemAfipDiffSummary(systemEntitySummaries, afipReadResult.summaries);
 
     const receivedBranches = await db.branch.findMany({
         where: {
@@ -301,20 +134,21 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
 
     const receivedBranchSummaries = receivedBranchGroups.map((group) => {
         const branch = receivedBranchData.get(group.branchId);
-        const totalAmount = roundCurrency(group._sum.amount || 0);
+        const totalAmount = roundCurrency(group._sum?.amount || 0);
         const totalVat = estimateVatFromGross(totalAmount);
+        const groupCount = typeof group._count === "object" ? group._count._all || 0 : 0;
         const entity = normalizeFiscalEntityFromBranch(branch);
         const entitySummary = receivedByEntity.get(entity);
 
         if (entitySummary) {
-            entitySummary.count += group._count._all;
+            entitySummary.count += groupCount;
             entitySummary.totalAmount = roundCurrency(entitySummary.totalAmount + totalAmount);
             entitySummary.totalVat = roundCurrency(entitySummary.totalVat + totalVat);
         }
 
         return {
             name: branch?.name || "Sucursal sin nombre",
-            count: group._count._all,
+            count: groupCount,
             totalAmount,
             totalVat,
         };
@@ -351,6 +185,5 @@ export async function getInvoices({ page = 1, limit = 25, date }: GetInvoicesOpt
         entitySummaries,
         receivedSummary,
         vatPayableSummary,
-        systemAfipDiffSummary,
     };
 }

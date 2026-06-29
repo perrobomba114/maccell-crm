@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Calculator, FileInput, Landmark, ReceiptText, Store } from "lucide-react";
-import type { InvoiceReceivedSummary, InvoiceSystemAfipDiffSummary, InvoiceVatPayableSummary } from "@/actions/invoice-actions";
+import { Building2, Calculator, FileInput, ReceiptText } from "lucide-react";
+import type { InvoiceEntitySummary, InvoiceReceivedSummary, InvoiceVatPayableSummary } from "@/actions/invoice-actions";
 import type { ReactNode } from "react";
+import { InvoiceAfipControlPanel } from "./invoice-afip-control-panel";
 
 const currencyFormatter = new Intl.NumberFormat("es-AR", {
     style: "currency",
@@ -15,9 +16,10 @@ type InvoiceSummaryCardsProps = {
     totalVat: number;
     totalCount: number;
     periodLabel: string;
+    date?: string;
+    entitySummaries: InvoiceEntitySummary[];
     receivedSummary: InvoiceReceivedSummary;
     vatPayableSummary: InvoiceVatPayableSummary[];
-    systemAfipDiffSummary: InvoiceSystemAfipDiffSummary[];
 };
 
 export function InvoiceSummaryCards({
@@ -26,15 +28,13 @@ export function InvoiceSummaryCards({
     totalVat,
     totalCount,
     periodLabel,
+    date,
+    entitySummaries,
     receivedSummary,
     vatPayableSummary,
-    systemAfipDiffSummary,
 }: InvoiceSummaryCardsProps) {
-    const maccellDiff = systemAfipDiffSummary.find((summary) => summary.entity === "MACCELL");
-    const eightBitDiff = systemAfipDiffSummary.find((summary) => summary.entity === "8BIT");
-
     return (
-        <div className="grid gap-4 p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-2 2xl:grid-cols-4">
             <SummaryCard
                 title="AFIP emitido"
                 description={`${totalCount.toLocaleString("es-AR")} comprobantes ${periodLabel}`}
@@ -49,23 +49,7 @@ export function InvoiceSummaryCards({
 
             <VatPayableCard summary={vatPayableSummary} />
 
-            {maccellDiff && (
-                <SystemAfipDiffCard
-                    title="Control MACCELL"
-                    icon={<Landmark className="h-5 w-5" />}
-                    summary={maccellDiff}
-                    accent="amber"
-                />
-            )}
-
-            {eightBitDiff && (
-                <SystemAfipDiffCard
-                    title="Control 8 Bit"
-                    icon={<Store className="h-5 w-5" />}
-                    summary={eightBitDiff}
-                    accent="fuchsia"
-                />
-            )}
+            <InvoiceAfipControlPanel date={date} localSummaries={entitySummaries} />
 
             <ReceivedSummaryCard receivedSummary={receivedSummary} periodLabel={periodLabel} />
         </div>
@@ -91,11 +75,11 @@ function SummaryCard({ title, description, amount, icon, accent, rows }: Summary
 
     return (
         <Card className="overflow-hidden rounded-lg border bg-card shadow-sm">
-            <CardContent className="flex min-h-[190px] flex-col gap-4 p-5">
+            <CardContent className="flex min-h-[250px] flex-col gap-4 p-5">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <p className="truncate text-sm font-black uppercase tracking-wide text-foreground">{title}</p>
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{description}</p>
+                        <p className="text-sm font-black uppercase tracking-wide text-foreground">{title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
                     </div>
                     <div className={`shrink-0 rounded-md border p-2.5 ${accentClasses}`}>
                         {icon}
@@ -103,48 +87,21 @@ function SummaryCard({ title, description, amount, icon, accent, rows }: Summary
                 </div>
 
                 <div>
-                    <p className="truncate text-2xl font-black tabular-nums text-foreground" title={currencyFormatter.format(amount)}>
+                    <p className="break-words text-2xl font-black leading-tight tabular-nums text-foreground" title={currencyFormatter.format(amount)}>
                         {currencyFormatter.format(amount)}
                     </p>
                 </div>
 
                 <div className="mt-auto grid gap-2 border-t pt-3">
                     {rows.map((row, index) => (
-                        <div key={`${title}-${index}`} className="flex items-center justify-between gap-3 text-xs">
-                            <span className="min-w-0 truncate text-muted-foreground">{row.label}</span>
-                            <span className="max-w-[58%] shrink-0 truncate text-right font-mono font-bold tabular-nums text-foreground">{row.value}</span>
+                        <div key={`${title}-${index}`} className="grid grid-cols-[minmax(0,1fr)_minmax(0,auto)] items-start gap-3 text-xs">
+                            <span className="min-w-0 text-muted-foreground">{row.label}</span>
+                            <span className="max-w-full text-right font-mono font-bold leading-snug tabular-nums text-foreground [overflow-wrap:anywhere]">{row.value}</span>
                         </div>
                     ))}
                 </div>
             </CardContent>
         </Card>
-    );
-}
-
-function SystemAfipDiffCard({
-    title,
-    icon,
-    summary,
-    accent,
-}: {
-    title: string;
-    icon: ReactNode;
-    summary: InvoiceSystemAfipDiffSummary;
-    accent: "amber" | "fuchsia";
-}) {
-    return (
-        <SummaryCard
-            title={title}
-            description={`${summary.systemCount} local · ${summary.afipCount} AFIP leída`}
-            amount={summary.differenceAmount}
-            icon={icon}
-            accent={accent}
-            rows={[
-                { label: "Validado en local", value: currencyFormatter.format(summary.systemAmount) },
-                { label: "Leído en AFIP", value: currencyFormatter.format(summary.afipAmount) },
-                { label: "Diferencia", value: currencyFormatter.format(summary.differenceAmount) },
-            ]}
-        />
     );
 }
 
@@ -175,7 +132,7 @@ function ReceivedSummaryCard({
                     label: (
                         <span className="inline-flex min-w-0 items-center gap-1">
                             <Building2 className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{branch.label}</span>
+                            <span className="min-w-0 [overflow-wrap:anywhere]">{branch.label}</span>
                         </span>
                     ),
                     value: branch.value,
@@ -190,11 +147,11 @@ function VatPayableCard({ summary }: { summary: InvoiceVatPayableSummary[] }) {
 
     return (
         <Card className="overflow-hidden rounded-lg border bg-card shadow-sm">
-            <CardContent className="flex min-h-[190px] flex-col gap-4 p-5">
+            <CardContent className="flex min-h-[250px] flex-col gap-4 p-5">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <p className="truncate text-sm font-black uppercase tracking-wide text-foreground">IVA a pagar</p>
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">IVA emitido menos IVA recibido</p>
+                        <p className="text-sm font-black uppercase tracking-wide text-foreground">IVA a pagar</p>
+                        <p className="mt-1 text-xs text-muted-foreground">IVA emitido menos IVA recibido</p>
                     </div>
                     <div className="shrink-0 rounded-md border border-rose-500/30 bg-rose-500/10 p-2.5 text-rose-600 dark:text-rose-300">
                         <Calculator className="h-5 w-5" />
@@ -203,7 +160,7 @@ function VatPayableCard({ summary }: { summary: InvoiceVatPayableSummary[] }) {
 
                 <div>
                     <p
-                        className="truncate text-2xl font-black tabular-nums text-foreground"
+                        className="break-words text-2xl font-black leading-tight tabular-nums text-foreground"
                         title={currencyFormatter.format(totalPayable)}
                     >
                         {currencyFormatter.format(totalPayable)}
@@ -213,13 +170,13 @@ function VatPayableCard({ summary }: { summary: InvoiceVatPayableSummary[] }) {
                 <div className="mt-auto grid gap-2 border-t pt-3">
                     {summary.map((item) => (
                         <div key={item.entity} className="grid gap-1 text-xs">
-                            <div className="flex items-center justify-between gap-3">
-                                <span className="min-w-0 truncate font-semibold text-muted-foreground">{item.label}</span>
-                                <span className="max-w-[58%] shrink-0 truncate text-right font-mono font-bold tabular-nums text-foreground">
+                            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,auto)] items-start gap-3">
+                                <span className="min-w-0 font-semibold text-muted-foreground">{item.label}</span>
+                                <span className="max-w-full text-right font-mono font-bold leading-snug tabular-nums text-foreground [overflow-wrap:anywhere]">
                                     {currencyFormatter.format(item.payableVat)}
                                 </span>
                             </div>
-                            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                            <div className="grid gap-1 text-[10px] text-muted-foreground sm:grid-cols-2">
                                 <span>Emitido {currencyFormatter.format(item.debitVat)}</span>
                                 <span>Recibido {currencyFormatter.format(item.receivedVat)}</span>
                             </div>
