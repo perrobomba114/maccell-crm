@@ -5,7 +5,7 @@ import type { InvoiceEntitySummary, InvoiceSystemAfipDiffSummary } from "@/actio
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Landmark, Loader2, RefreshCw, ShieldCheck, Store } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 const currencyFormatter = new Intl.NumberFormat("es-AR", {
@@ -13,6 +13,8 @@ const currencyFormatter = new Intl.NumberFormat("es-AR", {
     currency: "ARS",
     maximumFractionDigits: 2,
 });
+
+const AUTO_REFRESH_STALE_MS = 15 * 60 * 1000;
 
 type AfipControlState = {
     summaries: InvoiceSystemAfipDiffSummary[];
@@ -29,36 +31,90 @@ export function InvoiceAfipControlPanel({ date, localSummaries }: InvoiceAfipCon
     const [isPending, startTransition] = useTransition();
     const [controlState, setControlState] = useState<AfipControlState>(null);
     const [error, setError] = useState<string | null>(null);
+    const activeDateRef = useRef(date);
+    const inFlightDateRef = useRef<string | null>(null);
 
     const loadedByEntity = useMemo(() => {
         return new Map(controlState?.summaries.map((summary) => [summary.entity, summary]) ?? []);
     }, [controlState]);
 
-    function handleReadAfip() {
-        if (!date) return;
+    const readAfipControl = useCallback((showToast: boolean) => {
+        if (!date || inFlightDateRef.current === date) return;
 
+        const requestDate = date;
+        inFlightDateRef.current = requestDate;
         setError(null);
         startTransition(async () => {
             try {
-                const result = await getInvoiceAfipControl(date);
+                const result = await getInvoiceAfipControl(requestDate);
+                if (activeDateRef.current !== requestDate) return;
+
                 if (!result.success) {
                     setError(result.error || "No se pudo consultar ARCA.");
-                    toast.error(result.error || "No se pudo consultar ARCA.");
+                    if (showToast) {
+                        toast.error(result.error || "No se pudo consultar ARCA.");
+                    }
                     return;
                 }
 
-                toast.success("Consulta ARCA actualizada.");
+                if (showToast) {
+                    toast.success("Consulta ARCA actualizada.");
+                }
                 setControlState({
                     summaries: result.summaries,
                     warnings: result.warnings,
                     readAt: result.readAt,
                 });
             } catch {
+                if (activeDateRef.current !== requestDate) return;
+
                 setError("No se pudo consultar ARCA.");
-                toast.error("No se pudo consultar ARCA.");
+                if (showToast) {
+                    toast.error("No se pudo consultar ARCA.");
+                }
+            } finally {
+                if (inFlightDateRef.current === requestDate) {
+                    inFlightDateRef.current = null;
+                }
             }
         });
-    }
+    }, [date, startTransition]);
+
+    useEffect(() => {
+        activeDateRef.current = date;
+
+        if (!date) {
+            setControlState(null);
+            setError(null);
+            return;
+        }
+
+        setControlState(null);
+        setError(null);
+        readAfipControl(false);
+    }, [date, readAfipControl]);
+
+    useEffect(() => {
+        if (!date) return;
+
+        function refreshIfStale() {
+            if (document.visibilityState === "hidden") return;
+
+            const lastReadAt = controlState?.readAt ? new Date(controlState.readAt).getTime() : 0;
+            const shouldRefresh = !lastReadAt || Date.now() - lastReadAt > AUTO_REFRESH_STALE_MS;
+            if (shouldRefresh) {
+                readAfipControl(false);
+            }
+        }
+
+        window.addEventListener("focus", refreshIfStale);
+        document.addEventListener("visibilitychange", refreshIfStale);
+
+        return () => {
+            window.removeEventListener("focus", refreshIfStale);
+            document.removeEventListener("visibilitychange", refreshIfStale);
+        };
+    }, [controlState?.readAt, date, readAfipControl]);
 
     const statusLabel = (() => {
         if (!date) return "Elegí un período";
@@ -100,12 +156,12 @@ export function InvoiceAfipControlPanel({ date, localSummaries }: InvoiceAfipCon
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={handleReadAfip}
+                        onClick={() => readAfipControl(true)}
                         disabled={isPending || !date}
                         className="w-full justify-center border-amber-500/30 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-200"
                     >
                         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                        Consultar ARCA
+                        Actualizar ARCA
                     </Button>
                 </div>
             </div>
