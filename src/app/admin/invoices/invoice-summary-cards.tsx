@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Calculator, FileInput, ReceiptText } from "lucide-react";
-import type { InvoiceEntitySummary, InvoiceReceivedSummary, InvoiceVatPayableSummary } from "@/actions/invoice-actions";
+import { Calculator, ReceiptText } from "lucide-react";
+import type { InvoiceDebitVatSummary, InvoiceEntitySummary } from "@/actions/invoice-actions";
 import type { ReactNode } from "react";
 import { InvoiceAfipControlPanel } from "./invoice-afip-control-panel";
 
@@ -18,8 +18,7 @@ type InvoiceSummaryCardsProps = {
     periodLabel: string;
     date?: string;
     entitySummaries: InvoiceEntitySummary[];
-    receivedSummary: InvoiceReceivedSummary;
-    vatPayableSummary: InvoiceVatPayableSummary[];
+    debitVatSummary: InvoiceDebitVatSummary[];
 };
 
 export function InvoiceSummaryCards({
@@ -30,11 +29,10 @@ export function InvoiceSummaryCards({
     periodLabel,
     date,
     entitySummaries,
-    receivedSummary,
-    vatPayableSummary,
+    debitVatSummary,
 }: InvoiceSummaryCardsProps) {
     return (
-        <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-2 2xl:grid-cols-4">
+        <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-3">
             <SummaryCard
                 title="AFIP emitido"
                 description={`${totalCount.toLocaleString("es-AR")} comprobantes ${periodLabel}`}
@@ -47,11 +45,9 @@ export function InvoiceSummaryCards({
                 ]}
             />
 
-            <VatPayableCard summary={vatPayableSummary} />
+            <DebitVatCard summary={debitVatSummary} />
 
             <InvoiceAfipControlPanel date={date} localSummaries={entitySummaries} />
-
-            <ReceivedSummaryCard receivedSummary={receivedSummary} periodLabel={periodLabel} />
         </div>
     );
 }
@@ -61,7 +57,7 @@ type SummaryCardProps = {
     description: string;
     amount: number;
     icon: ReactNode;
-    accent: "emerald" | "amber" | "fuchsia" | "sky";
+    accent: "emerald" | "amber" | "fuchsia" | "sky" | "rose";
     rows: { label: ReactNode; value: string }[];
 };
 
@@ -71,6 +67,7 @@ function SummaryCard({ title, description, amount, icon, accent, rows }: Summary
         amber: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300",
         fuchsia: "border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-300",
         sky: "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-300",
+        rose: "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-300",
     }[accent];
 
     return (
@@ -105,53 +102,16 @@ function SummaryCard({ title, description, amount, icon, accent, rows }: Summary
     );
 }
 
-function ReceivedSummaryCard({
-    receivedSummary,
-    periodLabel,
-}: {
-    receivedSummary: InvoiceReceivedSummary;
-    periodLabel: string;
-}) {
-    const branchRows = receivedSummary.branches.length > 0
-        ? receivedSummary.branches.slice(0, 3).map((branch) => ({
-            label: branch.name,
-            value: currencyFormatter.format(branch.totalAmount),
-        }))
-        : [{ label: "Sin registros", value: currencyFormatter.format(0) }];
-
-    return (
-        <SummaryCard
-            title="Recibidas registradas"
-            description={`${receivedSummary.count.toLocaleString("es-AR")} comprobantes/gastos ${periodLabel}`}
-            amount={receivedSummary.totalAmount}
-            icon={<FileInput className="h-5 w-5" />}
-            accent="sky"
-            rows={[
-                { label: "IVA recibido", value: currencyFormatter.format(receivedSummary.totalVat) },
-                ...branchRows.map((branch) => ({
-                    label: (
-                        <span className="inline-flex min-w-0 items-center gap-1">
-                            <Building2 className="h-3 w-3 shrink-0" />
-                            <span className="min-w-0 [overflow-wrap:anywhere]">{branch.label}</span>
-                        </span>
-                    ),
-                    value: branch.value,
-                })),
-            ]}
-        />
-    );
-}
-
-function VatPayableCard({ summary }: { summary: InvoiceVatPayableSummary[] }) {
-    const totalPayable = summary.reduce((acc, item) => acc + item.payableVat, 0);
+function DebitVatCard({ summary }: { summary: InvoiceDebitVatSummary[] }) {
+    const totalDebitVat = summary.reduce((acc, item) => acc + item.debitVat, 0);
 
     return (
         <Card className="overflow-hidden rounded-lg border bg-card shadow-sm">
             <CardContent className="flex min-h-[250px] flex-col gap-4 p-5">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <p className="text-sm font-black uppercase tracking-wide text-foreground">IVA a pagar</p>
-                        <p className="mt-1 text-xs text-muted-foreground">IVA emitido menos IVA recibido</p>
+                        <p className="text-sm font-black uppercase tracking-wide text-foreground">IVA débito fiscal</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Solo facturas emitidas. Crédito fiscal recibido no integrado.</p>
                     </div>
                     <div className="shrink-0 rounded-md border border-rose-500/30 bg-rose-500/10 p-2.5 text-rose-600 dark:text-rose-300">
                         <Calculator className="h-5 w-5" />
@@ -161,9 +121,9 @@ function VatPayableCard({ summary }: { summary: InvoiceVatPayableSummary[] }) {
                 <div>
                     <p
                         className="break-words text-2xl font-black leading-tight tabular-nums text-foreground"
-                        title={currencyFormatter.format(totalPayable)}
+                        title={currencyFormatter.format(totalDebitVat)}
                     >
-                        {currencyFormatter.format(totalPayable)}
+                        {currencyFormatter.format(totalDebitVat)}
                     </p>
                 </div>
 
@@ -173,15 +133,14 @@ function VatPayableCard({ summary }: { summary: InvoiceVatPayableSummary[] }) {
                             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,auto)] items-start gap-3">
                                 <span className="min-w-0 font-semibold text-muted-foreground">{item.label}</span>
                                 <span className="max-w-full text-right font-mono font-bold leading-snug tabular-nums text-foreground [overflow-wrap:anywhere]">
-                                    {currencyFormatter.format(item.payableVat)}
+                                    {currencyFormatter.format(item.debitVat)}
                                 </span>
-                            </div>
-                            <div className="grid gap-1 text-[10px] text-muted-foreground sm:grid-cols-2">
-                                <span>Emitido {currencyFormatter.format(item.debitVat)}</span>
-                                <span>Recibido {currencyFormatter.format(item.receivedVat)}</span>
                             </div>
                         </div>
                     ))}
+                    <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground">
+                        No se descuentan gastos locales ni importes por sucursal como crédito fiscal.
+                    </p>
                 </div>
             </CardContent>
         </Card>

@@ -1,7 +1,5 @@
 export type InvoiceFiscalEntity = "MACCELL" | "8BIT";
 
-const VAT_RATE = 0.21;
-
 export type InvoiceEntitySummary = {
     entity: InvoiceFiscalEntity;
     label: string;
@@ -17,24 +15,10 @@ export type InvoiceEntitySummary = {
     }[];
 };
 
-export type InvoiceReceivedSummary = {
-    count: number;
-    totalAmount: number;
-    totalVat: number;
-    branches: {
-        name: string;
-        count: number;
-        totalAmount: number;
-        totalVat: number;
-    }[];
-};
-
-export type InvoiceVatPayableSummary = {
+export type InvoiceDebitVatSummary = {
     entity: InvoiceFiscalEntity;
     label: string;
     debitVat: number;
-    receivedVat: number;
-    payableVat: number;
 };
 
 export type InvoiceSystemAfipDiffSummary = {
@@ -64,10 +48,6 @@ type InvoiceSummarySource = {
 
 export function roundCurrency(value: number) {
     return Math.round(value * 100) / 100;
-}
-
-export function estimateVatFromGross(totalAmount: number) {
-    return roundCurrency(totalAmount - totalAmount / (1 + VAT_RATE));
 }
 
 export function normalizeFiscalEntityFromBranch(branch?: BranchLike | null): InvoiceFiscalEntity {
@@ -138,6 +118,14 @@ export function buildEntitySummaries(invoices: InvoiceSummarySource[]) {
                 totalVat: roundCurrency(branch.totalVat),
             }))
             .sort((a, b) => b.totalAmount - a.totalAmount),
+    }));
+}
+
+export function buildDebitVatSummary(entitySummaries: InvoiceEntitySummary[]) {
+    return entitySummaries.map((summary): InvoiceDebitVatSummary => ({
+        entity: summary.entity,
+        label: summary.entity === "8BIT" ? "8 Bit Accesorios" : "MACCELL",
+        debitVat: summary.totalVat,
     }));
 }
 

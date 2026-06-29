@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildAfipRanges } from "../actions/invoice-afip-control-helpers";
+import { buildDebitVatSummary } from "../actions/invoice-summary-helpers";
 
 test("builds ARCA voucher ranges by fiscal entity and voucher type", () => {
     const ranges = buildAfipRanges([
@@ -61,6 +62,42 @@ test("builds ARCA voucher ranges by fiscal entity and voucher type", () => {
             voucherType: 1,
             minVoucherNumber: 7,
             maxVoucherNumber: 7,
+        },
+    ]);
+});
+
+test("builds debit VAT summary without subtracting local expenses as received VAT", () => {
+    const summary = buildDebitVatSummary([
+        {
+            entity: "MACCELL",
+            label: "MACCELL - 3 locales",
+            count: 2,
+            totalAmount: 1210,
+            totalNet: 1000,
+            totalVat: 210,
+            branches: [],
+        },
+        {
+            entity: "8BIT",
+            label: "8 Bit Accesorios",
+            count: 1,
+            totalAmount: 605,
+            totalNet: 500,
+            totalVat: 105,
+            branches: [],
+        },
+    ]);
+
+    assert.deepEqual(summary, [
+        {
+            entity: "MACCELL",
+            label: "MACCELL",
+            debitVat: 210,
+        },
+        {
+            entity: "8BIT",
+            label: "8 Bit Accesorios",
+            debitVat: 105,
         },
     ]);
 });

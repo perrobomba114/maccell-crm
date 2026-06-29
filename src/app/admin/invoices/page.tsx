@@ -55,7 +55,7 @@ export default async function InvoicesPage({
     const branches = await db.branch.findMany({ select: { id: true, name: true, code: true } });
 
     // Fetch Invoices via Server Action
-    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalNet, totalVat, entitySummaries, receivedSummary, vatPayableSummary } = await getInvoices({
+    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalNet, totalVat, entitySummaries, debitVatSummary } = await getInvoices({
         page,
         limit: 25,
         date
@@ -114,8 +114,7 @@ export default async function InvoicesPage({
                     periodLabel={periodLabel}
                     date={date}
                     entitySummaries={entitySummaries}
-                    receivedSummary={receivedSummary}
-                    vatPayableSummary={vatPayableSummary}
+                    debitVatSummary={debitVatSummary}
                 />
             </section>
 
