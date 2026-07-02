@@ -4,13 +4,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Eye, Edit, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import type { AdminRepair } from "@/types/admin-repairs";
 import type { RepairDetails } from "../repair-details-dialog";
+import {
+    AdminRepairRowActions,
+    type LoadingRepairAction,
+    type RepairActionKind,
+} from "./AdminRepairRowActions";
 
 const statusColorMap: Record<string, string> = {
     "red": "bg-red-600 text-white border-red-700 shadow-red-500/20",
@@ -28,9 +33,10 @@ const statusColorMap: Record<string, string> = {
 interface AdminRepairsListProps {
     repairs: AdminRepair[];
     isPending: boolean;
-    loadingRepairId: string | null;
+    loadingRepairAction: LoadingRepairAction;
     setViewRepair: (repair: RepairDetails | null) => void;
-    setLoadingRepairId: (id: string | null) => void;
+    setImageRepair: (repair: RepairDetails | null) => void;
+    setLoadingRepairAction: (action: LoadingRepairAction) => void;
     setDeleteId: (id: string | null) => void;
     getRepairByIdAction: (id: string) => Promise<RepairDetails | null>;
     currencyFormatter: Intl.NumberFormat;
@@ -40,144 +46,152 @@ interface AdminRepairsListProps {
 export function AdminRepairsList({
     repairs,
     isPending,
-    loadingRepairId,
+    loadingRepairAction,
     setViewRepair,
-    setLoadingRepairId,
+    setImageRepair,
+    setLoadingRepairAction,
     setDeleteId,
     getRepairByIdAction,
     currencyFormatter,
     router
 }: AdminRepairsListProps) {
+    const openRepair = async (repairId: string, kind: RepairActionKind) => {
+        setLoadingRepairAction({ id: repairId, kind });
+        try {
+            const full = await getRepairByIdAction(repairId);
+            if (!full) {
+                toast.error("No se pudo cargar la reparación.");
+                return;
+            }
+
+            if (kind === "details") {
+                setViewRepair(full);
+            } else {
+                setImageRepair(full);
+            }
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "No se pudo cargar la reparación.";
+            toast.error(message);
+        } finally {
+            setLoadingRepairAction(null);
+        }
+    };
+
     return (
-        <div className={cn(
-            "relative overflow-hidden border rounded-xl bg-card shadow-lg backdrop-blur-md transition-opacity duration-300",
-            isPending && "opacity-60 pointer-events-none"
-        )}>
-            {/* Mobile View */}
-            <div className="sm:hidden flex flex-col divide-y divide-border/60">
-                {repairs.length === 0 ? (
-                    <div className="h-40 flex items-center justify-center text-muted-foreground p-4 text-center">
-                        No se encontraron resultados para tu búsqueda…
-                    </div>
-                ) : (
-                    repairs.map((repair) => {
-                        const colorClass = statusColorMap[repair.status.color || "gray"] || "bg-gray-100 text-gray-800";
-                        return (
-                            <div key={repair.id} className="p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex flex-col gap-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <span className={cn(
-                                                "font-mono text-xs font-black px-2 py-0.5 rounded bg-muted text-muted-foreground",
-                                                repair.isWet && "bg-blue-500/10 text-blue-600",
-                                                repair.isWarranty && "bg-amber-500/10 text-amber-600"
-                                            )}>
-                                                #{repair.ticketNumber}
-                                            </span>
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                                {format(new Date(repair.createdAt), "dd/MM/yy HH:mm", { locale: es })}
+        <TooltipProvider delayDuration={120}>
+            <div className={cn(
+                "relative overflow-hidden border rounded-xl bg-card shadow-lg backdrop-blur-md transition-opacity duration-300",
+                isPending && "opacity-60 pointer-events-none"
+            )}>
+                {/* Mobile View */}
+                <div className="sm:hidden flex flex-col divide-y divide-border/60">
+                    {repairs.length === 0 ? (
+                        <div className="h-40 flex items-center justify-center text-muted-foreground p-4 text-center">
+                            No se encontraron resultados para tu búsqueda…
+                        </div>
+                    ) : (
+                        repairs.map((repair) => {
+                            const colorClass = statusColorMap[repair.status.color || "gray"] || "bg-gray-100 text-gray-800";
+                            return (
+                                <div key={repair.id} className="p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex flex-col gap-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className={cn(
+                                                    "font-mono text-xs font-black px-2 py-0.5 rounded bg-muted text-muted-foreground",
+                                                    repair.isWet && "bg-blue-500/10 text-blue-600",
+                                                    repair.isWarranty && "bg-amber-500/10 text-amber-600"
+                                                )}>
+                                                    #{repair.ticketNumber}
+                                                </span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                    {format(new Date(repair.createdAt), "dd/MM/yy HH:mm", { locale: es })}
+                                                </span>
+                                            </div>
+                                            <Badge variant="outline" className={cn("text-[10px] font-black uppercase tracking-tighter w-fit h-5 border-2", colorClass)}>
+                                                {repair.status.name}
+                                            </Badge>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-lg font-black tabular-nums tracking-tighter text-primary">
+                                                {(repair.estimatedPrice || 0) > 0 ? currencyFormatter.format(repair.estimatedPrice || 0) : "—"}
+                                            </p>
+                                            <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Est. Total</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 py-2 px-3 bg-muted/50 rounded-lg border border-border/50">
+                                        <div className="flex flex-col gap-0.5 min-w-0">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Cliente</span>
+                                            <span className="text-[11px] font-bold truncate">{repair.customer.name}</span>
+                                            {repair.customer.phone && <span className="text-[9px] text-muted-foreground tabular-nums">{repair.customer.phone}</span>}
+                                        </div>
+                                        <div className="flex flex-col gap-0.5 border-l border-border/50 pl-4 text-right min-w-0">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Dispositivo</span>
+                                            <span className="text-[11px] font-bold truncate">{repair.deviceBrand}</span>
+                                            <span className="text-[10px] text-muted-foreground truncate">{repair.deviceModel}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between gap-3 pt-1">
+                                        <div className="flex min-w-0 flex-col">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Técnico</span>
+                                            <span className="flex items-center gap-1 truncate text-xs font-bold">
+                                                {repair.assignedTo?.name || <span className="text-muted-foreground/50 italic">SIN ASIGNAR</span>}
                                             </span>
                                         </div>
-                                        <Badge variant="outline" className={cn("text-[10px] font-black uppercase tracking-tighter w-fit h-5 border-2", colorClass)}>
-                                            {repair.status.name}
-                                        </Badge>
-                                    </div>
-                                    <div className="text-right shrink-0">
-                                        <p className="text-lg font-black tabular-nums tracking-tighter text-primary">
-                                            {(repair.estimatedPrice || 0) > 0 ? currencyFormatter.format(repair.estimatedPrice || 0) : "—"}
-                                        </p>
-                                        <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Est. Total</div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 py-2 px-3 bg-muted/50 rounded-lg border border-border/50">
-                                    <div className="flex flex-col gap-0.5 min-w-0">
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Cliente</span>
-                                        <span className="text-[11px] font-bold truncate">{repair.customer.name}</span>
-                                        {repair.customer.phone && <span className="text-[9px] text-muted-foreground tabular-nums">{repair.customer.phone}</span>}
-                                    </div>
-                                    <div className="flex flex-col gap-0.5 border-l border-border/50 pl-4 text-right min-w-0">
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Dispositivo</span>
-                                        <span className="text-[11px] font-bold truncate">{repair.deviceBrand}</span>
-                                        <span className="text-[10px] text-muted-foreground truncate">{repair.deviceModel}</span>
+                                        <AdminRepairRowActions
+                                            repair={repair}
+                                            layout="mobile"
+                                            loadingAction={loadingRepairAction}
+                                            onOpenDetails={(repairId) => void openRepair(repairId, "details")}
+                                            onOpenImages={(repairId) => void openRepair(repairId, "images")}
+                                            onEdit={(repairId) => router.push(`/admin/repairs/${repairId}/edit`)}
+                                            onDelete={setDeleteId}
+                                        />
                                     </div>
                                 </div>
+                            );
+                        })
+                    )}
+                </div>
 
-                                <div className="flex items-center justify-between pt-1">
-                                    <div className="flex flex-col">
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Técnico</span>
-                                        <span className="text-xs font-bold flex items-center gap-1">
-                                            {repair.assignedTo?.name || <span className="text-muted-foreground/50 italic">SIN ASIGNAR</span>}
-                                        </span>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            className="h-9 w-9 p-0 rounded-full" 
-                                            onClick={async () => {
-                                                setLoadingRepairId(repair.id);
-                                                const full = await getRepairByIdAction(repair.id);
-                                                if (full) setViewRepair(full);
-                                                setLoadingRepairId(null);
-                                            }}
-                                            disabled={loadingRepairId === repair.id}
-                                        >
-                                            {loadingRepairId === repair.id
-                                                ? <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                                : <Eye className="h-4 w-4" />
-                                            }
-                                        </Button>
-                                        <Button variant="outline" size="sm" className="h-9 w-9 p-0 rounded-full text-blue-500" onClick={() => router.push(`/admin/repairs/${repair.id}/edit`)}>
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="outline" size="sm" className="h-9 w-9 p-0 rounded-full text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(repair.id)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
-            </div>
-
-            {/* Desktop View */}
-            <div className="hidden sm:block overflow-x-auto">
-                <Table>
-                    <TableHeader className="sticky top-0 z-10">
-                        <TableRow className="hover:bg-transparent border-b">
-                            <TableHead className="text-center w-[110px] uppercase text-[10px] font-bold tracking-tighter">Ticket</TableHead>
-                            <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Técnico</TableHead>
-                            <TableHead className="text-center w-[140px] uppercase text-[10px] font-bold tracking-tighter">Fecha</TableHead>
-                            <TableHead className="text-center w-[120px] uppercase text-[10px] font-bold tracking-tighter">Duración</TableHead>
-                            <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Cliente</TableHead>
-                            <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Dispositivo</TableHead>
-                            <TableHead className="text-center w-[130px] uppercase text-[10px] font-bold tracking-tighter">Estado</TableHead>
-                            <TableHead className="text-right w-[110px] uppercase text-[10px] font-bold tracking-tighter pr-6">Precio</TableHead>
-                            <TableHead className="text-center w-[130px] uppercase text-[10px] font-bold tracking-tighter">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <AnimatePresence>
-                            {repairs.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={9} className="h-40 text-center text-muted-foreground animate-pulse">
-                                        No se encontraron resultados para tu búsqueda…
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                repairs.map((repair) => {
-                                    const colorClass = statusColorMap[repair.status.color || "gray"] || "bg-gray-100 text-gray-800";
-                                    return (
-                                        <motion.tr
-                                            key={repair.id}
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            transition={{ duration: 0.2 }}
-                                            className="group hover:bg-muted/30 border-b last:border-0 transition-colors duration-200"
-                                        >
+                {/* Desktop View */}
+                <div className="hidden sm:block overflow-x-auto">
+                    <Table>
+                        <TableHeader className="sticky top-0 z-10">
+                            <TableRow className="hover:bg-transparent border-b">
+                                <TableHead className="text-center w-[110px] uppercase text-[10px] font-bold tracking-tighter">Ticket</TableHead>
+                                <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Técnico</TableHead>
+                                <TableHead className="text-center w-[140px] uppercase text-[10px] font-bold tracking-tighter">Fecha</TableHead>
+                                <TableHead className="text-center w-[120px] uppercase text-[10px] font-bold tracking-tighter">Duración</TableHead>
+                                <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Cliente</TableHead>
+                                <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Dispositivo</TableHead>
+                                <TableHead className="text-center w-[130px] uppercase text-[10px] font-bold tracking-tighter">Estado</TableHead>
+                                <TableHead className="text-right w-[110px] uppercase text-[10px] font-bold tracking-tighter pr-6">Precio</TableHead>
+                                <TableHead className="text-center w-[160px] uppercase text-[10px] font-bold tracking-tighter">Acciones</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <AnimatePresence>
+                                {repairs.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="h-40 text-center text-muted-foreground animate-pulse">
+                                            No se encontraron resultados para tu búsqueda…
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    repairs.map((repair) => {
+                                        const colorClass = statusColorMap[repair.status.color || "gray"] || "bg-gray-100 text-gray-800";
+                                        return (
+                                            <motion.tr
+                                                key={repair.id}
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="group hover:bg-muted/30 border-b last:border-0 transition-colors duration-200"
+                                            >
                                             <TableCell className={cn(
                                                 "text-center font-bold font-mono text-sm tabular-nums",
                                                 repair.isWet ? "text-blue-500 font-extrabold" :
@@ -243,54 +257,26 @@ export function AdminRepairsList({
                                             <TableCell className="text-right font-bold text-base tabular-nums pr-6">
                                                 {(repair.estimatedPrice || 0) > 0 ? currencyFormatter.format(repair.estimatedPrice || 0) : "—"}
                                             </TableCell>
-                                            <TableCell className="text-center">
-                                                <div className="flex justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={async () => {
-                                                            setLoadingRepairId(repair.id);
-                                                            const full = await getRepairByIdAction(repair.id);
-                                                            if (full) setViewRepair(full);
-                                                            setLoadingRepairId(null);
-                                                        }}
-                                                        title="Ver detalles"
-                                                        disabled={loadingRepairId === repair.id}
-                                                        className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-full"
-                                                    >
-                                                        {loadingRepairId === repair.id
-                                                            ? <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
-                                                            : <Eye className="h-4.5 w-4.5" />
-                                                        }
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => router.push(`/admin/repairs/${repair.id}/edit`)}
-                                                        title="Editar"
-                                                        className="h-9 w-9 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 transition-all rounded-full"
-                                                    >
-                                                        <Edit className="h-4.5 w-4.5" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => setDeleteId(repair.id)}
-                                                        title="Eliminar"
-                                                        className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-all rounded-full"
-                                                    >
-                                                        <Trash2 className="h-4.5 w-4.5" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </motion.tr>
-                                    );
-                                })
-                            )}
-                        </AnimatePresence>
-                    </TableBody>
-                </Table>
+                                                <TableCell className="text-center">
+                                                    <AdminRepairRowActions
+                                                        repair={repair}
+                                                        layout="desktop"
+                                                        loadingAction={loadingRepairAction}
+                                                        onOpenDetails={(repairId) => void openRepair(repairId, "details")}
+                                                        onOpenImages={(repairId) => void openRepair(repairId, "images")}
+                                                        onEdit={(repairId) => router.push(`/admin/repairs/${repairId}/edit`)}
+                                                        onDelete={setDeleteId}
+                                                    />
+                                                </TableCell>
+                                            </motion.tr>
+                                        );
+                                    })
+                                )}
+                            </AnimatePresence>
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
-        </div>
+        </TooltipProvider>
     );
 }

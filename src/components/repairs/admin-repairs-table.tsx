@@ -6,6 +6,7 @@ import { deleteRepairAction, getRepairByIdAction } from "@/lib/actions/repairs";
 import { checkLatestRepairUpdate } from "@/actions/repair-check-actions";
 import { toast } from "sonner";
 import { RepairDetailsDialog } from "./repair-details-dialog";
+import { RepairImagesDialog } from "./repair-images-dialog";
 
 // New modular components
 import { AdminRepairsFilters } from "./components/AdminRepairsFilters";
@@ -14,6 +15,7 @@ import { AdminRepairsPagination } from "./components/AdminRepairsPagination";
 import { AdminRepairsDeleteDialog } from "./components/AdminRepairsDeleteDialog";
 import type { AdminRepairBranch, AdminRepairsResult } from "@/types/admin-repairs";
 import type { RepairDetails } from "./repair-details-dialog";
+import type { LoadingRepairAction } from "./components/AdminRepairRowActions";
 import { shouldPauseAdminRepairsAutoRefresh } from "@/lib/admin-repairs-refresh";
 import { usePolling } from "@/hooks/use-polling";
 
@@ -29,7 +31,8 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
 
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [viewRepair, setViewRepair] = useState<RepairDetails | null>(null);
-    const [loadingRepairId, setLoadingRepairId] = useState<string | null>(null);
+    const [imageRepair, setImageRepair] = useState<RepairDetails | null>(null);
+    const [loadingRepairAction, setLoadingRepairAction] = useState<LoadingRepairAction>(null);
 
     const [isPending, startTransition] = useTransition();
 
@@ -85,12 +88,13 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
     }), []);
 
     const lastRefreshedRef = useRef<Date>(new Date());
+    const loadingRepairId = loadingRepairAction?.id ?? null;
     const shouldPauseRefresh = shouldPauseAdminRepairsAutoRefresh({
         localSearchTerm,
         searchTerm,
         isPending,
         loadingRepairId,
-        hasOpenDetail: viewRepair !== null,
+        hasOpenDetail: viewRepair !== null || imageRepair !== null,
     });
 
     usePolling(async () => {
@@ -121,9 +125,10 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
             <AdminRepairsList
                 repairs={repairsData.repairs}
                 isPending={isPending}
-                loadingRepairId={loadingRepairId}
+                loadingRepairAction={loadingRepairAction}
                 setViewRepair={setViewRepair}
-                setLoadingRepairId={setLoadingRepairId}
+                setImageRepair={setImageRepair}
+                setLoadingRepairAction={setLoadingRepairAction}
                 setDeleteId={setDeleteId}
                 getRepairByIdAction={getRepairByIdAction}
                 currencyFormatter={currencyFormatter}
@@ -143,6 +148,12 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
                 isOpen={!!viewRepair}
                 onClose={() => setViewRepair(null)}
                 repair={viewRepair}
+            />
+
+            <RepairImagesDialog
+                isOpen={!!imageRepair}
+                onClose={() => setImageRepair(null)}
+                repair={imageRepair}
             />
 
             <AdminRepairsDeleteDialog
