@@ -1,6 +1,6 @@
 "use client";
 
-import { getTodayRepairDateFilter, resolveAdminRepairDateSelection } from "@/lib/admin-repairs-date-filter";
+import { getTodayRepairDateFilter, resolveAdminRepairDateSelectionForSearch } from "@/lib/admin-repairs-date-filter";
 import { Search, Building2, ShieldCheck, ShieldAlert, X, Filter, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -32,8 +32,11 @@ export function AdminRepairsFilters({
 }: AdminRepairsFiltersProps) {
     const todayStr = getTodayRepairDateFilter();
     const rawDate = searchParams.get('date');
-    const activeDate = resolveAdminRepairDateSelection(rawDate);
-    const hasActiveFilters = activeDate !== todayStr
+    const searchTerm = localSearchTerm.trim();
+    const activeDate = resolveAdminRepairDateSelectionForSearch(rawDate, searchTerm);
+    const isGlobalSearch = searchTerm.length > 0 && activeDate === "";
+    const hasActiveFilters = isGlobalSearch
+        || activeDate !== todayStr
         || Boolean(searchParams.get('techId'))
         || selectedBranchId !== "ALL"
         || showOnlyWarranty;
@@ -45,11 +48,16 @@ export function AdminRepairsFilters({
                 <div className="relative flex-1 w-full group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input
-                        placeholder="Buscar por ticket, cliente, modelo o IMEI..."
+                        placeholder="Buscar por ticket, cliente, teléfono, modelo, técnico o falla..."
                         value={localSearchTerm}
                         onChange={(e) => setLocalSearchTerm(e.target.value)}
                         className="pl-10 h-11 bg-muted/30 border-muted-foreground/20 focus:bg-background transition-all"
                     />
+                    {isGlobalSearch && (
+                        <Badge variant="secondary" className="mt-2 w-fit border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300">
+                            Búsqueda global
+                        </Badge>
+                    )}
                 </div>
                 
                 <div className="flex gap-2 w-full md:w-auto">
@@ -159,7 +167,10 @@ export function AdminRepairsFilters({
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => updateParams({ date: todayStr, techId: null, tech: null, warranty: null, branch: "ALL" })}
+                                onClick={() => {
+                                    setLocalSearchTerm("");
+                                    updateParams({ q: null, date: todayStr, techId: null, tech: null, warranty: null, branch: "ALL" });
+                                }}
                                 className="h-10 text-red-500 hover:text-red-600 hover:bg-red-50 font-bold justify-start gap-2"
                             >
                                 <X className="h-4 w-4" />

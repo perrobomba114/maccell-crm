@@ -27,6 +27,26 @@ export function resolveAdminRepairDateFilter(
     return resolveAdminRepairDateSelection(date, referenceDate);
 }
 
+export function resolveAdminRepairDateSelectionForSearch(
+    date: string | null | undefined,
+    query: string | null | undefined,
+    referenceDate: Date = new Date(),
+): string {
+    const normalized = normalizeRepairDateFilter(date);
+    const hasQuery = (query ?? "").trim().length > 0;
+
+    if (hasQuery && !normalized) return "";
+    return resolveAdminRepairDateSelection(date, referenceDate);
+}
+
+export function resolveAdminRepairDateFilterForSearch(
+    date: string | null | undefined,
+    query: string | null | undefined,
+    referenceDate: Date = new Date(),
+): string {
+    return resolveAdminRepairDateSelectionForSearch(date, query, referenceDate);
+}
+
 export function parseAdminRepairCalendarDate(date: string | null | undefined): Date | undefined {
     const normalized = normalizeRepairDateFilter(date);
     if (!normalized || normalized === HISTORY_REPAIR_DATE_FILTER || normalized === MONTH_REPAIR_DATE_FILTER) {

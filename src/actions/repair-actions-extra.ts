@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 import { getRepairDateFilterRange } from "@/lib/repair-date-filter";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { buildAdminRepairSearchFilters } from "@/lib/admin-repairs-search";
 
 export interface TechnicianPerformance {
     id: string;
@@ -43,17 +44,7 @@ function buildPerformanceRepairWhere(filters: TechnicianPerformanceFilters): Pri
     }
 
     if (query) {
-        const words = query.split(/\s+/).filter(Boolean);
-        andFilters.push(...words.map((word): Prisma.RepairWhereInput => ({
-            OR: [
-                { ticketNumber: { contains: word, mode: "insensitive" } },
-                { customer: { name: { contains: word, mode: "insensitive" } } },
-                { customer: { phone: { contains: word, mode: "insensitive" } } },
-                { deviceBrand: { contains: word, mode: "insensitive" } },
-                { deviceModel: { contains: word, mode: "insensitive" } },
-                { branch: { name: { contains: word, mode: "insensitive" } } },
-            ],
-        })));
+        andFilters.push(...buildAdminRepairSearchFilters(query));
     }
 
     if (andFilters.length > 0) {

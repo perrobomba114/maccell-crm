@@ -7,7 +7,9 @@ import {
     isDefaultAdminRepairDateFilter,
     parseAdminRepairCalendarDate,
     resolveAdminRepairDateFilter,
+    resolveAdminRepairDateFilterForSearch,
     resolveAdminRepairDateSelection,
+    resolveAdminRepairDateSelectionForSearch,
     shiftAdminRepairDateFilter,
 } from "../lib/admin-repairs-date-filter";
 
@@ -49,4 +51,14 @@ test("detects default admin repair date filters without forcing URL rewrites", (
     assert.equal(isDefaultAdminRepairDateFilter("2026-07-02", referenceDate), true);
     assert.equal(isDefaultAdminRepairDateFilter("2026-07-01", referenceDate), false);
     assert.equal(isDefaultAdminRepairDateFilter("MONTH", referenceDate), false);
+});
+
+test("uses a global admin repairs date filter while searching without an explicit date", () => {
+    assert.equal(resolveAdminRepairDateFilterForSearch(undefined, "s24", referenceDate), "");
+    assert.equal(resolveAdminRepairDateSelectionForSearch(null, "MAC2-00001457", referenceDate), "");
+});
+
+test("preserves explicit admin repairs date filters while searching", () => {
+    assert.equal(resolveAdminRepairDateFilterForSearch("2026-07-02", "s24", referenceDate), "2026-07-02");
+    assert.equal(resolveAdminRepairDateFilterForSearch("MONTH", "s24", referenceDate), "MONTH");
 });

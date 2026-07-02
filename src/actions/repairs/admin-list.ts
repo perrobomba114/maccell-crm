@@ -5,11 +5,11 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { getRepairDateFilterRange } from "@/lib/repair-date-filter";
 import { resolveAdminRepairDateFilter } from "@/lib/admin-repairs-date-filter";
+import { buildAdminRepairSearchFilters } from "@/lib/admin-repairs-search";
 import type { AdminRepairsQuery, AdminRepairsResult } from "@/types/admin-repairs";
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
-const FINAL_REPAIR_STATUS_IDS = [5, 6, 7, 10] as const;
 const FINISHED_HISTORY_STATUS_IDS = [5, 6, 7, 10] as const;
 
 function normalizeAdminRepairsQuery(input: string | AdminRepairsQuery = ""): Required<AdminRepairsQuery> {
@@ -34,17 +34,7 @@ function buildAdminRepairsWhere(params: Required<AdminRepairsQuery>): Prisma.Rep
     const andFilters: Prisma.RepairWhereInput[] = [];
 
     if (params.query) {
-        const words = params.query.split(/\s+/).filter(Boolean);
-        andFilters.push(...words.map((word): Prisma.RepairWhereInput => ({
-            OR: [
-                { ticketNumber: { contains: word, mode: "insensitive" } },
-                { customer: { name: { contains: word, mode: "insensitive" } } },
-                { customer: { phone: { contains: word, mode: "insensitive" } } },
-                { deviceBrand: { contains: word, mode: "insensitive" } },
-                { deviceModel: { contains: word, mode: "insensitive" } },
-                { branch: { name: { contains: word, mode: "insensitive" } } },
-            ],
-        })));
+        andFilters.push(...buildAdminRepairSearchFilters(params.query));
     }
 
     if (params.branchId !== "ALL") {
