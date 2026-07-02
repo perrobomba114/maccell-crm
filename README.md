@@ -65,13 +65,13 @@ npx prisma db push
 npm run dev
 ```
 
-El script `dev` actual usa HTTPS experimental y desactiva verificación TLS para desarrollo:
+El script `dev` usa HTTP local para evitar errores de certificado en navegadores de desarrollo:
 
 ```bash
-NODE_TLS_REJECT_UNAUTHORIZED='0' next dev --experimental-https -p 3000
+npm run dev
 ```
 
-No usar ese patrón como referencia para producción.
+Si una prueba puntual requiere HTTPS local, usar `npm run dev:https`. No usar certificados locales ni `NODE_TLS_REJECT_UNAUTHORIZED=0` como referencia para producción.
 
 ## Variables de Entorno
 
