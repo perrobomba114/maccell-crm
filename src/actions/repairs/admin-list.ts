@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { getRepairDateFilterRange } from "@/lib/repair-date-filter";
-import { resolveAdminRepairDateFilter } from "@/lib/admin-repairs-date-filter";
+import { resolveAdminRepairDateFilterForSearch } from "@/lib/admin-repairs-date-filter";
 import { buildAdminRepairSearchFilters } from "@/lib/admin-repairs-search";
 import type { AdminRepairsQuery, AdminRepairsResult } from "@/types/admin-repairs";
 
@@ -15,10 +15,11 @@ const FINISHED_HISTORY_STATUS_IDS = [5, 6, 7, 10] as const;
 function normalizeAdminRepairsQuery(input: string | AdminRepairsQuery = ""): Required<AdminRepairsQuery> {
     const params = typeof input === "string" ? { query: input } : input;
     const pageSize = Math.min(Math.max(Number(params.pageSize) || DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
-    const date = resolveAdminRepairDateFilter(params.date);
+    const query = params.query?.trim() || "";
+    const date = resolveAdminRepairDateFilterForSearch(params.date, query);
 
     return {
-        query: params.query?.trim() || "",
+        query,
         branchId: params.branchId || "ALL",
         warrantyOnly: params.warrantyOnly ?? false,
         technician: params.technician?.trim() || "",

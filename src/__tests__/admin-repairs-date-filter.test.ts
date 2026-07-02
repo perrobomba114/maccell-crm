@@ -55,6 +55,7 @@ test("detects default admin repair date filters without forcing URL rewrites", (
 
 test("uses a global admin repairs date filter while searching without an explicit date", () => {
     assert.equal(resolveAdminRepairDateFilterForSearch(undefined, "s24", referenceDate), "");
+    assert.equal(resolveAdminRepairDateFilterForSearch("", "s22", referenceDate), "");
     assert.equal(resolveAdminRepairDateSelectionForSearch(null, "MAC2-00001457", referenceDate), "");
 });
 

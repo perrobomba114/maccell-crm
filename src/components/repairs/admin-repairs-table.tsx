@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { deleteRepairAction, getRepairByIdAction } from "@/lib/actions/repairs";
 import { checkLatestRepairUpdate } from "@/actions/repair-check-actions";
@@ -37,41 +37,49 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
     const [isPending, startTransition] = useTransition();
 
     const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
-    const deferredSearchTerm = useDeferredValue(localSearchTerm);
     const pendingSearchTermRef = useRef<string | null>(null);
 
     const updateParams = useCallback((updates: Record<string, string | null>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value === null || value === "ALL" || value === "") {
+                params.delete(key);
+            } else {
+                params.set(key, value);
+            }
+        });
+        if (!updates.page) params.delete("page");
+
+        const queryString = params.toString();
+        if (queryString === searchParams.toString()) return;
+
         startTransition(() => {
-            const params = new URLSearchParams(searchParams.toString());
-            Object.entries(updates).forEach(([key, value]) => {
-                if (value === null || value === "ALL" || value === "") {
-                    params.delete(key);
-                } else {
-                    params.set(key, value);
-                }
-            });
-            if (!updates.page) params.delete("page");
-            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+            router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
         });
     }, [searchParams, pathname, router]);
 
     useEffect(() => {
         const normalizedSearchTerm = searchTerm.trim();
-        if (pendingSearchTermRef.current !== null) {
-            if (pendingSearchTermRef.current !== normalizedSearchTerm) return;
+        if (pendingSearchTermRef.current === normalizedSearchTerm) {
             pendingSearchTermRef.current = null;
+            return;
         }
 
+        pendingSearchTermRef.current = null;
         setLocalSearchTerm(searchTerm);
     }, [searchTerm]);
 
     useEffect(() => {
-        const nextSearchTerm = deferredSearchTerm.trim();
+        const nextSearchTerm = localSearchTerm.trim();
         if (nextSearchTerm !== searchTerm.trim()) {
-            pendingSearchTermRef.current = nextSearchTerm;
-            updateParams({ q: nextSearchTerm || null });
+            const timer = window.setTimeout(() => {
+                pendingSearchTermRef.current = nextSearchTerm;
+                updateParams({ q: nextSearchTerm || null });
+            }, 350);
+
+            return () => window.clearTimeout(timer);
         }
-    }, [deferredSearchTerm, searchTerm, updateParams]);
+    }, [localSearchTerm, searchTerm, updateParams]);
 
     const totalPages = Math.ceil(repairsData.total / repairsData.pageSize);
     const startIndex = (currentPage - 1) * repairsData.pageSize;
