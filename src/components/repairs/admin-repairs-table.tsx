@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { deleteRepairAction, getRepairByIdAction } from "@/lib/actions/repairs";
 import { checkLatestRepairUpdate } from "@/actions/repair-check-actions";
@@ -37,6 +37,8 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
     const [isPending, startTransition] = useTransition();
 
     const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
+    const deferredSearchTerm = useDeferredValue(localSearchTerm);
+    const pendingSearchTermRef = useRef<string | null>(null);
 
     const updateParams = useCallback((updates: Record<string, string | null>) => {
         startTransition(() => {
@@ -54,17 +56,22 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
     }, [searchParams, pathname, router]);
 
     useEffect(() => {
+        const normalizedSearchTerm = searchTerm.trim();
+        if (pendingSearchTermRef.current !== null) {
+            if (pendingSearchTermRef.current !== normalizedSearchTerm) return;
+            pendingSearchTermRef.current = null;
+        }
+
         setLocalSearchTerm(searchTerm);
     }, [searchTerm]);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (localSearchTerm !== searchTerm) {
-                updateParams({ q: localSearchTerm });
-            }
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [localSearchTerm, searchTerm, updateParams]);
+        const nextSearchTerm = deferredSearchTerm.trim();
+        if (nextSearchTerm !== searchTerm.trim()) {
+            pendingSearchTermRef.current = nextSearchTerm;
+            updateParams({ q: nextSearchTerm || null });
+        }
+    }, [deferredSearchTerm, searchTerm, updateParams]);
 
     const totalPages = Math.ceil(repairsData.total / repairsData.pageSize);
     const startIndex = (currentPage - 1) * repairsData.pageSize;

@@ -8,6 +8,21 @@ export type RepairDateRange = {
     end: Date;
 };
 
+const REPAIR_DATE_FILTER_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidRepairDateString(dateString: string): boolean {
+    if (!REPAIR_DATE_FILTER_PATTERN.test(dateString)) return false;
+
+    const [year, month, day] = dateString.split("-").map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+
+    return (
+        parsed.getUTCFullYear() === year &&
+        parsed.getUTCMonth() === month - 1 &&
+        parsed.getUTCDate() === day
+    );
+}
+
 export function normalizeRepairDateFilter(date: RepairDateFilterInput): string {
     if (!date) return "";
 
@@ -21,7 +36,8 @@ export function normalizeRepairDateFilter(date: RepairDateFilterInput): string {
     if (trimmed.toUpperCase() === "MONTH") return "MONTH";
     if (trimmed.toUpperCase() === "HISTORY") return "HISTORY";
 
-    return trimmed.slice(0, 10);
+    const datePart = trimmed.slice(0, 10);
+    return isValidRepairDateString(datePart) ? datePart : "";
 }
 
 export function getRepairDateFilterRange(

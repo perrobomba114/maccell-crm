@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import { getTodayRepairDateFilter, HISTORY_REPAIR_DATE_FILTER, resolveAdminRepairDateSelection } from "@/lib/admin-repairs-date-filter";
-import { Search, Building2, ShieldCheck, CheckCircle2, ShieldAlert, Calendar, X, Filter, Smartphone } from "lucide-react";
+import { getTodayRepairDateFilter, resolveAdminRepairDateSelection } from "@/lib/admin-repairs-date-filter";
+import { Search, Building2, ShieldCheck, ShieldAlert, X, Filter, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -35,12 +33,10 @@ export function AdminRepairsFilters({
     const todayStr = getTodayRepairDateFilter();
     const rawDate = searchParams.get('date');
     const activeDate = resolveAdminRepairDateSelection(rawDate);
-
-    useEffect(() => {
-        if (!rawDate || rawDate.toUpperCase() === HISTORY_REPAIR_DATE_FILTER) {
-            updateParams({ date: todayStr });
-        }
-    }, [rawDate, todayStr, updateParams]);
+    const hasActiveFilters = activeDate !== todayStr
+        || Boolean(searchParams.get('techId'))
+        || selectedBranchId !== "ALL"
+        || showOnlyWarranty;
 
     return (
         <div className="bg-background border rounded-xl p-6 shadow-sm space-y-6">
@@ -159,11 +155,11 @@ export function AdminRepairsFilters({
                             Solo Garantías
                         </Button>
 
-                        {(searchParams.get('date') || searchParams.get('techId') || (searchParams.get('branch') && searchParams.get('branch') !== "ALL") || showOnlyWarranty) && (
+                        {hasActiveFilters && (
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => updateParams({ date: null, techId: null, tech: null, warranty: null, branch: "ALL" })}
+                                onClick={() => updateParams({ date: todayStr, techId: null, tech: null, warranty: null, branch: "ALL" })}
                                 className="h-10 text-red-500 hover:text-red-600 hover:bg-red-50 font-bold justify-start gap-2"
                             >
                                 <X className="h-4 w-4" />

@@ -9,6 +9,12 @@ test("treats an empty repair date filter as all history", () => {
     assert.equal(getRepairDateFilterRange(null), null);
 });
 
+test("rejects invalid repair date filters before building ranges", () => {
+    assert.equal(normalizeRepairDateFilter("2026-99-99"), "");
+    assert.equal(normalizeRepairDateFilter("not-a-date"), "");
+    assert.equal(getRepairDateFilterRange("not-a-date"), null);
+});
+
 test("builds an Argentina day range for repair date filters", () => {
     const range = getRepairDateFilterRange("2026-07-02");
 

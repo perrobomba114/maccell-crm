@@ -58,9 +58,6 @@ export default async function AdminRepairsPage(
 
             {/* Performance Cards */}
             <TechnicianStatsCards 
-                query={query} 
-                branchId={branchId} 
-                warrantyOnly={warrantyOnly} 
                 selectedDate={selectedDate}
                 initialData={initialStats} 
             />

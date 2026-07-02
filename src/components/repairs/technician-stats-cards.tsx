@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { format, addDays } from "date-fns";
+import { useMemo, useState, useTransition } from "react";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,73 +9,38 @@ import { Calendar as CalendarIcon, Clock, Trophy, Wrench, ChevronLeft, ChevronRi
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { getTechnicianPerformance, TechnicianPerformance } from "@/actions/repair-actions-extra";
+import type { TechnicianPerformance } from "@/actions/repair-actions-extra";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
+    MONTH_REPAIR_DATE_FILTER,
+    formatAdminRepairCalendarDate,
     getTodayRepairDateFilter,
-    resolveAdminRepairDateFilter,
+    parseAdminRepairCalendarDate,
     resolveAdminRepairDateSelection,
+    shiftAdminRepairDateFilter,
 } from "@/lib/admin-repairs-date-filter";
 
 type TechnicianStatsCardsProps = {
-    query: string;
-    branchId: string;
     selectedDate?: string;
-    warrantyOnly: boolean;
     initialData?: TechnicianPerformance[];
 };
 
-export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOnly, initialData }: TechnicianStatsCardsProps) {
+export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianStatsCardsProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const rawDateFilter = searchParams.get("date") ?? selectedDate ?? null;
     const activeDateFilter = resolveAdminRepairDateSelection(rawDateFilter);
-    const statsDateFilter = resolveAdminRepairDateFilter(rawDateFilter);
-    const isMonthFilter = activeDateFilter === "MONTH";
-
-    const parseSelectedDate = (value?: string) => {
-        if (!value || value === "MONTH") return undefined;
-        const parsed = new Date(value);
-        return Number.isNaN(parsed.getTime()) ? undefined : parsed;
-    };
-
-    const [date, setDate] = useState<Date | undefined>(() => parseSelectedDate(selectedDate));
-    const [stats, setStats] = useState<TechnicianPerformance[]>(initialData || []);
-    const [loading, setLoading] = useState(!initialData);
+    const isMonthFilter = activeDateFilter === MONTH_REPAIR_DATE_FILTER;
+    const selectedCalendarDate = parseAdminRepairCalendarDate(activeDateFilter);
+    const stats = useMemo(
+        () => [...(initialData ?? [])].sort((a, b) => b.seenCount - a.seenCount),
+        [initialData],
+    );
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-
-    useEffect(() => {
-        const parsedFromProp = parseSelectedDate(activeDateFilter);
-        if (parsedFromProp) {
-            setDate(parsedFromProp);
-            return;
-        }
-
-        setDate(undefined);
-    }, [activeDateFilter]);
-
-    useEffect(() => {
-        let isMounted = true;
-
-        setLoading(true);
-        getTechnicianPerformance({ date: statsDateFilter || null, query, branchId, warrantyOnly })
-            .then((res) => {
-                if (!isMounted) return;
-                if (res.success && res.data) {
-                    const sorted = [...res.data].sort((a, b) => b.seenCount - a.seenCount);
-                    setStats(sorted);
-                }
-            })
-            .finally(() => {
-                if (isMounted) setLoading(false);
-            });
-
-        return () => {
-            isMounted = false;
-        };
-    }, [statsDateFilter, query, branchId, warrantyOnly]);
+    const [isPending, startTransition] = useTransition();
+    const isInitialLoading = !initialData;
 
     const getCardStyles = (index: number) => {
         if (index === 0) return "bg-purple-600 text-white border-none shadow-xl transform hover:scale-105 transition-all duration-300 cursor-pointer hover:ring-4 hover:ring-purple-300/50";
@@ -83,50 +48,48 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
         return "bg-orange-500 text-white border-none shadow-md cursor-pointer transition-all duration-300 hover:scale-105 hover:ring-4 hover:ring-orange-300/50";
     };
 
-    const handleTechClick = (tech: TechnicianPerformance) => {
+    const replaceParams = (updates: Record<string, string | null>) => {
         const params = new URLSearchParams(searchParams.toString());
-        if (params.get("techId") === tech.id) {
-            params.delete("techId");
-            params.delete("tech"); // Toggle off
-        } else {
-            params.set("techId", tech.id);
-            params.set("tech", tech.name);
-        }
-        params.delete("page"); // Reset pagination
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value === null || value === "") {
+                params.delete(key);
+            } else {
+                params.set(key, value);
+            }
+        });
+        if (!updates.page) params.delete("page");
+
+        startTransition(() => {
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        });
     };
 
-    const applyDateParams = (nextDate: Date | null) => {
-        const params = new URLSearchParams(searchParams.toString());
-        if (nextDate) {
-            params.set("date", format(nextDate, "yyyy-MM-dd"));
-        } else {
-            params.set("date", getTodayRepairDateFilter());
-        }
-        params.delete("page");
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    const handleTechClick = (tech: TechnicianPerformance) => {
+        const isActive = searchParams.get("techId") === tech.id;
+        replaceParams({
+            techId: isActive ? null : tech.id,
+            tech: isActive ? null : tech.name,
+        });
     };
 
     const handleDateChange = (d: Date | undefined) => {
         setIsCalendarOpen(false);
-        if (d) {
-            setDate(d);
-            applyDateParams(d);
-            return;
-        }
-        const today = new Date(`${getTodayRepairDateFilter()}T00:00:00`);
-        setDate(today);
-        applyDateParams(today);
+        replaceParams({
+            date: d ? formatAdminRepairCalendarDate(d) : getTodayRepairDateFilter(),
+        });
     };
 
     const handleDateShift = (days: number) => {
-        const anchor = date || new Date();
-        const target = addDays(anchor, days);
-        setDate(target);
-        applyDateParams(target);
+        replaceParams({
+            date: shiftAdminRepairDateFilter(activeDateFilter, days),
+        });
     };
 
-    const hasConcreteDateFilter = Boolean(activeDateFilter) && !isMonthFilter;
+    const displayDateLabel = isMonthFilter
+        ? "Este Mes"
+        : selectedCalendarDate
+            ? format(selectedCalendarDate, "PPP", { locale: es })
+            : getTodayRepairDateFilter();
 
     return (
         <div className="space-y-6">
@@ -138,6 +101,7 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
                             variant={"outline"}
                             size="icon"
                             onClick={() => handleDateShift(-1)}
+                            disabled={isPending}
                             className="h-8 w-8"
                             title="Día anterior"
                         >
@@ -147,6 +111,7 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
                             variant={"outline"}
                             size="icon"
                             onClick={() => handleDateShift(1)}
+                            disabled={isPending}
                             className="h-8 w-8"
                             title="Día siguiente"
                         >
@@ -159,33 +124,37 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
                         <Button
                             variant={"outline"}
                             size="sm"
+                            disabled={isPending}
                             className={cn(
                                 "w-[240px] justify-start text-left font-normal bg-background hover:bg-background/90",
-                                !date && "text-muted-foreground"
+                                !selectedCalendarDate && "text-muted-foreground"
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {isMonthFilter
-                                ? "Este Mes"
-                                : hasConcreteDateFilter && date
-                                    ? format(date, "PPP", { locale: es })
-                                    : getTodayRepairDateFilter()
-                            }
+                            {displayDateLabel}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                             mode="single"
-                            selected={date}
+                            selected={selectedCalendarDate}
                             onSelect={handleDateChange}
                             initialFocus
                         />
                     </PopoverContent>
                 </Popover>
+                {isPending && (
+                    <span className="text-xs font-semibold text-muted-foreground px-2">
+                        Actualizando...
+                    </span>
+                )}
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
-                {loading ? (
+            <div
+                className={cn("grid gap-6 md:grid-cols-3 transition-opacity", isPending && "opacity-60")}
+                aria-busy={isPending}
+            >
+                {isInitialLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
                         <Card key={i} className="bg-muted/50 border-none shadow-sm">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -208,8 +177,15 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
                         return (
                             <Card
                                 key={tech.id}
-                                onClick={() => handleTechClick(tech)}
-                                className={cn("relative overflow-hidden", getCardStyles(index), isActive && "ring-4 ring-offset-2 ring-foreground/50 scale-105")}
+                                onClick={() => {
+                                    if (!isPending) handleTechClick(tech);
+                                }}
+                                className={cn(
+                                    "relative overflow-hidden",
+                                    getCardStyles(index),
+                                    isActive && "ring-4 ring-offset-2 ring-foreground/50 scale-105",
+                                    isPending && "pointer-events-none",
+                                )}
                             >
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4 px-4">
                                     <CardTitle className="text-lg font-bold flex items-center gap-1.5 leading-none">
