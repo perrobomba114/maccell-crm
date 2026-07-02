@@ -1,6 +1,6 @@
 "use client";
 
-import { getTodayRepairDateFilter, resolveAdminRepairDateSelectionForSearch } from "@/lib/admin-repairs-date-filter";
+import { getTodayRepairDateFilter, resolveAdminRepairDateSelection } from "@/lib/admin-repairs-date-filter";
 import { Search, Building2, ShieldCheck, ShieldAlert, X, Filter, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,9 @@ export function AdminRepairsFilters({
     const todayStr = getTodayRepairDateFilter();
     const rawDate = searchParams.get('date');
     const searchTerm = localSearchTerm.trim();
-    const activeDate = resolveAdminRepairDateSelectionForSearch(rawDate, searchTerm);
-    const isGlobalSearch = searchTerm.length > 0 && activeDate === "";
-    const hasActiveFilters = isGlobalSearch
+    const activeDate = resolveAdminRepairDateSelection(rawDate);
+    const isSearchWithoutExplicitDate = searchTerm.length > 0 && !rawDate;
+    const hasActiveFilters = searchTerm.length > 0
         || activeDate !== todayStr
         || Boolean(searchParams.get('techId'))
         || selectedBranchId !== "ALL"
@@ -53,9 +53,9 @@ export function AdminRepairsFilters({
                         onChange={(e) => setLocalSearchTerm(e.target.value)}
                         className="pl-10 h-11 bg-muted/30 border-muted-foreground/20 focus:bg-background transition-all"
                     />
-                    {isGlobalSearch && (
+                    {isSearchWithoutExplicitDate && (
                         <Badge variant="secondary" className="mt-2 w-fit border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300">
-                            Búsqueda global
+                            Busca en todas las fechas
                         </Badge>
                     )}
                 </div>

@@ -11,8 +11,9 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Metadata } from "next";
 import {
+    resolveAdminRepairDateFilter,
     resolveAdminRepairDateFilterForSearch,
-    resolveAdminRepairDateSelectionForSearch,
+    resolveAdminRepairDateSelection,
 } from "@/lib/admin-repairs-date-filter";
 
 export const metadata: Metadata = {
@@ -31,8 +32,9 @@ export default async function AdminRepairsPage(
     const technician = typeof searchParams?.tech === "string" ? searchParams.tech : "";
     const technicianId = typeof searchParams?.techId === "string" ? searchParams.techId : "";
     const rawDate = typeof searchParams?.date === "string" ? searchParams.date : undefined;
-    const date = resolveAdminRepairDateFilterForSearch(rawDate, query);
-    const selectedDate = resolveAdminRepairDateSelectionForSearch(rawDate, query);
+    const repairsDate = resolveAdminRepairDateFilterForSearch(rawDate, query);
+    const statsDate = resolveAdminRepairDateFilter(rawDate);
+    const selectedDate = resolveAdminRepairDateSelection(rawDate);
     const page = typeof searchParams?.page === "string" ? Number(searchParams.page) : 1;
     const warrantyOnly = searchParams?.warranty === "1";
 
@@ -40,9 +42,9 @@ export default async function AdminRepairsPage(
     if (!user || user.role !== "ADMIN") redirect("/");
 
     const [repairsData, branches, statsRes] = await Promise.all([
-        getAllRepairsForAdminAction({ query, branchId, technician, technicianId, date, page, warrantyOnly }),
+        getAllRepairsForAdminAction({ query, branchId, technician, technicianId, date: repairsDate, page, warrantyOnly }),
         getAllBranches(),
-        getTechnicianPerformance({ query, branchId, date, warrantyOnly })
+        getTechnicianPerformance({ branchId, date: statsDate, warrantyOnly })
     ]);
 
     const initialStats = statsRes.success && statsRes.data ? [...statsRes.data].sort((a, b) => b.seenCount - a.seenCount) : [];

@@ -17,7 +17,7 @@ import {
     formatAdminRepairCalendarDate,
     getTodayRepairDateFilter,
     parseAdminRepairCalendarDate,
-    resolveAdminRepairDateSelectionForSearch,
+    resolveAdminRepairDateSelection,
     shiftAdminRepairDateFilter,
 } from "@/lib/admin-repairs-date-filter";
 
@@ -30,10 +30,8 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
-    const searchTerm = searchParams.get("q") ?? "";
     const rawDateFilter = searchParams.get("date") ?? selectedDate ?? null;
-    const activeDateFilter = resolveAdminRepairDateSelectionForSearch(rawDateFilter, searchTerm);
-    const isGlobalSearch = searchTerm.trim().length > 0 && activeDateFilter === "";
+    const activeDateFilter = resolveAdminRepairDateSelection(rawDateFilter);
     const isMonthFilter = activeDateFilter === MONTH_REPAIR_DATE_FILTER;
     const selectedCalendarDate = parseAdminRepairCalendarDate(activeDateFilter);
     const stats = useMemo(
@@ -89,9 +87,7 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
 
     const displayDateLabel = isMonthFilter
         ? "Este Mes"
-        : isGlobalSearch
-            ? "Búsqueda global"
-            : selectedCalendarDate
+        : selectedCalendarDate
             ? format(selectedCalendarDate, "PPP", { locale: es })
             : getTodayRepairDateFilter();
 
@@ -99,7 +95,7 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
         <div className="space-y-6">
             <div className="flex items-center gap-2 bg-muted/30 p-2 rounded-lg w-fit">
                 <span className="text-sm font-medium text-muted-foreground pl-2">Filtrar rendimiento por fecha:</span>
-                {!isMonthFilter && !isGlobalSearch && (
+                {!isMonthFilter && (
                     <>
                         <Button
                             variant={"outline"}
@@ -131,8 +127,7 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
                             disabled={isPending}
                             className={cn(
                                 "w-[240px] justify-start text-left font-normal bg-background hover:bg-background/90",
-                                isGlobalSearch && "border-blue-500/40 text-blue-600 dark:text-blue-300",
-                                !selectedCalendarDate && !isGlobalSearch && "text-muted-foreground"
+                                !selectedCalendarDate && "text-muted-foreground"
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />

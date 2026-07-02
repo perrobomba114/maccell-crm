@@ -58,6 +58,11 @@ test("uses a global admin repairs date filter while searching without an explici
     assert.equal(resolveAdminRepairDateSelectionForSearch(null, "MAC2-00001457", referenceDate), "");
 });
 
+test("keeps the visible admin repairs date selection stable while searching globally", () => {
+    assert.equal(resolveAdminRepairDateFilterForSearch(undefined, "s24", referenceDate), "");
+    assert.equal(resolveAdminRepairDateSelection(undefined, referenceDate), "2026-07-02");
+});
+
 test("preserves explicit admin repairs date filters while searching", () => {
     assert.equal(resolveAdminRepairDateFilterForSearch("2026-07-02", "s24", referenceDate), "2026-07-02");
     assert.equal(resolveAdminRepairDateFilterForSearch("MONTH", "s24", referenceDate), "MONTH");
