@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Eye, Loader2, Printer, Droplets, ShieldCheck, Phone, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RepairImagesActionButton } from "./repair-images-action-button";
 import { type RepairData, STATUS_COLOR_MAP, calcDuration, durationColorClass } from "./repair-history-types";
 
 interface RepairHistoryCardProps {
@@ -17,9 +18,10 @@ interface RepairHistoryCardProps {
     loadingId: string | null;
     onPrint: (repair: RepairData) => void;
     onViewDetails: (id: string) => void;
+    onViewImages: (repair: RepairData) => void;
 }
 
-export function RepairHistoryCard({ repair, isPending, loadingId, onPrint, onViewDetails }: RepairHistoryCardProps) {
+export function RepairHistoryCard({ repair, isPending, loadingId, onPrint, onViewDetails, onViewImages }: RepairHistoryCardProps) {
     const colorClass = STATUS_COLOR_MAP[repair.status.color ?? ""] || "bg-slate-600 text-white border-slate-400";
     const duration = calcDuration(repair.startedAt, repair.finishedAt);
     const dColor = durationColorClass(duration);
@@ -57,11 +59,18 @@ export function RepairHistoryCard({ repair, isPending, loadingId, onPrint, onVie
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" onClick={() => onPrint(repair)} className="h-9 w-9 text-muted-foreground hover:text-foreground" title="Imprimir">
-                        <Printer className="h-4 w-4" />
-                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => onViewDetails(repair.id)} disabled={isLoading} className="h-9 w-9 text-muted-foreground hover:text-blue-500" title="Ver detalles">
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-blue-500" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                    <RepairImagesActionButton
+                        images={repair.deviceImages}
+                        ticketNumber={repair.ticketNumber}
+                        layout="mobile"
+                        onClick={() => onViewImages(repair)}
+                        className="size-9"
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => onPrint(repair)} className="h-9 w-9 text-muted-foreground hover:text-foreground" title="Imprimir">
+                        <Printer className="h-4 w-4" />
                     </Button>
                 </div>
             </div>
@@ -89,6 +98,15 @@ export function RepairHistoryCard({ repair, isPending, loadingId, onPrint, onVie
                 </span>
                 <span className={cn("inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[11px] font-black italic tabular-nums", dColor)}>
                     <Clock className="h-3 w-3" />{duration}
+                </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    {repair.assignedTo ? repair.assignedTo.name?.split(" ")[0] : "Sin técnico"}
+                </span>
+                <span className="text-sm font-black tabular-nums">
+                    {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice!.toLocaleString()}` : "-"}
                 </span>
             </div>
         </li>

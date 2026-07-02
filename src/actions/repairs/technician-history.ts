@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { Prisma } from "@prisma/client";
 
 export async function getTechnicianHistory(userId: string, page: number = 1, pageSize: number = 25, query: string = "") {
     const caller = await getCurrentUser();
@@ -14,7 +15,7 @@ export async function getTechnicianHistory(userId: string, page: number = 1, pag
         // Statuses: 5 (Finalizado OK), 6 (Irreparable), 7 (Diagnosticado), 10 (Custom/Other)
         const targetStatuses = [5, 6, 7, 10];
 
-        const whereClause: any = {
+        const whereClause: Prisma.RepairWhereInput = {
             assignedUserId: userId,
             statusId: { in: targetStatuses }
         };
@@ -37,27 +38,79 @@ export async function getTechnicianHistory(userId: string, page: number = 1, pag
         // 2. Get Data
         const repairs = await db.repair.findMany({
             where: whereClause,
-            include: {
-                customer: true,
-                status: true,
+            select: {
+                id: true,
+                ticketNumber: true,
+                deviceBrand: true,
+                deviceModel: true,
+                problemDescription: true,
+                deviceImages: true,
+                estimatedPrice: true,
+                isWet: true,
+                isWarranty: true,
+                startedAt: true,
+                finishedAt: true,
+                updatedAt: true,
+                promisedAt: true,
+                statusId: true,
+                customer: {
+                    select: {
+                        name: true,
+                        phone: true,
+                    },
+                },
+                status: {
+                    select: {
+                        id: true,
+                        name: true,
+                        color: true,
+                    },
+                },
+                assignedTo: {
+                    select: {
+                        name: true,
+                    },
+                },
+                branch: {
+                    select: {
+                        name: true,
+                        address: true,
+                        phone: true,
+                        imageUrl: true,
+                    },
+                },
                 statusHistory: {
-                    orderBy: { createdAt: 'desc' },
-                    include: { fromStatus: true, toStatus: true }
-                }
+                    orderBy: { createdAt: "desc" },
+                    take: 1,
+                    select: {
+                        fromStatus: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
             },
             orderBy: {
-                updatedAt: 'desc'
+                updatedAt: "desc"
             },
             take: pageSize,
             skip: skip
         });
 
         const totalPages = Math.ceil(totalCount / pageSize);
+        const serializedRepairs = repairs.map((repair) => ({
+            ...repair,
+            startedAt: repair.startedAt?.toISOString() ?? null,
+            finishedAt: repair.finishedAt?.toISOString() ?? null,
+            updatedAt: repair.updatedAt.toISOString(),
+            promisedAt: repair.promisedAt.toISOString(),
+        }));
 
         return {
             success: true,
             data: {
-                repairs,
+                repairs: serializedRepairs,
                 totalCount,
                 totalPages,
                 currentPage: page

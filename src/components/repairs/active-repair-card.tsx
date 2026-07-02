@@ -10,6 +10,7 @@ import { es } from "date-fns/locale";
 import { Eye, Camera, Printer, Share2, Clock, CalendarCheck, Banknote, User, UserX, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RepairTimer } from "./repair-timer";
+import { RepairImagesActionButton, getRepairImageCount } from "./repair-images-action-button";
 import { TechnicianActionButton } from "./technician-action-button";
 import { type ActiveRepair, ACTIVE_STATUS_COLOR_MAP, positionBadgeClass, calcRepairDuration, isOverdue } from "./active-repairs-types";
 
@@ -22,6 +23,7 @@ interface ActiveRepairCardProps {
     currentUserId: string;
     showIssueSummary: boolean;
     onViewDetails: (r: ActiveRepair) => void;
+    onViewImages: (r: ActiveRepair) => void;
     onTakeover: (r: ActiveRepair) => void;
     onImageUpload: (r: ActiveRepair) => void;
     onAssignment: (r: ActiveRepair) => void;
@@ -32,13 +34,14 @@ interface ActiveRepairCardProps {
 export function ActiveRepairCard({
     repair, position, enableTakeover, enableManagement, enableImageUpload,
     currentUserId, showIssueSummary,
-    onViewDetails, onTakeover, onImageUpload, onAssignment, onTransfer, onPrint,
+    onViewDetails, onViewImages, onTakeover, onImageUpload, onAssignment, onTransfer, onPrint,
 }: ActiveRepairCardProps) {
     const colorClass = ACTIVE_STATUS_COLOR_MAP[repair.status.color ?? ""] || "bg-gray-100 text-gray-800";
     const duration = calcRepairDuration(repair.startedAt, repair.finishedAt);
     const hasActions = enableTakeover || enableManagement || enableImageUpload;
     const overdue = isOverdue(repair.promisedAt);
     const unassigned = !repair.assignedTo;
+    const imageCount = getRepairImageCount(repair.deviceImages);
 
     return (
         <li className={cn(
@@ -88,12 +91,19 @@ export function ActiveRepairCard({
                     <Button size="icon" variant="ghost" onClick={() => onViewDetails(repair)} className="h-8 w-8 text-muted-foreground hover:text-blue-500" title="Ver detalles">
                         <Eye className="h-4 w-4" />
                     </Button>
+                    <RepairImagesActionButton
+                        images={repair.deviceImages}
+                        ticketNumber={repair.ticketNumber}
+                        layout="mobile"
+                        onClick={() => onViewImages(repair)}
+                        className="size-9"
+                    />
                     {!enableManagement && (
                         <Button size="icon" variant="ghost" onClick={() => onPrint(repair)} className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Imprimir">
                             <Printer className="h-4 w-4" />
                         </Button>
                     )}
-                    {enableImageUpload && (!repair.deviceImages || repair.deviceImages.length < 3) && (
+                    {enableImageUpload && imageCount < 3 && (
                         <Button size="icon" variant="ghost" onClick={() => onImageUpload(repair)} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Fotos">
                             <Camera className="h-4 w-4" />
                         </Button>

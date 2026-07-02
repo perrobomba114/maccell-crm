@@ -12,14 +12,16 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useEffect, useState, useTransition, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RepairDetailsDialog } from "@/components/repairs/repair-details-dialog";
+import { RepairImagesDialog } from "@/components/repairs/repair-images-dialog";
 import { getRepairByIdAction } from "@/lib/actions/repairs";
 import { toast } from "sonner";
-import { printRepairTicket, printWarrantyTicket, printWetReport } from "@/lib/print-utils";
 import { cn } from "@/lib/utils";
 import { RepairDetails } from "./repair-details-dialog";
 import { type RepairData } from "./repair-history-types";
 import { RepairHistoryCard } from "./repair-history-card";
 import { RepairHistoryRow } from "./repair-history-row";
+import { getRepairImageCount } from "./repair-images-action-button";
+import { printRepairTicketSequence } from "@/lib/repair-print-sequence";
 
 export interface HistoryRepairsTableProps {
     repairs: RepairData[];
@@ -36,19 +38,13 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
     const isMounted = useRef(false);
 
     const [selectedRepair, setSelectedRepair] = useState<RepairDetails | null>(null);
+    const [imageRepair, setImageRepair] = useState<RepairData | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [loadingId, setLoadingId] = useState<string | null>(null);
 
     const handlePrint = (repair: RepairData) => {
-        printRepairTicket(repair as unknown as NonNullable<Parameters<typeof printRepairTicket>[0]>);
-        if (repair.statusId === 10 || repair.status?.id === 10 || repair.status?.name === "Entregado") {
-            const stub = { ticketNumber: repair.ticketNumber, deviceBrand: repair.deviceBrand, deviceModel: repair.deviceModel, customer: { name: repair.customer.name }, isWet: repair.isWet, branch: repair.branch };
-            setTimeout(() => {
-                printWarrantyTicket(stub as unknown as NonNullable<Parameters<typeof printWarrantyTicket>[0]>);
-                if (repair.isWet) setTimeout(() => printWetReport(stub as unknown as NonNullable<Parameters<typeof printWetReport>[0]>), 1200);
-            }, 1000);
-        }
+        printRepairTicketSequence(repair);
     };
 
     const handleViewDetails = (repairId: string) => {
@@ -66,7 +62,11 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
     useEffect(() => {
         if (!isMounted.current) { isMounted.current = true; return; }
         const params = new URLSearchParams(searchParams);
-        debouncedSearch ? params.set("q", debouncedSearch) : params.delete("q");
+        if (debouncedSearch) {
+            params.set("q", debouncedSearch);
+        } else {
+            params.delete("q");
+        }
         params.set("page", "1");
         router.push(`?${params.toString()}`);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,26 +78,55 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
         router.push(`?${params.toString()}`);
     };
 
-    const sharedProps = { isPending, loadingId, onPrint: handlePrint, onViewDetails: handleViewDetails };
+    const summary = repairs.reduce(
+        (acc, repair) => {
+            const statusName = repair.status.name.toLowerCase();
+            if (statusName.includes("entregado")) acc.delivered += 1;
+            if (statusName.includes("finalizado")) acc.finished += 1;
+            if (statusName.includes("irreparable") || statusName.includes("sin solución")) acc.irreparable += 1;
+            if (getRepairImageCount(repair.deviceImages) > 0) acc.withImages += 1;
+            return acc;
+        },
+        { delivered: 0, finished: 0, irreparable: 0, withImages: 0 }
+    );
+
+    const sharedProps = { isPending, loadingId, onPrint: handlePrint, onViewDetails: handleViewDetails, onViewImages: setImageRepair };
 
     return (
         <div className="space-y-0">
-            {/* Search */}
-            <div className="bg-gradient-to-r from-emerald-500/5 via-blue-500/5 to-purple-500/5 p-4 sm:p-5 border-b">
-                <div className="relative flex-1 group max-w-lg">
-                    <Label htmlFor="history-repairs-search" className="sr-only">Buscar en historial</Label>
-                    <div className={cn("pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 transition-opacity duration-300 blur", searchTerm ? "opacity-25" : "opacity-0 group-focus-within:opacity-20")} />
-                    <Search className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground z-20" />
-                    <Input
-                        id="history-repairs-search"
-                        aria-label="Buscar por ticket, cliente, dispositivo"
-                        placeholder="Buscar por ticket, cliente, dispositivo…"
-                        className={cn("h-12 rounded-xl border-2 pl-12 pr-10 text-base font-medium transition-all relative z-10 bg-background", searchTerm ? "border-blue-500 bg-blue-500/5" : "border-border")}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        autoComplete="off"
-                        spellCheck={false}
-                    />
+            {/* Summary + search */}
+            <div className="border-b bg-gradient-to-r from-emerald-500/5 via-blue-500/5 to-purple-500/5 p-4 sm:p-5">
+                <div className="grid gap-3 lg:grid-cols-[minmax(280px,1fr)_auto] lg:items-center">
+                    <div className="relative flex-1 group max-w-2xl">
+                        <Label htmlFor="history-repairs-search" className="sr-only">Buscar en historial</Label>
+                        <div className={cn("pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 transition-opacity duration-300 blur", searchTerm ? "opacity-25" : "opacity-0 group-focus-within:opacity-20")} />
+                        <Search className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground z-20" />
+                        <Input
+                            id="history-repairs-search"
+                            aria-label="Buscar por ticket, cliente, dispositivo"
+                            placeholder="Buscar por ticket, cliente, dispositivo..."
+                            className={cn("h-12 rounded-xl border-2 pl-12 pr-10 text-base font-medium transition-all relative z-10 bg-background", searchTerm ? "border-blue-500 bg-blue-500/5" : "border-border")}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            autoComplete="off"
+                            spellCheck={false}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:min-w-[640px]">
+                        {[
+                            { label: "Vista", value: repairs.length, className: "text-blue-500" },
+                            { label: "OK", value: summary.finished, className: "text-emerald-500" },
+                            { label: "Entregadas", value: summary.delivered, className: "text-slate-300" },
+                            { label: "Irrepares", value: summary.irreparable, className: "text-amber-400" },
+                            { label: "Con imágenes", value: summary.withImages, className: "text-cyan-400" },
+                        ].map((item) => (
+                            <div key={item.label} className="rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-center shadow-sm">
+                                <div className={cn("text-lg font-black leading-none tabular-nums", item.className)}>{item.value}</div>
+                                <div className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">{item.label}</div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -124,7 +153,7 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
                         <Table>
                             <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
                                 <TableRow className="hover:bg-transparent border-none">
-                                    {["Protocolo", "Sincronización", "Ciclo", "Cliente", "Contacto", "Unidad Hardware", "Estado Global", "Acciones"].map((h) => (
+                                    {["Ticket", "Fecha", "Duración", "Cliente", "Dispositivo", "Técnico", "Precio", "Estado", "Acciones"].map((h) => (
                                         <TableHead key={h} className="text-center px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">{h}</TableHead>
                                     ))}
                                 </TableRow>
@@ -155,6 +184,7 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
             )}
 
             <RepairDetailsDialog isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} repair={selectedRepair} />
+            <RepairImagesDialog isOpen={!!imageRepair} onClose={() => setImageRepair(null)} repair={imageRepair} />
         </div>
     );
 }

@@ -14,11 +14,21 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn, getImgUrl, isValidImg } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, ImageOff, Images, Maximize2 } from "lucide-react";
-import type { RepairDetails } from "./repair-details-dialog";
 import { ImagePreviewModal } from "./image-preview-modal";
 
+export type RepairImagesDialogRepair = {
+    id: string;
+    ticketNumber: string;
+    deviceBrand: string;
+    deviceModel: string;
+    deviceImages?: string[] | null;
+    customer: {
+        name: string;
+    };
+};
+
 type RepairImagesDialogProps = {
-    repair: RepairDetails | null;
+    repair: RepairImagesDialogRepair | null;
     isOpen: boolean;
     onClose: () => void;
 };

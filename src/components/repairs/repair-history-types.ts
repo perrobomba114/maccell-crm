@@ -11,9 +11,14 @@ export type RepairData = {
     startedAt: Date | string | null;
     finishedAt: Date | string | null;
     updatedAt: Date | string | null;
+    promisedAt?: Date | string | null;
+    problemDescription?: string | null;
+    deviceImages?: string[] | null;
+    estimatedPrice?: number | null;
     customer: { name: string; phone?: string | null };
     status: { id: number; name: string; color: string | null };
     statusId?: number;
+    assignedTo?: { name?: string | null } | null;
     statusHistory?: Array<{ fromStatus?: { name: string } | null }>;
     branch?: { name?: string | null; address?: string | null; phone?: string | null; imageUrl?: string | null } | null;
 };
@@ -27,7 +32,7 @@ export const STATUS_COLOR_MAP: Record<string, string> = {
     red: "bg-red-600 text-white border-red-400 shadow-[0_0_10px_rgba(220,38,38,0.4)]",
     purple: "bg-purple-600 text-white border-purple-400 shadow-[0_0_10px_rgba(147,51,234,0.4)]",
     orange: "bg-orange-600 text-white border-orange-400 shadow-[0_0_10px_rgba(234,88,12,0.4)]",
-    amber: "bg-amber-600 text-white border-amber-400 shadow-[0_0_10_rgba(217,119,6,0.4)]",
+    amber: "bg-amber-600 text-white border-amber-400 shadow-[0_0_10px_rgba(217,119,6,0.4)]",
     slate: "bg-slate-800 text-white border-slate-600",
 };
 
