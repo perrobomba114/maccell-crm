@@ -3,7 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/actions/auth-actions";
-import { getDailyRange } from "@/lib/date-utils";
+import { getRepairDateFilterRange } from "@/lib/repair-date-filter";
 import type { AdminRepairsQuery, AdminRepairsResult } from "@/types/admin-repairs";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -56,7 +56,7 @@ function buildAdminRepairsWhere(params: Required<AdminRepairsQuery>): Prisma.Rep
 
     // 1. Technician Filter (ID or Name)
     if (params.technicianId) {
-        const { start, end } = getDailyRange(params.date || undefined);
+        const dateRange = getRepairDateFilterRange(params.date);
         
         // Strictly match the "Finalized by this technician" criteria to align with Podio/KPIs
         // This ensures the table count matches the card count.
@@ -66,12 +66,12 @@ function buildAdminRepairsWhere(params: Required<AdminRepairsQuery>): Prisma.Rep
                     userId: params.technicianId,
                     toStatusId: { in: [...FINISHED_HISTORY_STATUS_IDS] },
                     fromStatusId: { notIn: [...FINISHED_HISTORY_STATUS_IDS] },
-                    ...(params.date ? { createdAt: { gte: start, lte: end } } : {}),
+                    ...(dateRange ? { createdAt: { gte: dateRange.start, lte: dateRange.end } } : {}),
                 },
             },
         });
     } else if (params.technician) {
-        const { start, end } = getDailyRange(params.date || undefined);
+        const dateRange = getRepairDateFilterRange(params.date);
         
         andFilters.push({
             statusHistory: {
@@ -79,39 +79,30 @@ function buildAdminRepairsWhere(params: Required<AdminRepairsQuery>): Prisma.Rep
                     user: { name: params.technician },
                     toStatusId: { in: [...FINISHED_HISTORY_STATUS_IDS] },
                     fromStatusId: { notIn: [...FINISHED_HISTORY_STATUS_IDS] },
-                    ...(params.date ? { createdAt: { gte: start, lte: end } } : {}),
+                    ...(dateRange ? { createdAt: { gte: dateRange.start, lte: dateRange.end } } : {}),
                 },
             },
         });
     } else if (params.date) {
         // 2. Global Date Filter
-        let start: Date, end: Date;
-
-        if (params.date === "MONTH") {
-            const now = new Date();
-            start = new Date(now.getFullYear(), now.getMonth(), 1);
-            end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        } else {
-            const range = getDailyRange(params.date);
-            start = range.start;
-            end = range.end;
-        }
-        
-        const finishedOnDate: Prisma.RepairWhereInput = {
-            statusHistory: {
-                some: {
-                    toStatusId: { in: [...FINISHED_HISTORY_STATUS_IDS] },
-                    createdAt: { gte: start, lte: end },
+        const dateRange = getRepairDateFilterRange(params.date);
+        if (dateRange) {
+            const finishedOnDate: Prisma.RepairWhereInput = {
+                statusHistory: {
+                    some: {
+                        toStatusId: { in: [...FINISHED_HISTORY_STATUS_IDS] },
+                        createdAt: { gte: dateRange.start, lte: dateRange.end },
+                    },
                 },
-            },
-        };
+            };
 
-        andFilters.push({
-            OR: [
-                { createdAt: { gte: start, lte: end } },
-                finishedOnDate,
-            ],
-        });
+            andFilters.push({
+                OR: [
+                    { createdAt: { gte: dateRange.start, lte: dateRange.end } },
+                    finishedOnDate,
+                ],
+            });
+        }
     }
 
     if (andFilters.length > 0) {

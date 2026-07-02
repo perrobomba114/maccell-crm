@@ -16,14 +16,14 @@ export function getImgUrl(url: string | null | undefined): string {
     if (trimmedUrl.startsWith("/api/uploads")) return trimmedUrl;
     if (trimmedUrl.startsWith("api/uploads")) return `/${trimmedUrl}`;
 
-    // Ensure it starts with /api/uploads if it's a local path
+    // Public image paths are directly addressable by Next.js from /public.
     if (trimmedUrl.startsWith("/repairs/images") || trimmedUrl.startsWith("/branches") || trimmedUrl.startsWith("/profiles")) {
-        return `/api/uploads${trimmedUrl.startsWith("/") ? "" : "/"}${trimmedUrl}`;
+        return trimmedUrl;
     }
 
     // Handle legacy paths missing leading slash
     if (trimmedUrl.startsWith("repairs/images/") || trimmedUrl.startsWith("branches/") || trimmedUrl.startsWith("profiles/")) {
-        return `/api/uploads/${trimmedUrl}`;
+        return `/${trimmedUrl}`;
     }
 
     // Handle raw filenames that might be missing the folder prefix

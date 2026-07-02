@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Bell, Check, X, Info, AlertCircle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Bell } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
     getNotificationsAction,
     markNotificationReadAction,
@@ -14,9 +12,9 @@ import {
 } from "@/lib/actions/notifications";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import type { Notification } from "@prisma/client";
+import { NotificationBellItem } from "./notification-bell-item";
+import { usePolling } from "@/hooks/use-polling";
 
 interface NotificationBellProps {
     userId: string;
@@ -30,7 +28,7 @@ const NOTIFICATION_SOUND = "/notificacion.mp3";
 
 export function NotificationBell({ userId }: NotificationBellProps) {
     const router = useRouter();
-    const [notifications, setNotifications] = useState<any[]>([]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [previousUnreadCount, setPreviousUnreadCount] = useState(0);
@@ -51,9 +49,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
             try {
                 await audio.play();
-            } catch (error) {
-                console.log("Audio notify blocked. Waiting for interaction.");
-
+            } catch {
                 // Fallback: Play on next click
                 const playOnInteraction = () => {
                     const audioRetry = new Audio(NOTIFICATION_SOUND);
@@ -75,7 +71,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         setPreviousUnreadCount(unreadCount);
     }, [unreadCount]);
 
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         if (!userId) return;
         try {
             const data = await getNotificationsAction(userId);
@@ -87,14 +83,13 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         } catch (error) {
             console.error("Failed to fetch notifications", error);
         }
-    };
-
-    // Initial fetch and polling
-    useEffect(() => {
-        fetchNotifications();
-        const interval = setInterval(fetchNotifications, 4000); // Poll every 4s for near real-time
-        return () => clearInterval(interval);
     }, [userId]);
+
+    useEffect(() => {
+        void fetchNotifications();
+    }, [fetchNotifications]);
+
+    usePolling(fetchNotifications, 4000, Boolean(userId));
 
     const handleMarkAsRead = async (id: string, link?: string | null) => {
         // Optimistically update
@@ -177,96 +172,13 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                     ) : (
                         <div className="divide-y">
                             {notifications.map((notification) => (
-                                <div
+                                <NotificationBellItem
                                     key={notification.id}
-                                    className={cn(
-                                        "p-4 hover:bg-muted/50 transition-colors",
-                                        !notification.isRead && "bg-muted/20"
-                                    )}
-                                >
-                                    <div className="flex gap-3 items-start">
-                                        <div className="mt-1">
-                                            {notification.type === "ACTION_REQUEST" ? (
-                                                <AlertCircle className="h-4 w-4 text-blue-500" />
-                                            ) : notification.type === "REPAIR_ENTRY" ? (
-                                                <AlertCircle className="h-4 w-4 text-amber-500" />
-                                            ) : (
-                                                <Info className="h-4 w-4 text-gray-500" />
-                                            )}
-                                        </div>
-                                        <div className="flex-1 space-y-1">
-                                            <div
-                                                className="cursor-pointer"
-                                                onClick={() => handleMarkAsRead(notification.id, notification.link)}
-                                            >
-                                                {notification.type === "REPAIR_ENTRY" && notification.actionData ? (
-                                                    // Custom Rendering for Repair Entry
-                                                    <div className={cn("space-y-1", !notification.isRead && "font-bold")}>
-                                                        <p className="text-sm font-medium leading-none">
-                                                            {notification.title}
-                                                        </p>
-                                                        <div className="py-1">
-                                                            <p className="text-xs text-muted-foreground">
-                                                                Fecha Prometida: <span className="text-foreground">{notification.actionData.promisedDate}</span>
-                                                            </p>
-                                                            <p className="text-xl font-bold text-primary mt-1">
-                                                                {notification.actionData.promisedTime}
-                                                            </p>
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground" suppressHydrationWarning>
-                                                            {notification.createdAt ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: es }) : ''}
-                                                        </p>
-                                                    </div>
-                                                ) : (
-                                                    // Default Rendering
-                                                    <>
-                                                        <p className={cn("text-sm font-medium leading-none", !notification.isRead && "font-bold")}>
-                                                            {notification.title}
-                                                        </p>
-                                                        <p className="text-sm text-muted-foreground mt-1">
-                                                            {notification.message}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground mt-1" suppressHydrationWarning>
-                                                            {notification.createdAt ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: es }) : ''}
-                                                        </p>
-                                                    </>
-                                                )}
-                                            </div>
-
-                                            {/* ACTION BUTTONS */}
-                                            {notification.type === "ACTION_REQUEST" && notification.status === "PENDING" && (
-                                                <div className="flex gap-2 mt-3">
-                                                    <Button
-                                                        size="sm"
-                                                        className="h-7 bg-green-600 hover:bg-green-700 text-white text-xs"
-                                                        onClick={() => handleResponse(notification.id, "ACCEPTED")}
-                                                        disabled={loading}
-                                                    >
-                                                        <Check className="h-3 w-3 mr-1" /> Aceptar
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                                        onClick={() => handleResponse(notification.id, "REJECTED")}
-                                                        disabled={loading}
-                                                    >
-                                                        <X className="h-3 w-3 mr-1" /> Rechazar
-                                                    </Button>
-                                                </div>
-                                            )}
-
-                                            {/* STATUS BADGE IF PROCESSED */}
-                                            {notification.type === "ACTION_REQUEST" && notification.status !== "PENDING" && notification.status && (
-                                                <div className="mt-2">
-                                                    <Badge variant={notification.status === "ACCEPTED" ? "default" : "destructive"} className="text-[10px] h-5">
-                                                        {notification.status === "ACCEPTED" ? "Aceptado" : "Rechazado"}
-                                                    </Badge>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+                                    notification={notification}
+                                    loading={loading}
+                                    onMarkAsRead={handleMarkAsRead}
+                                    onResponse={handleResponse}
+                                />
                             ))}
                         </div>
                     )}

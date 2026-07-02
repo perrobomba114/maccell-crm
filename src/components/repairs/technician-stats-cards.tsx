@@ -22,6 +22,12 @@ type TechnicianStatsCardsProps = {
 };
 
 export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOnly, initialData }: TechnicianStatsCardsProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const activeDateFilter = searchParams.get("date") || selectedDate || "";
+    const isMonthFilter = activeDateFilter === "MONTH";
+
     const parseSelectedDate = (value?: string) => {
         if (!value || value === "MONTH") return undefined;
         const parsed = new Date(value);
@@ -33,40 +39,36 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
     const [loading, setLoading] = useState(!initialData);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const pathname = usePathname();
-
-    const isMonthFilter = selectedDate === "MONTH" || searchParams.get("date") === "MONTH";
-
     useEffect(() => {
-        const parsedFromProp = parseSelectedDate(selectedDate);
+        const parsedFromProp = parseSelectedDate(activeDateFilter);
         if (parsedFromProp) {
             setDate(parsedFromProp);
             return;
         }
 
-        const dateParam = searchParams.get("date");
-        if (dateParam === "MONTH" || !dateParam) {
-            setDate(undefined);
-            return;
-        }
-        setDate(parseSelectedDate(dateParam));
-    }, [selectedDate, searchParams]);
-
-    const loadStats = async () => {
-        setLoading(true);
-        const res = await getTechnicianPerformance({ date, query, branchId, warrantyOnly });
-        if (res.success && res.data) {
-            const sorted = [...res.data].sort((a, b) => b.seenCount - a.seenCount);
-            setStats(sorted);
-        }
-        setLoading(false);
-    };
+        setDate(undefined);
+    }, [activeDateFilter]);
 
     useEffect(() => {
-        loadStats();
-    }, [date, query, branchId, warrantyOnly]);
+        let isMounted = true;
+
+        setLoading(true);
+        getTechnicianPerformance({ date: activeDateFilter || null, query, branchId, warrantyOnly })
+            .then((res) => {
+                if (!isMounted) return;
+                if (res.success && res.data) {
+                    const sorted = [...res.data].sort((a, b) => b.seenCount - a.seenCount);
+                    setStats(sorted);
+                }
+            })
+            .finally(() => {
+                if (isMounted) setLoading(false);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [activeDateFilter, query, branchId, warrantyOnly]);
 
     const getCardStyles = (index: number) => {
         if (index === 0) return "bg-purple-600 text-white border-none shadow-xl transform hover:scale-105 transition-all duration-300 cursor-pointer hover:ring-4 hover:ring-purple-300/50";
@@ -116,7 +118,7 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
         applyDateParams(target);
     };
 
-    const hasDateFilter = Boolean(searchParams.get("date") || selectedDate);
+    const hasDateFilter = Boolean(activeDateFilter);
 
     return (
         <div className="space-y-6">
@@ -159,7 +161,7 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
                                 ? "Este Mes"
                                 : hasDateFilter && date
                                     ? format(date, "PPP", { locale: es })
-                                    : "Hoy"
+                                    : "Historial"
                             }
                         </Button>
                     </PopoverTrigger>

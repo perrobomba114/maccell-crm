@@ -2,8 +2,7 @@
 
 import { db } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
-import { formatInTimeZone } from "date-fns-tz";
-import { getDailyRange, getArgentinaDate, TIMEZONE } from "@/lib/date-utils";
+import { getRepairDateFilterRange } from "@/lib/repair-date-filter";
 import { getCurrentUser } from "@/actions/auth-actions";
 
 export interface TechnicianPerformance {
@@ -13,25 +12,12 @@ export interface TechnicianPerformance {
     avgTime: string;
 }
 
-// Status "CLAIMED" (tomada): un técnico marca el equipo en una sucursal pero
-// no necesariamente lo revisa — luego se reasigna a otro técnico. No cuenta
-// como trabajo en el ranking de rendimiento.
-const CLAIMED_STATUS_ID = 2;
-
 type TechnicianPerformanceFilters = {
-    date?: Date | string;
+    date?: Date | string | null;
     query?: string;
     branchId?: string;
     warrantyOnly?: boolean;
 };
-
-function normalizePerformanceDate(date: Date | string = getArgentinaDate()) {
-    if (typeof date === "string") {
-        return date.trim().slice(0, 10);
-    }
-
-    return formatInTimeZone(date, TIMEZONE, "yyyy-MM-dd");
-}
 
 function formatAverageTime(totalMinutes: number, count: number) {
     if (count === 0) return "-";
@@ -77,31 +63,22 @@ function buildPerformanceRepairWhere(filters: TechnicianPerformanceFilters): Pri
     return repairWhere;
 }
 
-export async function getTechnicianPerformance(filters: TechnicianPerformanceFilters = { date: getArgentinaDate() }) {
+export async function getTechnicianPerformance(filters: TechnicianPerformanceFilters = {}) {
     try {
         const caller = await getCurrentUser();
         if (!caller || caller.role !== "ADMIN") {
             return { success: false, error: "Unauthorized", data: [] };
         }
 
-        let dateStr = filters.date ? normalizePerformanceDate(filters.date) : "";
-        let start: Date, end: Date;
-
-        if (dateStr === "MONTH") {
-            const now = new Date();
-            start = new Date(now.getFullYear(), now.getMonth(), 1);
-            end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        } else if (dateStr) {
-            const range = getDailyRange(dateStr);
-            start = range.start;
-            end = range.end;
-        } else {
-            // Default to TODAY if no date is provided
-            const range = getDailyRange();
-            start = range.start;
-            end = range.end;
-        }
+        const dateRange = getRepairDateFilterRange(filters.date);
         const repairWhere = buildPerformanceRepairWhere(filters);
+        const historyWhere: Prisma.RepairStatusHistoryWhereInput = {
+            userId: { not: null },
+            toStatusId: { in: [5, 6, 7, 10] }, // Only finalized repairs for ranking
+            fromStatusId: { notIn: [5, 6, 7, 10] }, // Avoid internal transitions
+            ...(dateRange ? { createdAt: { gte: dateRange.start, lte: dateRange.end } } : {}),
+            repair: repairWhere,
+        };
 
         const [techs, historyEntries] = await Promise.all([
             db.user.findMany({
@@ -110,13 +87,7 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
                 orderBy: { name: "asc" },
             }),
             db.repairStatusHistory.findMany({
-                where: {
-                    userId: { not: null },
-                    toStatusId: { in: [5, 6, 7, 10] }, // Only finalized repairs for ranking
-                    fromStatusId: { notIn: [5, 6, 7, 10] }, // Avoid internal transitions
-                    createdAt: { gte: start, lte: end },
-                    repair: repairWhere,
-                },
+                where: historyWhere,
                 select: {
                     repairId: true,
                     userId: true,

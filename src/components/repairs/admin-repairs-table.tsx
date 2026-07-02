@@ -14,6 +14,8 @@ import { AdminRepairsPagination } from "./components/AdminRepairsPagination";
 import { AdminRepairsDeleteDialog } from "./components/AdminRepairsDeleteDialog";
 import type { AdminRepairBranch, AdminRepairsResult } from "@/types/admin-repairs";
 import type { RepairDetails } from "./repair-details-dialog";
+import { shouldPauseAdminRepairsAutoRefresh } from "@/lib/admin-repairs-refresh";
+import { usePolling } from "@/hooks/use-polling";
 
 export function AdminRepairsTable({ repairsData, branches }: { repairsData: AdminRepairsResult, branches: AdminRepairBranch[] }) {
     const searchParams = useSearchParams();
@@ -83,20 +85,25 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
     }), []);
 
     const lastRefreshedRef = useRef<Date>(new Date());
-    useEffect(() => {
-        const intervalId = setInterval(async () => {
-            try {
-                const latestUpdate = await checkLatestRepairUpdate();
-                if (latestUpdate && new Date(latestUpdate) > lastRefreshedRef.current) {
-                    router.refresh();
-                    lastRefreshedRef.current = new Date();
-                }
-            } catch (error) {
-                console.error("Polling error:", error);
+    const shouldPauseRefresh = shouldPauseAdminRepairsAutoRefresh({
+        localSearchTerm,
+        searchTerm,
+        isPending,
+        loadingRepairId,
+        hasOpenDetail: viewRepair !== null,
+    });
+
+    usePolling(async () => {
+        try {
+            const latestUpdate = await checkLatestRepairUpdate();
+            if (latestUpdate && new Date(latestUpdate) > lastRefreshedRef.current) {
+                router.refresh();
+                lastRefreshedRef.current = new Date();
             }
-        }, 15000);
-        return () => clearInterval(intervalId);
-    }, [router]);
+        } catch (error) {
+            console.error("Polling error:", error);
+        }
+    }, 15000, !shouldPauseRefresh);
 
     return (
         <div className="space-y-6">
