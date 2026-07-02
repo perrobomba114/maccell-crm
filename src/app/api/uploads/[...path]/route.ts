@@ -22,7 +22,6 @@ export async function GET(
         const filePath = fs.existsSync(uploadFilePath) ? uploadFilePath : publicFilePath;
 
         if (!fs.existsSync(filePath)) {
-            console.error(`File not found at path: ${filePath}`);
             return new NextResponse("Not Found", { status: 404, headers: withPantallasCors() });
         }
 
@@ -40,12 +39,14 @@ export async function GET(
             ".heif": "image/heif",
             ".mp4": "video/mp4",
             ".webm": "video/webm",
+            ".mov": "video/quicktime",
+            ".pdf": "application/pdf",
         };
 
         const contentType = contentTypes[extension] || "application/octet-stream";
         const range = request.headers.get("range");
 
-        if (range && (extension === ".mp4" || extension === ".webm")) {
+        if (range && (extension === ".mp4" || extension === ".webm" || extension === ".mov")) {
             const [startStr, endStr] = range.replace(/bytes=/, "").split("-");
             const start = Number.parseInt(startStr, 10);
             const end = endStr ? Number.parseInt(endStr, 10) : stats.size - 1;

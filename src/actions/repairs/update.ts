@@ -1,12 +1,18 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { saveRepairImages } from "@/lib/actions/upload";
+import { deleteRepairImageFile, saveRepairImages } from "@/lib/actions/upload";
 import { revalidatePath } from "next/cache";
-import path from "path";
-import fs from "fs/promises";
 import { isValidImg } from "@/lib/utils";
 import { getCurrentUser } from "@/actions/auth-actions";
+
+type SubmittedRepairPart = {
+    id: string;
+};
+
+function isSubmittedRepairPart(value: unknown): value is SubmittedRepairPart {
+    return typeof value === "object" && value !== null && "id" in value && typeof value.id === "string";
+}
 
 export async function updateRepairAction(formData: FormData) {
     try {
@@ -27,7 +33,8 @@ export async function updateRepairAction(formData: FormData) {
         if (!assignedUserId || assignedUserId === "unassigned") assignedUserId = null;
 
         const partsJson = formData.get("spareParts") as string;
-        const parts = partsJson ? JSON.parse(partsJson) : [];
+        const parsedParts: unknown = partsJson ? JSON.parse(partsJson) : [];
+        const parts = Array.isArray(parsedParts) ? parsedParts.filter(isSubmittedRepairPart) : [];
 
         const existingRepair = await db.repair.findUnique({
             where: { id: repairId },
@@ -97,19 +104,7 @@ export async function updateRepairAction(formData: FormData) {
         const finalImages = [...imagesToKeep, ...newImagesPaths].filter(isValidImg);
 
         if (explicitlyDeleted.length > 0) {
-            (async () => {
-                try {
-                    const publicDir = path.join(process.cwd(), "public");
-                    for (const imgPath of explicitlyDeleted) {
-                        if (!imgPath.includes('..') && imgPath.startsWith('/repairs/images/')) {
-                            const fullPath = path.join(publicDir, imgPath);
-                            await fs.unlink(fullPath).catch(err => console.error(`Failed to delete file ${imgPath}:`, err.message));
-                        }
-                    }
-                } catch (err) {
-                    console.error("Error during file cleanup:", err);
-                }
-            })();
+            await Promise.all(explicitlyDeleted.map(deleteRepairImageFile));
         }
 
         await db.repair.update({
@@ -123,10 +118,10 @@ export async function updateRepairAction(formData: FormData) {
                 select: { id: true, sparePartId: true, quantity: true }
             });
 
-            const newPartIds = parts.map((p: any) => p.id);
+            const newPartIds = parts.map((p) => p.id);
             const currentPartIds = currentRepairParts.map(p => p.sparePartId);
 
-            const partsToAdd = parts.filter((p: any) => !currentPartIds.includes(p.id));
+            const partsToAdd = parts.filter((p) => !currentPartIds.includes(p.id));
             const partsToRemove = currentRepairParts.filter(p => !newPartIds.includes(p.sparePartId));
 
             await db.$transaction(async (tx) => {
@@ -140,7 +135,7 @@ export async function updateRepairAction(formData: FormData) {
                     const branchIdToLog = currentUser?.branch?.id || existingRepair.branchId;
 
                     if (currentUser && branchIdToLog) {
-                        await (tx as any).sparePartHistory.create({
+                        await tx.sparePartHistory.create({
                             data: {
                                 sparePartId: p.sparePartId,
                                 userId: currentUser.id,
@@ -169,7 +164,7 @@ export async function updateRepairAction(formData: FormData) {
                     const branchIdToLog = currentUser?.branch?.id || existingRepair.branchId;
 
                     if (currentUser && branchIdToLog) {
-                        await (tx as any).sparePartHistory.create({
+                        await tx.sparePartHistory.create({
                             data: {
                                 sparePartId: p.id,
                                 userId: currentUser.id,

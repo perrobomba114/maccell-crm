@@ -2,7 +2,6 @@
 
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { existsSync } from "fs";
 
 const ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 const ALLOWED_MEDIA_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "mp4", "mov", "pdf"];
@@ -22,6 +21,17 @@ function validateSize(buffer: Buffer) {
     }
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
+async function writeUploadFile(folder: string, fileName: string, buffer: Buffer) {
+    const uploadDir = join(process.cwd(), "upload", folder);
+    await mkdir(uploadDir, { recursive: true });
+    await writeFile(join(uploadDir, fileName), buffer);
+    return `/api/uploads/${folder}/${fileName}`;
+}
+
 export async function uploadBranchImage(base64Data: string, fileName: string) {
     try {
         const extension = validateExtension(fileName, ALLOWED_IMAGE_EXTENSIONS);
@@ -29,18 +39,13 @@ export async function uploadBranchImage(base64Data: string, fileName: string) {
         const buffer = Buffer.from(base64Image, "base64");
         validateSize(buffer);
 
-        const uploadDir = join(process.cwd(), "public", "branches");
-        if (!existsSync(uploadDir)) {
-            await mkdir(uploadDir, { recursive: true });
-        }
-
         const uniqueFileName = `branch-${Date.now()}.${extension}`;
-        await writeFile(join(uploadDir, uniqueFileName), buffer);
+        const imageUrl = await writeUploadFile("branches", uniqueFileName, buffer);
 
-        return { success: true, imageUrl: `/branches/${uniqueFileName}` };
-    } catch (error: any) {
+        return { success: true, imageUrl };
+    } catch (error: unknown) {
         console.error("Upload image error:", error);
-        return { success: false, error: error.message || "Error al subir la imagen" };
+        return { success: false, error: getErrorMessage(error, "Error al subir la imagen") };
     }
 }
 
@@ -51,18 +56,13 @@ export async function uploadProfileImage(base64Data: string, fileName: string) {
         const buffer = Buffer.from(base64Image, "base64");
         validateSize(buffer);
 
-        const uploadDir = join(process.cwd(), "public", "profiles");
-        if (!existsSync(uploadDir)) {
-            await mkdir(uploadDir, { recursive: true });
-        }
-
         const uniqueFileName = `profile-${Date.now()}.${extension}`;
-        await writeFile(join(uploadDir, uniqueFileName), buffer);
+        const imageUrl = await writeUploadFile("profiles", uniqueFileName, buffer);
 
-        return { success: true, imageUrl: `/profiles/${uniqueFileName}` };
-    } catch (error: any) {
+        return { success: true, imageUrl };
+    } catch (error: unknown) {
         console.error("Upload user image error:", error);
-        return { success: false, error: error.message || "Error al subir la imagen" };
+        return { success: false, error: getErrorMessage(error, "Error al subir la imagen") };
     }
 }
 
@@ -73,22 +73,17 @@ export async function uploadKnowledgeMedia(base64Data: string, fileName: string)
         const buffer = Buffer.from(base64Content, "base64");
         validateSize(buffer);
 
-        const uploadDir = join(process.cwd(), "public", "knowledge");
-        if (!existsSync(uploadDir)) {
-            await mkdir(uploadDir, { recursive: true });
-        }
-
         const safeOriginalName = fileName
             .replace(/\.[^.]+$/, "")
             .replace(/[^a-zA-Z0-9-]/g, "_")
             .substring(0, 60);
         const uniqueFileName = `${safeOriginalName}-${Date.now()}.${extension}`;
 
-        await writeFile(join(uploadDir, uniqueFileName), buffer);
+        const url = await writeUploadFile("knowledge", uniqueFileName, buffer);
 
-        return { success: true, url: `/knowledge/${uniqueFileName}` };
-    } catch (error: any) {
+        return { success: true, url };
+    } catch (error: unknown) {
         console.error("Upload knowledge media error:", error);
-        return { success: false, error: error.message || "Error al subir el archivo" };
+        return { success: false, error: getErrorMessage(error, "Error al subir el archivo") };
     }
 }

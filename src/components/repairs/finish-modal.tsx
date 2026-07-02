@@ -29,8 +29,29 @@ import { ImagePreviewModal } from "./image-preview-modal";
 import { getImgUrl, isValidImg } from "@/lib/utils";
 import { SafeImageThumbnail } from "./safe-image-thumbnail";
 
+type FinishRepairPart = {
+    id: string;
+    sparePart?: {
+        name?: string | null;
+    } | null;
+};
+
+type FinishRepair = {
+    id: string;
+    ticketNumber: string;
+    deviceBrand: string;
+    deviceModel: string;
+    problemDescription?: string | null;
+    customer?: {
+        name?: string | null;
+    } | null;
+    isWet?: boolean | null;
+    deviceImages?: string[] | null;
+    parts?: FinishRepairPart[] | null;
+};
+
 interface FinishRepairModalProps {
-    repair: any;
+    repair: FinishRepair;
     currentUserId: string;
     isOpen: boolean;
     onClose: () => void;
@@ -235,7 +256,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                 </div>
                                 <div className="bg-slate-900/50 border-2 border-slate-800 p-4 rounded-xl min-h-[120px]">
                                     <p className="text-xs font-bold text-slate-400 italic leading-relaxed">
-                                        "{repair.problemDescription || 'Sin descripción.'}"
+                                        {repair.problemDescription || "Sin descripción."}
                                     </p>
                                 </div>
                             </div>
@@ -286,12 +307,12 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                         <Checkbox checked={isWet} onCheckedChange={(c) => setIsWet(!!c)} className={isWet ? "border-white bg-white text-blue-600" : "border-slate-700"} />
                                     </div>
 
-                                    {/* Spare Parts Checklist (if any) */}
+                                    {/* Spare parts checklist when assigned */}
                                     {repair.parts && repair.parts.length > 0 && (
                                         <div className="bg-slate-900 border-2 border-slate-800 p-4 rounded-xl space-y-3">
                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block pl-1">DEVOLUCIÓN REPUESTOS</span>
                                             <div className="max-h-[80px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                                                {repair.parts.map((p: any) => {
+                                                {repair.parts.map((p) => {
                                                     const isReturned = partsToReturn.has(p.id) || statusId === "6";
                                                     return (
                                                         <div key={p.id} className="flex items-center justify-between p-2 bg-slate-950 rounded-lg border border-slate-800/50">

@@ -1,8 +1,7 @@
 "use client";
 
-import { getArgentinaDate, TIMEZONE } from "@/lib/date-utils";
-import { formatInTimeZone } from "date-fns-tz";
-
+import { useEffect } from "react";
+import { getTodayRepairDateFilter, HISTORY_REPAIR_DATE_FILTER, resolveAdminRepairDateSelection } from "@/lib/admin-repairs-date-filter";
 import { Search, Building2, ShieldCheck, CheckCircle2, ShieldAlert, Calendar, X, Filter, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,8 +32,15 @@ export function AdminRepairsFilters({
     updateParams,
     searchParams
 }: AdminRepairsFiltersProps) {
-    const activeDate = searchParams.get('date');
-    const todayStr = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
+    const todayStr = getTodayRepairDateFilter();
+    const rawDate = searchParams.get('date');
+    const activeDate = resolveAdminRepairDateSelection(rawDate);
+
+    useEffect(() => {
+        if (!rawDate || rawDate.toUpperCase() === HISTORY_REPAIR_DATE_FILTER) {
+            updateParams({ date: todayStr });
+        }
+    }, [rawDate, todayStr, updateParams]);
 
     return (
         <div className="bg-background border rounded-xl p-6 shadow-sm space-y-6">
@@ -52,7 +58,6 @@ export function AdminRepairsFilters({
                 
                 <div className="flex gap-2 w-full md:w-auto">
                     {[
-                        { label: "Historial", value: null, active: !activeDate },
                         { label: "Hoy", value: todayStr, active: activeDate === todayStr },
                         { label: "Este Mes", value: "MONTH", active: activeDate === "MONTH" }
                     ].map((period) => (

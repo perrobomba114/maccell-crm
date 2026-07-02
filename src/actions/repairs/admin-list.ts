@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { getRepairDateFilterRange } from "@/lib/repair-date-filter";
+import { resolveAdminRepairDateFilter } from "@/lib/admin-repairs-date-filter";
 import type { AdminRepairsQuery, AdminRepairsResult } from "@/types/admin-repairs";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -14,7 +15,7 @@ const FINISHED_HISTORY_STATUS_IDS = [5, 6, 7, 10] as const;
 function normalizeAdminRepairsQuery(input: string | AdminRepairsQuery = ""): Required<AdminRepairsQuery> {
     const params = typeof input === "string" ? { query: input } : input;
     const pageSize = Math.min(Math.max(Number(params.pageSize) || DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
-    const date = params.date?.trim().slice(0, 10) || "";
+    const date = resolveAdminRepairDateFilter(params.date);
 
     return {
         query: params.query?.trim() || "",
@@ -22,7 +23,7 @@ function normalizeAdminRepairsQuery(input: string | AdminRepairsQuery = ""): Req
         warrantyOnly: params.warrantyOnly ?? false,
         technician: params.technician?.trim() || "",
         technicianId: params.technicianId?.trim() || "",
-        date: date === "undefined" || !date ? "" : date,
+        date,
         page: Math.max(Number(params.page) || 1, 1),
         pageSize,
     };

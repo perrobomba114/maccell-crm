@@ -5,6 +5,28 @@ import fs from "fs/promises";
 import path from "path";
 import { isValidImg } from "@/lib/utils";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { getRepairImageUploadSubpathFromUrl } from "@/lib/repair-image-storage";
+
+async function repairImageExists(imageUrl: string) {
+    const subpath = getRepairImageUploadSubpathFromUrl(imageUrl);
+    if (!subpath) return true;
+
+    const candidates = [
+        path.join(process.cwd(), "upload", subpath),
+        path.join(process.cwd(), "public", subpath),
+    ];
+
+    for (const candidate of candidates) {
+        try {
+            await fs.access(candidate);
+            return true;
+        } catch {
+            // Keep checking the legacy and unified upload locations.
+        }
+    }
+
+    return false;
+}
 
 export async function cleanupCorruptedImagesAction() {
     const caller = await getCurrentUser();
@@ -12,7 +34,6 @@ export async function cleanupCorruptedImagesAction() {
         return { success: false, error: "No autorizado" };
     }
     try {
-        console.warn("[DEBUG] Staring Image Cleanup...");
         const allRepairs = await db.repair.findMany({
             select: { id: true, deviceImages: true }
         });
@@ -30,29 +51,26 @@ export async function cleanupCorruptedImagesAction() {
                 // 1. Basic Syntax Validation
                 // Local check: using isValidImg utility
                 if (!isValidImg(imgPath)) {
-                    // Double check manually for specific "undefined" strings just in case
-                    console.warn(`[DEBUG] [Cleanup] Removing invalid syntax: ${imgPath}`);
                     changed = true;
                     imagesRemoved++;
                     continue;
                 }
 
                 // 2. Physical File Validation
-                // Only check local files (starting with /repairs/images)
-                if (imgPath.startsWith("/repairs/images/")) {
-                    const fullPath = path.join(process.cwd(), "public", imgPath);
-                    try {
-                        await fs.access(fullPath);
+                const repairImageSubpath = getRepairImageUploadSubpathFromUrl(imgPath);
+                if (repairImageSubpath) {
+                    if (await repairImageExists(imgPath)) {
                         cleanImages.push(imgPath);
-                    } catch {
-                        console.warn(`[DEBUG] [Cleanup] Removing missing file: ${imgPath}`);
-                        changed = true;
-                        imagesRemoved++;
+                        continue;
                     }
-                } else {
-                    // External URLs or others are kept
-                    cleanImages.push(imgPath);
+
+                    changed = true;
+                    imagesRemoved++;
+                    continue;
                 }
+
+                // External URLs or other static assets are kept.
+                cleanImages.push(imgPath);
             }
 
             if (changed) {

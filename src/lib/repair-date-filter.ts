@@ -19,6 +19,7 @@ export function normalizeRepairDateFilter(date: RepairDateFilterInput): string {
     const trimmed = date.trim();
     if (!trimmed || trimmed === "undefined" || trimmed === "null") return "";
     if (trimmed.toUpperCase() === "MONTH") return "MONTH";
+    if (trimmed.toUpperCase() === "HISTORY") return "HISTORY";
 
     return trimmed.slice(0, 10);
 }
@@ -29,6 +30,7 @@ export function getRepairDateFilterRange(
 ): RepairDateRange | null {
     const normalized = normalizeRepairDateFilter(date);
     if (!normalized) return null;
+    if (normalized === "HISTORY") return null;
 
     if (normalized === "MONTH") {
         const referenceStr = formatInTimeZone(referenceDate, TIMEZONE, "yyyy-MM-dd");

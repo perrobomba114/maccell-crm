@@ -11,7 +11,9 @@
     "dev:clean": "rm -rf .next && next dev -p 3000",
     "build": "echo \"$(date +%s)\" > public/version.txt && next build",
     "start": "node .next/standalone/server.js",
+    "test": "tsx --test src/__tests__/**/*.test.ts",
     "lint": "eslint",
+    "uploads:migrate": "tsx scripts/migrate-public-uploads-to-upload.ts",
     "postinstall": "node scripts/patch-sdk.js",
     "wiki:sync": "npx tsx scripts/seed-wiki-from-repairs.ts",
     "wiki:reindex": "npx tsx scripts/reindex-repairs.ts"
@@ -74,10 +76,14 @@
     "react-to-print": "^3.2.0",
     "recharts": "^3.5.1",
     "remark-gfm": "^4.0.1",
+    "sharp": "^0.34.5",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "xlsx": "^0.18.5",
     "zod": "^4.1.13"
+  },
+  "overrides": {
+    "sharp": "$sharp"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

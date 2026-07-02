@@ -26,10 +26,53 @@ import { PromisedDateSelector } from "./promised-date-selector";
 import { SparePartSelector, SparePartItem } from "./spare-part-selector";
 import { SafeImageThumbnail } from "./safe-image-thumbnail";
 
+type RepairFormErrors = Partial<Record<"name" | "phone" | "brand" | "model" | "problem" | "price", string>>;
+
+type EditRepairStatus = {
+    id: number;
+    name: string;
+};
+
+type EditRepairTechnician = {
+    id: string;
+    name: string;
+    role: string;
+};
+
+type EditRepairPart = {
+    quantity: number;
+    sparePart: {
+        id: string;
+        name: string;
+        priceArg: number | null;
+        stockLocal: number;
+    };
+};
+
+type EditRepair = {
+    id: string;
+    customer: {
+        name: string;
+        phone: string;
+        email?: string | null;
+    };
+    deviceBrand: string;
+    deviceModel: string;
+    problemDescription: string;
+    promisedAt: Date | string;
+    deviceImages?: string[] | null;
+    estimatedPrice: number | null;
+    statusId: number;
+    diagnosis?: string | null;
+    isWarranty?: boolean | null;
+    assignedUserId?: string | null;
+    parts?: EditRepairPart[] | null;
+};
+
 interface EditRepairFormProps {
-    repair: any;
-    statuses: any[];
-    technicians: any[]; // New Prop
+    repair: EditRepair;
+    statuses: EditRepairStatus[];
+    technicians: EditRepairTechnician[];
     userId: string;
     redirectPath?: string;
 }
@@ -52,7 +95,7 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
     const [existingImages, setExistingImages] = useState<string[]>((repair.deviceImages || []).filter(isValidImg));
     const [newImages, setNewImages] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
-    const [estimatedPrice, setEstimatedPrice] = useState(repair.estimatedPrice.toString());
+    const [estimatedPrice, setEstimatedPrice] = useState((repair.estimatedPrice ?? 0).toString());
     const [statusId, setStatusId] = useState<string>(repair.statusId.toString());
     const [diagnosis, setDiagnosis] = useState(repair.diagnosis || "");
 
@@ -63,13 +106,14 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
 
-    const [errors, setErrors] = useState<any>({});
+    const [errors, setErrors] = useState<RepairFormErrors>({});
 
-    const initialParts = repair.parts ? repair.parts.map((rp: any) => ({
+    const initialParts = repair.parts ? repair.parts.map((rp) => ({
         id: rp.sparePart.id,
         name: rp.sparePart.name,
+        sku: "",
         qty: rp.quantity,
-        price: rp.sparePart.priceArg,
+        price: rp.sparePart.priceArg ?? 0,
         stock: rp.sparePart.stockLocal
     })) : [];
 
@@ -120,7 +164,7 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
         setIsSubmitting(true);
         setErrors({});
 
-        const newErrors: any = {};
+        const newErrors: RepairFormErrors = {};
         if (!customerName) newErrors.name = "Requerido";
         if (!customerPhone || customerPhone.length !== 10) newErrors.phone = "10 dígitos";
         if (!brand) newErrors.brand = "Requerido";
@@ -270,15 +314,7 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
                                     ))}
                                 </SelectContent>
                             </Select>
-                            {/* Handle "unassigned" value logic if needed, currently string "unassigned" would flow but backend might expect null or ignore. 
-                                 Correct approach: "unassigned" does not match any ID, backend update logic handles valid IDs. 
-                                 Or better: if value is "unassigned", send empty string implies unassign? 
-                                 Current backend: `assignedUserId || null`. So empty string becomes null. Perfect.
-                                 Wait, "unassigned" string is truthy. 
-                                 Let's make sure SelectItem value="" works or handle it. 
-                                 Radix Select usually doesn't like empty string values for items sometimes.
-                                 Let's use a clear approach. 
-                             */}
+                            {/* The sentinel value is converted to null before sending the update. */}
                         </div>
 
                         <div>
@@ -350,7 +386,7 @@ export function EditRepairForm({ repair, statuses, technicians, userId, redirect
                             <label className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
                                 <ImagePlus className="w-6 h-6 text-muted-foreground" />
                                 <span className="text-[10px] text-muted-foreground mt-1">Añadir</span>
-                                <input type="file" multiple accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} className="hidden" />
+                                <input type="file" multiple accept="image/*" onChange={handleFileChange} className="hidden" />
                             </label>
                         </div>
                     </div>

@@ -40,6 +40,8 @@ RUN mkdir .next
 RUN chown nextjs:nodejs .next
 RUN mkdir -p backups
 RUN chown nextjs:nodejs backups
+RUN mkdir -p upload/repairs/images upload/branches upload/profiles upload/knowledge upload/pantallas
+RUN chown -R nextjs:nodejs upload
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

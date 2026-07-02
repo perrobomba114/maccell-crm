@@ -139,9 +139,13 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                     )}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="end">
-                <div className="flex items-center justify-between p-4 border-b bg-muted/20">
-                    <div className="flex items-center gap-2">
+            <PopoverContent
+                className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-x-hidden p-0 sm:w-[28rem]"
+                align="end"
+                sideOffset={10}
+            >
+                <div className="flex max-w-full items-center justify-between gap-3 overflow-x-hidden border-b bg-muted/20 p-4">
+                    <div className="flex min-w-0 items-center gap-2">
                         <h4 className="font-semibold leading-none">Notificaciones</h4>
                         <Button
                             variant="outline"
@@ -157,20 +161,20 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-xs h-auto py-1 text-muted-foreground hover:text-foreground"
+                            className="h-auto shrink-0 py-1 text-xs text-muted-foreground hover:text-foreground"
                             onClick={handleMarkAllRead}
                         >
                             Limpiar todo
                         </Button>
                     )}
                 </div>
-                <div className="max-h-[300px] overflow-y-auto">
+                <div className="max-h-[min(70dvh,520px)] max-w-full overflow-y-auto overflow-x-hidden overscroll-contain">
                     {notifications.length === 0 ? (
                         <div className="p-8 text-center text-muted-foreground text-sm">
                             No tienes notificaciones
                         </div>
                     ) : (
-                        <div className="divide-y">
+                        <div className="max-w-full divide-y overflow-x-hidden">
                             {notifications.map((notification) => (
                                 <NotificationBellItem
                                     key={notification.id}

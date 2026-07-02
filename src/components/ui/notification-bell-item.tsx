@@ -25,12 +25,12 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
     return (
         <div
             className={cn(
-                "p-4 hover:bg-muted/50 transition-colors",
+                "max-w-full overflow-x-hidden p-3 transition-colors hover:bg-muted/50 sm:p-4",
                 !notification.isRead && "bg-muted/20"
             )}
         >
-            <div className="flex gap-3 items-start">
-                <div className="mt-1">
+            <div className="flex max-w-full items-start gap-3 overflow-x-hidden">
+                <div className="mt-1 shrink-0">
                     {notification.type === "ACTION_REQUEST" ? (
                         <AlertCircle className="h-4 w-4 text-blue-500" />
                     ) : notification.type === "REPAIR_ENTRY" ? (
@@ -39,14 +39,14 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
                         <Info className="h-4 w-4 text-gray-500" />
                     )}
                 </div>
-                <div className="flex-1 space-y-1">
+                <div className="min-w-0 flex-1 space-y-1">
                     <div
                         className="cursor-pointer"
                         onClick={() => onMarkAsRead(notification.id, notification.link)}
                     >
                         {repairEntryDisplay ? (
-                            <div className={cn("space-y-1", !notification.isRead && "font-bold")}>
-                                <p className="text-sm font-medium leading-none">{notification.title}</p>
+                            <div className={cn("max-w-full space-y-1 overflow-x-hidden", !notification.isRead && "font-bold")}>
+                                <p className="text-sm font-medium leading-snug [overflow-wrap:anywhere]">{notification.title}</p>
                                 <div className="py-1">
                                     <p className="text-xs text-muted-foreground">
                                         Fecha Prometida: <span className="text-foreground">{repairEntryDisplay.promisedDate}</span>
@@ -57,10 +57,10 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
                             </div>
                         ) : (
                             <>
-                                <p className={cn("text-sm font-medium leading-none", !notification.isRead && "font-bold")}>
+                                <p className={cn("text-sm font-medium leading-snug [overflow-wrap:anywhere]", !notification.isRead && "font-bold")}>
                                     {notification.title}
                                 </p>
-                                <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
+                                <p className="mt-1 text-sm leading-snug text-muted-foreground [overflow-wrap:anywhere]">{notification.message}</p>
                                 <StockDiscrepancyNotificationDetails actionData={notification.actionData} />
                                 <NotificationAge createdAt={notification.createdAt} />
                             </>
@@ -68,10 +68,10 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
                     </div>
 
                     {notification.type === "ACTION_REQUEST" && notification.status === "PENDING" && (
-                        <div className="flex gap-2 mt-3">
+                        <div className="mt-3 flex flex-wrap gap-2">
                             <Button
                                 size="sm"
-                                className="h-7 bg-green-600 hover:bg-green-700 text-white text-xs"
+                                className="h-7 min-w-0 bg-green-600 text-xs text-white hover:bg-green-700"
                                 onClick={() => onResponse(notification.id, "ACCEPTED")}
                                 disabled={loading}
                             >
@@ -80,7 +80,7 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                className="h-7 min-w-0 border-red-200 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
                                 onClick={() => onResponse(notification.id, "REJECTED")}
                                 disabled={loading}
                             >

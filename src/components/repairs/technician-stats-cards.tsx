@@ -12,6 +12,11 @@ import { cn } from "@/lib/utils";
 import { getTechnicianPerformance, TechnicianPerformance } from "@/actions/repair-actions-extra";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import {
+    getTodayRepairDateFilter,
+    resolveAdminRepairDateFilter,
+    resolveAdminRepairDateSelection,
+} from "@/lib/admin-repairs-date-filter";
 
 type TechnicianStatsCardsProps = {
     query: string;
@@ -25,7 +30,9 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
-    const activeDateFilter = searchParams.get("date") || selectedDate || "";
+    const rawDateFilter = searchParams.get("date") ?? selectedDate ?? null;
+    const activeDateFilter = resolveAdminRepairDateSelection(rawDateFilter);
+    const statsDateFilter = resolveAdminRepairDateFilter(rawDateFilter);
     const isMonthFilter = activeDateFilter === "MONTH";
 
     const parseSelectedDate = (value?: string) => {
@@ -53,7 +60,7 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
         let isMounted = true;
 
         setLoading(true);
-        getTechnicianPerformance({ date: activeDateFilter || null, query, branchId, warrantyOnly })
+        getTechnicianPerformance({ date: statsDateFilter || null, query, branchId, warrantyOnly })
             .then((res) => {
                 if (!isMounted) return;
                 if (res.success && res.data) {
@@ -68,7 +75,7 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
         return () => {
             isMounted = false;
         };
-    }, [activeDateFilter, query, branchId, warrantyOnly]);
+    }, [statsDateFilter, query, branchId, warrantyOnly]);
 
     const getCardStyles = (index: number) => {
         if (index === 0) return "bg-purple-600 text-white border-none shadow-xl transform hover:scale-105 transition-all duration-300 cursor-pointer hover:ring-4 hover:ring-purple-300/50";
@@ -94,7 +101,7 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
         if (nextDate) {
             params.set("date", format(nextDate, "yyyy-MM-dd"));
         } else {
-            params.delete("date");
+            params.set("date", getTodayRepairDateFilter());
         }
         params.delete("page");
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -107,8 +114,9 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
             applyDateParams(d);
             return;
         }
-        setDate(undefined);
-        applyDateParams(null);
+        const today = new Date(`${getTodayRepairDateFilter()}T00:00:00`);
+        setDate(today);
+        applyDateParams(today);
     };
 
     const handleDateShift = (days: number) => {
@@ -118,7 +126,7 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
         applyDateParams(target);
     };
 
-    const hasDateFilter = Boolean(activeDateFilter);
+    const hasConcreteDateFilter = Boolean(activeDateFilter) && !isMonthFilter;
 
     return (
         <div className="space-y-6">
@@ -159,9 +167,9 @@ export function TechnicianStatsCards({ query, branchId, selectedDate, warrantyOn
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {isMonthFilter
                                 ? "Este Mes"
-                                : hasDateFilter && date
+                                : hasConcreteDateFilter && date
                                     ? format(date, "PPP", { locale: es })
-                                    : "Historial"
+                                    : getTodayRepairDateFilter()
                             }
                         </Button>
                     </PopoverTrigger>

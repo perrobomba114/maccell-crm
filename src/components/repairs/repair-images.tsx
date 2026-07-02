@@ -22,6 +22,7 @@ export function RepairImages() {
     // Camera State (desktop WebRTC only)
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+    const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
@@ -41,6 +42,22 @@ export function RepairImages() {
         return () => { objectUrls.forEach(url => URL.revokeObjectURL(url)); };
     }, [files]);
 
+    useEffect(() => {
+        if (!isCameraOpen || !cameraStream || !videoRef.current) return;
+
+        const video = videoRef.current;
+        video.srcObject = cameraStream;
+        void video.play().catch(() => {
+            toast.error("No se pudo iniciar la vista previa de la cámara.");
+        });
+
+        return () => {
+            if (video.srcObject === cameraStream) {
+                video.srcObject = null;
+            }
+        };
+    }, [cameraStream, isCameraOpen]);
+
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const newFiles = Array.from(e.target.files);
@@ -56,6 +73,8 @@ export function RepairImages() {
     const startCamera = async (mode: "user" | "environment" = facingMode) => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+            setCameraStream(null);
         }
         setIsCameraOpen(true);
         try {
@@ -67,12 +86,7 @@ export function RepairImages() {
                 }
             });
             streamRef.current = stream;
-            setTimeout(() => {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    videoRef.current.play();
-                }
-            }, 100);
+            setCameraStream(stream);
         } catch {
             toast.error("No se pudo acceder a la cámara. Verifique los permisos.");
             setIsCameraOpen(false);
@@ -90,6 +104,7 @@ export function RepairImages() {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
         }
+        setCameraStream(null);
         setIsCameraOpen(false);
     }, []);
 
@@ -128,7 +143,7 @@ export function RepairImages() {
                         ref={inputRef}
                         name="images"
                         type="file"
-                        accept="image/png, image/jpeg, image/webp"
+                        accept="image/*"
                         multiple
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                         onChange={handleChange}

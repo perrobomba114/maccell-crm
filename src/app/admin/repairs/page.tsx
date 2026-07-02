@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Metadata } from "next";
+import { resolveAdminRepairDateFilter, resolveAdminRepairDateSelection } from "@/lib/admin-repairs-date-filter";
 
 export const metadata: Metadata = {
     title: "Gestión de Reparaciones | MACCELL",
@@ -26,7 +27,9 @@ export default async function AdminRepairsPage(
     const branchId = typeof searchParams?.branch === "string" ? searchParams.branch : "ALL";
     const technician = typeof searchParams?.tech === "string" ? searchParams.tech : "";
     const technicianId = typeof searchParams?.techId === "string" ? searchParams.techId : "";
-    const date = typeof searchParams?.date === "string" ? searchParams.date : "";
+    const rawDate = typeof searchParams?.date === "string" ? searchParams.date : undefined;
+    const date = resolveAdminRepairDateFilter(rawDate);
+    const selectedDate = resolveAdminRepairDateSelection(rawDate);
     const page = typeof searchParams?.page === "string" ? Number(searchParams.page) : 1;
     const warrantyOnly = searchParams?.warranty === "1";
 
@@ -58,7 +61,7 @@ export default async function AdminRepairsPage(
                 query={query} 
                 branchId={branchId} 
                 warrantyOnly={warrantyOnly} 
-                selectedDate={date}
+                selectedDate={selectedDate}
                 initialData={initialStats} 
             />
 

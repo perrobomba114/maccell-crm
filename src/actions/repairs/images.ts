@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { saveRepairImages } from "@/lib/actions/upload";
+import { deleteRepairImageFile, saveRepairImages } from "@/lib/actions/upload";
 import { isValidImg } from "@/lib/utils";
 
 export async function addRepairImagesAction(formData: FormData) {
@@ -69,6 +69,8 @@ export async function removeRepairImageAction(repairId: string, imageUrl: string
                 deviceImages: updatedImages
             }
         });
+
+        await deleteRepairImageFile(imageUrl);
 
         revalidatePath("/technician/repairs");
         revalidatePath(`/admin/repairs`);
