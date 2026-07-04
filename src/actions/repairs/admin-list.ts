@@ -125,7 +125,7 @@ export async function getAllRepairsForAdminAction(input: string | AdminRepairsQu
                     status: { select: { id: true, name: true, color: true } },
                     assignedTo: { select: { id: true, name: true } },
                     branch: { select: { id: true, name: true } },
-                    originalRepair: { select: { ticketNumber: true, problemDescription: true } },
+                    originalRepair: { select: { id: true, ticketNumber: true, problemDescription: true } },
                     statusHistory: {
                         orderBy: { createdAt: 'desc' },
                         take: 1,
@@ -161,7 +161,33 @@ export async function getRepairByIdAction(repairId: string) {
                 customer: true,
                 branch: true,
                 status: true,
-                originalRepair: true,
+                originalRepair: {
+                    select: {
+                        id: true,
+                        ticketNumber: true,
+                        problemDescription: true,
+                        assignedTo: { select: { name: true } },
+                        statusHistory: {
+                            where: {
+                                toStatusId: { in: [...FINISHED_HISTORY_STATUS_IDS] },
+                                fromStatusId: { notIn: [...FINISHED_HISTORY_STATUS_IDS] },
+                            },
+                            orderBy: { createdAt: "desc" },
+                            take: 1,
+                            select: {
+                                user: { select: { name: true, role: true } },
+                            },
+                        },
+                    },
+                },
+                warrantyRepairs: {
+                    orderBy: { createdAt: "desc" },
+                    select: {
+                        id: true,
+                        ticketNumber: true,
+                        problemDescription: true,
+                    },
+                },
                 parts: {
                     include: { sparePart: true }
                 },

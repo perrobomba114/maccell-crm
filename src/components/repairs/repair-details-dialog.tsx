@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Smartphone, User, Calendar, DollarSign, Clock, ImageOff, Plus, RotateCcw, ShieldAlert } from "lucide-react";
+import { Smartphone, User, Calendar, DollarSign, Clock, ImageOff, Plus, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { cn, getImgUrl, isValidImg } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createSinglePartReturnAction } from "@/lib/actions/repairs";
 import { useRouter } from "next/navigation";
+import { RepairWarrantyInfo } from "./repair-warranty-info";
 
 type RepairStatusColor = string | null;
 type RepairUserRole = "ADMIN" | "VENDOR" | "TECHNICIAN";
@@ -65,9 +66,19 @@ export type RepairDetails = {
     status: RepairStatusSummary;
     assignedTo?: { name: string } | null;
     originalRepair?: {
+        id?: string;
         ticketNumber: string;
         problemDescription: string;
+        assignedTo?: { name?: string | null } | null;
+        statusHistory?: {
+            user?: { name?: string | null; role?: string | null } | null;
+        }[];
     } | null;
+    warrantyRepairs?: {
+        id: string;
+        ticketNumber: string;
+        problemDescription: string;
+    }[];
     parts?: RepairPartItem[];
     observations?: RepairObservationItem[];
     statusHistory?: RepairStatusHistoryItem[];
@@ -79,6 +90,7 @@ interface RepairDetailsDialogProps {
     onClose: () => void;
     currentUserId?: string;
     onAddPart?: () => void;
+    onOpenRepair?: (repairId: string) => void;
 }
 
 const statusColorMap: Record<string, string> = {
@@ -128,7 +140,7 @@ function RepairImage({ url, index, onClick }: { url: string; index: number; onCl
     );
 }
 
-export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, onAddPart }: RepairDetailsDialogProps) {
+export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, onAddPart, onOpenRepair }: RepairDetailsDialogProps) {
     const router = useRouter();
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
@@ -295,23 +307,12 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     {/* Status of Work */}
                                     <div className="grid grid-cols-1 gap-6">
 
-                                        {/* Warranty Info (if applicable) */}
-                                        {repair.isWarranty && repair.originalRepair && (
-                                            <div className="space-y-2">
-                                                <h3 className="text-[11px] font-black text-yellow-500 uppercase tracking-[0.3em] pl-1 flex items-center gap-2">
-                                                    <ShieldAlert className="w-4 h-4 text-yellow-500" />
-                                                    INFORMACIÓN DE GARANTÍA
-                                                </h3>
-                                                <div className="bg-yellow-600/20 border-2 border-yellow-500/50 p-5 rounded-2xl shadow-inner">
-                                                    <p className="text-sm font-bold text-yellow-500 mb-2">
-                                                        Boleta Anterior: <span className="text-white font-black">{repair.originalRepair.ticketNumber}</span>
-                                                    </p>
-                                                    <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap text-white/90 italic">
-                                                        <span className="font-bold text-yellow-500">Problema Anterior:</span> {repair.originalRepair.problemDescription}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
+                                        <RepairWarrantyInfo
+                                            isWarranty={repair.isWarranty}
+                                            originalRepair={repair.originalRepair}
+                                            warrantyRepairs={repair.warrantyRepairs}
+                                            onOpenRepair={onOpenRepair}
+                                        />
 
                                         {/* Problem */}
                                         <div className="space-y-2">

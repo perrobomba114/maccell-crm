@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Flashlight, Loader2 } from "lucide-react";
 import type Quagga from "@ericblade/quagga2";
 import type { QuaggaJSResultObject } from "@ericblade/quagga2";
+import { createBarcodeDetectionStabilizer } from "@/lib/barcode-detection-stability";
 
 interface BarcodeScannerProps {
     onResult: (result: string) => boolean | void | Promise<boolean | void>;
@@ -15,6 +16,7 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
     const quaggaRef = useRef<typeof Quagga | null>(null);
     const readerRef = useRef<HTMLDivElement | null>(null);
     const onResultRef = useRef(onResult);
+    const stabilizerRef = useRef(createBarcodeDetectionStabilizer({ requiredMatches: 3, minLength: 4 }));
     const hasScannedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
     const [isScanning, setIsScanning] = useState(false);
@@ -36,6 +38,7 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
 
         let mounted = true;
         let isStarted = false;
+        let detectedHandler: ((result: QuaggaJSResultObject) => void) | null = null;
 
         const handleDecodedText = async (decodedText: string) => {
             const code = decodedText.trim();
@@ -49,6 +52,7 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
                 const shouldKeepLocked = await onResultRef.current(code);
                 if (mounted && shouldKeepLocked === false) {
                     hasScannedRef.current = false;
+                    stabilizerRef.current.reset();
                     setDetectedCode(null);
                     setIsResolving(false);
                 }
@@ -56,13 +60,16 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
                 if (!mounted) return;
                 console.warn("Scanner result warning:", resultError);
                 hasScannedRef.current = false;
+                stabilizerRef.current.reset();
                 setDetectedCode(null);
                 setIsResolving(false);
             }
         };
 
         const handleDetected = (result: QuaggaJSResultObject) => {
-            const code = result.codeResult?.code?.trim();
+            if (hasScannedRef.current) return;
+
+            const code = stabilizerRef.current.push(result.codeResult?.code);
             if (!code) return;
 
             void handleDecodedText(code);
@@ -76,6 +83,7 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
                 const quaggaModule = await import("@ericblade/quagga2");
                 const quagga = quaggaModule.default;
                 quaggaRef.current = quagga;
+                stabilizerRef.current.reset();
 
                 await quagga.init({
                     inputStream: {
@@ -112,7 +120,8 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
                     }
                 });
 
-                quagga.onDetected(handleDetected);
+                detectedHandler = handleDetected;
+                quagga.onDetected(detectedHandler);
                 quagga.start();
 
                 isStarted = true;
@@ -137,7 +146,7 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
                 }
 
                 if (!mounted) {
-                    quagga.offDetected(handleDetected);
+                    if (detectedHandler) quagga.offDetected(detectedHandler);
                     await quagga.stop();
                 }
 
@@ -172,11 +181,15 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
             // If it's still starting (isStarted == false), the startScanner function
             // will detect !mounted and stop it.
             if (isStarted && quaggaRef.current) {
-                quaggaRef.current.offDetected(handleDetected);
+                if (detectedHandler) quaggaRef.current.offDetected(detectedHandler);
                 quaggaRef.current.stop().catch(err => {
                     console.warn("Scanner cleanup warning:", err);
                 });
+                quaggaRef.current.CameraAccess.release().catch(err => {
+                    console.warn("Scanner camera release warning:", err);
+                });
             }
+            stabilizerRef.current.reset();
             quaggaRef.current = null;
         };
     }, []);

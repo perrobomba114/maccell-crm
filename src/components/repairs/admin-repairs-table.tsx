@@ -97,6 +97,24 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
         router.refresh();
     };
 
+    const handleOpenRepairDetails = useCallback(async (repairId: string) => {
+        setLoadingRepairAction({ id: repairId, kind: "details" });
+        try {
+            const full = await getRepairByIdAction(repairId);
+            if (!full) {
+                toast.error("No se pudo cargar la reparación.");
+                return;
+            }
+
+            setViewRepair(full);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "No se pudo cargar la reparación.";
+            toast.error(message);
+        } finally {
+            setLoadingRepairAction(null);
+        }
+    }, []);
+
     const currencyFormatter = useMemo(() => new Intl.NumberFormat("es-AR", {
         style: "currency",
         currency: "ARS",
@@ -164,6 +182,7 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
                 isOpen={!!viewRepair}
                 onClose={() => setViewRepair(null)}
                 repair={viewRepair}
+                onOpenRepair={(repairId) => void handleOpenRepairDetails(repairId)}
             />
 
             <RepairImagesDialog

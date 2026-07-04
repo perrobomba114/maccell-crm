@@ -5,6 +5,12 @@ import type { Prisma } from "@prisma/client";
 import { getRepairDateFilterRange } from "@/lib/repair-date-filter";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { buildAdminRepairSearchFilters } from "@/lib/admin-repairs-search";
+import {
+    FINAL_REPAIR_STATUS_IDS,
+    TECHNICIAN_REPAIR_TIME_SAMPLE_SIZE,
+    formatRepairTimeMinutes,
+    getAverageRepairTimeMinutes,
+} from "@/lib/repair-time-metrics";
 
 export interface TechnicianPerformance {
     id: string;
@@ -19,16 +25,6 @@ type TechnicianPerformanceFilters = {
     branchId?: string;
     warrantyOnly?: boolean;
 };
-
-function formatAverageTime(totalMinutes: number, count: number) {
-    if (count === 0) return "-";
-
-    const avgMins = Math.round(totalMinutes / count);
-    const hours = Math.floor(avgMins / 60);
-    const mins = avgMins % 60;
-
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins} min`;
-}
 
 function buildPerformanceRepairWhere(filters: TechnicianPerformanceFilters): Prisma.RepairWhereInput {
     const repairWhere: Prisma.RepairWhereInput = {};
@@ -65,8 +61,8 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
         const repairWhere = buildPerformanceRepairWhere(filters);
         const historyWhere: Prisma.RepairStatusHistoryWhereInput = {
             userId: { not: null },
-            toStatusId: { in: [5, 6, 7, 10] }, // Only finalized repairs for ranking
-            fromStatusId: { notIn: [5, 6, 7, 10] }, // Avoid internal transitions
+            toStatusId: { in: [...FINAL_REPAIR_STATUS_IDS] }, // Only finalized repairs for ranking
+            fromStatusId: { notIn: [...FINAL_REPAIR_STATUS_IDS] }, // Avoid internal transitions
             ...(dateRange ? { createdAt: { gte: dateRange.start, lte: dateRange.end } } : {}),
             repair: repairWhere,
         };
@@ -82,20 +78,47 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
                 select: {
                     repairId: true,
                     userId: true,
-                    createdAt: true,
-                    repair: {
-                        select: {
-                            createdAt: true,
-                        },
-                    },
                 },
             }),
         ]);
 
+        const averageRepairWhere = buildPerformanceRepairWhere({
+            branchId: filters.branchId,
+            warrantyOnly: filters.warrantyOnly,
+        });
+
+        const averageSamplesByTech = await Promise.all(
+            techs.map(async (tech) => {
+                const samples = await db.repair.findMany({
+                    where: {
+                        ...averageRepairWhere,
+                        assignedUserId: tech.id,
+                        statusId: { in: [...FINAL_REPAIR_STATUS_IDS] },
+                        finishedAt: { not: null },
+                    },
+                    select: {
+                        startedAt: true,
+                        finishedAt: true,
+                    },
+                    orderBy: { finishedAt: "desc" },
+                    take: TECHNICIAN_REPAIR_TIME_SAMPLE_SIZE,
+                });
+
+                return [tech.id, samples] as const;
+            }),
+        );
+
+        const averageTimeByTech = new Map(
+            averageSamplesByTech.map(([techId, samples]) => [
+                techId,
+                samples.length > 0
+                    ? formatRepairTimeMinutes(getAverageRepairTimeMinutes(samples))
+                    : "-",
+            ]),
+        );
+
         const performanceByTech = new Map<string, {
             repairIds: Set<string>;
-            totalMinutes: number;
-            validTimeCount: number;
         }>();
 
         for (const entry of historyEntries) {
@@ -103,19 +126,10 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
 
             const techPerformance = performanceByTech.get(entry.userId) ?? {
                 repairIds: new Set<string>(),
-                totalMinutes: 0,
-                validTimeCount: 0,
             };
 
             if (!techPerformance.repairIds.has(entry.repairId)) {
                 techPerformance.repairIds.add(entry.repairId);
-
-                const diffMs = entry.createdAt.getTime() - entry.repair.createdAt.getTime();
-                const minutes = diffMs / (1000 * 60);
-                if (minutes > 0) {
-                    techPerformance.totalMinutes += minutes;
-                    techPerformance.validTimeCount++;
-                }
             }
 
             performanceByTech.set(entry.userId, techPerformance);
@@ -129,9 +143,7 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
                 id: tech.id,
                 name: tech.name,
                 seenCount,
-                avgTime: techPerformance
-                    ? formatAverageTime(techPerformance.totalMinutes, techPerformance.validTimeCount)
-                    : "-",
+                avgTime: averageTimeByTech.get(tech.id) ?? "-",
             };
         });
 

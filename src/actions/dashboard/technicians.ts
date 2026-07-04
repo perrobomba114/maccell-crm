@@ -4,6 +4,12 @@ import { db as prisma } from "@/lib/db";
 import { getDailyRange, getMonthlyRange, getLastDaysRange, getArgentinaDate, TIMEZONE } from "@/lib/date-utils";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { formatInTimeZone } from "date-fns-tz";
+import {
+    FINAL_REPAIR_STATUS_IDS,
+    TECHNICIAN_REPAIR_TIME_SAMPLE_SIZE,
+    formatRepairTimeMinutes,
+    getAverageRepairTimeMinutes,
+} from "@/lib/repair-time-metrics";
 
 
 export async function getTechnicianStats(technicianId: string) {
@@ -24,7 +30,7 @@ export async function getTechnicianStats(technicianId: string) {
         const lastMonthStr = lastMonthAr.toISOString().split('T')[0];
         const { start: lastMonthStart, end: lastMonthEnd } = getMonthlyRange(lastMonthStr);
 
-        const FINAL_STATUSES = [5, 6, 7, 10];
+        const FINAL_STATUSES = [...FINAL_REPAIR_STATUS_IDS];
 
         // Cuenta tickets únicos donde el técnico transicionó de no-final → final dentro del rango.
         // Garantiza: 1 ticket = 1 conteo por día, sin importar rebotes ni que el `finishedAt` quede stale.
@@ -237,36 +243,16 @@ export async function getTechnicianStats(technicianId: string) {
         const repairsWithTime = await prisma.repair.findMany({
             where: {
                 assignedUserId: technicianId,
-                statusId: { in: [5, 6, 7, 10] },
+                statusId: { in: FINAL_STATUSES },
                 // startedAt: { not: null }, // REMOVED to include null startedAt
                 finishedAt: { not: null }
             },
             select: { startedAt: true, finishedAt: true },
             orderBy: { finishedAt: 'desc' }, // CRITICAL: Get MOST RECENT repairs to reflect current performance
-            take: 50 // Limit sample size for performance
+            take: TECHNICIAN_REPAIR_TIME_SAMPLE_SIZE
         });
 
-        let avgTimeMinutes = 0;
-        if (repairsWithTime.length > 0) {
-            const totalMinutes = repairsWithTime.reduce((acc, r) => {
-                let minutes = 0;
-
-                if (r.startedAt && r.finishedAt) {
-                    const diff = new Date(r.finishedAt).getTime() - new Date(r.startedAt).getTime();
-                    minutes = diff / 1000 / 60;
-                }
-
-                // Si la reparación es menor a 1 minuto (error de tracking o muy rápida), tratarla como 15 minutos
-                const effectiveMinutes = (!minutes || minutes < 1) ? 15 : minutes;
-
-                return acc + effectiveMinutes;
-            }, 0);
-            avgTimeMinutes = Math.round(totalMinutes / repairsWithTime.length);
-        }
-
-        const hours = Math.floor(avgTimeMinutes / 60);
-        const mins = avgTimeMinutes % 60;
-        const avgRepairTime = hours > 0 ? `${hours}h ${mins}m` : `${mins} min`;
+        const avgRepairTime = formatRepairTimeMinutes(getAverageRepairTimeMinutes(repairsWithTime));
 
 
         return {
