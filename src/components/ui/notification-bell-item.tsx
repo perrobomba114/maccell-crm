@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getRepairEntryDisplay } from "@/lib/notification-display";
+import { getNotificationActionConfig } from "@/lib/notification-center";
 import { StockDiscrepancyNotificationDetails } from "./stock-discrepancy-notification-details";
 
 type NotificationBellItemProps = {
@@ -21,6 +22,7 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
     const repairEntryDisplay = notification.type === "REPAIR_ENTRY"
         ? getRepairEntryDisplay(notification.actionData)
         : null;
+    const actionConfig = getNotificationActionConfig(notification);
 
     return (
         <div
@@ -67,7 +69,7 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
                         )}
                     </div>
 
-                    {notification.type === "ACTION_REQUEST" && notification.status === "PENDING" && (
+                    {notification.type === "ACTION_REQUEST" && notification.status === "PENDING" && actionConfig.mode === "respond" && (
                         <div className="mt-3 flex flex-wrap gap-2">
                             <Button
                                 size="sm"
@@ -75,7 +77,7 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
                                 onClick={() => onResponse(notification.id, "ACCEPTED")}
                                 disabled={loading}
                             >
-                                <Check className="h-3 w-3 mr-1" /> Aceptar
+                                <Check className="h-3 w-3 mr-1" /> {actionConfig.acceptLabel}
                             </Button>
                             <Button
                                 size="sm"
@@ -84,7 +86,19 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
                                 onClick={() => onResponse(notification.id, "REJECTED")}
                                 disabled={loading}
                             >
-                                <X className="h-3 w-3 mr-1" /> Rechazar
+                                <X className="h-3 w-3 mr-1" /> {actionConfig.rejectLabel}
+                            </Button>
+                        </div>
+                    )}
+
+                    {notification.type === "ACTION_REQUEST" && notification.status === "PENDING" && actionConfig.mode === "link" && (
+                        <div className="mt-3">
+                            <Button
+                                size="sm"
+                                className="h-7 min-w-0 text-xs font-bold"
+                                onClick={() => onMarkAsRead(notification.id, actionConfig.href)}
+                            >
+                                {actionConfig.linkLabel}
                             </Button>
                         </div>
                     )}

@@ -11,7 +11,18 @@ export async function createSinglePartReturnAction(repairPartId: string, technic
             where: { id: repairPartId },
             include: {
                 sparePart: true,
-                repair: true
+                repair: {
+                    include: {
+                        branch: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true,
+                                ticketPrefix: true
+                            }
+                        }
+                    }
+                }
             }
         });
 
@@ -32,20 +43,22 @@ export async function createSinglePartReturnAction(repairPartId: string, technic
             sku: repairPart.sparePart.sku
         }];
 
-        await db.$transaction(async (tx) => {
-            await tx.returnRequest.create({
+        const returnRequest = await db.$transaction(async (tx) => {
+            const createdReturnRequest = await tx.returnRequest.create({
                 data: {
                     repairId: repair.id,
                     technicianId: technicianId,
                     technicianNote: `Devolución rápida desde reparación activa #${repair.ticketNumber}`,
                     status: "PENDING",
                     partsSnapshot: partsSnapshot
-                } as any
+                }
             });
 
             await tx.repairPart.delete({
                 where: { id: repairPartId }
             });
+
+            return createdReturnRequest;
         });
 
         const admins = await db.user.findMany({
@@ -55,12 +68,22 @@ export async function createSinglePartReturnAction(repairPartId: string, technic
 
         const techName = (await db.user.findUnique({ where: { id: technicianId }, select: { name: true } }))?.name || "Técnico";
 
-        await Promise.all(admins.map((admin: any) =>
+        await Promise.all(admins.map((admin) =>
             createNotificationAction({
                 userId: admin.id,
                 title: "Devolución de Repuesto (Inmediata)",
                 message: `${techName} devolvió ${repairPart.sparePart.name} de la reparación #${repair.ticketNumber}.`,
                 type: "ACTION_REQUEST",
+                actionData: {
+                    type: "RETURN_REQUEST",
+                    returnRequestId: returnRequest.id,
+                    repairId: repair.id,
+                    branchId: repair.branchId,
+                    branchName: repair.branch.name,
+                    ticketNumber: repair.ticketNumber,
+                    technicianName: techName,
+                    partsCount: partsSnapshot.length
+                },
                 link: "/admin/returns"
             })
         ));
@@ -119,7 +142,7 @@ export async function addPartToRepairAction(repairId: string, technicianId: stri
                 });
 
                 if (currentUser && currentUser.branch) {
-                    await (tx as any).sparePartHistory.create({
+                    await tx.sparePartHistory.create({
                         data: {
                             sparePartId: part.id,
                             userId: technicianId,

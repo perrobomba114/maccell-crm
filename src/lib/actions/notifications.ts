@@ -3,6 +3,13 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { resolveStockDiscrepancy } from "./stock-actions";
+import { getNotificationCenterPageData } from "./notification-center-data";
+import { isEditablePaymentMethod, updateRelatedActionNotifications } from "./notification-response-helpers";
+import {
+    isJsonObject,
+    readNotificationString,
+} from "@/lib/notification-center";
+import { Prisma } from "@prisma/client";
 
 export async function getNotificationsAction(userId: string) {
     if (!userId) return [];
@@ -27,45 +34,11 @@ export async function getNotificationsAction(userId: string) {
 
 export async function getAllNotificationsAction(
     userId: string,
-    filters?: { status?: string, type?: string },
+    filters?: { status?: string; type?: string; branchId?: string },
     page: number = 1,
     limit: number = 25
 ) {
-    if (!userId) return { notifications: [], total: 0, totalPages: 0 };
-
-    try {
-        const whereClause: any = { userId };
-
-        if (filters?.status && filters.status !== 'ALL') {
-            whereClause.status = filters.status;
-        }
-        if (filters?.type && filters.type !== 'ALL') {
-            whereClause.type = filters.type;
-        }
-
-        const skip = (page - 1) * limit;
-
-        const [notifications, total] = await Promise.all([
-            db.notification.findMany({
-                where: whereClause,
-                take: limit,
-                skip: skip,
-                orderBy: {
-                    createdAt: 'desc'
-                }
-            }),
-            db.notification.count({ where: whereClause })
-        ]);
-
-        return {
-            notifications,
-            total,
-            totalPages: Math.ceil(total / limit)
-        };
-    } catch (error) {
-        console.error("Error fetching all notifications:", error);
-        return { notifications: [], total: 0, totalPages: 0 };
-    }
+    return getNotificationCenterPageData(userId, filters, page, limit);
 }
 
 export async function markNotificationReadAction(notificationId: string) {
@@ -112,7 +85,7 @@ export async function createNotificationAction({
     title: string;
     message: string;
     type?: string;
-    actionData?: any;
+    actionData?: Prisma.InputJsonValue | null;
     link?: string | null;
 }) {
     try {
@@ -122,7 +95,7 @@ export async function createNotificationAction({
                 title,
                 message,
                 type,
-                actionData,
+                actionData: actionData === null ? Prisma.JsonNull : actionData,
                 status: type === "ACTION_REQUEST" ? "PENDING" : null,
                 link
             }
@@ -196,26 +169,33 @@ export async function respondToNotificationAction(notificationId: string, respon
             return { success: false, error: "Ya respondida" };
         }
 
+        const actionData = isJsonObject(notification.actionData) ? notification.actionData : null;
+
         // Special handling for Stock Discrepancy
-        if (notification.actionData && (notification.actionData as any).type === "STOCK_DISCREPANCY") {
+        if (actionData?.type === "STOCK_DISCREPANCY") {
             return resolveStockDiscrepancy(notificationId, response === 'ACCEPTED');
         }
 
         // Special handling for Payment Method Change
-        if (notification.actionData && (notification.actionData as any).type === "CHANGE_PAYMENT" && response === "ACCEPTED") {
-            const { saleId, newMethod } = notification.actionData as any;
+        if (actionData?.type === "CHANGE_PAYMENT" && response === "ACCEPTED") {
+            const saleId = readNotificationString(actionData.saleId);
+            const newMethod = readNotificationString(actionData.newMethod);
+
+            if (!saleId || !isEditablePaymentMethod(newMethod)) {
+                return { success: false, error: "Datos de pago inválidos" };
+            }
 
             // Transactional update to ensure consistency
             await db.$transaction(async (tx) => {
                 const sale = await tx.sale.findUnique({ where: { id: saleId } });
 
                 if (sale) {
-                    const dataToUpdate: any = {
+                    const dataToUpdate: Prisma.SaleUpdateInput = {
                         paymentMethod: newMethod,
                         wasPaymentModified: true,
                     };
 
-                    if ((sale as any).originalPaymentMethod === null) {
+                    if (sale.originalPaymentMethod === null) {
                         dataToUpdate.originalPaymentMethod = sale.paymentMethod;
                     }
 
@@ -244,13 +224,7 @@ export async function respondToNotificationAction(notificationId: string, respon
         }
 
         // Update status
-        await db.notification.update({
-            where: { id: notificationId },
-            data: {
-                status: response,
-                isRead: true
-            }
-        });
+        await updateRelatedActionNotifications(notificationId, actionData, response);
 
         // Trigger Business Logic based on actionData
         // Example: If it's a transfer request...

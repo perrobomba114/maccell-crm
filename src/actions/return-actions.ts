@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { createNotificationAction } from "@/lib/actions/notifications";
-
+import { readReturnPartsSnapshot, type ReturnPartSnapshot } from "@/lib/return-request-parts";
 
 export async function getReturnRequests(role: "ADMIN" | "TECHNICIAN", userId?: string) {
     try {
@@ -73,10 +73,10 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
             // 2. If ACCEPTED, restore stock and remove parts from Repair
             if (status === "ACCEPTED") {
                 // Prepare parts list: Use snapshot if available, otherwise fallback to current parts
-                const snapshot = (returnRequest as any).partsSnapshot as any[];
+                const snapshot = readReturnPartsSnapshot(returnRequest.partsSnapshot);
 
                 // Determine which parts are being restored for logging purposes
-                let restoredParts: any[] = [];
+                let restoredParts: ReturnPartSnapshot[] = [];
 
                 if (snapshot && Array.isArray(snapshot) && snapshot.length > 0) {
                     restoredParts = snapshot;
@@ -102,7 +102,11 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
                     }
                 } else {
                     // FALLBACK: Use live relation
-                    const parts = returnRequest.repair.parts;
+                    const parts = returnRequest.repair.parts.map((part) => ({
+                        id: part.id,
+                        sparePartId: part.sparePartId,
+                        quantity: part.quantity,
+                    }));
                     restoredParts = parts;
                     for (const part of parts) {
                         // Restore Stock (prevent RecordNotFound transaction crash)
@@ -129,7 +133,7 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
                 for (const part of restoredParts) {
                     // Ensure we have a valid sparePartId and positive quantity
                     if (part.sparePartId && part.quantity > 0) {
-                        await (tx as any).sparePartHistory.create({
+                        await tx.sparePartHistory.create({
                             data: {
                                 sparePartId: part.sparePartId,
                                 userId: adminId, // Admin resolving the return
@@ -141,6 +145,22 @@ export async function resolveReturnRequest(requestId: string, adminId: string, s
                         });
                     }
                 }
+            }
+        });
+
+        await db.notification.updateMany({
+            where: {
+                type: "ACTION_REQUEST",
+                status: "PENDING",
+                link: "/admin/returns",
+                message: {
+                    contains: returnRequest.repair.ticketNumber,
+                    mode: "insensitive"
+                }
+            },
+            data: {
+                status,
+                isRead: true
             }
         });
 
@@ -173,6 +193,14 @@ export async function createReturnRequestAction(repairId: string, technicianId: 
         const repair = await db.repair.findUnique({
             where: { id: repairId },
             include: {
+                branch: {
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true,
+                        ticketPrefix: true
+                    }
+                },
                 parts: {
                     include: {
                         sparePart: true
@@ -203,14 +231,14 @@ export async function createReturnRequestAction(repairId: string, technicianId: 
             sku: p.sparePart.sku
         }));
 
-        await db.returnRequest.create({
+        const returnRequest = await db.returnRequest.create({
             data: {
                 repairId,
                 technicianId,
                 technicianNote: note,
                 status: "PENDING",
                 partsSnapshot: partsSnapshot // Save snapshot
-            } as any
+            }
         });
 
         // Notify Admins (Fail-safe)
@@ -229,6 +257,16 @@ export async function createReturnRequestAction(repairId: string, technicianId: 
                     title: "Nueva Solicitud de Devolución",
                     message: `${techName} ha solicitado devolver repuestos de la reparación #${repair?.ticketNumber || '?'}.`,
                     type: "ACTION_REQUEST",
+                    actionData: {
+                        type: "RETURN_REQUEST",
+                        returnRequestId: returnRequest.id,
+                        repairId: repair.id,
+                        branchId: repair.branchId,
+                        branchName: repair.branch.name,
+                        ticketNumber: repair.ticketNumber,
+                        technicianName: techName,
+                        partsCount: partsSnapshot.length
+                    },
                     link: "/admin/returns"
                 })
             ));

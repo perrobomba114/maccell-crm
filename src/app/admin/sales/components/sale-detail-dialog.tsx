@@ -4,9 +4,10 @@ import Link from "next/link";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DollarSign, CalendarIcon, Building2, User, AlertCircle, ExternalLink } from "lucide-react";
+import { DollarSign, CalendarIcon, Building2, User, AlertCircle, ExternalLink, CreditCard } from "lucide-react";
+import { buildSalePaymentDetails } from "@/lib/sale-payment-details";
 import { buildAdminRepairSearchHref } from "./sale-detail-links";
-import type { SalePaymentSummary, SaleWithDetails } from "@/types/sales";
+import type { SaleWithDetails } from "@/types/sales";
 
 interface SaleDetailDialogProps {
     sale: SaleWithDetails | null;
@@ -15,6 +16,12 @@ interface SaleDetailDialogProps {
 
 export function SaleDetailDialog({ sale, onClose }: SaleDetailDialogProps) {
     if (!sale) return null;
+
+    const paymentDetails = buildSalePaymentDetails({
+        total: sale.total,
+        paymentMethod: sale.paymentMethod,
+        payments: sale.payments,
+    });
 
     return (
         <Dialog open={!!sale} onOpenChange={(open) => !open && onClose()}>
@@ -25,18 +32,7 @@ export function SaleDetailDialog({ sale, onClose }: SaleDetailDialogProps) {
                             <div className="flex flex-col gap-1">
                                 <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Método de Pago</p>
                                 <h2 className="text-4xl font-black tracking-tighter uppercase text-white">
-                                    {(() => {
-                                        const payments: SalePaymentSummary[] = sale.payments || [];
-                                        let label = "MercadoPago";
-                                        let method = sale.paymentMethod;
-                                        if (payments.length > 1) label = "Mixto";
-                                        else if (payments.length === 1) method = payments[0].method;
-                                        if (method === "CASH") label = "Efectivo";
-                                        else if (method === "CARD") label = "Tarjeta";
-                                        else if (method === "TRANSFER") label = "Transferencia";
-                                        else if (method === "MERCADOPAGO") label = "MercadoPago";
-                                        return label;
-                                    })()}
+                                    {paymentDetails.label}
                                 </h2>
                             </div>
                         </div>
@@ -79,6 +75,42 @@ export function SaleDetailDialog({ sale, onClose }: SaleDetailDialogProps) {
                             </p>
                         </div>
                     </div>
+
+                    {paymentDetails.isMixed && (
+                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-sm">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                                    <CreditCard className="h-4 w-4" />
+                                    <p className="text-xs font-black uppercase tracking-widest">Detalle pago mixto</p>
+                                </div>
+                                <span className="rounded-md bg-amber-500/10 px-2 py-1 text-xs font-black text-amber-700 dark:text-amber-300">
+                                    {paymentDetails.formattedTotal}
+                                </span>
+                            </div>
+
+                            {paymentDetails.rows.length > 0 ? (
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    {paymentDetails.rows.map((payment) => (
+                                        <div
+                                            key={payment.method}
+                                            className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-black"
+                                        >
+                                            <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200">
+                                                {payment.label}
+                                            </span>
+                                            <span className="font-mono text-sm font-black tabular-nums text-zinc-950 dark:text-white">
+                                                {payment.formattedAmount}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="rounded-lg border border-dashed border-amber-500/40 px-3 py-2 text-sm font-semibold text-amber-700 dark:text-amber-300">
+                                    Esta venta figura como mixta, pero no tiene el desglose de pagos guardado.
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto bg-white dark:bg-black shadow-sm">
                         <Table>

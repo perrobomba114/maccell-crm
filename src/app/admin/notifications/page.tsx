@@ -6,19 +6,19 @@ import { AdminNotificationsClient } from "../../../components/admin/notification
 export default async function AdminNotificationsPage({
     searchParams
 }: {
-    searchParams: Promise<{ status?: string; type?: string; page?: string }>;
+    searchParams: Promise<{ status?: string; type?: string; branch?: string; page?: string }>;
 }) {
     const user = await getUserData();
     if (!user || user.role !== "ADMIN") {
         redirect("/");
     }
 
-    const { status, type, page: pageParam } = await searchParams;
+    const { status, type, branch, page: pageParam } = await searchParams;
     const page = Number(pageParam) || 1;
 
-    const { notifications, totalPages, total } = await getAllNotificationsAction(
+    const notificationPage = await getAllNotificationsAction(
         user.id,
-        { status: status || 'ALL', type: type || 'ALL' },
+        { status, type: type || 'ALL', branchId: branch || 'ALL' },
         page,
         25 // limit
     );
@@ -35,10 +35,15 @@ export default async function AdminNotificationsPage({
             </div>
 
             <AdminNotificationsClient
-                initialNotifications={notifications}
-                totalPages={totalPages}
-                currentPage={page}
-                totalItems={total}
+                initialNotifications={notificationPage.notifications}
+                branches={notificationPage.branches}
+                counts={notificationPage.counts}
+                totalPages={notificationPage.totalPages}
+                currentPage={notificationPage.page}
+                pageSize={notificationPage.pageSize}
+                totalItems={notificationPage.total}
+                from={notificationPage.from}
+                to={notificationPage.to}
             />
         </div>
     );
