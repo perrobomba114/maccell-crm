@@ -68,3 +68,8 @@ test("preserves explicit admin repairs date filters while searching", () => {
     assert.equal(resolveAdminRepairDateFilterForSearch("2026-07-02", "s24", referenceDate), "2026-07-02");
     assert.equal(resolveAdminRepairDateFilterForSearch("MONTH", "s24", referenceDate), "MONTH");
 });
+
+test("uses a global admin repairs date filter while searching by ticket", () => {
+    assert.equal(resolveAdminRepairDateFilterForSearch("2026-07-02", "773", referenceDate), "");
+    assert.equal(resolveAdminRepairDateFilterForSearch("MONTH", "MC2-00000773", referenceDate), "");
+});

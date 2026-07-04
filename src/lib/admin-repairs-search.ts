@@ -1,43 +1,13 @@
 import type { Prisma } from "@prisma/client";
-
-function unique(values: string[]): string[] {
-    return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
-}
+export {
+    getAdminRepairSearchTerms,
+    getAdminRepairSearchTermVariants,
+    isAdminRepairTicketLookupQuery,
+} from "@/lib/admin-repairs-search-terms";
+import { getAdminRepairSearchTermVariants, getAdminRepairSearchTerms } from "@/lib/admin-repairs-search-terms";
 
 function contains(value: string) {
     return { contains: value, mode: "insensitive" as const };
-}
-
-export function getAdminRepairSearchTerms(query: string | null | undefined): string[] {
-    return (query ?? "").trim().split(/\s+/).filter(Boolean);
-}
-
-export function getAdminRepairSearchTermVariants(term: string): string[] {
-    const trimmed = term.trim();
-    const compact = trimmed.replace(/[\s._-]+/g, "");
-    const variants = [trimmed];
-
-    if (compact !== trimmed) {
-        variants.push(compact);
-    }
-
-    const letterNumber = compact.match(/^([a-zA-Z]+)(\d+)$/);
-    if (letterNumber) {
-        const [, letters, digits] = letterNumber;
-        variants.push(`${letters} ${digits}`, `${letters}-${digits}`);
-
-        if (digits.length > 1) {
-            variants.push(`${letters}${digits[0]}-${digits.slice(1)}`);
-        }
-    }
-
-    const ticketLike = compact.match(/^([a-zA-Z]+\d)(\d{4,})$/);
-    if (ticketLike) {
-        const [, prefix, number] = ticketLike;
-        variants.push(`${prefix}-${number}`);
-    }
-
-    return unique(variants);
 }
 
 function buildVariantConditions(variant: string): Prisma.RepairWhereInput[] {

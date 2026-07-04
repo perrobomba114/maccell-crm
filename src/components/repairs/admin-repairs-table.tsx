@@ -18,6 +18,7 @@ import type { RepairDetails } from "./repair-details-dialog";
 import type { LoadingRepairAction } from "./components/AdminRepairRowActions";
 import { shouldPauseAdminRepairsAutoRefresh } from "@/lib/admin-repairs-refresh";
 import { usePolling } from "@/hooks/use-polling";
+import { buildAdminRepairSearchParamUpdates } from "@/lib/admin-repairs-filter-updates";
 
 export function AdminRepairsTable({ repairsData, branches }: { repairsData: AdminRepairsResult, branches: AdminRepairBranch[] }) {
     const searchParams = useSearchParams();
@@ -74,7 +75,7 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
         if (nextSearchTerm !== searchTerm.trim()) {
             const timer = window.setTimeout(() => {
                 pendingSearchTermRef.current = nextSearchTerm;
-                updateParams({ q: nextSearchTerm || null });
+                updateParams(buildAdminRepairSearchParamUpdates(nextSearchTerm));
             }, 350);
 
             return () => window.clearTimeout(timer);

@@ -2,6 +2,7 @@ import { addDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { normalizeRepairDateFilter } from "@/lib/repair-date-filter";
 import { TIMEZONE } from "@/lib/date-utils";
+import { isAdminRepairTicketLookupQuery } from "@/lib/admin-repairs-search-terms";
 
 export const HISTORY_REPAIR_DATE_FILTER = "HISTORY";
 export const MONTH_REPAIR_DATE_FILTER = "MONTH";
@@ -35,6 +36,7 @@ export function resolveAdminRepairDateSelectionForSearch(
     const normalized = normalizeRepairDateFilter(date);
     const hasQuery = (query ?? "").trim().length > 0;
 
+    if (isAdminRepairTicketLookupQuery(query)) return "";
     if (hasQuery && !normalized) return "";
     return resolveAdminRepairDateSelection(date, referenceDate);
 }
