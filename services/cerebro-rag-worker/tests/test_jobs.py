@@ -11,7 +11,10 @@ from cerebro_rag.jobs import JobRepository, truncate_error
 class JobRepositoryTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.database_url = os.environ["RAG_TEST_DATABASE_URL"]
+        database_url = os.environ.get("RAG_TEST_DATABASE_URL")
+        if not database_url:
+            raise unittest.SkipTest("RAG_TEST_DATABASE_URL is required for integration tests")
+        cls.database_url = database_url
 
     def setUp(self) -> None:
         with psycopg.connect(self.database_url) as connection:
