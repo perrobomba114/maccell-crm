@@ -4,6 +4,7 @@ services:
       context: ../../services/cerebro-rag-worker
       dockerfile: Dockerfile
     restart: unless-stopped
+    user: "1000:1000"
     environment:
       SOURCE_DATABASE_URL: ${SOURCE_DATABASE_URL}
       RAG_DATABASE_URL: ${RAG_DATABASE_URL}
@@ -17,8 +18,8 @@ services:
       MKL_NUM_THREADS: "12"
     volumes:
       - /mnt/data2:/library:ro
-      - cerebro-rag-pages:/page-cache
-      - cerebro-rag-models:/model-cache
+      - /var/lib/maccell/rag-pages:/page-cache
+      - /var/lib/maccell/rag-models:/model-cache
     networks:
       - dokploy-network
     deploy:
@@ -29,10 +30,6 @@ services:
         reservations:
           cpus: "2"
           memory: 4G
-
-volumes:
-  cerebro-rag-pages:
-  cerebro-rag-models:
 
 networks:
   dokploy-network:
