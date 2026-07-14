@@ -36,6 +36,30 @@ def resolve_library_document(library_root: Path, relative_path: str) -> Path:
     return candidate
 
 
+def build_document_chunks(
+    document_id: str,
+    pages: tuple[ExtractedPage, ...],
+) -> tuple[PageChunk, ...]:
+    text_chunks = tuple(
+        chunk
+        for page in pages
+        for chunk in chunk_page(document_id, page.page_number, page.text)
+    )
+    if text_chunks:
+        return text_chunks
+    placeholder = "Página visual sin texto; inspeccionar diagrama o PCB."
+    return tuple(
+        PageChunk(
+            document_id=document_id,
+            page_number=page.page_number,
+            content=placeholder,
+            token_count=len(placeholder.split()),
+            component_codes=(),
+        )
+        for page in pages
+    )
+
+
 class PdfIndexer:
     def __init__(
         self,
@@ -75,11 +99,7 @@ class PdfIndexer:
             return document_id, 0, 0, True
 
         pages = extract_pdf_pages(entry.absolute_path, entry.sha256, self.cache_root)
-        chunks = tuple(
-            chunk
-            for page in pages
-            for chunk in chunk_page(str(document_id), page.page_number, page.text)
-        )
+        chunks = build_document_chunks(str(document_id), pages)
         chunk_metadata = tuple(technical_page_metadata(chunk.content) for chunk in chunks)
         vectors = self.embeddings.embed_passages([
             embedding_projection(
