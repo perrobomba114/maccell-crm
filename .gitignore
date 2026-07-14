@@ -43,6 +43,7 @@ upload/
 !src/components/admin/backups/**
 *.sql
 !prisma/migrations/**/*.sql
+!services/cerebro-rag-worker/src/cerebro_rag/schema.sql
 *.zip
 *.tar.gz
 
