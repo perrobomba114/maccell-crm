@@ -76,6 +76,16 @@ class PdfInventoryTest(unittest.TestCase):
             self.assertEqual(sum(map(len, paths)), 7)
             self.assertEqual(len(set().union(*(set(path) for path in paths))), 7)
 
+    def test_inventory_accepts_pdf_extensions_case_insensitively(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "manual.PDF").write_bytes(b"uppercase-pdf")
+            (root / "schematic.PdF").write_bytes(b"mixed-case-pdf")
+
+            paths = {entry.relative_path.name for entry in iter_pdf_inventory(root)}
+
+            self.assertEqual(paths, {"manual.PDF", "schematic.PdF"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -85,7 +85,10 @@ def iter_pdf_inventory(
     if shard_count < 1 or shard_index < 0 or shard_index >= shard_count:
         raise ValueError("invalid inventory shard")
     root = library_root.resolve(strict=True)
-    for position, candidate in enumerate(sorted(root.rglob("*.pdf"))):
+    pdf_candidates = sorted(
+        candidate for candidate in root.rglob("*") if candidate.suffix.casefold() == ".pdf"
+    )
+    for position, candidate in enumerate(pdf_candidates):
         if position % shard_count != shard_index:
             continue
         resolved = candidate.resolve(strict=True)

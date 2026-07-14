@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+
+from pypdf.errors import PdfReadError
 
 import cerebro_rag.pdf_extract as pdf_extract
 from cerebro_rag.pdf_extract import (
     ExtractionMethod,
     choose_extraction_method,
+    extract_native_page_text,
     sanitize_extracted_text,
 )
 
@@ -29,6 +33,20 @@ class PdfExtractionTest(unittest.TestCase):
             sanitize_extracted_text("PP_VDD_MAIN\x00 PMIC\x00\n"),
             "PP_VDD_MAIN PMIC\n",
         )
+
+    def test_falls_back_to_poppler_when_pypdf_cannot_parse_page_content(self) -> None:
+        class MalformedPage:
+            def extract_text(self) -> str:
+                raise PdfReadError("invalid elementary object")
+
+        text = extract_native_page_text(
+            MalformedPage(),
+            Path("redmi-note.pdf"),
+            7,
+            poppler_extract=lambda path, page: f"{path.stem} page {page} troubleshooting",
+        )
+
+        self.assertEqual(text, "redmi-note page 7 troubleshooting")
 
 
 if __name__ == "__main__":

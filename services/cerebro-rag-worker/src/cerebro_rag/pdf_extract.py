@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import Callable, Protocol
+
+from pypdf.errors import PdfReadError
 
 
 NATIVE_TEXT_THRESHOLD = 40
@@ -11,6 +15,50 @@ NATIVE_TEXT_THRESHOLD = 40
 def sanitize_extracted_text(text: str) -> str:
     """Remove NUL bytes that PostgreSQL cannot store in text columns."""
     return text.replace("\x00", "")
+
+
+class NativeTextPage(Protocol):
+    def extract_text(self) -> str | None: ...
+
+
+PopplerExtractor = Callable[[Path, int], str]
+
+
+def extract_page_with_poppler(pdf_path: Path, page_number: int) -> str:
+    try:
+        result = subprocess.run(
+            [
+                "pdftotext",
+                "-f",
+                str(page_number),
+                "-l",
+                str(page_number),
+                "-layout",
+                str(pdf_path),
+                "-",
+            ],
+            capture_output=True,
+            check=False,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return result.stdout if result.returncode == 0 else ""
+
+
+def extract_native_page_text(
+    page: NativeTextPage,
+    pdf_path: Path,
+    page_number: int,
+    poppler_extract: PopplerExtractor = extract_page_with_poppler,
+) -> str:
+    try:
+        text = page.extract_text() or ""
+    except PdfReadError:
+        text = poppler_extract(pdf_path, page_number)
+    return sanitize_extracted_text(text).strip()
 
 
 class ExtractionMethod(StrEnum):
@@ -46,7 +94,7 @@ def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> t
     extracted: list[ExtractedPage] = []
 
     for index, page in enumerate(reader.pages, start=1):
-        native_text = sanitize_extracted_text(page.extract_text() or "").strip()
+        native_text = extract_native_page_text(page, pdf_path, index)
         method = choose_extraction_method(native_text)
         if not render_during_ingestion(method):
             extracted.append(ExtractedPage(index, native_text, method, None))
