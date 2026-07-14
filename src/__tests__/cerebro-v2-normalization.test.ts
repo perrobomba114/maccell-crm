@@ -20,6 +20,12 @@ test("normalizes Apple model aliases", () => {
     assert.equal(normalizeModel("APPLE", "iPhone 8"), "IPHONE 8");
 });
 
+test("searches Apple documents and historical repairs with and without the iPhone prefix", () => {
+    const identity = normalizeDeviceIdentity("Iphone", "12 PRO");
+    assert.deepEqual(identity, { brand: "APPLE", model: "IPHONE 12 PRO" });
+    assert.deepEqual(deviceModelAliases(identity), ["IPHONE 12 PRO", "12 PRO"]);
+});
+
 test("corrects an incompatible selected brand from an explicit iPhone model", () => {
     assert.deepEqual(normalizeDeviceIdentity("SAMSUNG", "iPhone 8"), {
         brand: "APPLE",

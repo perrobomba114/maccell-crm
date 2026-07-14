@@ -51,3 +51,20 @@ test("interprets Argentine chip language as the SIM and RF subsystem", () => {
     assert.match(query, /SIM DETECT/);
     assert.match(query, /BASEBAND/);
 });
+
+test("treats a timed iPhone restart as panic diagnostics instead of a charging failure", () => {
+    const symptom = "Se usa 3 min y se reinicia solo / carga 0.6";
+    const subsystems = inferDiagnosticSubsystems(symptom);
+    const query = buildTechnicalSearchQuery({
+        brand: "APPLE",
+        model: "IPHONE 12 PRO",
+        problem: symptom,
+        latestText: "se reinicia",
+        observations: [],
+    });
+
+    assert.ok(subsystems.includes("RESTART"));
+    assert.ok(!subsystems.includes("CHARGING"));
+    assert.match(query, /PANIC FULL/);
+    assert.match(query, /WATCHDOG|THERMALMONITORD/);
+});

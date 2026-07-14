@@ -89,5 +89,9 @@ export function deviceModelAliases(identity: DeviceIdentity): string[] {
     const declared = DECLARED_IDENTITIES.find((candidate) => (
         candidate.brand === identity.brand && candidate.model === identity.model
     ));
-    return declared ? [...declared.aliases] : [identity.model];
+    if (declared) return [...declared.aliases];
+    if (identity.brand === "APPLE" && identity.model.startsWith("IPHONE ")) {
+        return [identity.model, identity.model.slice("IPHONE ".length)];
+    }
+    return [identity.model];
 }

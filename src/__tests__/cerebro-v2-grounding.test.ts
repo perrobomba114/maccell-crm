@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { suppressUnsupportedMeasurements } from "@/lib/cerebro-v2/grounding";
+import { ensureObservedFacts, suppressUnsupportedMeasurements } from "@/lib/cerebro-v2/grounding";
 
 test("keeps measurements present in exact evidence", () => {
     const answer = suppressUnsupportedMeasurements(
@@ -18,4 +18,14 @@ test("suppresses numeric electrical values absent from evidence", () => {
     );
     assert.doesNotMatch(answer, /3\.8 V|120 mA/);
     assert.match(answer, /registrar el valor medido/i);
+});
+
+test("deterministically preserves the seller intake in observed facts", () => {
+    const answer = ensureObservedFacts(
+        "## DATOS OBSERVADOS\nEl equipo se reinicia.\n\n## EVIDENCIA\nSin evidencia.",
+        "Se usa 3 min y se reinicia solo / carga 0.6 / no se comprobó funciones",
+    );
+
+    assert.match(answer, /Ingreso del vendedor: Se usa 3 min y se reinicia solo \/ carga 0\.6 \/ no se comprobó funciones/);
+    assert.equal(answer.match(/## DATOS OBSERVADOS/g)?.length, 1);
 });

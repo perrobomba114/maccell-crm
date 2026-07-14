@@ -265,3 +265,51 @@ test("deduplicates the same PDF title and page from mirrored library paths", asy
 
     assert.equal(results.length, 1);
 });
+
+test("excludes the active repair and keeps a confirmed prior restart repair", async () => {
+    const activeRepair = {
+        ...baseRow,
+        chunkId: "active-repair",
+        documentId: "active-doc",
+        brand: "APPLE",
+        model: "12 PRO",
+        identityMatch: true,
+        title: "Reparación 8BIT-00000219",
+        authority: "INCOMPLETE" as const,
+        content: "PROBLEMA: se reinicia cada 3 minutos\nDIAGNOSTICO: \nSOLUCION: Reparación tomada por técnico.",
+    };
+    const priorRepair = {
+        ...activeRepair,
+        chunkId: "prior-repair",
+        documentId: "prior-doc",
+        title: "Reparación MAC2-00001451",
+        authority: "CONFIRMED_SUCCESS" as const,
+        content: "PROBLEMA: llega al logo y se reinicia\nDIAGNOSTICO: Se realizó la reconexión del flex.\nSOLUCION: Equipo probado.",
+    };
+    const unrelatedBattery = {
+        ...activeRepair,
+        chunkId: "battery-repair",
+        documentId: "battery-doc",
+        title: "Reparación MAC2-00001163",
+        authority: "CONFIRMED_SUCCESS" as const,
+        content: "PROBLEMA: cambio de batería\nDIAGNOSTICO: Se reemplazó la batería.\nSOLUCION: Equipo probado.",
+    };
+
+    const results = await retrieveCerebroSources({
+        brand: "APPLE",
+        model: "IPHONE 12 PRO",
+        modelAliases: ["IPHONE 12 PRO", "12 PRO"],
+        text: "se reinicia cada 3 minutos panic full watchdog",
+        subsystemTerms: ["RESTART", "PANIC FULL", "WATCHDOG"],
+        excludeRepairTicket: "8BIT-00000219",
+        embedding: [0.1],
+    }, {
+        async search(sql, params) {
+            assert.match(sql, /normalized_brand = \$1/);
+            assert.equal(params[0], "APPLE");
+            return [activeRepair, unrelatedBattery, priorRepair];
+        },
+    });
+
+    assert.deepEqual(results.map((source) => source.title), ["Reparación MAC2-00001451"]);
+});

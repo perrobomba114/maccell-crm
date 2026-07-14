@@ -6,14 +6,19 @@ type GuidedQuestionInput = {
     evidenceDocumentIds: readonly string[];
 };
 
-function option(id: string, label: string, value: string): GuidedOption {
+function option(
+    id: string,
+    label: string,
+    value: string,
+    conditions = "Equipo conectado a fuente de laboratorio al intentar encender",
+): GuidedOption {
     return {
         id,
         label,
         observation: {
             kind: "behavior",
             value,
-            conditions: "Equipo conectado a fuente de laboratorio al intentar encender",
+            conditions,
         },
     };
 }
@@ -21,6 +26,40 @@ function option(id: string, label: string, value: string): GuidedOption {
 export function buildGuidedQuestion(input: GuidedQuestionInput): GuidedQuestion | null {
     const context = `${input.repairProblem} ${input.latestText}`.toUpperCase();
     const sourceDocumentIds = [...new Set(input.evidenceDocumentIds)].slice(0, 8);
+    if (/NO\s+(?:LEE|RECONOCE|DETECTA).*?(?:CHIP|SIM)|SIN\s+(?:CHIP|SIM)|INSERTAR\s+SIM/.test(context)) {
+        const conditions = "Probá una SIM conocida como funcional, con la bandeja correcta, y reiniciá el equipo";
+        return {
+            id: crypto.randomUUID(),
+            prompt: "Con una SIM conocida como funcional, ¿qué estado muestra el equipo?",
+            measurement: "Separar detección de SIM de registro y señal de red",
+            conditions,
+            options: [
+                option("sim-not-detected", "Sigue indicando Sin SIM", "KNOWN_SIM_NOT_DETECTED", conditions),
+                option("sim-detected-no-service", "Detecta SIM, pero dice Sin servicio", "SIM_DETECTED_NO_SERVICE", conditions),
+                option("sim-registered-no-signal", "Reconoce operador, pero no tiene señal", "SIM_REGISTERED_NO_SIGNAL", conditions),
+                option("sim-intermittent", "La detección aparece y desaparece", "SIM_DETECTION_INTERMITTENT", conditions),
+            ],
+            sourceDocumentIds,
+            allowFreeText: true,
+        };
+    }
+    if (/REINIC|REBOOT|PANIC|WATCHDOG|CADA\s+(?:3|TRES)\s+MIN/.test(context)) {
+        const conditions = "Abrí Ajustes > Privacidad y seguridad > Análisis y mejoras > Datos de análisis, sin borrar registros";
+        return {
+            id: crypto.randomUUID(),
+            prompt: "¿Qué registro reciente aparece en Datos de análisis después del reinicio?",
+            measurement: "Clasificar el reinicio mediante el registro de panic de iOS",
+            conditions,
+            options: [
+                option("panic-full", "Aparece panic-full o panic-base", "IOS_PANIC_LOG_PRESENT", conditions),
+                option("watchdog-missing-sensor", "Indica watchdog o missing sensor", "IOS_WATCHDOG_SENSOR_LOG", conditions),
+                option("no-recent-panic", "No aparece un panic reciente", "NO_RECENT_IOS_PANIC", conditions),
+                option("cannot-open-settings", "No puedo entrar a Ajustes", "CANNOT_ACCESS_IOS_SETTINGS", conditions),
+            ],
+            sourceDocumentIds,
+            allowFreeText: true,
+        };
+    }
     if (/0\.000|PULSO Y VUELVE|CONSUMO FIJO BAJO|LIMITA POR CORTO|SUBE ALTO/.test(input.latestText.toUpperCase())) {
         return {
             id: crypto.randomUUID(),

@@ -10,6 +10,7 @@ export type RetrievalInput = {
     embedding: readonly number[];
     componentCodes?: readonly string[];
     subsystemTerms?: readonly string[];
+    excludeRepairTicket?: string;
     limit?: number;
 };
 
@@ -173,6 +174,16 @@ function confirmedRepairText(content: string): string {
 
 function repairEvidenceIsRelevant(row: RetrievalRow, input: RetrievalInput): boolean {
     if (row.sourceType !== "REPAIR") return true;
+    if (input.excludeRepairTicket && row.title.toUpperCase().includes(input.excludeRepairTicket.toUpperCase())) {
+        return false;
+    }
+    const restartSearch = (input.subsystemTerms ?? []).some((term) => (
+        /^(?:RESTART|REBOOT|PANIC|WATCHDOG|THERMALMONITORD|MISSING SENSOR)/i.test(term)
+    ));
+    if (restartSearch) {
+        return /REINIC|REBOOT|PANIC|WATCHDOG|THERMALMONITORD|MISSING SENSOR/i.test(row.content)
+            && confirmedRepairText(row.content).trim().length > 0;
+    }
     const rfSearch = (input.subsystemTerms ?? []).some((term) => (
         /^(?:RF|SIM|BASEBAND|ANTENNA|NETWORK|UIM)/i.test(term)
     ));

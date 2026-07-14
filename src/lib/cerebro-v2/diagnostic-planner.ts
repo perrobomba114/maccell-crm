@@ -1,10 +1,11 @@
-export type DiagnosticSubsystem = "POWER" | "BATTERY" | "CHARGING" | "BOOT" | "DISPLAY" | "RF";
+export type DiagnosticSubsystem = "POWER" | "BATTERY" | "CHARGING" | "BOOT" | "RESTART" | "DISPLAY" | "RF";
 
 const SUBSYSTEM_TERMS: Readonly<Record<DiagnosticSubsystem, readonly string[]>> = {
     POWER: ["POWER ON", "PWR ON", "POWER", "PMIC", "POWER KEY", "VBAT", "VDD MAIN", "TRST_N", "RESET", "OSCILLATOR", "CLOCK", "SHORT CIRCUIT"],
     BATTERY: ["BATTERY", "BATT", "PP_BATT", "NTC", "BATTERY CONNECTOR"],
     CHARGING: ["CHARGING", "USB", "VBUS", "CHARGE IC", "DOCK FLEX"],
     BOOT: ["BOOT", "RESET", "CLOCK", "NAND", "CPU"],
+    RESTART: ["RESTART", "REBOOT", "PANIC FULL", "PANIC", "WATCHDOG", "THERMALMONITORD", "MISSING SENSOR", "I2C SENSOR"],
     DISPLAY: ["DISPLAY", "LCD OFF", "LCD", "OLED", "BACKLIGHT", "LUZ DE FONDO", "MIPI"],
     RF: [
         "RF",
@@ -27,8 +28,9 @@ export function inferDiagnosticSubsystems(text: string): DiagnosticSubsystem[] {
     const result = new Set<DiagnosticSubsystem>();
     if (/NO ENCIENDE|NO PRENDE|CONSUMO|CORTO|APAG/.test(value)) result.add("POWER");
     if (/BATER|BATT|DESCARG/.test(value)) result.add("BATTERY");
-    if (/NO CARGA|CARGA|USB|VBUS|CONECTOR/.test(value)) result.add("CHARGING");
-    if (/LOGO|REINIC|BOOT|RECOVERY|DFU/.test(value)) result.add("BOOT");
+    if (/NO CARGA|NO DETECTA (?:EL )?CARGADOR|CARGA (?:LENTA|INTERMITENTE|SOLO)|USB|VBUS|CONECTOR (?:DE )?CARGA/.test(value)) result.add("CHARGING");
+    if (/LOGO|BOOT|RECOVERY|DFU/.test(value)) result.add("BOOT");
+    if (/REINIC|REBOOT|PANIC|WATCHDOG|THERMALMONITORD|MISSING SENSOR/.test(value)) result.add("RESTART");
     if (/PANTALLA|DISPLAY|IMAGEN|BACKLIGHT|LUZ DE FONDO|FONDO|NEGRA/.test(value)) result.add("DISPLAY");
     if (/SEÑAL|SENAL|RED|SIM|BASEBAND|ANTENA|ANTENNA|IMEI|(?:NO\s+LEE|SIN)\s+(?:EL\s+)?CHIP/.test(value)) result.add("RF");
     return [...result];

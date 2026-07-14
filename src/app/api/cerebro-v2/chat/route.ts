@@ -9,7 +9,7 @@ import { parseCerebroChatRequest, type CerebroChatRequest } from "@/lib/cerebro-
 import { cerebroChatRepository } from "@/lib/cerebro-v2/chat-repository";
 import { buildTechnicalSearchQuery, diagnosticSubsystemTerms } from "@/lib/cerebro-v2/diagnostic-planner";
 import { buildGuidedQuestion, validateGuidedAnswer } from "@/lib/cerebro-v2/guided-diagnosis";
-import { suppressUnsupportedMeasurements } from "@/lib/cerebro-v2/grounding";
+import { ensureObservedFacts, suppressUnsupportedMeasurements } from "@/lib/cerebro-v2/grounding";
 import { extractMessageInput, toPublicSources } from "@/lib/cerebro-v2/message-content";
 import { deviceModelAliases, normalizeDeviceIdentity } from "@/lib/cerebro-v2/normalization";
 import { buildCerebroSystemPrompt, CEREBRO_PROMPT_VERSION } from "@/lib/cerebro-v2/prompt";
@@ -148,6 +148,7 @@ export async function POST(request: Request): Promise<Response> {
             embedding,
             componentCodes: componentCodes(searchText),
             subsystemTerms: diagnosticSubsystemTerms(searchText),
+            excludeRepairTicket: repair.ticketNumber,
             limit: 8,
         });
         const publicSources = toPublicSources(evidence);
@@ -204,9 +205,12 @@ export async function POST(request: Request): Promise<Response> {
             maxOutputTokens: 1_600,
             maxRetries: 0,
         });
-        const groundedText = suppressUnsupportedMeasurements(
-            result.text,
-            evidence.map((source) => source.content),
+        const groundedText = ensureObservedFacts(
+            suppressUnsupportedMeasurements(
+                result.text,
+                evidence.map((source) => source.content),
+            ),
+            repair.problemDescription,
         );
         await cerebroChatRepository.appendMessage({
             userId: user.id,

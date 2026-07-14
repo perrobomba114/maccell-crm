@@ -33,3 +33,38 @@ test("validates only options from the pending question", () => {
         optionId: "manipulated-option",
     }), null);
 });
+
+test("distinguishes SIM detection from a radio signal failure", () => {
+    const question = buildGuidedQuestion({
+        repairProblem: "Revisar antena / IMEI ok pero no lee chip",
+        latestText: "No lee chip",
+        evidenceDocumentIds: ["sm-a035-schematic"],
+    });
+
+    assert.ok(question);
+    assert.match(question.prompt, /SIM conocida/i);
+    assert.deepEqual(question.options.map((candidate) => candidate.id), [
+        "sim-not-detected",
+        "sim-detected-no-service",
+        "sim-registered-no-signal",
+        "sim-intermittent",
+    ]);
+    assert.ok(question.options.every((candidate) => /SIM conocida/i.test(candidate.observation.conditions)));
+});
+
+test("asks for the iOS panic log before treating a timed restart as charging", () => {
+    const question = buildGuidedQuestion({
+        repairProblem: "Se usa 3 min y se reinicia solo / carga 0.6",
+        latestText: "Se reinicia",
+        evidenceDocumentIds: ["prior-repair"],
+    });
+
+    assert.ok(question);
+    assert.match(question.prompt, /Datos de análisis|panic/i);
+    assert.deepEqual(question.options.map((candidate) => candidate.id), [
+        "panic-full",
+        "watchdog-missing-sensor",
+        "no-recent-panic",
+        "cannot-open-settings",
+    ]);
+});
