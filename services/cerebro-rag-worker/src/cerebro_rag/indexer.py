@@ -144,7 +144,7 @@ class PdfIndexer:
                     page.page_number,
                     page.text,
                     page.method.value,
-                    str(page.rendered_path),
+                    str(page.rendered_path) if page.rendered_path else None,
                     Jsonb(technical_page_metadata(page.text)),
                 ),
             ).fetchone()

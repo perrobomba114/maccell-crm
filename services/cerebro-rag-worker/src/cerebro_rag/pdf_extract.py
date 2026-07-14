@@ -19,7 +19,7 @@ class ExtractedPage:
     page_number: int
     text: str
     method: ExtractionMethod
-    rendered_path: Path
+    rendered_path: Path | None
 
 
 def choose_extraction_method(native_text: str) -> ExtractionMethod:
@@ -28,10 +28,12 @@ def choose_extraction_method(native_text: str) -> ExtractionMethod:
     return ExtractionMethod.OCR
 
 
+def render_during_ingestion(method: ExtractionMethod) -> bool:
+    return method is ExtractionMethod.OCR
+
+
 def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> tuple[ExtractedPage, ...]:
-    from pdf2image import convert_from_path
     from pypdf import PdfReader
-    import pytesseract
 
     document_cache = cache_root / document_hash
     document_cache.mkdir(parents=True, exist_ok=True)
@@ -41,6 +43,12 @@ def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> t
     for index, page in enumerate(reader.pages, start=1):
         native_text = (page.extract_text() or "").strip()
         method = choose_extraction_method(native_text)
+        if not render_during_ingestion(method):
+            extracted.append(ExtractedPage(index, native_text, method, None))
+            continue
+        from pdf2image import convert_from_path
+        import pytesseract
+
         rendered_path = document_cache / f"page-{index:04d}.png"
         images = convert_from_path(
             str(pdf_path),
@@ -51,11 +59,11 @@ def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> t
             thread_count=1,
         )
         if not images:
-            extracted.append(ExtractedPage(index, native_text, ExtractionMethod.NONE, rendered_path))
+            extracted.append(ExtractedPage(index, native_text, ExtractionMethod.NONE, None))
             continue
         image = images[0]
         image.save(rendered_path, "PNG")
-        text = native_text if method is ExtractionMethod.NATIVE else pytesseract.image_to_string(image, lang="eng+spa")
+        text = pytesseract.image_to_string(image, lang="eng+spa")
         extracted.append(ExtractedPage(index, text.strip(), method, rendered_path))
 
     return tuple(extracted)
