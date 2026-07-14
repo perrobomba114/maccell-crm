@@ -16,6 +16,15 @@ class PdfInventoryTest(unittest.TestCase):
         self.assertEqual(identity.model, "SM-A405FN")
         self.assertEqual(identity.document_type, "SERVICE_MANUAL")
 
+    def test_prefers_exact_filename_variant_over_parent_family_model(self) -> None:
+        identity = parse_pdf_identity(
+            Path(
+                "SAMSUNG/Serie A/Nuevos/Samsung Galaxy A40 SM-A405F/Manual de servicio/"
+                "SM-A405FN_Manual de Servicio.pdf"
+            )
+        )
+        self.assertEqual(identity.model, "SM-A405FN")
+
     def test_parses_motorola_schematic_path(self) -> None:
         identity = parse_pdf_identity(
             Path("Motorola /Moto Z/Moto Z4/Esquematico completo XT1980 (Moto Z4).pdf")
