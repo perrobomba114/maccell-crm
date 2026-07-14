@@ -19,7 +19,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest==8.4.1", "testcontainers[postgres]==4.10.0"]
+test = [
+    "httpx==0.28.1",
+    "pytest==8.4.1",
+    "testcontainers[postgres]==4.10.0",
+]
 
 [project.scripts]
 cerebro-rag = "cerebro_rag.cli:main"
