@@ -32,6 +32,9 @@ export function normalizeModel(brand: string, value: string): string {
     if (normalizedBrand === "SAMSUNG" && /^(?:SM)?A405FN$/.test(compact)) {
         return "SM-A405FN";
     }
+    if (normalizedBrand === "APPLE") {
+        return clean.startsWith("IPHONE ") ? clean : `IPHONE ${clean}`;
+    }
 
     return clean;
 }

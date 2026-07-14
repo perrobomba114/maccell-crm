@@ -57,6 +57,32 @@ class RepairReconstructionTest(unittest.TestCase):
         self.assertEqual(source.observations, ("Cambio",))
         self.assertEqual(source.parts, ("U5002",))
 
+    def test_removes_operational_events_from_technical_solution(self) -> None:
+        source = RepairSource(
+            repair_id="repair-2",
+            ticket_number="MAC-2",
+            brand="Apple",
+            model="8",
+            problem="No enciende",
+            diagnosis="Falla de encendido",
+            enriched_diagnosis="",
+            observations=(
+                "Reparación tomada por técnico",
+                "Reparación cobrada en Venta #SALE-123",
+                "Se reemplazó el flex de carga",
+            ),
+            parts=(),
+            current_status="Finalizado OK",
+            prior_statuses=(),
+        )
+
+        content = build_repair_content(source)
+
+        self.assertIn("DISPOSITIVO: APPLE IPHONE 8", content)
+        self.assertIn("Se reemplazó el flex de carga", content)
+        self.assertNotIn("tomada por técnico", content)
+        self.assertNotIn("cobrada en Venta", content)
+
 
 if __name__ == "__main__":
     unittest.main()

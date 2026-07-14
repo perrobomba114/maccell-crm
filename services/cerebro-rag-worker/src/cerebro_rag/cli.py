@@ -15,8 +15,14 @@ from cerebro_rag.repairs import REPAIR_EXPORT_QUERY
 from cerebro_rag.repair_sync import run_repair_sync
 
 
-def index_pdfs(settings: WorkerSettings, limit: int | None, model: str | None) -> None:
-    entries = iter_pdf_inventory(settings.library_root)
+def index_pdfs(
+    settings: WorkerSettings,
+    limit: int | None,
+    model: str | None,
+    shard_index: int = 0,
+    shard_count: int = 1,
+) -> None:
+    entries = iter_pdf_inventory(settings.library_root, shard_index, shard_count)
     processed = ready = failed = pages = chunks = 0
     with psycopg.connect(settings.rag_database_url.get_secret_value()) as connection:
         indexer = PdfIndexer(
@@ -40,8 +46,6 @@ def index_pdfs(settings: WorkerSettings, limit: int | None, model: str | None) -
                 failed += 1
                 print(f"FAILED {processed} type={type(error).__name__} ready={ready} failed={failed}", flush=True)
     print(f"SUMMARY processed={processed} ready={ready} failed={failed} pages={pages} chunks={chunks}")
-    if failed:
-        raise SystemExit(1)
 
 
 def index_repairs(settings: WorkerSettings, limit: int | None) -> None:
@@ -78,6 +82,8 @@ def main() -> None:
     pdfs = commands.add_parser("index-pdfs")
     pdfs.add_argument("--limit", type=int)
     pdfs.add_argument("--model")
+    pdfs.add_argument("--shard-index", type=int, default=0)
+    pdfs.add_argument("--shard-count", type=int, default=1)
     pilot = commands.add_parser("pilot")
     pilot.add_argument("--model", default="SM-A405FN")
     pilot.add_argument("--pdf-limit", type=int, default=2)
@@ -89,7 +95,7 @@ def main() -> None:
     args = parser.parse_args()
     settings = WorkerSettings()
     if args.command == "index-pdfs":
-        index_pdfs(settings, args.limit, args.model)
+        index_pdfs(settings, args.limit, args.model, args.shard_index, args.shard_count)
     elif args.command == "pilot":
         index_pdfs(settings, args.pdf_limit, args.model)
     elif args.command == "index-repairs":

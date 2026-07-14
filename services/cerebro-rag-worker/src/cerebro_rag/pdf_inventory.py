@@ -78,9 +78,17 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def iter_pdf_inventory(library_root: Path) -> Iterator[PdfInventoryEntry]:
+def iter_pdf_inventory(
+    library_root: Path,
+    shard_index: int = 0,
+    shard_count: int = 1,
+) -> Iterator[PdfInventoryEntry]:
+    if shard_count < 1 or shard_index < 0 or shard_index >= shard_count:
+        raise ValueError("invalid inventory shard")
     root = library_root.resolve(strict=True)
-    for candidate in sorted(root.rglob("*.pdf")):
+    for position, candidate in enumerate(sorted(root.rglob("*.pdf"))):
+        if position % shard_count != shard_index:
+            continue
         resolved = candidate.resolve(strict=True)
         try:
             relative_path = resolved.relative_to(root)

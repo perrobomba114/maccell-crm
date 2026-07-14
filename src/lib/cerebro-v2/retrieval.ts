@@ -129,8 +129,7 @@ export async function retrieveCerebroSources(
         row.brand === input.brand
         && (row.sourceType === "REPAIR" || row.sourceType === "PDF")
     ));
-    const exactModelRows = allowedRows.filter((row) => row.model === input.model);
-    const scopedRows = exactModelRows.length > 0 ? exactModelRows : allowedRows;
+    const scopedRows = allowedRows.filter((row) => row.model === input.model);
     return scopedRows
         .map((row) => ({
             chunkId: row.chunkId,

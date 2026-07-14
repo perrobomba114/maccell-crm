@@ -27,3 +27,10 @@ test("builds a direct same-brand prompt with isolated evidence delimiters", () =
     assert.match(prompt, /MISMA MARCA/);
     assert.doesNotMatch(prompt, /50\.000/);
 });
+
+test("requires an explicit measurement when exact-model evidence is absent", () => {
+    const prompt = buildCerebroSystemPrompt("APPLE", "IPHONE 8", []);
+    assert.match(prompt, /NO HAY EVIDENCIA EXACTA/);
+    assert.match(prompt, /consumo en fuente/i);
+    assert.match(prompt, /no cites fuentes/i);
+});

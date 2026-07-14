@@ -65,6 +65,10 @@ LIMIT %s
 EMAIL_PATTERN = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 PHONE_PATTERN = re.compile(r"(?:\+?54\s*)?(?:9\s*)?(?:\(?\d{2,4}\)?[\s.-]*)?\d{4}[\s.-]*\d{4}")
 PRICE_PATTERN = re.compile(r"(?:US\$|USD|ARS|\$)\s*\d[\d.,]*", re.IGNORECASE)
+OPERATIONAL_OBSERVATION_PATTERN = re.compile(
+    r"^(?:reparaci[oó]n\s+)?(?:tomada por t[eé]cnico|cobrada en venta|asignada a|estado cambiado)",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,10 +93,14 @@ def sanitize_technical_text(value: str) -> str:
     return re.sub(r"\s+", " ", sanitized).strip()
 
 
+def technical_observations(values: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(value for value in values if not OPERATIONAL_OBSERVATION_PATTERN.match(value.strip()))
+
+
 def build_repair_content(source: RepairSource) -> str:
     brand = normalize_brand(source.brand)
     model = normalize_model(brand, source.model)
-    solution = " | ".join(filter(None, map(sanitize_technical_text, source.observations)))
+    solution = " | ".join(filter(None, map(sanitize_technical_text, technical_observations(source.observations))))
     parts = " | ".join(filter(None, map(sanitize_technical_text, source.parts)))
     sections = (
         f"DISPOSITIVO: {brand} {model}",

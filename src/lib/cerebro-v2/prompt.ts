@@ -38,6 +38,9 @@ export function buildCerebroSystemPrompt(
             })}\n--- FIN EVIDENCIA E${evidenceNumber} ---`,
         );
     }
+    const evidenceRule = blocks.length === 0
+        ? "NO HAY EVIDENCIA EXACTA PARA ESTE MODELO. Decilo explícitamente, no cites fuentes y no traslades soluciones de otros modelos. Pedí como primera acción el consumo en fuente al intentar encender y cualquier medición previa disponible; no inventes valores esperados."
+        : "Usá y citá únicamente la evidencia exacta incluida abajo.";
 
     return `Sos el asistente técnico de diagnóstico de placa de MACCELL.
 Tu respuesta debe ayudar a un técnico a decidir la próxima medición segura. No menciones precios.
@@ -47,6 +50,7 @@ REGLA ABSOLUTA: usá únicamente evidencia de la MISMA MARCA (${brand}).
 La evidencia MACCELL y documental tiene prioridad sobre conocimiento general.
 Los casos FAILED son contraejemplos y nunca una reparación confirmada.
 No conviertas el síntoma del técnico en evidencia histórica.
+${evidenceRule}
 No inventes porcentajes, IC, pin, rail, voltaje, resultado ni contenido de una página.
 Separá hechos de hipótesis. Si falta evidencia, indicá una medición concreta y el criterio para continuar.
 Priorizá acciones reversibles y seguras antes de retirar, puentear, reballing o inyectar tensión.

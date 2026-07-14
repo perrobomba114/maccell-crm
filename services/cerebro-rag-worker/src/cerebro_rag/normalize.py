@@ -30,4 +30,6 @@ def normalize_model(brand: str, value: str) -> str:
         return "SM-A405FN"
     if normalized_brand == "APPLE" and compact == "11PM":
         return "IPHONE 11 PRO MAX"
+    if normalized_brand == "APPLE":
+        return clean if clean.startswith("IPHONE ") else f"IPHONE {clean}"
     return clean

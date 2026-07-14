@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from cerebro_rag.pdf_inventory import parse_pdf_identity, sha256_file
+from cerebro_rag.pdf_inventory import iter_pdf_inventory, parse_pdf_identity, sha256_file
 
 
 class PdfInventoryTest(unittest.TestCase):
@@ -45,6 +45,21 @@ class PdfInventoryTest(unittest.TestCase):
             first.write_bytes(b"same-pdf-content")
             second.write_bytes(b"same-pdf-content")
             self.assertEqual(sha256_file(first), sha256_file(second))
+
+    def test_inventory_shards_are_complete_and_do_not_overlap(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for index in range(7):
+                (root / f"model-{index}.pdf").write_bytes(f"pdf-{index}".encode())
+
+            shards = [
+                list(iter_pdf_inventory(root, shard_index=index, shard_count=3))
+                for index in range(3)
+            ]
+            paths = [[entry.relative_path for entry in shard] for shard in shards]
+
+            self.assertEqual(sum(map(len, paths)), 7)
+            self.assertEqual(len(set().union(*(set(path) for path in paths))), 7)
 
 
 if __name__ == "__main__":

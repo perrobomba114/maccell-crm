@@ -16,4 +16,6 @@ test("normalizes Samsung model aliases", () => {
 
 test("normalizes Apple model aliases", () => {
     assert.equal(normalizeModel("APPLE", "11PM"), "IPHONE 11 PRO MAX");
+    assert.equal(normalizeModel("APPLE", "8"), "IPHONE 8");
+    assert.equal(normalizeModel("APPLE", "iPhone 8"), "IPHONE 8");
 });

@@ -86,3 +86,12 @@ test("keeps exact-model evidence when exact results exist", async () => {
     );
     assert.deepEqual(results.map((source) => source.model), ["SM-A405FN"]);
 });
+
+test("does not substitute repairs from another model", async () => {
+    const iphone11 = { ...baseRow, chunkId: "iphone-11", brand: "APPLE", model: "IPHONE 11" };
+    const results = await retrieveCerebroSources(
+        { brand: "APPLE", model: "IPHONE 8", text: "no enciende", embedding: [0.1] },
+        { search: async () => [iphone11] },
+    );
+    assert.deepEqual(results, []);
+});

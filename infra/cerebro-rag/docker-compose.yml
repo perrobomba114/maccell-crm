@@ -1,3 +1,35 @@
+x-ingestion-base: &ingestion-base
+  build:
+    context: ../../services/cerebro-rag-worker
+    dockerfile: Dockerfile
+  restart: on-failure
+  user: "1000:1000"
+  environment:
+    SOURCE_DATABASE_URL: ${SOURCE_DATABASE_URL}
+    RAG_DATABASE_URL: ${RAG_DATABASE_URL}
+    INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+    LIBRARY_ROOT: /library
+    PAGE_CACHE_ROOT: /page-cache
+    EMBEDDING_MODEL: BAAI/bge-m3
+    BATCH_SIZE: "8"
+    HF_HOME: /model-cache
+    OMP_NUM_THREADS: "7"
+    MKL_NUM_THREADS: "7"
+  volumes:
+    - /mnt/data2:/library:ro
+    - /var/lib/maccell/rag-pages:/page-cache
+    - /var/lib/maccell/rag-models:/model-cache
+  networks:
+    - dokploy-network
+  deploy:
+    resources:
+      limits:
+        cpus: "7"
+        memory: 24G
+      reservations:
+        cpus: "2"
+        memory: 4G
+
 services:
   worker:
     build:
@@ -34,38 +66,17 @@ services:
           cpus: "2"
           memory: 4G
 
-  ingestion:
-    build:
-      context: ../../services/cerebro-rag-worker
-      dockerfile: Dockerfile
-    restart: on-failure
-    user: "1000:1000"
-    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-repairs && cerebro-rag index-pdfs"]
-    environment:
-      SOURCE_DATABASE_URL: ${SOURCE_DATABASE_URL}
-      RAG_DATABASE_URL: ${RAG_DATABASE_URL}
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
-      LIBRARY_ROOT: /library
-      PAGE_CACHE_ROOT: /page-cache
-      EMBEDDING_MODEL: BAAI/bge-m3
-      BATCH_SIZE: "8"
-      HF_HOME: /model-cache
-      OMP_NUM_THREADS: "12"
-      MKL_NUM_THREADS: "12"
-    volumes:
-      - /mnt/data2:/library:ro
-      - /var/lib/maccell/rag-pages:/page-cache
-      - /var/lib/maccell/rag-models:/model-cache
-    networks:
-      - dokploy-network
-    deploy:
-      resources:
-        limits:
-          cpus: "12"
-          memory: 32G
-        reservations:
-          cpus: "2"
-          memory: 4G
+  ingestion-0:
+    <<: *ingestion-base
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 3 --shard-index 0"]
+
+  ingestion-1:
+    <<: *ingestion-base
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 3 --shard-index 1"]
+
+  ingestion-2:
+    <<: *ingestion-base
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 3 --shard-index 2"]
 
   repair-sync:
     build:
