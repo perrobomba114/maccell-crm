@@ -210,7 +210,11 @@ export async function POST(request: Request): Promise<Response> {
                 result.text,
                 evidence.map((source) => source.content),
             ),
-            repair.problemDescription,
+            {
+                device: `${brand} ${model}`,
+                sellerProblem: repair.problemDescription,
+                technicianInput: query.text || "Inspección visual adjunta",
+            },
         );
         await cerebroChatRepository.appendMessage({
             userId: user.id,

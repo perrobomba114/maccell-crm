@@ -68,3 +68,15 @@ test("asks for the iOS panic log before treating a timed restart as charging", (
         "cannot-open-settings",
     ]);
 });
+
+test("does not interpret carga normal as a charging fault", () => {
+    const question = buildGuidedQuestion({
+        repairProblem: "Módulo, no da luz de fondo, carga normal",
+        latestText: "No da luz de fondo",
+        evidenceDocumentIds: ["m12-troubleshooting"],
+    });
+
+    assert.ok(question);
+    assert.match(question.prompt, /linterna|imagen tenue/i);
+    assert.doesNotMatch(question.prompt, /cargador|cable/i);
+});

@@ -60,6 +60,23 @@ export function buildGuidedQuestion(input: GuidedQuestionInput): GuidedQuestion 
             allowFreeText: true,
         };
     }
+    if (/NO (?:DA|TIENE) (?:LUZ DE FONDO|IMAGEN)|BACKLIGHT|PANTALLA NEGRA|IMAGEN TENUE/.test(context)) {
+        const conditions = "Encendé el equipo con un módulo conocido y observá la pantalla con una linterna lateral";
+        return {
+            id: crypto.randomUUID(),
+            prompt: "Con una linterna sobre la pantalla, ¿se observa imagen tenue?",
+            measurement: "Separar señal de imagen de alimentación/backlight",
+            conditions,
+            options: [
+                option("faint-image", "Sí, hay imagen tenue", "FAINT_IMAGE_PRESENT", conditions),
+                option("no-image", "No hay ninguna imagen", "NO_DISPLAY_IMAGE", conditions),
+                option("intermittent-light", "La iluminación aparece intermitente", "BACKLIGHT_INTERMITTENT", conditions),
+                option("not-tested-display", "Todavía no lo probé", "DISPLAY_FLASHLIGHT_TEST_PENDING", conditions),
+            ],
+            sourceDocumentIds,
+            allowFreeText: true,
+        };
+    }
     if (/0\.000|PULSO Y VUELVE|CONSUMO FIJO BAJO|LIMITA POR CORTO|SUBE ALTO/.test(input.latestText.toUpperCase())) {
         return {
             id: crypto.randomUUID(),
@@ -92,7 +109,7 @@ export function buildGuidedQuestion(input: GuidedQuestionInput): GuidedQuestion 
             allowFreeText: true,
         };
     }
-    if (/NO CARGA|CARGA|USB|VBUS/.test(context)) {
+    if (/NO (?:RECIBE )?CARGA|NO DETECTA (?:EL )?CARGADOR|CARGA (?:LENTA|INTERMITENTE|SOLO)|USB|VBUS|PIN (?:DE )?CARGA|CONECTOR (?:DE )?CARGA/.test(context)) {
         return {
             id: crypto.randomUUID(),
             prompt: "¿Qué reacción presenta al conectar un cargador y cable comprobados?",

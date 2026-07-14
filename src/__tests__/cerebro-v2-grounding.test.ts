@@ -22,10 +22,17 @@ test("suppresses numeric electrical values absent from evidence", () => {
 
 test("deterministically preserves the seller intake in observed facts", () => {
     const answer = ensureObservedFacts(
-        "## DATOS OBSERVADOS\nEl equipo se reinicia.\n\n## EVIDENCIA\nSin evidencia.",
-        "Se usa 3 min y se reinicia solo / carga 0.6 / no se comprobó funciones",
+        "## DATOS OBSERVADOS\nEl técnico ya reemplazó repuestos.\n\n## EVIDENCIA\nSin evidencia.",
+        {
+            device: "APPLE IPHONE 12 PRO",
+            sellerProblem: "Se usa 3 min y se reinicia solo / carga 0.6 / no se comprobó funciones",
+            technicianInput: "Se reinicia",
+        },
     );
 
     assert.match(answer, /Ingreso del vendedor: Se usa 3 min y se reinicia solo \/ carga 0\.6 \/ no se comprobó funciones/);
+    assert.match(answer, /Dispositivo: APPLE IPHONE 12 PRO/);
+    assert.match(answer, /Consulta del técnico: Se reinicia/);
+    assert.doesNotMatch(answer, /ya reemplazó repuestos/);
     assert.equal(answer.match(/## DATOS OBSERVADOS/g)?.length, 1);
 });

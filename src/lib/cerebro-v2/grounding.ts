@@ -20,12 +20,26 @@ export function suppressUnsupportedMeasurements(answer: string, evidence: readon
     return `${sanitized}\n\n> Los valores numéricos sin respaldo documental se omitieron. Registrá el valor real medido para continuar.`;
 }
 
-export function ensureObservedFacts(answer: string, sellerProblem: string): string {
-    const intake = sellerProblem.replace(PRICE_PATTERN, "[PRECIO_REMOVIDO]")
-        .replace(/\s+/g, " ").trim();
-    if (!intake || !/^## DATOS OBSERVADOS\s*$/m.test(answer)) return answer;
-    return answer.replace(
-        /^## DATOS OBSERVADOS\s*$/m,
-        (heading) => `${heading}\n- Ingreso del vendedor: ${intake}`,
-    );
+export type ObservedFactsContext = {
+    device: string;
+    sellerProblem: string;
+    technicianInput: string;
+};
+
+function cleanObservedFact(value: string): string {
+    return value.replace(PRICE_PATTERN, "[PRECIO_REMOVIDO]").replace(/\s+/g, " ").trim();
+}
+
+export function ensureObservedFacts(answer: string, context: ObservedFactsContext): string {
+    const evidenceHeader = answer.search(/^## EVIDENCIA\s*$/m);
+    const observedHeader = answer.search(/^## DATOS OBSERVADOS\s*$/m);
+    if (observedHeader < 0 || evidenceHeader <= observedHeader) return answer;
+    const deterministic = [
+        "## DATOS OBSERVADOS",
+        `- Dispositivo: ${cleanObservedFact(context.device)}`,
+        `- Ingreso del vendedor: ${cleanObservedFact(context.sellerProblem)}`,
+        `- Consulta del técnico: ${cleanObservedFact(context.technicianInput)}`,
+        "",
+    ].join("\n");
+    return `${answer.slice(0, observedHeader)}${deterministic}${answer.slice(evidenceHeader)}`;
 }
