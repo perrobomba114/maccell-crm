@@ -1,7 +1,11 @@
-x-ingestion-base: &ingestion-base
+x-worker-image: &worker-image
+  image: maccell-cerebro-rag-worker:latest
   build:
     context: ../../services/cerebro-rag-worker
     dockerfile: Dockerfile
+
+x-ingestion-base: &ingestion-base
+  <<: *worker-image
   restart: on-failure
   user: "1000:1000"
   environment:
@@ -35,9 +39,7 @@ x-ingestion-base: &ingestion-base
 
 services:
   worker:
-    build:
-      context: ../../services/cerebro-rag-worker
-      dockerfile: Dockerfile
+    <<: *worker-image
     restart: unless-stopped
     user: "1000:1000"
     command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag catalog-aliases && exec uvicorn cerebro_rag.server:app --host 0.0.0.0 --port 8080"]
@@ -109,9 +111,7 @@ services:
     command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 9 --shard-index 8"]
 
   repair-sync:
-    build:
-      context: ../../services/cerebro-rag-worker
-      dockerfile: Dockerfile
+    <<: *worker-image
     restart: unless-stopped
     user: "1000:1000"
     command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag sync-repairs --interval 300"]
