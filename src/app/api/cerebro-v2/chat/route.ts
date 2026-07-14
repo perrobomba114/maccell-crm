@@ -32,11 +32,9 @@ function componentCodes(value: string): string[] {
 
 function buildModel(onSelect: (provider: ProviderSelection) => void, vision: boolean): LanguageModel {
     const configurations: Array<{ instance: unknown; label: string; keyId: string }> = [];
-    if (!vision) {
-        const localModel = createLocalCerebroModel();
-        if (localModel) {
-            configurations.push({ instance: localModel, label: "Qwen local", keyId: "local" });
-        }
+    const localModel = createLocalCerebroModel(vision);
+    if (localModel) {
+        configurations.push({ instance: localModel, label: vision ? "Qwen local vision" : "Qwen local", keyId: "local" });
     }
     for (const key of getGroqKeys()) {
         const models = vision ? [VISION_MODEL] : TEXT_MODELS;

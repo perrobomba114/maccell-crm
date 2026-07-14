@@ -27,10 +27,10 @@ export function providerOrder(input: { baseUrl?: string; hasGroq: boolean }): st
     return [...(input.baseUrl ? ["local"] : []), ...(input.hasGroq ? ["groq"] : [])];
 }
 
-export function createLocalCerebroModel(environment: LocalModelEnvironment = {
-    baseUrl: process.env.CEREBRO_LOCAL_AI_BASE_URL,
-    model: process.env.CEREBRO_LOCAL_AI_MODEL,
-    apiKey: process.env.CEREBRO_LOCAL_AI_KEY,
+export function createLocalCerebroModel(vision = false, environment: LocalModelEnvironment = {
+    baseUrl: vision ? process.env.CEREBRO_LOCAL_VISION_BASE_URL : process.env.CEREBRO_LOCAL_AI_BASE_URL,
+    model: vision ? process.env.CEREBRO_LOCAL_VISION_MODEL : process.env.CEREBRO_LOCAL_AI_MODEL,
+    apiKey: vision ? process.env.CEREBRO_LOCAL_VISION_KEY : process.env.CEREBRO_LOCAL_AI_KEY,
 }) {
     const config = parseLocalModelConfig(environment);
     if (!config) return null;
