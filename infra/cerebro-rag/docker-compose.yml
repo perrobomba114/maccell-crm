@@ -1,8 +1,5 @@
 x-worker-image: &worker-image
   image: maccell-cerebro-rag-worker:latest
-  build:
-    context: ../../services/cerebro-rag-worker
-    dockerfile: Dockerfile
 
 x-ingestion-base: &ingestion-base
   <<: *worker-image
@@ -40,6 +37,9 @@ x-ingestion-base: &ingestion-base
 services:
   worker:
     <<: *worker-image
+    build:
+      context: ../../services/cerebro-rag-worker
+      dockerfile: Dockerfile
     restart: unless-stopped
     user: "1000:1000"
     command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag catalog-aliases && exec uvicorn cerebro_rag.server:app --host 0.0.0.0 --port 8080"]
