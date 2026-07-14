@@ -146,6 +146,41 @@ Una afirmación numérica de voltaje, corriente o resistencia debe estar asociad
 
 El sistema genera primero una estructura validable y después la presenta en el chat. Los IDs de fuentes se validan contra las evidencias entregadas al modelo. Una fuente inválida o de otro dispositivo se descarta antes de responder.
 
+## Diagnóstico guiado con respuestas rápidas
+
+Cuando el técnico pide sugerencias o inicia un diagnóstico, Cerebro entra en modo guiado:
+
+- Formula una sola pregunta por turno para no mezclar mediciones.
+- Ofrece entre dos y cuatro respuestas rápidas mutuamente distinguibles.
+- Incluye siempre una opción para escribir otro valor u observación.
+- Las opciones representan comportamientos medibles, no conclusiones vagas.
+- Cada respuesta actualiza las hipótesis activas, descarta ramas incompatibles y determina la próxima medición.
+- La pregunta y sus opciones se construyen desde el contexto de la reparación, documentación del modelo y reparaciones confirmadas.
+- Si la evidencia no permite crear opciones seguras, Cerebro pide una medición abierta y no inventa rangos.
+
+Ejemplo de interacción:
+
+1. Cerebro pregunta qué consumo muestra la fuente al presionar encendido.
+2. Opciones: `0.000 A`, `pulso y vuelve a 0`, `consumo fijo bajo`, `consumo alto/corto` o `ingresar otro valor`.
+3. La elección se guarda como observación estructurada con tipo de medición, valor o patrón, unidad, condiciones e instante.
+4. Cerebro recupera nuevamente evidencia usando esa observación y propone solamente la siguiente comprobación útil.
+
+El cliente renderiza opciones como acciones del chat, pero el servidor valida que la opción pertenezca a la última pregunta pendiente. Una respuesta manipulada se trata como texto libre y no como medición validada.
+
+Las observaciones guiadas permanecen vinculadas al chat y a la reparación activa. Durante el trabajo no se indexan como evidencia confirmada. Al finalizar se indexan únicamente las mediciones relevantes, el diagnóstico y la solución confirmados; las hipótesis descartadas y opciones no elegidas se excluyen.
+
+La estructura mínima de una pregunta guiada contiene:
+
+- identificador único;
+- pregunta técnica;
+- magnitud o inspección solicitada;
+- condiciones de medición;
+- opciones con etiqueta y valor estructurado;
+- fuentes que justifican la pregunta;
+- indicador de entrada libre.
+
+El estado guiado debe sobrevivir al cierre y reapertura del chat. Un chat puede abandonar el modo guiado si el técnico escribe una consulta directa, y puede retomarlo solicitando la próxima medición.
+
 ## Indexación de reparaciones finalizadas
 
 - Una reparación activa es contexto operativo, no evidencia RAG.
@@ -174,6 +209,9 @@ El sistema genera primero una estructura validable y después la presenta en el 
 - Recuperación por subsistema antes del límite de candidatos.
 - Rechazo de fuentes de otro dispositivo.
 - Supresión de valores numéricos sin evidencia.
+- Validación de opciones contra la última pregunta guiada pendiente.
+- Persistencia y reanudación del estado de diagnóstico guiado.
+- Exclusión de hipótesis descartadas al indexar el resultado final.
 - Indexación idempotente al finalizar y autoridad correcta para éxito/fallo.
 - Render de página citada y fallback cuando no hay imagen.
 - Tests completos, TypeScript, ESLint, build de Next.js y tests Python del worker.
@@ -196,5 +234,6 @@ El sistema genera primero una estructura validable y después la presenta en el 
 - `SM-A125M` encuentra documentación declarada de Galaxy A12.
 - Una consulta de iPhone 8 no usa reparaciones ni PDF de otros modelos.
 - Las mediciones y valores citan una página pertinente o se declaran sin referencia disponible.
+- El técnico puede avanzar con una pregunta guiada por vez y respuestas rápidas verificables.
 - El visor abre la página exacta utilizada.
 - Las reparaciones finalizadas útiles enriquecen el RAG automáticamente sin escribir en la base principal.
