@@ -1,0 +1,64 @@
+services:
+  bge-gpu-0:
+    build:
+      context: ../../services/cerebro-rag-worker
+      dockerfile: Dockerfile.gpu
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      GPU_EMBEDDING_SECRET: ${GPU_EMBEDDING_SECRET}
+      EMBEDDING_MODEL: BAAI/bge-m3
+      GPU_DEVICE: cuda:0
+      BATCH_SIZE: "32"
+      HF_HOME: /model-cache
+      NVIDIA_VISIBLE_DEVICES: "0"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    ports:
+      - "${TAILSCALE_IP}:8091:8080"
+    volumes:
+      - /home/maccellia/.cache/maccell-bge:/model-cache
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os,urllib.request;
+          request=urllib.request.Request('http://127.0.0.1:8080/health',headers={'Authorization':'Bearer '+os.environ['GPU_EMBEDDING_SECRET']});
+          urllib.request.urlopen(request,timeout=5).read()
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+  bge-gpu-1:
+    build:
+      context: ../../services/cerebro-rag-worker
+      dockerfile: Dockerfile.gpu
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      GPU_EMBEDDING_SECRET: ${GPU_EMBEDDING_SECRET}
+      EMBEDDING_MODEL: BAAI/bge-m3
+      GPU_DEVICE: cuda:0
+      BATCH_SIZE: "32"
+      HF_HOME: /model-cache
+      NVIDIA_VISIBLE_DEVICES: "1"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    ports:
+      - "${TAILSCALE_IP}:8092:8080"
+    volumes:
+      - /home/maccellia/.cache/maccell-bge:/model-cache
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os,urllib.request;
+          request=urllib.request.Request('http://127.0.0.1:8080/health',headers={'Authorization':'Bearer '+os.environ['GPU_EMBEDDING_SECRET']});
+          urllib.request.urlopen(request,timeout=5).read()
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 30s

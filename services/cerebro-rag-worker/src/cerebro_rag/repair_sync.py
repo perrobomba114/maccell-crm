@@ -6,7 +6,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from cerebro_rag.config import WorkerSettings
-from cerebro_rag.embeddings import get_embedding_service
+from cerebro_rag.embeddings import get_worker_embedding_service
 from cerebro_rag.repair_cursor import RepairCursor
 from cerebro_rag.repair_indexer import RepairIndexer, repair_source_from_row
 from cerebro_rag.repairs import REPAIR_SYNC_QUERY
@@ -48,7 +48,7 @@ def _load_cursor(connection: psycopg.Connection[object]) -> RepairCursor:
 
 
 def sync_repairs_once(settings: WorkerSettings) -> tuple[int, int]:
-    embeddings = get_embedding_service(settings.embedding_model, settings.batch_size)
+    embeddings = get_worker_embedding_service(settings)
     indexed = skipped = 0
     with (
         psycopg.connect(settings.source_database_url.get_secret_value()) as source_connection,

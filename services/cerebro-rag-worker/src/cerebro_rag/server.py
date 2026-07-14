@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from cerebro_rag.config import WorkerSettings
 from cerebro_rag.indexer import resolve_library_document
-from cerebro_rag.embeddings import get_embedding_service
+from cerebro_rag.embeddings import get_worker_embedding_service
 from cerebro_rag.page_renderer import render_document_page, resolve_cached_page
 
 
@@ -37,9 +37,7 @@ def embed_query(
 ) -> dict[str, list[float]]:
     settings = WorkerSettings()
     _authorize(authorization, settings)
-    embedding = get_embedding_service(settings.embedding_model, settings.batch_size).embed_query(
-        request.text
-    )
+    embedding = get_worker_embedding_service(settings).embed_query(request.text)
     return {"embedding": list(embedding)}
 
 

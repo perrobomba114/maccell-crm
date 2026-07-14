@@ -7,7 +7,7 @@ import psycopg
 
 from cerebro_rag.config import WorkerSettings
 from cerebro_rag.device_alias_catalog import catalog_pdf_aliases
-from cerebro_rag.embeddings import get_embedding_service
+from cerebro_rag.embeddings import get_worker_embedding_service
 from cerebro_rag.indexer import PdfIndexer
 from cerebro_rag.migrations import apply_migrations
 from cerebro_rag.pdf_inventory import iter_pdf_inventory
@@ -28,7 +28,7 @@ def index_pdfs(
     with psycopg.connect(settings.rag_database_url.get_secret_value()) as connection:
         indexer = PdfIndexer(
             connection,
-            get_embedding_service(settings.embedding_model, settings.batch_size),
+            get_worker_embedding_service(settings),
             settings.page_cache_root,
         )
         for entry in entries:
@@ -51,7 +51,7 @@ def index_pdfs(
 
 def index_repairs(settings: WorkerSettings, limit: int | None) -> None:
     indexed = skipped = processed = 0
-    embeddings = get_embedding_service(settings.embedding_model, settings.batch_size)
+    embeddings = get_worker_embedding_service(settings)
     with (
         psycopg.connect(settings.source_database_url.get_secret_value()) as source_connection,
         psycopg.connect(settings.rag_database_url.get_secret_value()) as rag_connection,
