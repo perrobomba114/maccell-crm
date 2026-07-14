@@ -7,6 +7,7 @@ from dataclasses import dataclass
 COMPONENT_PATTERN = re.compile(r"\b[A-Z]{1,3}\d{3,5}\b")
 DEFAULT_CHUNK_TOKENS = 700
 DEFAULT_OVERLAP_TOKENS = 100
+DEFAULT_EMBEDDING_WORDS = 448
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +21,30 @@ class PageChunk:
 
 def extract_component_codes(text: str) -> tuple[str, ...]:
     return tuple(sorted(set(COMPONENT_PATTERN.findall(text.upper()))))
+
+
+def embedding_projection(
+    context: str,
+    content: str,
+    component_codes: tuple[str, ...],
+    max_words: int = DEFAULT_EMBEDDING_WORDS,
+) -> str:
+    if max_words < 1:
+        raise ValueError("max_words must be positive")
+
+    context_words = context.split()[:48]
+    code_words = list(component_codes[:64])
+    prefix = (context_words + (["COMPONENTS"] if code_words else []) + code_words)[:max_words]
+    remaining = max_words - len(prefix)
+    content_words = content.split()
+    if len(content_words) <= remaining:
+        return " ".join(prefix + content_words)
+    if remaining <= 1:
+        return " ".join(prefix + content_words[:remaining])
+
+    tail_size = min(96, max(1, remaining // 4))
+    head_size = remaining - tail_size
+    return " ".join(prefix + content_words[:head_size] + content_words[-tail_size:])
 
 
 def chunk_page(

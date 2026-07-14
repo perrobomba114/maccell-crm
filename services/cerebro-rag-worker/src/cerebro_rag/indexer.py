@@ -5,7 +5,7 @@ from uuid import UUID
 
 from psycopg import Connection
 
-from cerebro_rag.chunking import PageChunk, chunk_page
+from cerebro_rag.chunking import PageChunk, chunk_page, embedding_projection
 from cerebro_rag.document_versions import DocumentDescriptor, DocumentVersionRepository
 from cerebro_rag.embeddings import EmbeddingService
 from cerebro_rag.pdf_extract import ExtractedPage, extract_pdf_pages
@@ -68,7 +68,19 @@ class PdfIndexer:
             for page in pages
             for chunk in chunk_page(str(document_id), page.page_number, page.text)
         )
-        vectors = self.embeddings.embed_passages([chunk.content for chunk in chunks])
+        vectors = self.embeddings.embed_passages(
+            [
+                embedding_projection(
+                    context=(
+                        f"{entry.identity.brand} {entry.identity.model} "
+                        f"{entry.identity.title} PAGE {chunk.page_number}"
+                    ),
+                    content=chunk.content,
+                    component_codes=chunk.component_codes,
+                )
+                for chunk in chunks
+            ]
+        )
         model_version_id = self._active_model_version()
 
         try:

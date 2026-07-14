@@ -1,7 +1,7 @@
 import { getCurrentUser } from "@/actions/auth-actions";
 import { canUseCerebroV2 } from "@/lib/cerebro-v2/access";
 import { cerebroChatRepository } from "@/lib/cerebro-v2/chat-repository";
-import { normalizeBrand, normalizeModel } from "@/lib/cerebro-v2/normalization";
+import { normalizeDeviceIdentity } from "@/lib/cerebro-v2/normalization";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -36,8 +36,7 @@ export async function POST(request: Request): Promise<Response> {
         if (!parsed.success) {
             return Response.json({ error: "Seleccioná marca y modelo" }, { status: 400 });
         }
-        const brand = normalizeBrand(parsed.data.brand);
-        const model = normalizeModel(brand, parsed.data.model);
+        const { brand, model } = normalizeDeviceIdentity(parsed.data.brand, parsed.data.model);
         const session = await cerebroChatRepository.createSession(user.id, brand, model);
         if (!session) return Response.json({ error: "No se pudo crear el chat" }, { status: 500 });
         return Response.json({ session }, { status: 201 });

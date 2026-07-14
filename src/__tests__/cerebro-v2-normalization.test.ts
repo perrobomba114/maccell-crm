@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeBrand, normalizeModel } from "../lib/cerebro-v2/normalization";
+import { normalizeBrand, normalizeDeviceIdentity, normalizeModel } from "../lib/cerebro-v2/normalization";
 
 test("normalizes known brands without cross-brand aliases", () => {
     assert.equal(normalizeBrand("smsung"), "SAMSUNG");
@@ -18,4 +18,11 @@ test("normalizes Apple model aliases", () => {
     assert.equal(normalizeModel("APPLE", "11PM"), "IPHONE 11 PRO MAX");
     assert.equal(normalizeModel("APPLE", "8"), "IPHONE 8");
     assert.equal(normalizeModel("APPLE", "iPhone 8"), "IPHONE 8");
+});
+
+test("corrects an incompatible selected brand from an explicit iPhone model", () => {
+    assert.deepEqual(normalizeDeviceIdentity("SAMSUNG", "iPhone 8"), {
+        brand: "APPLE",
+        model: "IPHONE 8",
+    });
 });

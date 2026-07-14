@@ -38,3 +38,12 @@ export function normalizeModel(brand: string, value: string): string {
 
     return clean;
 }
+
+export function normalizeDeviceIdentity(brand: string, model: string): { brand: string; model: string } {
+    const explicitModel = model.trim().toUpperCase();
+    const resolvedBrand = /\bIPHONE\b/.test(explicitModel) ? "APPLE" : normalizeBrand(brand);
+    return {
+        brand: resolvedBrand,
+        model: normalizeModel(resolvedBrand, model),
+    };
+}

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from cerebro_rag.chunking import chunk_page, extract_component_codes
+from cerebro_rag.chunking import chunk_page, embedding_projection, extract_component_codes
 
 
 class PageChunkingTest(unittest.TestCase):
@@ -23,6 +23,23 @@ class PageChunkingTest(unittest.TestCase):
             extract_component_codes("Medir U5002, R5017, TP4003 y luego U5002."),
             ("R5017", "TP4003", "U5002"),
         )
+
+    def test_embedding_projection_is_bounded_and_preserves_diagnostic_terms(self) -> None:
+        content = " ".join(f"word-{index}" for index in range(900))
+
+        projection = embedding_projection(
+            context="APPLE IPHONE 8 SCHEMATIC PAGE 7",
+            content=content,
+            component_codes=("C1234", "U5002"),
+        )
+
+        words = projection.split()
+        self.assertLessEqual(len(words), 448)
+        self.assertIn("APPLE", words)
+        self.assertIn("C1234", words)
+        self.assertIn("U5002", words)
+        self.assertIn("word-0", words)
+        self.assertIn("word-899", words)
 
 
 if __name__ == "__main__":

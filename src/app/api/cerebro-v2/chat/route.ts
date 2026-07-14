@@ -8,7 +8,7 @@ import { canUseCerebroV2 } from "@/lib/cerebro-v2/access";
 import { parseCerebroChatRequest, type CerebroChatRequest } from "@/lib/cerebro-v2/chat-contract";
 import { cerebroChatRepository } from "@/lib/cerebro-v2/chat-repository";
 import { extractMessageInput, toPublicSources } from "@/lib/cerebro-v2/message-content";
-import { normalizeBrand, normalizeModel } from "@/lib/cerebro-v2/normalization";
+import { normalizeDeviceIdentity } from "@/lib/cerebro-v2/normalization";
 import { buildCerebroSystemPrompt, CEREBRO_PROMPT_VERSION } from "@/lib/cerebro-v2/prompt";
 import { retrieveCerebroSources } from "@/lib/cerebro-v2/retrieval";
 import type { CerebroMessageMetadata } from "@/lib/cerebro-v2/types";
@@ -79,8 +79,10 @@ export async function POST(request: Request): Promise<Response> {
         const session = await cerebroChatRepository.getSession(user.id, parsed.data.sessionId);
         if (!session) return Response.json({ error: "El chat no existe o no te pertenece" }, { status: 404 });
 
-        const brand = normalizeBrand(parsed.data.deviceContext.brand);
-        const model = normalizeModel(brand, parsed.data.deviceContext.model);
+        const { brand, model } = normalizeDeviceIdentity(
+            parsed.data.deviceContext.brand,
+            parsed.data.deviceContext.model,
+        );
         const query = diagnosticQuery(parsed.data);
         if (!query.text && query.images.length === 0) {
             return Response.json({ error: "Describí el síntoma o adjuntá una imagen" }, { status: 400 });
