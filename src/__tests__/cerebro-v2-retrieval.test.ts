@@ -95,3 +95,17 @@ test("does not substitute repairs from another model", async () => {
     );
     assert.deepEqual(results, []);
 });
+
+test("filters the exact model before limiting database candidates", async () => {
+    await retrieveCerebroSources(
+        { brand: "APPLE", model: "IPHONE 8", text: "no enciende", embedding: [0.1] },
+        {
+            async search(sql, params) {
+                assert.match(sql, /semantic_ids[\s\S]+normalized_model = \$5/);
+                assert.match(sql, /keyword_ids[\s\S]+normalized_model = \$5/);
+                assert.equal(params[4], "IPHONE 8");
+                return [];
+            },
+        },
+    );
+});

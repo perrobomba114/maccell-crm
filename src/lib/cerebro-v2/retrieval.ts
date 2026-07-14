@@ -37,6 +37,7 @@ WITH semantic_ids AS (
     FROM rag_chunks AS chunk
     JOIN rag_documents AS document ON document.id = chunk.document_id
     WHERE chunk.normalized_brand = $1
+      AND chunk.normalized_model = $5
       AND document.status = 'READY'
       AND document.retired_at IS NULL
     ORDER BY chunk.embedding <=> $3::vector
@@ -46,6 +47,7 @@ WITH semantic_ids AS (
     FROM rag_chunks AS chunk
     JOIN rag_documents AS document ON document.id = chunk.document_id
     WHERE chunk.normalized_brand = $1
+      AND chunk.normalized_model = $5
       AND document.status = 'READY'
       AND document.retired_at IS NULL
       AND chunk.search_vector @@ plainto_tsquery('simple', $2)
@@ -56,6 +58,7 @@ WITH semantic_ids AS (
     FROM rag_chunks AS chunk
     JOIN rag_documents AS document ON document.id = chunk.document_id
     WHERE chunk.normalized_brand = $1
+      AND chunk.normalized_model = $5
       AND document.status = 'READY'
       AND document.retired_at IS NULL
       AND chunk.component_codes && $4::text[]
@@ -83,7 +86,8 @@ WITH semantic_ids AS (
     JOIN rag_chunks AS chunk ON chunk.id = candidate.id
     JOIN rag_documents AS document ON document.id = chunk.document_id
     LEFT JOIN rag_pages AS page ON page.id = chunk.page_id
-    WHERE chunk.normalized_brand = $1`;
+    WHERE chunk.normalized_brand = $1
+      AND chunk.normalized_model = $5`;
 
 const AUTHORITY_WEIGHT: Readonly<Record<CerebroAuthority, number>> = {
     CONFIRMED_SUCCESS: 1,
@@ -116,6 +120,7 @@ export async function retrieveCerebroSources(
         input.text,
         vector,
         input.componentCodes ?? [],
+        input.model,
     ]);
     const semanticRanks = new Map(
         [...rows].sort((left, right) => right.semanticScore - left.semanticScore)
