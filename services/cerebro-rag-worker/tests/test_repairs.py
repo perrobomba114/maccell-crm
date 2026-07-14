@@ -29,6 +29,7 @@ class RepairReconstructionTest(unittest.TestCase):
             parts=("IC PMIC",),
             current_status="Finalizado OK",
             prior_statuses=("En proceso",),
+            learning_record=None,
         )
 
         content = build_repair_content(source)
@@ -51,7 +52,7 @@ class RepairReconstructionTest(unittest.TestCase):
 
     def test_maps_export_row_without_customer_or_financial_data(self) -> None:
         source = repair_source_from_row(
-            (1, "MAC-1", "Samsung", "A405FN", "No enciende", "PMIC", "", "Finalizado OK", ["Cambio"], ["U5002"], ["En proceso"])
+            (1, "MAC-1", "Samsung", "A405FN", "No enciende", "PMIC", "", "Finalizado OK", ["Cambio"], ["U5002"], ["En proceso"], None)
         )
         self.assertEqual(source.repair_id, "1")
         self.assertEqual(source.observations, ("Cambio",))
@@ -74,6 +75,7 @@ class RepairReconstructionTest(unittest.TestCase):
             parts=(),
             current_status="Finalizado OK",
             prior_statuses=(),
+            learning_record=None,
         )
 
         content = build_repair_content(source)
@@ -99,8 +101,38 @@ class RepairReconstructionTest(unittest.TestCase):
             parts=(),
             current_status="Finalizado OK",
             prior_statuses=(),
+            learning_record=None,
         )
         self.assertFalse(has_useful_technical_content(empty))
+
+    def test_structured_closure_is_serialized_as_evidence(self) -> None:
+        source = RepairSource(
+            repair_id="repair-structured",
+            ticket_number="MAC-4",
+            brand="Samsung",
+            model="A405FN",
+            problem="No da imagen",
+            diagnosis="",
+            enriched_diagnosis="",
+            observations=(),
+            parts=(),
+            current_status="Finalizado OK",
+            prior_statuses=(),
+            learning_record={
+                "symptom": "No da imagen luego de encender",
+                "rootCause": "Filtro FL2201 abierto en la línea MIPI",
+                "confirmingEvidence": "Continuidad abierta entre conector y FL2201",
+                "intervention": "Se reemplazó FL2201",
+                "verification": "Imagen estable y reinicios verificados",
+                "affectedReferences": ["FL2201", "J2200"],
+            },
+        )
+
+        content = build_repair_content(source)
+
+        self.assertIn("CAUSA_CONFIRMADA: Filtro FL2201 abierto", content)
+        self.assertIn("MEDICION_CONFIRMATORIA: Continuidad abierta", content)
+        self.assertIn("REFERENCIAS_AFECTADAS: FL2201 | J2200", content)
 
 
 if __name__ == "__main__":

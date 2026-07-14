@@ -70,7 +70,7 @@ def sync_repairs_once(settings: WorkerSettings) -> tuple[int, int]:
             indexed += batch_indexed
             skipped += batch_skipped
             last = rows[-1]
-            cursor = RepairCursor(last[11], str(last[0]))
+            cursor = RepairCursor(last[12], str(last[0]))
             rag_connection.execute(
                 """
                 UPDATE rag_ingestion_jobs

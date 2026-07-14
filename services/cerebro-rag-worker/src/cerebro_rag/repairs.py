@@ -19,11 +19,13 @@ SELECT
     COALESCE(observation.items, '[]'::jsonb) AS observations,
     COALESCE(part.items, '[]'::jsonb) AS parts,
     COALESCE(history.items, '[]'::jsonb) AS prior_statuses,
+    learning.record AS learning_record,
     GREATEST(
         repair."updatedAt",
         COALESCE(observation.latest, repair."updatedAt"),
         COALESCE(part.latest, repair."updatedAt"),
-        COALESCE(history.latest, repair."updatedAt")
+        COALESCE(history.latest, repair."updatedAt"),
+        COALESCE(learning.latest, repair."updatedAt")
     ) AS effective_updated_at
 FROM repairs AS repair
 JOIN repair_statuses AS status ON status.id = repair."statusId"
@@ -47,6 +49,21 @@ LEFT JOIN LATERAL (
     JOIN repair_statuses AS value ON value.id = transition."toStatusId"
     WHERE transition."repairId" = repair.id
 ) AS history ON true
+LEFT JOIN LATERAL (
+    SELECT jsonb_build_object(
+        'symptom', record.symptom,
+        'rootCause', record."rootCause",
+        'confirmingEvidence', record."confirmingEvidence",
+        'intervention', record.intervention,
+        'verification', record.verification,
+        'affectedReferences', record."affectedReferences",
+        'authority', record.authority,
+        'trainingEligible', record."trainingEligible"
+    ) AS record,
+    record."updatedAt" AS latest
+    FROM repair_learning_records AS record
+    WHERE record."repairId" = repair.id
+) AS learning ON true
 WHERE repair."statusId" IN (5, 6, 7, 8, 9, 10)
 """
 
@@ -85,6 +102,7 @@ class RepairSource:
     parts: tuple[str, ...]
     current_status: str
     prior_statuses: tuple[str, ...]
+    learning_record: dict[str, object] | None
 
 
 def sanitize_technical_text(value: str) -> str:
@@ -103,8 +121,16 @@ def has_useful_technical_content(source: RepairSource) -> bool:
         source.diagnosis,
         source.enriched_diagnosis,
         *technical_observations(source.observations),
+        *structured_learning_values(source.learning_record),
     )
     return any(len(sanitize_technical_text(value)) >= 12 for value in candidates)
+
+
+def structured_learning_values(record: dict[str, object] | None) -> tuple[str, ...]:
+    if not record:
+        return ()
+    fields = ("symptom", "rootCause", "confirmingEvidence", "intervention", "verification")
+    return tuple(str(record.get(field) or "") for field in fields)
 
 
 def build_repair_content(source: RepairSource) -> str:
@@ -112,6 +138,12 @@ def build_repair_content(source: RepairSource) -> str:
     model = normalize_model(brand, source.model)
     solution = " | ".join(filter(None, map(sanitize_technical_text, technical_observations(source.observations))))
     parts = " | ".join(filter(None, map(sanitize_technical_text, source.parts)))
+    learning = source.learning_record or {}
+    references = learning.get("affectedReferences")
+    affected_references = " | ".join(
+        sanitize_technical_text(str(value))
+        for value in references
+    ) if isinstance(references, list) else ""
     sections = (
         f"DISPOSITIVO: {brand} {model}",
         f"PROBLEMA: {sanitize_technical_text(source.problem)}",
@@ -120,5 +152,11 @@ def build_repair_content(source: RepairSource) -> str:
         f"REPUESTOS: {parts}",
         f"ESTADO: {sanitize_technical_text(source.current_status)}",
         f"EVIDENCIA: {sanitize_technical_text(source.enriched_diagnosis)}",
+        f"SINTOMA_CONFIRMADO: {sanitize_technical_text(str(learning.get('symptom') or ''))}",
+        f"CAUSA_CONFIRMADA: {sanitize_technical_text(str(learning.get('rootCause') or ''))}",
+        f"MEDICION_CONFIRMATORIA: {sanitize_technical_text(str(learning.get('confirmingEvidence') or ''))}",
+        f"INTERVENCION_CONFIRMADA: {sanitize_technical_text(str(learning.get('intervention') or ''))}",
+        f"VERIFICACION_FINAL: {sanitize_technical_text(str(learning.get('verification') or ''))}",
+        f"REFERENCIAS_AFECTADAS: {affected_references}",
     )
     return "\n".join(sections)

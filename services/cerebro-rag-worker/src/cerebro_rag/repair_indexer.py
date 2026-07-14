@@ -27,6 +27,7 @@ def repair_source_from_row(row: tuple[object, ...]) -> RepairSource:
         observations=tuple(str(value) for value in (row[8] or [])),
         parts=tuple(str(value) for value in (row[9] or [])),
         prior_statuses=tuple(str(value) for value in (row[10] or [])),
+        learning_record=row[11] if isinstance(row[11], dict) else None,
     )
 
 
@@ -104,6 +105,7 @@ class RepairIndexer:
             source.current_status,
             list(source.prior_statuses),
             source.diagnosis or source.enriched_diagnosis,
+            str((source.learning_record or {}).get("authority") or ""),
         ).value
         digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
         document_id = self.versions.create_or_get(

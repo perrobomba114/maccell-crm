@@ -12,12 +12,14 @@ import { buildGuidedQuestion, validateGuidedAnswer } from "@/lib/cerebro-v2/guid
 import { ensureObservedFacts, suppressUnsupportedMeasurements } from "@/lib/cerebro-v2/grounding";
 import { extractMessageInput, toPublicSources } from "@/lib/cerebro-v2/message-content";
 import { deviceModelAliases, normalizeDeviceIdentity } from "@/lib/cerebro-v2/normalization";
+import { formatExternalResearch, needsExternalResearch, searchExternalTechnicalSources } from "@/lib/cerebro-v2/external-research";
 import { buildCerebroSystemPrompt, CEREBRO_PROMPT_VERSION } from "@/lib/cerebro-v2/prompt";
 import { getAuthorizedCerebroRepair } from "@/lib/cerebro-v2/repair-context";
 import { createLocalCerebroModel } from "@/lib/cerebro-v2/local-provider";
 import { retrieveCerebroSources } from "@/lib/cerebro-v2/retrieval";
 import type { CerebroMessageMetadata } from "@/lib/cerebro-v2/types";
 import { shouldLoadVisualEvidence } from "@/lib/cerebro-v2/visual-evidence";
+import { formatVisibleSchematicFacts, parseVisibleSchematicFacts, VISION_FACTS_SYSTEM_PROMPT } from "@/lib/cerebro-v2/vision-analysis";
 import { requestQueryEmbedding, requestRagPageImage } from "@/lib/cerebro-v2/worker-client";
 import { getGroqKeys } from "@/lib/groq";
 
@@ -57,11 +59,11 @@ function buildModel(onSelect: (provider: ProviderSelection) => void, vision: boo
     return createFallbackModel(configurations, onSelect) as unknown as LanguageModel;
 }
 
-function toModelMessages(messages: CerebroChatRequest["messages"]): ModelMessage[] {
+function toModelMessages(messages: CerebroChatRequest["messages"], includeImages: boolean): ModelMessage[] {
     return messages.slice(-8).map((message): ModelMessage => {
         const input = extractMessageInput(message);
         if (message.role === "assistant") return { role: "assistant", content: input.text || "..." };
-        if (input.images.length === 0) return { role: "user", content: input.text || "Analizar equipo" };
+        if (!includeImages || input.images.length === 0) return { role: "user", content: input.text || "Analizar equipo" };
         return {
             role: "user",
             content: [
@@ -70,6 +72,26 @@ function toModelMessages(messages: CerebroChatRequest["messages"]): ModelMessage
             ],
         };
     });
+}
+
+async function extractVisualFacts(images: Array<string | Uint8Array>): Promise<string | null> {
+    if (images.length === 0) return null;
+    const result = await generateText({
+        model: buildModel(() => undefined, true),
+        system: VISION_FACTS_SYSTEM_PROMPT,
+        messages: [{
+            role: "user",
+            content: [
+                { type: "text", text: "Extraé los hechos visibles de estas imágenes técnicas." },
+                ...images.map((image) => ({ type: "image" as const, image })),
+            ],
+        }],
+        temperature: 0,
+        maxOutputTokens: 700,
+        maxRetries: 0,
+    });
+    const facts = parseVisibleSchematicFacts(result.text);
+    return facts ? formatVisibleSchematicFacts(facts) : null;
 }
 
 function diagnosticQuery(request: CerebroChatRequest): { text: string; images: string[] } {
@@ -157,6 +179,9 @@ export async function POST(request: Request): Promise<Response> {
             limit: 8,
         });
         const publicSources = toPublicSources(evidence);
+        const externalResearch = needsExternalResearch(evidence)
+            ? formatExternalResearch(await searchExternalTechnicalSources(`${brand} ${model} ${searchText}`))
+            : null;
         await cerebroChatRepository.appendMessage({
             userId: user.id,
             sessionId: session.id,
@@ -183,20 +208,21 @@ export async function POST(request: Request): Promise<Response> {
             evidenceDocumentIds: publicSources.map((source) => source.documentId),
         });
         const visualEvidence = await loadVisualEvidence(evidence);
-        const modelMessages = toModelMessages(parsed.data.messages);
-        if (visualEvidence.length > 0) {
+        const modelMessages = toModelMessages(parsed.data.messages, false);
+        const visualFacts = await extractVisualFacts([...query.images, ...visualEvidence]);
+        if (visualFacts) {
             modelMessages.push({
                 role: "user",
-                content: [
-                    { type: "text", text: "Inspeccioná estas páginas citadas del schematic. Identificá únicamente conectores, componentes, nets, test points y ramas de decisión realmente visibles; usalas para conectar el síntoma con el circuito y no inventes etiquetas ilegibles." },
-                    ...visualEvidence.map((image) => ({ type: "image" as const, image })),
-                ],
+                content: `${visualFacts}\nUsá estos hechos solo como evidencia visual; si no alcanzan, pedí una medición o página más nítida.`,
             });
+        }
+        if (externalResearch) {
+            modelMessages.push({ role: "user", content: externalResearch });
         }
 
         let selectedProvider: ProviderSelection = { label: "Pendiente", keyId: "pending" };
         const result = await generateText({
-            model: buildModel((provider) => { selectedProvider = provider; }, query.images.length > 0 || visualEvidence.length > 0),
+            model: buildModel((provider) => { selectedProvider = provider; }, false),
             system: buildCerebroSystemPrompt(brand, model, evidence, {
                 ticketNumber: repair.ticketNumber,
                 problem: repair.problemDescription,

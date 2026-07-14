@@ -9,7 +9,12 @@ class Authority(StrEnum):
     FAILED = "FAILED"
 
 
-def classify_authority(status_name: str, prior_status_names: list[str], diagnosis: str) -> Authority:
+def classify_authority(
+    status_name: str,
+    prior_status_names: list[str],
+    diagnosis: str,
+    learning_authority: str | None,
+) -> Authority:
     if not diagnosis.strip():
         return Authority.INCOMPLETE
 
@@ -17,6 +22,6 @@ def classify_authority(status_name: str, prior_status_names: list[str], diagnosi
     prior = {value.strip().casefold() for value in prior_status_names}
     if current == "no reparado":
         return Authority.FAILED
-    if current == "finalizado ok" or "finalizado ok" in prior:
+    if learning_authority == Authority.CONFIRMED_SUCCESS.value:
         return Authority.CONFIRMED_SUCCESS
     return Authority.INCOMPLETE
