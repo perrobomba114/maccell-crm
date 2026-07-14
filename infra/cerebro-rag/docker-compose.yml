@@ -1,0 +1,39 @@
+services:
+  worker:
+    build:
+      context: ../..
+      dockerfile: services/cerebro-rag-worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      SOURCE_DATABASE_URL: ${SOURCE_DATABASE_URL}
+      RAG_DATABASE_URL: ${RAG_DATABASE_URL}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      LIBRARY_ROOT: /library
+      PAGE_CACHE_ROOT: /page-cache
+      EMBEDDING_MODEL: BAAI/bge-m3
+      BATCH_SIZE: "8"
+      HF_HOME: /model-cache
+      OMP_NUM_THREADS: "12"
+      MKL_NUM_THREADS: "12"
+    volumes:
+      - /mnt/data2:/library:ro
+      - cerebro-rag-pages:/page-cache
+      - cerebro-rag-models:/model-cache
+    networks:
+      - dokploy-network
+    deploy:
+      resources:
+        limits:
+          cpus: "12"
+          memory: 32G
+        reservations:
+          cpus: "2"
+          memory: 4G
+
+volumes:
+  cerebro-rag-pages:
+  cerebro-rag-models:
+
+networks:
+  dokploy-network:
+    external: true
