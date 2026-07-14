@@ -233,7 +233,7 @@ export async function POST(request: Request): Promise<Response> {
             }),
             messages: modelMessages,
             temperature: 0.2,
-            maxOutputTokens: 1_600,
+            maxOutputTokens: 900,
             maxRetries: 0,
         });
         const groundedText = ensureObservedFacts(

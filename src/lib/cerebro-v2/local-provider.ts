@@ -1,5 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 
+export const DEFAULT_LOCAL_CEREBRO_MODEL = "Qwen3.6-35B-A3B-Q4_K_M";
+
 type LocalModelEnvironment = {
     baseUrl?: string;
     model?: string;
@@ -20,7 +22,7 @@ export function parseLocalModelConfig(environment: LocalModelEnvironment): Local
     const url = new URL(environment.baseUrl);
     if (!isPrivateHost(url.hostname)) throw new Error("CEREBRO_LOCAL_AI_BASE_URL must use a private host");
     if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("CEREBRO_LOCAL_AI_BASE_URL must use HTTP(S)");
-    return { baseUrl: url.toString().replace(/\/$/, ""), model: environment.model ?? "unsloth/Qwen3.6-27B-MTP-GGUF", apiKey: environment.apiKey ?? "EMPTY" };
+    return { baseUrl: url.toString().replace(/\/$/, ""), model: environment.model ?? DEFAULT_LOCAL_CEREBRO_MODEL, apiKey: environment.apiKey ?? "EMPTY" };
 }
 
 export function providerOrder(input: { baseUrl?: string; hasGroq: boolean }): string[] {

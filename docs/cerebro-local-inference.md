@@ -1,4 +1,4 @@
-# Cerebro: inferencia local, visión y LoRA
+# Cerebro: inferencia local y visión
 
 ## Servicio GPU validado
 
@@ -6,14 +6,18 @@ El servidor de inferencia local expone una API OpenAI-compatible y debe declarar
 
 ```dotenv
 CEREBRO_LOCAL_AI_BASE_URL=http://100.71.184.125:8000/v1
-CEREBRO_LOCAL_AI_MODEL=unsloth/Qwen3.6-27B-MTP-GGUF
+CEREBRO_LOCAL_AI_MODEL=Qwen3.6-35B-A3B-Q4_K_M
 CEREBRO_LOCAL_VISION_BASE_URL=http://100.71.184.125:8000/v1
-CEREBRO_LOCAL_VISION_MODEL=unsloth/Qwen3.6-27B-MTP-GGUF
+CEREBRO_LOCAL_VISION_MODEL=Qwen3.6-35B-A3B-Q4_K_M
 ```
 
 El host de la aplicación debe poder alcanzar esa dirección privada. Antes de habilitar las variables, comprobar desde el contenedor de MACCELL `GET /health` y `GET /props`; este último debe devolver `modalities.vision: true`.
 
 Groq y OpenRouter permanecen como fallback: no se eliminan durante esta migración.
+
+El servicio reproducible vive en `infra/cerebro-local-ai/docker-compose.yml`. Usa el GGUF Q4_K_M y `mmproj-F16.gguf` del repositorio `unsloth/Qwen3.6-35B-A3B-GGUF`, distribuye el modelo entre las dos RTX 3090 y publica el puerto solo sobre Tailscale.
+
+No habilitar speculative MTP en este servicio: la combinación de MTP e imágenes tiene regresiones conocidas en llama.cpp. Cerebro prioriza estabilidad multimodal, mantiene dos secuencias concurrentes con 32K de contexto total y desactiva el razonamiento interno del template; el razonamiento técnico queda estructurado por el prompt, la evidencia RAG y las preguntas guiadas, sin consumir la respuesta visible.
 
 ## Despliegue de la base de datos
 
@@ -36,11 +40,9 @@ No ejecutar `prisma db push` directamente en producción para este cambio.
 - Un administrador revisa el cierre por `POST /api/cerebro-v2/closure/review`.
 - Solo los registros confirmados y revisados salen en `GET /api/cerebro-v2/lora-dataset` como JSONL.
 
-## LoRA
+## LoRA deshabilitado
 
-No se debe cargar ni entrenar un LoRA hasta contar con un lote revisado representativo (mínimo 300 casos completos, con evaluación de regresión y una comparación contra el modelo base). El adaptador se debe servir primero en sombra y promoverse únicamente si mejora casos técnicos sin empeorar aislamiento de marca, citas ni seguridad.
-
-Cuando exista un adaptador GGUF validado, iniciar una instancia canaria con `--lora /ruta/al/adaptador.gguf`, probarla contra el set de evaluación y conservar el contenedor base como rollback. No se permite entrenar a partir de chats no revisados ni de contenido web.
+Cerebro ejecuta el modelo base sin adaptadores. Los cierres técnicos revisados alimentan el RAG y el conjunto de evaluación, pero no se entrena ni se carga ningún LoRA en producción.
 
 ## Investigación externa
 

@@ -1,0 +1,53 @@
+services:
+  qwen-cerebro:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    container_name: qwen-cerebro
+    restart: unless-stopped
+    runtime: nvidia
+    ipc: host
+    ports:
+      - "${TAILSCALE_IP:-100.71.184.125}:8000:8000"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "0,1"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - /home/maccellia/models/qwen36-35b-a3b:/models:ro
+    command:
+      - --model
+      - /models/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
+      - --mmproj
+      - /models/mmproj-F16.gguf
+      - --alias
+      - Qwen3.6-35B-A3B-Q4_K_M
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --ctx-size
+      - "32768"
+      - --parallel
+      - "2"
+      - --n-gpu-layers
+      - "999"
+      - --split-mode
+      - layer
+      - --tensor-split
+      - 1,1
+      - --flash-attn
+      - on
+      - --cache-type-k
+      - q8_0
+      - --cache-type-v
+      - q8_0
+      - --image-min-tokens
+      - "1024"
+      - --reasoning
+      - off
+      - --cont-batching
+      - --jinja
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s

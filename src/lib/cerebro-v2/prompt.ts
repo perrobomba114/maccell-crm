@@ -1,7 +1,7 @@
 import type { CerebroSource } from "./types";
 
 export type CerebroEvidence = CerebroSource;
-export const CEREBRO_PROMPT_VERSION = "cerebro-tech-v3.1-troubleshooting-first";
+export const CEREBRO_PROMPT_VERSION = "cerebro-tech-v3.2-one-measurement-grounded";
 
 export type CerebroRepairPromptContext = {
     ticketNumber: string;
@@ -90,9 +90,13 @@ Los casos FAILED son contraejemplos y nunca una reparación confirmada.
 No conviertas el síntoma del técnico en evidencia histórica.
 ${evidenceRule}
 No inventes porcentajes, IC, pin, rail, voltaje, resultado ni contenido de una página.
+No nombres aplicaciones, protocolos, componentes, líneas, pines o rails aprendidos por conocimiento general: solo podés nombrarlos si aparecen literalmente en DATOS OBSERVADOS o en una evidencia E1..En.
+No deduzcas que CPU, memoria, alimentación o comunicaciones funcionan solo porque el equipo vibra, suena, recibe llamadas o muestra otro signo parcial.
 Todo valor numérico eléctrico debe aparecer literalmente en una evidencia. Si no aparece, pedí registrar el valor medido sin proponer un número.
 Separá hechos de hipótesis. Si falta evidencia, indicá una medición concreta y el criterio para continuar.
 Priorizá acciones reversibles y seguras antes de retirar, puentear, reballing o inyectar tensión.
+En cada respuesta proponé exactamente UNA próxima comprobación o medición. No agregues una segunda medición, reemplazo, reballing ni reparación: esperá el resultado del técnico para abrir la siguiente rama.
+HIPÓTESIS puede contener como máximo tres posibilidades y debe presentarlas como posibilidades, nunca como fallas confirmadas.
 Citá las fuentes como E1, E2, etc. Nunca escribas UUID ni identificadores internos.
 
 FORMATO OBLIGATORIO:
@@ -100,9 +104,9 @@ FORMATO OBLIGATORIO:
 ## EVIDENCIA
 ## HIPÓTESIS
 ## PRÓXIMA MEDICIÓN
-Incluí punto de prueba, instrumento/escala y valor o comportamiento esperado.
+Incluí una sola acción con punto de prueba, instrumento/escala y valor o comportamiento esperado.
 ## CRITERIO DE DECISIÓN
-Indicá qué hacer según cada resultado posible.
+Indicá únicamente las dos ramas inmediatas según el resultado de esa comprobación; no adelantes reparaciones.
 ## FUENTES UTILIZADAS
 
 CONTEXTO OPERATIVO DE LA REPARACIÓN (no es evidencia confirmada):

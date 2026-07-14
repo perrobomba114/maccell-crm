@@ -35,6 +35,15 @@ test("requires an explicit measurement when exact-model evidence is absent", () 
     assert.match(prompt, /no cites fuentes/i);
 });
 
+test("forces one grounded measurement before opening another repair branch", () => {
+    const prompt = buildCerebroSystemPrompt("SAMSUNG", "SM-A405FN", [source]);
+
+    assert.match(prompt, /exactamente UNA próxima comprobación o medición/);
+    assert.match(prompt, /No nombres aplicaciones, protocolos, componentes, líneas, pines o rails/);
+    assert.match(prompt, /únicamente las dos ramas inmediatas/);
+    assert.match(prompt, /no adelantes reparaciones/);
+});
+
 test("puts manufacturer procedures before repair anecdotes", () => {
     const manual: CerebroSource = {
         ...source,
