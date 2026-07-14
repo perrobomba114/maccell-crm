@@ -39,7 +39,7 @@ WITH semantic_ids AS (
     WHERE chunk.normalized_brand = $1
       AND document.status = 'READY'
       AND document.retired_at IS NULL
-    ORDER BY chunk.embedding <=> $5::vector
+    ORDER BY chunk.embedding <=> $3::vector
     LIMIT 40
 ), keyword_ids AS (
     SELECT chunk.id
@@ -48,8 +48,8 @@ WITH semantic_ids AS (
     WHERE chunk.normalized_brand = $1
       AND document.status = 'READY'
       AND document.retired_at IS NULL
-      AND chunk.search_vector @@ plainto_tsquery('simple', $4)
-    ORDER BY ts_rank_cd(chunk.search_vector, plainto_tsquery('simple', $4)) DESC
+      AND chunk.search_vector @@ plainto_tsquery('simple', $2)
+    ORDER BY ts_rank_cd(chunk.search_vector, plainto_tsquery('simple', $2)) DESC
     LIMIT 40
 ), component_ids AS (
     SELECT chunk.id
@@ -58,7 +58,7 @@ WITH semantic_ids AS (
     WHERE chunk.normalized_brand = $1
       AND document.status = 'READY'
       AND document.retired_at IS NULL
-      AND chunk.component_codes && $6::text[]
+      AND chunk.component_codes && $4::text[]
     LIMIT 20
 ), candidate_ids AS (
     SELECT id FROM semantic_ids
@@ -76,9 +76,9 @@ WITH semantic_ids AS (
         document.title,
         page.page_number AS "pageNumber",
         chunk.content,
-        1 - (chunk.embedding <=> $5::vector) AS "semanticScore",
-        ts_rank_cd(chunk.search_vector, plainto_tsquery('simple', $4)) AS "keywordScore",
-        chunk.component_codes && $6::text[] AS "componentMatch"
+        1 - (chunk.embedding <=> $3::vector) AS "semanticScore",
+        ts_rank_cd(chunk.search_vector, plainto_tsquery('simple', $2)) AS "keywordScore",
+        chunk.component_codes && $4::text[] AS "componentMatch"
     FROM candidate_ids AS candidate
     JOIN rag_chunks AS chunk ON chunk.id = candidate.id
     JOIN rag_documents AS document ON document.id = chunk.document_id
@@ -113,8 +113,6 @@ export async function retrieveCerebroSources(
     const vector = `[${input.embedding.join(",")}]`;
     const rows = await adapter.search(HYBRID_SQL, [
         input.brand,
-        input.model,
-        input.modelFamily ?? "",
         input.text,
         vector,
         input.componentCodes ?? [],
