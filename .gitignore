@@ -74,6 +74,7 @@ GEMINI.md
 .claude/
 .kiro/
 .qwen/
+.worktrees/
 
 # Docs generados por agentes
 docs/agent-tooling.md
