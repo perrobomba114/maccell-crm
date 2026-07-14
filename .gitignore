@@ -33,6 +33,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Python worker
+__pycache__/
+.pytest_cache/
+.venv/
+
 # Public assets to ignore
 public/repairs/
 upload/
