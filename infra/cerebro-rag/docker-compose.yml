@@ -1,8 +1,8 @@
 services:
   worker:
     build:
-      context: ../..
-      dockerfile: services/cerebro-rag-worker/Dockerfile
+      context: ../../services/cerebro-rag-worker
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       SOURCE_DATABASE_URL: ${SOURCE_DATABASE_URL}
