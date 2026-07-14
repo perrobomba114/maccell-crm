@@ -17,23 +17,33 @@ No guardar contraseñas, tokens ni certificados en este documento.
 
 ## Servicios
 
-- `worker`: API interna de salud, embeddings BGE-M3 y entrega autenticada de PDF.
+- `worker`: API interna de salud, embeddings BGE-M3 y render autenticado de páginas PDF.
 - `ingestion`: reconstruye el histórico y luego indexa todo el inventario PDF. Es idempotente; después de un reinicio omite versiones `READY` con el mismo SHA-256.
-- `maccell-rag-db`: almacena documentos, páginas, chunks, embeddings de 1.024 dimensiones, jobs y feedback.
+- `repair-sync`: consulta la base principal en modo solo lectura cada cinco minutos y versiona reparaciones nuevas o modificadas mediante cursor `(effective_updated_at, id)`.
+- `maccell-rag-db`: almacena documentos, páginas, chunks, embeddings de 1.024 dimensiones, jobs, chats V2 y feedback.
 
 ## Comprobaciones
 
-1. Confirmar que `worker` e `ingestion` estén activos en el Compose.
+1. Confirmar que `worker`, `ingestion` y `repair-sync` estén activos en el Compose.
 2. Consultar logs de `ingestion`: cada PDF informa `INDEXED`; el final informa `SUMMARY`.
 3. Verificar en RAG que todos los embeddings tengan `vector_dims(embedding) = 1024`.
 4. Verificar que las reparaciones se clasifiquen como `CONFIRMED_SUCCESS`, `INCOMPLETE` o `FAILED`.
-5. Probar `/api/cerebro-v2/chat` y `/api/cerebro-v2/documents/:id` con una sesión ADMIN/TECHNICIAN; sin sesión deben devolver `401`.
+5. Verificar el job `REPAIR_SYNC/main`: estado `READY`, cursor creciente y sin `error_message`.
+6. Probar `/api/cerebro-v2/health`, sesiones, chat y página PDF con una sesión ADMIN/TECHNICIAN; sin sesión deben devolver `401`.
+7. Confirmar que no existan rutas `/api/cerebro/knowledge`, `/schematics`, `/summarize`, `/tokens` ni `/chat`.
+
+## Persistencia de chats
+
+- `rag_chat_sessions` y `rag_chat_messages` son las únicas tablas consumidas por la interfaz nueva.
+- Toda lectura, edición y eliminación está acotada por `user_id`.
+- Las tablas antiguas del CRM no se migran ni se borran; quedan fuera del runtime y requieren autorización separada para una eliminación física.
+- El identificador `(session_id, client_message_id)` hace idempotente cada turno.
 
 ## Recuperación y rollback
 
 - La base principal no recibe escrituras del worker; su rol tiene `default_transaction_read_only=on` y permisos `SELECT` acotados.
-- Detener el servicio `ingestion` no afecta al CRM ni elimina lo ya indexado.
-- Para volver temporalmente al código anterior, seleccionar la rama estable en la aplicación MACCELL y desplegarla. La base RAG aislada puede permanecer encendida.
+- Detener `ingestion` o `repair-sync` no afecta al CRM ni elimina lo ya indexado.
+- Para rollback, desplegar el commit estable anterior desde `main`. La base RAG aislada puede permanecer encendida.
 - Antes de cambios de esquema, generar un backup nuevo. No restaurar sobre la base principal para resolver problemas del RAG.
 
 ## Rotación de secretos

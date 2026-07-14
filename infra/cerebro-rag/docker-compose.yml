@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     user: "1000:1000"
+    command: ["sh", "-lc", "cerebro-rag migrate && exec uvicorn cerebro_rag.server:app --host 0.0.0.0 --port 8080"]
     environment:
       SOURCE_DATABASE_URL: ${SOURCE_DATABASE_URL}
       RAG_DATABASE_URL: ${RAG_DATABASE_URL}
@@ -39,7 +40,7 @@ services:
       dockerfile: Dockerfile
     restart: on-failure
     user: "1000:1000"
-    command: ["sh", "-lc", "cerebro-rag index-repairs && cerebro-rag index-pdfs"]
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-repairs && cerebro-rag index-pdfs"]
     environment:
       SOURCE_DATABASE_URL: ${SOURCE_DATABASE_URL}
       RAG_DATABASE_URL: ${RAG_DATABASE_URL}
@@ -65,6 +66,39 @@ services:
         reservations:
           cpus: "2"
           memory: 4G
+
+  repair-sync:
+    build:
+      context: ../../services/cerebro-rag-worker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag sync-repairs --interval 300"]
+    environment:
+      SOURCE_DATABASE_URL: ${SOURCE_DATABASE_URL}
+      RAG_DATABASE_URL: ${RAG_DATABASE_URL}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      LIBRARY_ROOT: /library
+      PAGE_CACHE_ROOT: /page-cache
+      EMBEDDING_MODEL: BAAI/bge-m3
+      BATCH_SIZE: "8"
+      HF_HOME: /model-cache
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+    volumes:
+      - /mnt/data2:/library:ro
+      - /var/lib/maccell/rag-pages:/page-cache
+      - /var/lib/maccell/rag-models:/model-cache
+    networks:
+      - dokploy-network
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 12G
+        reservations:
+          cpus: "1"
+          memory: 2G
 
 networks:
   dokploy-network:

@@ -19,11 +19,11 @@ const source: CerebroSource & { content: string } = {
 
 test("builds a direct same-brand prompt with isolated evidence delimiters", () => {
     const prompt = buildCerebroSystemPrompt("SAMSUNG", "SM-A405FN", [source]);
-    assert.match(prompt, /DIAGNÓSTICO PROBABLE/);
-    assert.match(prompt, /MEDICIONES/);
-    assert.match(prompt, /INTERVENCIÓN SUGERIDA/);
-    assert.match(prompt, /FUENTES/);
-    assert.match(prompt, /SOURCE chunk-1/);
+    assert.match(prompt, /DATOS OBSERVADOS/);
+    assert.match(prompt, /PRÓXIMA MEDICIÓN/);
+    assert.match(prompt, /CRITERIO DE DECISIÓN/);
+    assert.match(prompt, /EVIDENCIA/);
+    assert.doesNotMatch(prompt, /SOURCE chunk-1/);
     assert.match(prompt, /MISMA MARCA/);
     assert.doesNotMatch(prompt, /50\.000/);
 });

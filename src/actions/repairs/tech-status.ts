@@ -1,10 +1,10 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { businessHoursService } from "@/lib/services/business-hours";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
-import { indexRepair } from "@/lib/cerebro-indexer";
 import { saveRepairImages } from "@/lib/actions/upload";
 
 export async function startRepairAction(repairId: string, technicianId: string, newEstimatedTime?: number) {
@@ -17,7 +17,7 @@ export async function startRepairAction(repairId: string, technicianId: string, 
         }
 
         const now = new Date();
-        const dataToUpdate: any = {
+        const dataToUpdate: Prisma.RepairUpdateInput = {
             status: { connect: { id: 3 } }, // En Proceso
             startedAt: now,
             statusHistory: {
@@ -107,7 +107,7 @@ export async function pauseRepairAction(repairId: string, technicianId: string) 
                         userId: technicianId
                     }
                 }
-            } as any
+            }
         });
 
         revalidatePath("/technician/repairs");
@@ -175,8 +175,8 @@ export async function finishRepairAction(formData: FormData) {
         }
 
         const oldRepairStatusId = repair.statusId;
-        const dataToUpdate: any = {
-            statusId: statusId,
+        const dataToUpdate: Prisma.RepairUpdateInput = {
+            status: { connect: { id: statusId } },
             diagnosis: diagnosis,
             deviceImages: [...currentImages, ...newImages].filter(img => img && img.length > 5 && img.includes('/') && !img.includes('undefined') && !img.includes('null')),
             statusHistory: {
@@ -240,28 +240,32 @@ export async function finishRepairAction(formData: FormData) {
         }
 
         if (statusId === 6 && repair.parts && repair.parts.length > 0) {
-            const allPartIds = repair.parts.map((p: any) => p.id);
+            const allPartIds = repair.parts.map((part) => part.id);
             returnPartIds = Array.from(new Set([...returnPartIds, ...allPartIds]));
         }
 
         if (returnPartIds.length > 0) {
-            let partsSnapshot: any[] = [];
+            let partsSnapshot: Array<{
+                id: string;
+                sparePartId: string;
+                quantity: number;
+                name: string;
+                sku: string;
+            }> = [];
 
             if (repair.parts && Array.isArray(repair.parts)) {
                 try {
                     partsSnapshot = repair.parts
-                        .filter((p: any) => returnPartIds.includes(p.id))
-                        .map((p: any) => {
-                            if (!p.sparePart) return null;
+                        .filter((part) => returnPartIds.includes(part.id))
+                        .map((part) => {
                             return {
-                                id: p.id,
-                                sparePartId: p.sparePartId,
-                                quantity: p.quantity,
-                                name: p.sparePart.name,
-                                sku: p.sparePart.sku
+                                id: part.id,
+                                sparePartId: part.sparePartId,
+                                quantity: part.quantity,
+                                name: part.sparePart.name,
+                                sku: part.sparePart.sku
                             };
-                        })
-                        .filter((p: any) => p !== null);
+                        });
                 } catch (snapError) {
                     console.error("Error creating parts snapshot:", snapError);
                 }
@@ -275,7 +279,7 @@ export async function finishRepairAction(formData: FormData) {
                         technicianNote: `${diagnosis} (Devolución parcial de repuestos)`,
                         status: "PENDING",
                         partsSnapshot: partsSnapshot
-                    } as any
+                    } satisfies Prisma.ReturnRequestUncheckedCreateInput
                 });
 
                 const admins = await db.user.findMany({
@@ -285,7 +289,7 @@ export async function finishRepairAction(formData: FormData) {
 
                 const techName = (await db.user.findUnique({ where: { id: technicianId }, select: { name: true } }))?.name || "Técnico";
 
-                await Promise.all(admins.map((admin: any) =>
+                await Promise.all(admins.map((admin) =>
                     createNotificationAction({
                         userId: admin.id,
                         title: "Nueva Devolución de Repuestos",
@@ -300,21 +304,6 @@ export async function finishRepairAction(formData: FormData) {
         revalidatePath("/technician/repairs");
         revalidatePath("/admin/repairs");
         revalidatePath("/technician/dashboard");
-
-        if (diagnosis && [5, 6, 7, 8, 9, 10].includes(statusId)) {
-            const fullRepair = await db.repair.findUnique({
-                where: { id: repairId },
-                include: {
-                    observations: { select: { content: true } },
-                    parts: { include: { sparePart: { select: { name: true, brand: true } } } },
-                }
-            });
-            if (fullRepair) {
-                indexRepair(fullRepair).catch(err =>
-                    console.error('[CEREBRO_INDEXER] Error auto-indexando repair:', err.message)
-                );
-            }
-        }
 
         return { success: true };
 

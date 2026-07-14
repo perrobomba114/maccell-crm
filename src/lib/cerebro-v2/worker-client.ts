@@ -41,6 +41,10 @@ export function ragDocumentUrl(documentId: string): string {
     return `${workerConfiguration().url}/internal/documents/${encodeURIComponent(documentId)}`;
 }
 
+export function ragDocumentPageUrl(documentId: string, pageNumber: number): string {
+    return `${workerConfiguration().url}/internal/documents/${encodeURIComponent(documentId)}/pages/${pageNumber}`;
+}
+
 export function ragWorkerAuthorization(): string {
     return `Bearer ${workerConfiguration().secret}`;
 }

@@ -24,3 +24,20 @@ export type CerebroSource = {
     content: string;
     score: number;
 };
+
+export type CerebroPublicSource = {
+    documentId: string;
+    sourceType: Extract<CerebroSourceType, "REPAIR" | "PDF">;
+    authority: CerebroAuthority;
+    brand: string;
+    model: string;
+    title: string;
+    pageNumber: number | null;
+    excerpt: string;
+};
+
+export type CerebroMessageMetadata = {
+    promptVersion: string;
+    provider: string;
+    sources: CerebroPublicSource[];
+};

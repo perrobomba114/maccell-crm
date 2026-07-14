@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from cerebro_rag.normalize import normalize_brand, normalize_model
 
 
-REPAIR_EXPORT_QUERY = """
+REPAIR_EXPORT_BASE = """
 SELECT
     repair.id,
     repair."ticketNumber" AS ticket_number,
@@ -18,27 +18,47 @@ SELECT
     status.name AS current_status,
     COALESCE(observation.items, '[]'::jsonb) AS observations,
     COALESCE(part.items, '[]'::jsonb) AS parts,
-    COALESCE(history.items, '[]'::jsonb) AS prior_statuses
+    COALESCE(history.items, '[]'::jsonb) AS prior_statuses,
+    GREATEST(
+        repair."updatedAt",
+        COALESCE(observation.latest, repair."updatedAt"),
+        COALESCE(part.latest, repair."updatedAt"),
+        COALESCE(history.latest, repair."updatedAt")
+    ) AS effective_updated_at
 FROM repairs AS repair
 JOIN repair_statuses AS status ON status.id = repair."statusId"
 LEFT JOIN LATERAL (
-    SELECT jsonb_agg(value.content ORDER BY value."createdAt") AS items
+    SELECT jsonb_agg(value.content ORDER BY value."createdAt") AS items,
+           MAX(value."createdAt") AS latest
     FROM repair_observations AS value
     WHERE value."repairId" = repair.id
 ) AS observation ON true
 LEFT JOIN LATERAL (
-    SELECT jsonb_agg(value.name ORDER BY link."assignedAt") AS items
+    SELECT jsonb_agg(value.name ORDER BY link."assignedAt") AS items,
+           MAX(link."assignedAt") AS latest
     FROM repair_parts AS link
     JOIN spare_parts AS value ON value.id = link."sparePartId"
     WHERE link."repairId" = repair.id
 ) AS part ON true
 LEFT JOIN LATERAL (
-    SELECT jsonb_agg(value.name ORDER BY transition."createdAt") AS items
+    SELECT jsonb_agg(value.name ORDER BY transition."createdAt") AS items,
+           MAX(transition."createdAt") AS latest
     FROM repair_status_history AS transition
     JOIN repair_statuses AS value ON value.id = transition."toStatusId"
     WHERE transition."repairId" = repair.id
 ) AS history ON true
-ORDER BY repair."updatedAt", repair.id
+"""
+
+REPAIR_EXPORT_QUERY = REPAIR_EXPORT_BASE + "\nORDER BY effective_updated_at, repair.id"
+
+REPAIR_SYNC_QUERY = f"""
+WITH repair_source AS (
+{REPAIR_EXPORT_BASE}
+)
+SELECT * FROM repair_source
+WHERE (effective_updated_at, id) > (%s::timestamptz, %s)
+ORDER BY effective_updated_at, id
+LIMIT %s
 """
 
 

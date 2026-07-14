@@ -3,7 +3,10 @@ export const TEXT_MODELS = [
     { label: 'Kimi K2', id: 'moonshotai/kimi-k2-instruct' },
     { label: 'Llama 3.3 70B', id: 'llama-3.3-70b-versatile' },
 ];
-export const VISION_MODEL = { label: 'Llama 3.2 11B Vision', id: 'llama-3.2-11b-vision-preview' };
+export const VISION_MODEL = {
+    label: 'Llama 4 Scout Vision',
+    id: process.env.CEREBRO_VISION_MODEL ?? 'meta-llama/llama-4-scout-17b-16e-instruct',
+};
 
 type FallbackModelConfig = {
     instance: unknown;

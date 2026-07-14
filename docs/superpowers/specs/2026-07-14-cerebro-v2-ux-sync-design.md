@@ -1,7 +1,7 @@
 # Cerebro V2 — asistente técnico nuevo con RAG y PDF integrado
 
 **Fecha:** 2026-07-14
-**Estado:** Revisión solicitada por el usuario
+**Estado:** Implementado; pendiente de aceptación técnica en producción
 **Alcance:** Reemplazo completo de Cerebro para `ADMIN` y `TECHNICIAN`, historial V2 nuevo, RAG aislado, sincronización continua y evidencia PDF visible dentro del chat.
 
 ## 1. Objetivo

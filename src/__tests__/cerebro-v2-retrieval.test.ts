@@ -67,3 +67,22 @@ test("component matches survive weak semantic similarity", async () => {
     );
     assert.equal(results[0].chunkId, "component");
 });
+
+test("excludes legacy wiki sources from Cerebro V2", async () => {
+    const wiki = { ...baseRow, chunkId: "legacy", sourceType: "WIKI" as const };
+    const results = await retrieveCerebroSources(
+        { brand: "SAMSUNG", model: "SM-A405FN", text: "no enciende", embedding: [0.1] },
+        adapterFor([wiki, baseRow]),
+    );
+    assert.deepEqual(results.map((source) => source.sourceType), ["REPAIR"]);
+});
+
+test("keeps exact-model evidence when exact results exist", async () => {
+    const unrelated = { ...baseRow, chunkId: "unrelated", model: "SM-A505FN", semanticScore: 0.99 };
+    const exact = { ...baseRow, chunkId: "exact", semanticScore: 0.6 };
+    const results = await retrieveCerebroSources(
+        { brand: "SAMSUNG", model: "SM-A405FN", text: "no enciende", embedding: [0.1] },
+        adapterFor([unrelated, exact]),
+    );
+    assert.deepEqual(results.map((source) => source.model), ["SM-A405FN"]);
+});

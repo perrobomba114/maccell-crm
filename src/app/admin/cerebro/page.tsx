@@ -1,4 +1,4 @@
-import { CerebroLayout } from "@/components/cerebro/cerebro-layout";
+import { CerebroV2Shell } from "@/components/cerebro-v2/cerebro-v2-shell";
 import { getUserData } from "@/actions/get-user";
 import { redirect } from "next/navigation";
 
@@ -10,7 +10,7 @@ export default async function AdminCerebroPage() {
 
     return (
         <div className="-m-6 overflow-hidden" style={{ height: 'calc(100vh - 4rem)' }}>
-            <CerebroLayout userId={user.id} isAdmin={true} />
+            <CerebroV2Shell />
         </div>
     );
 }

@@ -8,9 +8,11 @@ import psycopg
 from cerebro_rag.config import WorkerSettings
 from cerebro_rag.embeddings import get_embedding_service
 from cerebro_rag.indexer import PdfIndexer
+from cerebro_rag.migrations import apply_migrations
 from cerebro_rag.pdf_inventory import iter_pdf_inventory
 from cerebro_rag.repair_indexer import RepairIndexer, repair_source_from_row
 from cerebro_rag.repairs import REPAIR_EXPORT_QUERY
+from cerebro_rag.repair_sync import run_repair_sync
 
 
 def index_pdfs(settings: WorkerSettings, limit: int | None, model: str | None) -> None:
@@ -81,6 +83,9 @@ def main() -> None:
     pilot.add_argument("--pdf-limit", type=int, default=2)
     repairs = commands.add_parser("index-repairs")
     repairs.add_argument("--limit", type=int)
+    commands.add_parser("migrate")
+    sync = commands.add_parser("sync-repairs")
+    sync.add_argument("--interval", type=int, default=300)
     args = parser.parse_args()
     settings = WorkerSettings()
     if args.command == "index-pdfs":
@@ -89,6 +94,11 @@ def main() -> None:
         index_pdfs(settings, args.pdf_limit, args.model)
     elif args.command == "index-repairs":
         index_repairs(settings, args.limit)
+    elif args.command == "migrate":
+        with psycopg.connect(settings.rag_database_url.get_secret_value()) as connection:
+            apply_migrations(connection)
+    elif args.command == "sync-repairs":
+        run_repair_sync(settings, max(60, args.interval))
 
 
 if __name__ == "__main__":

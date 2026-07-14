@@ -125,8 +125,13 @@ export async function retrieveCerebroSources(
         [...rows].sort((left, right) => right.keywordScore - left.keywordScore)
             .map((row, index) => [row.chunkId, index + 1]),
     );
-    return rows
-        .filter((row) => row.brand === input.brand)
+    const allowedRows = rows.filter((row) => (
+        row.brand === input.brand
+        && (row.sourceType === "REPAIR" || row.sourceType === "PDF")
+    ));
+    const exactModelRows = allowedRows.filter((row) => row.model === input.model);
+    const scopedRows = exactModelRows.length > 0 ? exactModelRows : allowedRows;
+    return scopedRows
         .map((row) => ({
             chunkId: row.chunkId,
             documentId: row.documentId,
@@ -140,8 +145,8 @@ export async function retrieveCerebroSources(
             score: scoreRow(
                 row,
                 input,
-                semanticRanks.get(row.chunkId) ?? rows.length,
-                keywordRanks.get(row.chunkId) ?? rows.length,
+                semanticRanks.get(row.chunkId) ?? scopedRows.length,
+                keywordRanks.get(row.chunkId) ?? scopedRows.length,
             ),
         }))
         .sort((left, right) => {
