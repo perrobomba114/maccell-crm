@@ -378,6 +378,7 @@ model Repair {
   createdBy          User                  @relation("CreatedRepairs", fields: [userId], references: [id])
   returnRequests     ReturnRequest[]
   saleItems          SaleItem[]
+  learningRecord     RepairLearningRecord?
 
   @@unique([ticketNumber, branchId])
   @@index([branchId])
@@ -387,6 +388,33 @@ model Repair {
   @@index([createdAt])
   @@index([assignedUserId])
   @@map("repairs")
+}
+
+/// Cierre técnico estructurado usado por Cerebro para distinguir una solución confirmada.
+/// La migración es aditiva: no modifica reparaciones existentes ni sus estados.
+model RepairLearningRecord {
+  id                 String   @id @default(cuid())
+  repairId           String   @unique
+  technicianId       String
+  symptom            String
+  rootCause          String
+  confirmingEvidence String
+  intervention       String
+  verification       String
+  affectedReferences String[] @default([])
+  schematicPages     Json?
+  externalSources    Json?
+  authority          String   @default("INCOMPLETE")
+  reviewedBy         String?
+  reviewedAt         DateTime?
+  trainingEligible   Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  repair             Repair   @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  @@index([authority, trainingEligible])
+  @@index([technicianId])
+  @@map("repair_learning_records")
 }
 
 model RepairObservation {

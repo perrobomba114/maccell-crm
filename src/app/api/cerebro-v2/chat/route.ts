@@ -14,6 +14,7 @@ import { extractMessageInput, toPublicSources } from "@/lib/cerebro-v2/message-c
 import { deviceModelAliases, normalizeDeviceIdentity } from "@/lib/cerebro-v2/normalization";
 import { buildCerebroSystemPrompt, CEREBRO_PROMPT_VERSION } from "@/lib/cerebro-v2/prompt";
 import { getAuthorizedCerebroRepair } from "@/lib/cerebro-v2/repair-context";
+import { createLocalCerebroModel } from "@/lib/cerebro-v2/local-provider";
 import { retrieveCerebroSources } from "@/lib/cerebro-v2/retrieval";
 import type { CerebroMessageMetadata } from "@/lib/cerebro-v2/types";
 import { shouldLoadVisualEvidence } from "@/lib/cerebro-v2/visual-evidence";
@@ -31,6 +32,12 @@ function componentCodes(value: string): string[] {
 
 function buildModel(onSelect: (provider: ProviderSelection) => void, vision: boolean): LanguageModel {
     const configurations: Array<{ instance: unknown; label: string; keyId: string }> = [];
+    if (!vision) {
+        const localModel = createLocalCerebroModel();
+        if (localModel) {
+            configurations.push({ instance: localModel, label: "Qwen local", keyId: "local" });
+        }
+    }
     for (const key of getGroqKeys()) {
         const models = vision ? [VISION_MODEL] : TEXT_MODELS;
         for (const model of models) {
