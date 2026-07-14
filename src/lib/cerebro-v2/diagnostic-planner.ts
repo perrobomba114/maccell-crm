@@ -1,11 +1,11 @@
 export type DiagnosticSubsystem = "POWER" | "BATTERY" | "CHARGING" | "BOOT" | "DISPLAY" | "RF";
 
 const SUBSYSTEM_TERMS: Readonly<Record<DiagnosticSubsystem, readonly string[]>> = {
-    POWER: ["POWER", "PMIC", "POWER KEY", "VBAT", "VDD MAIN", "SHORT CIRCUIT"],
+    POWER: ["POWER ON", "PWR ON", "POWER", "PMIC", "POWER KEY", "VBAT", "VDD MAIN", "TRST_N", "RESET", "OSCILLATOR", "CLOCK", "SHORT CIRCUIT"],
     BATTERY: ["BATTERY", "BATT", "PP_BATT", "NTC", "BATTERY CONNECTOR"],
     CHARGING: ["CHARGING", "USB", "VBUS", "CHARGE IC", "DOCK FLEX"],
     BOOT: ["BOOT", "RESET", "CLOCK", "NAND", "CPU"],
-    DISPLAY: ["DISPLAY", "LCD", "OLED", "BACKLIGHT", "MIPI"],
+    DISPLAY: ["DISPLAY", "LCD OFF", "LCD", "OLED", "BACKLIGHT", "LUZ DE FONDO", "MIPI"],
     RF: ["RF", "BASEBAND", "ANTENNA", "SIM", "NETWORK"],
 };
 
@@ -16,7 +16,7 @@ export function inferDiagnosticSubsystems(text: string): DiagnosticSubsystem[] {
     if (/BATER|BATT|DESCARG/.test(value)) result.add("BATTERY");
     if (/NO CARGA|CARGA|USB|VBUS|CONECTOR/.test(value)) result.add("CHARGING");
     if (/LOGO|REINIC|BOOT|RECOVERY|DFU/.test(value)) result.add("BOOT");
-    if (/PANTALLA|DISPLAY|IMAGEN|BACKLIGHT|NEGRA/.test(value)) result.add("DISPLAY");
+    if (/PANTALLA|DISPLAY|IMAGEN|BACKLIGHT|LUZ DE FONDO|FONDO|NEGRA/.test(value)) result.add("DISPLAY");
     if (/SEÑAL|SENAL|RED|SIM|BASEBAND/.test(value)) result.add("RF");
     return [...result];
 }

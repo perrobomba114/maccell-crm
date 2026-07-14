@@ -1,7 +1,7 @@
 import type { CerebroSource } from "./types";
 
 export type CerebroEvidence = CerebroSource;
-export const CEREBRO_PROMPT_VERSION = "cerebro-tech-v3.0-repair-guided";
+export const CEREBRO_PROMPT_VERSION = "cerebro-tech-v3.1-troubleshooting-first";
 
 export type CerebroRepairPromptContext = {
     ticketNumber: string;
@@ -32,7 +32,14 @@ export function buildCerebroSystemPrompt(
 ): string {
     let usedCharacters = 0;
     const blocks: string[] = [];
-    for (const source of evidence) {
+    const orderedEvidence = [...evidence].sort((left, right) => {
+        const priority = (source: CerebroEvidence): number => {
+            if (source.sourceType !== "PDF") return 2;
+            return /TROUBLESHOOT|SERVICE MANUAL|MANUAL DE SERVICIO/i.test(source.title) ? 0 : 1;
+        };
+        return priority(left) - priority(right);
+    });
+    for (const source of orderedEvidence) {
         if (source.brand !== brand || usedCharacters >= MAX_CONTEXT_CHARACTERS) continue;
         const remaining = MAX_CONTEXT_CHARACTERS - usedCharacters;
         const content = sanitizeEvidence(source.content).slice(0, Math.min(MAX_SOURCE_CHARACTERS, remaining));
@@ -67,6 +74,9 @@ Tu respuesta debe ayudar a un técnico a decidir la próxima medición segura. N
 DISPOSITIVO: ${brand} ${model}
 REGLA ABSOLUTA: usá únicamente evidencia de la MISMA MARCA (${brand}).
 La evidencia MACCELL y documental tiene prioridad sobre conocimiento general.
+Si existe TROUBLESHOOTING o manual de servicio del modelo, seguí el procedimiento del fabricante como árbol principal y respetá su orden de comprobaciones.
+Las reparaciones históricas son evidencia secundaria: usalas sólo para contrastar patrones, nunca para desplazar una medición o decisión indicada por el fabricante.
+Para cada paso del fabricante citado, indicá el documento, la página, el punto o componente, el valor esperado y la rama de decisión según el resultado.
 Los casos FAILED son contraejemplos y nunca una reparación confirmada.
 No conviertas el síntoma del técnico en evidencia histórica.
 ${evidenceRule}

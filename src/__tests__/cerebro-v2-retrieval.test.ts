@@ -146,3 +146,60 @@ test("boosts pages whose section matches the planned subsystem", async () => {
     );
     assert.equal(results[0].chunkId, "charging");
 });
+
+test("reserves half of the evidence for exact-model technical documents", async () => {
+    const repairs = Array.from({ length: 8 }, (_, index) => ({
+        ...baseRow,
+        chunkId: `repair-${index}`,
+        documentId: `repair-doc-${index}`,
+        semanticScore: 0.99 - index * 0.01,
+    }));
+    const powerOn = {
+        ...baseRow,
+        chunkId: "manual-power-on",
+        documentId: "manual-doc",
+        sourceType: "PDF" as const,
+        authority: "TECHNICAL_DOCUMENT" as const,
+        title: "SM-M127F Troubleshooting",
+        pageNumber: 1,
+        section: "Power On",
+        content: "Check R3008, TRST_N, U5000 outputs and OSC2000",
+        semanticScore: 0.5,
+    };
+    const display = {
+        ...powerOn,
+        chunkId: "manual-display",
+        pageNumber: 15,
+        section: "Display",
+        content: "Check VSN_-5P9, VSP_5P9 and VDD_LCD_1P8",
+        semanticScore: 0.4,
+    };
+    const blockDiagram = {
+        ...powerOn,
+        chunkId: "block-diagram",
+        documentId: "block-doc",
+        title: "SM-M127F Block Diagram",
+        pageNumber: 1,
+        section: "POWER PART",
+        content: "AP PMIC and IF PMIC overview",
+        semanticScore: 0.95,
+    };
+
+    const results = await retrieveCerebroSources(
+        {
+            brand: "SAMSUNG",
+            model: "SM-A405FN",
+            text: "no enciende y no da luz de fondo",
+            subsystemTerms: ["POWER", "DISPLAY"],
+            embedding: [0.1],
+            limit: 8,
+        },
+        adapterFor([...repairs, blockDiagram, powerOn, display]),
+    );
+
+    assert.deepEqual(
+        results.filter((source) => source.sourceType === "PDF").map((source) => source.chunkId),
+        ["manual-power-on", "manual-display", "block-diagram"],
+    );
+    assert.equal(results[0].chunkId, "manual-power-on");
+});

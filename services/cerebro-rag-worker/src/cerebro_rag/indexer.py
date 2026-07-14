@@ -12,7 +12,11 @@ from cerebro_rag.embeddings import EmbeddingService
 from cerebro_rag.pdf_extract import ExtractedPage, extract_pdf_pages
 from cerebro_rag.pdf_inventory import PdfInventoryEntry
 from cerebro_rag.normalize import model_family
-from cerebro_rag.page_metadata import technical_page_metadata
+from cerebro_rag.page_metadata import (
+    INDEX_SCHEMA_VERSION,
+    document_metadata_current,
+    technical_page_metadata,
+)
 
 
 def vector_literal(vector: tuple[float, ...]) -> str:
@@ -60,10 +64,14 @@ class PdfIndexer:
             model_family=model_family(entry.identity.brand, entry.identity.model),
         )
         document_id = self.versions.create_or_get(descriptor)
-        status = self.connection.execute(
-            "SELECT status::text FROM rag_documents WHERE id = %s", (document_id,)
-        ).fetchone()[0]
-        if status == "READY":
+        status, schema_version = self.connection.execute(
+            """
+            SELECT status::text, metadata->>'index_schema_version'
+            FROM rag_documents WHERE id = %s
+            """,
+            (document_id,),
+        ).fetchone()
+        if document_metadata_current(status, schema_version):
             return document_id, 0, 0, True
 
         pages = extract_pdf_pages(entry.absolute_path, entry.sha256, self.cache_root)
@@ -72,25 +80,33 @@ class PdfIndexer:
             for page in pages
             for chunk in chunk_page(str(document_id), page.page_number, page.text)
         )
-        vectors = self.embeddings.embed_passages(
-            [
-                embedding_projection(
-                    context=(
-                        f"{entry.identity.brand} {entry.identity.model} "
-                        f"{entry.identity.title} PAGE {chunk.page_number}"
-                    ),
-                    content=chunk.content,
-                    component_codes=chunk.component_codes,
-                )
-                for chunk in chunks
-            ]
-        )
+        chunk_metadata = tuple(technical_page_metadata(chunk.content) for chunk in chunks)
+        vectors = self.embeddings.embed_passages([
+            embedding_projection(
+                context=(
+                    f"{entry.identity.brand} {entry.identity.model} {entry.identity.title} "
+                    f"{entry.identity.document_type} PAGE {chunk.page_number} "
+                    f"{metadata['embedding_context']}"
+                ),
+                content=chunk.content,
+                component_codes=chunk.component_codes,
+            )
+            for chunk, metadata in zip(chunks, chunk_metadata, strict=True)
+        ])
         model_version_id = self._active_model_version()
 
         try:
             self.connection.execute("DELETE FROM rag_pages WHERE document_id = %s", (document_id,))
             page_ids = self._insert_pages(document_id, pages)
             self._insert_chunks(document_id, page_ids, chunks, vectors, model_version_id, entry)
+            self.connection.execute(
+                """
+                UPDATE rag_documents
+                SET metadata = metadata || %s, updated_at = now()
+                WHERE id = %s
+                """,
+                (Jsonb({"index_schema_version": INDEX_SCHEMA_VERSION}), document_id),
+            )
             self.versions.mark_ready(document_id)
             self.connection.commit()
         except Exception:

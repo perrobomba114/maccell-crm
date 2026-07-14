@@ -132,8 +132,14 @@ function scoreRow(row: RetrievalRow, input: RetrievalInput, semanticRank: number
     const subsystemTerms = input.subsystemTerms ?? [];
     const searchable = `${row.section ?? ""} ${row.subsystems.join(" ")} ${row.content}`.toUpperCase();
     const subsystem = subsystemTerms.some((term) => searchable.includes(term.toUpperCase())) ? 0.18 : 0;
+    const technicalDocument = row.sourceType === "PDF" ? 0.15 : 0;
+    const manufacturerTroubleshooting = row.sourceType === "PDF"
+        && /TROUBLESHOOT|SERVICE MANUAL|MANUAL DE SERVICIO|LEVEL 3 REPAIR/i.test(`${row.title} ${row.section ?? ""} ${row.content}`)
+        ? 0.8
+        : 0;
     const reciprocalRankFusion = 30 * (1 / (60 + semanticRank) + 1 / (60 + keywordRank));
-    const fused = reciprocalRankFusion + exactModel + family + component + subsystem;
+    const fused = reciprocalRankFusion + exactModel + family + component + subsystem
+        + technicalDocument + manufacturerTroubleshooting;
     return fused * AUTHORITY_WEIGHT[row.authority];
 }
 
@@ -165,7 +171,7 @@ export async function retrieveCerebroSources(
     const scopedRows = allowedRows.filter((row) => (
         requestedModels.has(row.model) || row.identityMatch
     ));
-    return scopedRows
+    const ranked = scopedRows
         .map((row) => ({
             chunkId: row.chunkId,
             documentId: row.documentId,
@@ -187,6 +193,14 @@ export async function retrieveCerebroSources(
             if (left.authority === "FAILED" && right.authority !== "FAILED") return 1;
             if (right.authority === "FAILED" && left.authority !== "FAILED") return -1;
             return right.score - left.score;
-        })
-        .slice(0, input.limit ?? 10);
+        });
+    const limit = input.limit ?? 10;
+    const technicalDocuments = ranked.filter((source) => source.sourceType === "PDF");
+    const documentQuota = Math.min(technicalDocuments.length, Math.ceil(limit / 2));
+    const selectedDocuments = technicalDocuments.slice(0, documentQuota);
+    const selectedChunkIds = new Set(selectedDocuments.map((source) => source.chunkId));
+    const remaining = ranked
+        .filter((source) => !selectedChunkIds.has(source.chunkId))
+        .slice(0, limit - selectedDocuments.length);
+    return [...selectedDocuments, ...remaining];
 }

@@ -34,3 +34,21 @@ test("requires an explicit measurement when exact-model evidence is absent", () 
     assert.match(prompt, /consumo en fuente/i);
     assert.match(prompt, /no cites fuentes/i);
 });
+
+test("puts manufacturer procedures before repair anecdotes", () => {
+    const manual: CerebroSource = {
+        ...source,
+        chunkId: "manual-page",
+        documentId: "manual-doc",
+        sourceType: "PDF",
+        authority: "TECHNICAL_DOCUMENT",
+        title: "SM-M127F Troubleshooting",
+        pageNumber: 1,
+        content: "Check R3008 and U5000 outputs in the Power On flow",
+    };
+    const prompt = buildCerebroSystemPrompt("SAMSUNG", "SM-A405FN", [source, manual]);
+
+    assert.ok(prompt.indexOf("SM-M127F Troubleshooting") < prompt.indexOf("Ticket MAC1-123"));
+    assert.match(prompt, /procedimiento del fabricante/i);
+    assert.match(prompt, /reparaciones históricas.*secundaria/i);
+});
