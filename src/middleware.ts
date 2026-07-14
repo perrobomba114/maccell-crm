@@ -38,6 +38,10 @@ export function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL("/login", request.url));
         }
 
+        if (pathname.endsWith("/cerebro") && sessionRole !== "ADMIN" && sessionRole !== "TECHNICIAN") {
+            return NextResponse.redirect(new URL(`/${sessionRole.toLowerCase()}/dashboard`, request.url));
+        }
+
         // Create the response object
         const response = NextResponse.next();
 
@@ -48,7 +52,7 @@ export function middleware(request: NextRequest) {
         if (sessionUserId) {
             response.cookies.set("session_user_id", sessionUserId, {
                 httpOnly: true,
-                secure: false, // Set to true in prod if HTTPS is guaranteed
+                secure: process.env.NODE_ENV === "production",
                 sameSite: "lax",
                 maxAge: SIX_HOURS,
             });
@@ -57,7 +61,7 @@ export function middleware(request: NextRequest) {
         if (sessionRole) {
             response.cookies.set("session_role", sessionRole, {
                 httpOnly: true,
-                secure: false,
+                secure: process.env.NODE_ENV === "production",
                 sameSite: "lax",
                 maxAge: SIX_HOURS,
             });
