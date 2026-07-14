@@ -32,7 +32,39 @@ export type RetrievalAdapter = {
 };
 
 const HYBRID_SQL = `
-WITH candidates AS (
+WITH semantic_ids AS (
+    SELECT chunk.id
+    FROM rag_chunks AS chunk
+    JOIN rag_documents AS document ON document.id = chunk.document_id
+    WHERE chunk.normalized_brand = $1
+      AND document.status = 'READY'
+      AND document.retired_at IS NULL
+    ORDER BY chunk.embedding <=> $5::vector
+    LIMIT 40
+), keyword_ids AS (
+    SELECT chunk.id
+    FROM rag_chunks AS chunk
+    JOIN rag_documents AS document ON document.id = chunk.document_id
+    WHERE chunk.normalized_brand = $1
+      AND document.status = 'READY'
+      AND document.retired_at IS NULL
+      AND chunk.search_vector @@ plainto_tsquery('simple', $4)
+    ORDER BY ts_rank_cd(chunk.search_vector, plainto_tsquery('simple', $4)) DESC
+    LIMIT 40
+), component_ids AS (
+    SELECT chunk.id
+    FROM rag_chunks AS chunk
+    JOIN rag_documents AS document ON document.id = chunk.document_id
+    WHERE chunk.normalized_brand = $1
+      AND document.status = 'READY'
+      AND document.retired_at IS NULL
+      AND chunk.component_codes && $6::text[]
+    LIMIT 20
+), candidate_ids AS (
+    SELECT id FROM semantic_ids
+    UNION SELECT id FROM keyword_ids
+    UNION SELECT id FROM component_ids
+)
     SELECT
         chunk.id::text AS "chunkId",
         document.id::text AS "documentId",
@@ -47,23 +79,11 @@ WITH candidates AS (
         1 - (chunk.embedding <=> $5::vector) AS "semanticScore",
         ts_rank_cd(chunk.search_vector, plainto_tsquery('simple', $4)) AS "keywordScore",
         chunk.component_codes && $6::text[] AS "componentMatch"
-    FROM rag_chunks AS chunk
+    FROM candidate_ids AS candidate
+    JOIN rag_chunks AS chunk ON chunk.id = candidate.id
     JOIN rag_documents AS document ON document.id = chunk.document_id
     LEFT JOIN rag_pages AS page ON page.id = chunk.page_id
-    WHERE chunk.normalized_brand = $1
-      AND document.status = 'READY'
-      AND document.retired_at IS NULL
-      AND (
-          chunk.normalized_model = $2
-          OR document.model_family = NULLIF($3, '')
-          OR chunk.search_vector @@ plainto_tsquery('simple', $4)
-          OR chunk.component_codes && $6::text[]
-          OR 1 - (chunk.embedding <=> $5::vector) >= 0.3
-      )
-)
-SELECT * FROM candidates
-ORDER BY "semanticScore" DESC
-LIMIT 50`;
+    WHERE chunk.normalized_brand = $1`;
 
 const AUTHORITY_WEIGHT: Readonly<Record<CerebroAuthority, number>> = {
     CONFIRMED_SUCCESS: 1,
@@ -77,11 +97,12 @@ const databaseAdapter: RetrievalAdapter = {
     search: (sql, params) => queryRag<RetrievalRow>(sql, params),
 };
 
-function scoreRow(row: RetrievalRow, input: RetrievalInput): number {
+function scoreRow(row: RetrievalRow, input: RetrievalInput, semanticRank: number, keywordRank: number): number {
     const exactModel = row.model === input.model ? 0.3 : 0;
     const family = input.modelFamily && row.modelFamily === input.modelFamily ? 0.1 : 0;
     const component = row.componentMatch ? 0.25 : 0;
-    const fused = row.semanticScore * 0.45 + row.keywordScore * 0.25 + exactModel + family + component;
+    const reciprocalRankFusion = 30 * (1 / (60 + semanticRank) + 1 / (60 + keywordRank));
+    const fused = reciprocalRankFusion + exactModel + family + component;
     return fused * AUTHORITY_WEIGHT[row.authority];
 }
 
@@ -98,6 +119,14 @@ export async function retrieveCerebroSources(
         vector,
         input.componentCodes ?? [],
     ]);
+    const semanticRanks = new Map(
+        [...rows].sort((left, right) => right.semanticScore - left.semanticScore)
+            .map((row, index) => [row.chunkId, index + 1]),
+    );
+    const keywordRanks = new Map(
+        [...rows].sort((left, right) => right.keywordScore - left.keywordScore)
+            .map((row, index) => [row.chunkId, index + 1]),
+    );
     return rows
         .filter((row) => row.brand === input.brand)
         .map((row) => ({
@@ -110,7 +139,12 @@ export async function retrieveCerebroSources(
             title: row.title,
             pageNumber: row.pageNumber,
             content: row.content,
-            score: scoreRow(row, input),
+            score: scoreRow(
+                row,
+                input,
+                semanticRanks.get(row.chunkId) ?? rows.length,
+                keywordRanks.get(row.chunkId) ?? rows.length,
+            ),
         }))
         .sort((left, right) => {
             if (left.authority === "FAILED" && right.authority !== "FAILED") return 1;

@@ -23,6 +23,8 @@ function adapterFor(rows: RetrievalRow[]): RetrievalAdapter {
     return {
         async search(sql, params) {
             assert.match(sql, /normalized_brand = \$1/);
+            assert.match(sql, /semantic_ids/);
+            assert.match(sql, /keyword_ids/);
             assert.equal(params[0], "SAMSUNG");
             return rows;
         },
