@@ -15,10 +15,13 @@ RUN apt-get update \
     && useradd --create-home --uid 10001 ragworker
 
 WORKDIR /app
+COPY requirements-runtime.txt ./
+RUN pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu \
+    && pip install -r requirements-runtime.txt
+
 COPY pyproject.toml ./
 COPY src ./src
-RUN pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu \
-    && pip install .
+RUN pip install --no-deps .
 
 USER ragworker
 EXPOSE 8080
