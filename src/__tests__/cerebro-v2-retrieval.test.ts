@@ -105,10 +105,12 @@ test("filters the exact model before limiting database candidates", async () => 
         {
             async search(sql, params) {
                 assert.match(sql, /rag_device_aliases/);
+                assert.doesNotMatch(sql, /\$6/);
+                assert.equal(params.length, 5);
                 assert.match(sql, /semantic_pdf_ids[\s\S]+source_type = 'PDF'[\s\S]+LIMIT 40/);
                 assert.match(sql, /semantic_repair_ids[\s\S]+source_type = 'REPAIR'[\s\S]+LIMIT 20/);
                 assert.match(sql, /keyword_pdf_ids[\s\S]+source_type = 'PDF'[\s\S]+LIMIT 40/);
-                assert.deepEqual(params[4], ["IPHONE 8"]);
+                assert.deepEqual(params[3], ["IPHONE 8"]);
                 return [];
             },
         },
@@ -129,7 +131,7 @@ test("allows only explicitly declared model aliases before the SQL limit", async
         },
         {
             async search(_sql, params) {
-                assert.deepEqual(params[4], ["SM-A125M", "GALAXY A12", "A12"]);
+                assert.deepEqual(params[3], ["SM-A125M", "GALAXY A12", "A12"]);
                 return [a13, a12];
             },
         },

@@ -38,7 +38,7 @@ export type RetrievalAdapter = {
 
 const HYBRID_SQL = `
 WITH input_models AS (
-    SELECT unnest($5::text[]) AS model
+    SELECT unnest($4::text[]) AS model
 ), resolved_models AS (
     SELECT model FROM input_models
     UNION
@@ -60,7 +60,7 @@ WITH input_models AS (
       AND document.source_type = 'PDF'
       AND document.status = 'READY'
       AND document.retired_at IS NULL
-    ORDER BY chunk.embedding <=> $3::vector
+    ORDER BY chunk.embedding <=> $2::vector
     LIMIT 40
 ), semantic_repair_ids AS (
     SELECT chunk.id
@@ -71,7 +71,7 @@ WITH input_models AS (
       AND document.source_type = 'REPAIR'
       AND document.status = 'READY'
       AND document.retired_at IS NULL
-    ORDER BY chunk.embedding <=> $3::vector
+    ORDER BY chunk.embedding <=> $2::vector
     LIMIT 20
 ), keyword_pdf_ids AS (
     SELECT chunk.id
@@ -82,8 +82,8 @@ WITH input_models AS (
       AND document.source_type = 'PDF'
       AND document.status = 'READY'
       AND document.retired_at IS NULL
-      AND chunk.search_vector @@ websearch_to_tsquery('simple', $6)
-    ORDER BY ts_rank_cd(chunk.search_vector, websearch_to_tsquery('simple', $6)) DESC
+      AND chunk.search_vector @@ websearch_to_tsquery('simple', $5)
+    ORDER BY ts_rank_cd(chunk.search_vector, websearch_to_tsquery('simple', $5)) DESC
     LIMIT 40
 ), keyword_repair_ids AS (
     SELECT chunk.id
@@ -94,8 +94,8 @@ WITH input_models AS (
       AND document.source_type = 'REPAIR'
       AND document.status = 'READY'
       AND document.retired_at IS NULL
-      AND chunk.search_vector @@ websearch_to_tsquery('simple', $6)
-    ORDER BY ts_rank_cd(chunk.search_vector, websearch_to_tsquery('simple', $6)) DESC
+      AND chunk.search_vector @@ websearch_to_tsquery('simple', $5)
+    ORDER BY ts_rank_cd(chunk.search_vector, websearch_to_tsquery('simple', $5)) DESC
     LIMIT 20
 ), component_ids AS (
     SELECT chunk.id
@@ -105,7 +105,7 @@ WITH input_models AS (
       AND chunk.normalized_model IN (SELECT model FROM resolved_models)
       AND document.status = 'READY'
       AND document.retired_at IS NULL
-      AND chunk.component_codes && $4::text[]
+      AND chunk.component_codes && $3::text[]
     LIMIT 20
 ), candidate_ids AS (
     SELECT id FROM semantic_pdf_ids
@@ -130,9 +130,9 @@ WITH input_models AS (
         COALESCE(ARRAY(
             SELECT jsonb_array_elements_text(COALESCE(chunk.metadata->'subsystems', '[]'::jsonb))
         ), '{}'::text[]) AS subsystems,
-        1 - (chunk.embedding <=> $3::vector) AS "semanticScore",
-        ts_rank_cd(chunk.search_vector, websearch_to_tsquery('simple', $6)) AS "keywordScore",
-        chunk.component_codes && $4::text[] AS "componentMatch"
+        1 - (chunk.embedding <=> $2::vector) AS "semanticScore",
+        ts_rank_cd(chunk.search_vector, websearch_to_tsquery('simple', $5)) AS "keywordScore",
+        chunk.component_codes && $3::text[] AS "componentMatch"
     FROM candidate_ids AS candidate
     JOIN rag_chunks AS chunk ON chunk.id = candidate.id
     JOIN rag_documents AS document ON document.id = chunk.document_id
@@ -206,7 +206,6 @@ export async function retrieveCerebroSources(
     const vector = `[${input.embedding.join(",")}]`;
     const rows = await adapter.search(HYBRID_SQL, [
         input.brand,
-        input.text,
         vector,
         input.componentCodes ?? [],
         input.modelAliases ?? [input.model],
