@@ -52,3 +52,20 @@ test("puts manufacturer procedures before repair anecdotes", () => {
     assert.match(prompt, /procedimiento del fabricante/i);
     assert.match(prompt, /reparaciones históricas.*secundaria/i);
 });
+
+test("preserves the seller diagnosis and interprets chip as SIM in repair context", () => {
+    const prompt = buildCerebroSystemPrompt("SAMSUNG", "A03", [], {
+        ticketNumber: "MAC2-00001546",
+        problem: "Revisar antena / IMEI ok pero no lee chip",
+        diagnosis: null,
+        observations: [],
+        isWet: false,
+        isWarranty: false,
+    });
+
+    assert.match(prompt, /diagnóstico inicial del vendedor/i);
+    assert.match(prompt, /no lee chip.*tarjeta SIM/i);
+    assert.match(prompt, /Revisar antena \/ IMEI ok pero no lee chip/);
+    assert.match(prompt, /conservar todos los hechos observados/i);
+    assert.doesNotMatch(prompt, /consumo en fuente/i);
+});

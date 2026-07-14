@@ -26,8 +26,8 @@ function adapterFor(rows: RetrievalRow[]): RetrievalAdapter {
     return {
         async search(sql, params) {
             assert.match(sql, /normalized_brand = \$1/);
-            assert.match(sql, /semantic_ids/);
-            assert.match(sql, /keyword_ids/);
+            assert.match(sql, /semantic_pdf_ids/);
+            assert.match(sql, /keyword_pdf_ids/);
             assert.equal(params[0], "SAMSUNG");
             return rows;
         },
@@ -54,7 +54,7 @@ test("ranks exact model before family evidence", async () => {
 });
 
 test("keeps failed evidence behind confirmed or documentary evidence", async () => {
-    const failed = { ...baseRow, chunkId: "failed", authority: "FAILED" as const, semanticScore: 1 };
+    const failed = { ...baseRow, chunkId: "failed", documentId: "failed-doc", authority: "FAILED" as const, semanticScore: 1 };
     const results = await retrieveCerebroSources(
         { brand: "SAMSUNG", model: "SM-A405FN", text: "U5002", embedding: [0.1] },
         adapterFor([failed, baseRow]),
@@ -105,8 +105,9 @@ test("filters the exact model before limiting database candidates", async () => 
         {
             async search(sql, params) {
                 assert.match(sql, /rag_device_aliases/);
-                assert.match(sql, /semantic_ids[\s\S]+normalized_model IN \(SELECT model FROM resolved_models\)/);
-                assert.match(sql, /keyword_ids[\s\S]+normalized_model IN \(SELECT model FROM resolved_models\)/);
+                assert.match(sql, /semantic_pdf_ids[\s\S]+source_type = 'PDF'[\s\S]+LIMIT 40/);
+                assert.match(sql, /semantic_repair_ids[\s\S]+source_type = 'REPAIR'[\s\S]+LIMIT 20/);
+                assert.match(sql, /keyword_pdf_ids[\s\S]+source_type = 'PDF'[\s\S]+LIMIT 40/);
                 assert.deepEqual(params[4], ["IPHONE 8"]);
                 return [];
             },
@@ -202,4 +203,63 @@ test("reserves half of the evidence for exact-model technical documents", async 
         ["manual-power-on", "manual-display", "block-diagram"],
     );
     assert.equal(results[0].chunkId, "manual-power-on");
+});
+
+test("rejects RF repair anecdotes whose diagnosis never confirms the SIM failure", async () => {
+    const unrelatedModule = {
+        ...baseRow,
+        chunkId: "unrelated-module",
+        content: "PROBLEMA: cambio de módulo / sin chip, no se comprobaron funciones\nDIAGNOSTICO: se reemplazó el módulo",
+        keywordScore: 0.8,
+        semanticScore: 0.99,
+    };
+    const simSchematic = {
+        ...baseRow,
+        chunkId: "sim-schematic",
+        documentId: "sm-a035-schematic",
+        sourceType: "PDF" as const,
+        authority: "TECHNICAL_DOCUMENT" as const,
+        model: "A03",
+        identityMatch: true,
+        title: "SM-A035 plano esquemático completo",
+        pageNumber: 19,
+        content: "U1400 Digital Baseband Processor SIM interface",
+        semanticScore: 0.55,
+        keywordScore: 0.2,
+    };
+
+    const results = await retrieveCerebroSources(
+        {
+            brand: "SAMSUNG",
+            model: "A03",
+            text: "antena IMEI no lee chip SIM connector baseband",
+            subsystemTerms: ["RF", "SIM", "BASEBAND"],
+            embedding: [0.1],
+        },
+        adapterFor([unrelatedModule, simSchematic]),
+    );
+
+    assert.deepEqual(results.map((source) => source.chunkId), ["sim-schematic"]);
+});
+
+test("deduplicates the same PDF title and page from mirrored library paths", async () => {
+    const schematic = {
+        ...baseRow,
+        chunkId: "schematic-original",
+        documentId: "doc-original",
+        sourceType: "PDF" as const,
+        authority: "TECHNICAL_DOCUMENT" as const,
+        model: "A03",
+        identityMatch: true,
+        title: "SM-A035 plano esquemático completo",
+        pageNumber: 19,
+        content: "Digital Baseband Processor SIM interface",
+    };
+    const mirrored = { ...schematic, chunkId: "schematic-copy", documentId: "doc-copy" };
+    const results = await retrieveCerebroSources(
+        { brand: "SAMSUNG", model: "A03", text: "no lee SIM", embedding: [0.1] },
+        adapterFor([schematic, mirrored]),
+    );
+
+    assert.equal(results.length, 1);
 });

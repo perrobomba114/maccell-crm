@@ -16,6 +16,7 @@ import { buildCerebroSystemPrompt, CEREBRO_PROMPT_VERSION } from "@/lib/cerebro-
 import { getAuthorizedCerebroRepair } from "@/lib/cerebro-v2/repair-context";
 import { retrieveCerebroSources } from "@/lib/cerebro-v2/retrieval";
 import type { CerebroMessageMetadata } from "@/lib/cerebro-v2/types";
+import { shouldLoadVisualEvidence } from "@/lib/cerebro-v2/visual-evidence";
 import { requestQueryEmbedding, requestRagPageImage } from "@/lib/cerebro-v2/worker-client";
 import { getGroqKeys } from "@/lib/groq";
 
@@ -72,18 +73,8 @@ function diagnosticQuery(request: CerebroChatRequest): { text: string; images: s
     return extractMessageInput(lastUser);
 }
 
-function extractionLooksWeak(content: string): boolean {
-    if (content.trim().length < 80) return true;
-    const readable = [...content].filter((character) => /[\p{L}\p{N}\s]/u.test(character)).length;
-    return readable / content.length < 0.62;
-}
-
 async function loadVisualEvidence(evidence: Awaited<ReturnType<typeof retrieveCerebroSources>>): Promise<Uint8Array[]> {
-    const candidates = evidence.filter((source) => (
-        source.sourceType === "PDF"
-        && source.pageNumber !== null
-        && extractionLooksWeak(source.content)
-    )).slice(0, 2);
+    const candidates = evidence.filter(shouldLoadVisualEvidence).slice(0, 2);
     const results = await Promise.allSettled(candidates.map((source) => (
         requestRagPageImage(source.documentId, source.pageNumber ?? 1)
     )));
@@ -191,7 +182,7 @@ export async function POST(request: Request): Promise<Response> {
             modelMessages.push({
                 role: "user",
                 content: [
-                    { type: "text", text: "Inspeccioná estas páginas citadas del schematic; usalas solo para interpretar el circuito visible." },
+                    { type: "text", text: "Inspeccioná estas páginas citadas del schematic. Identificá únicamente conectores, componentes, nets, test points y ramas de decisión realmente visibles; usalas para conectar el síntoma con el circuito y no inventes etiquetas ilegibles." },
                     ...visualEvidence.map((image) => ({ type: "image" as const, image })),
                 ],
             });

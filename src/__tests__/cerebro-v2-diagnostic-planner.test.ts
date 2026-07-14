@@ -34,3 +34,20 @@ test("expands no-power with missing backlight toward manufacturer repair section
     assert.match(query, /LCD/);
     assert.match(query, /PWR ON/);
 });
+
+test("interprets Argentine chip language as the SIM and RF subsystem", () => {
+    const symptom = "Revisar antena / IMEI ok pero no lee chip";
+    const subsystems = inferDiagnosticSubsystems(symptom);
+    const query = buildTechnicalSearchQuery({
+        brand: "SAMSUNG",
+        model: "A03",
+        problem: symptom,
+        latestText: "no lee el chip",
+        observations: [],
+    });
+
+    assert.ok(subsystems.includes("RF"));
+    assert.match(query, /SIM CONNECTOR/);
+    assert.match(query, /SIM DETECT/);
+    assert.match(query, /BASEBAND/);
+});

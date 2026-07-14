@@ -6,7 +6,20 @@ const SUBSYSTEM_TERMS: Readonly<Record<DiagnosticSubsystem, readonly string[]>> 
     CHARGING: ["CHARGING", "USB", "VBUS", "CHARGE IC", "DOCK FLEX"],
     BOOT: ["BOOT", "RESET", "CLOCK", "NAND", "CPU"],
     DISPLAY: ["DISPLAY", "LCD OFF", "LCD", "OLED", "BACKLIGHT", "LUZ DE FONDO", "MIPI"],
-    RF: ["RF", "BASEBAND", "ANTENNA", "SIM", "NETWORK"],
+    RF: [
+        "RF",
+        "BASEBAND",
+        "ANTENNA",
+        "SIM",
+        "SIM CARD",
+        "SIM CONNECTOR",
+        "SIM DETECT",
+        "SIM DATA",
+        "SIM CLK",
+        "SIM RST",
+        "UIM",
+        "NETWORK",
+    ],
 };
 
 export function inferDiagnosticSubsystems(text: string): DiagnosticSubsystem[] {
@@ -17,7 +30,7 @@ export function inferDiagnosticSubsystems(text: string): DiagnosticSubsystem[] {
     if (/NO CARGA|CARGA|USB|VBUS|CONECTOR/.test(value)) result.add("CHARGING");
     if (/LOGO|REINIC|BOOT|RECOVERY|DFU/.test(value)) result.add("BOOT");
     if (/PANTALLA|DISPLAY|IMAGEN|BACKLIGHT|LUZ DE FONDO|FONDO|NEGRA/.test(value)) result.add("DISPLAY");
-    if (/SEÑAL|SENAL|RED|SIM|BASEBAND/.test(value)) result.add("RF");
+    if (/SEÑAL|SENAL|RED|SIM|BASEBAND|ANTENA|ANTENNA|IMEI|(?:NO\s+LEE|SIN)\s+(?:EL\s+)?CHIP/.test(value)) result.add("RF");
     return [...result];
 }
 

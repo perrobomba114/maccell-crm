@@ -55,8 +55,12 @@ export function buildCerebroSystemPrompt(
             })}\n--- FIN EVIDENCIA E${evidenceNumber} ---`,
         );
     }
+    const hasNoPowerSymptom = !repair || /NO ENCIENDE|NO PRENDE|APAGADO|CONSUMO/i.test(repair.problem);
+    const missingEvidenceAction = hasNoPowerSymptom
+        ? "Pedí como primera acción el consumo en fuente al intentar encender y cualquier medición previa disponible"
+        : "Pedí una comprobación concreta directamente relacionada con el síntoma informado y cualquier medición previa disponible";
     const evidenceRule = blocks.length === 0
-        ? "NO HAY EVIDENCIA EXACTA PARA ESTE MODELO. Decilo explícitamente, no cites fuentes y no traslades soluciones de otros modelos. Pedí como primera acción el consumo en fuente al intentar encender y cualquier medición previa disponible; no inventes valores esperados."
+        ? `NO HAY EVIDENCIA EXACTA PARA ESTE MODELO. Decilo explícitamente, no cites fuentes y no traslades soluciones de otros modelos. ${missingEvidenceAction}; no inventes valores esperados.`
         : "Usá y citá únicamente la evidencia exacta incluida abajo.";
 
     const repairBlock = repair ? JSON.stringify({
@@ -76,6 +80,8 @@ REGLA ABSOLUTA: usá únicamente evidencia de la MISMA MARCA (${brand}).
 La evidencia MACCELL y documental tiene prioridad sobre conocimiento general.
 Si existe TROUBLESHOOTING o manual de servicio del modelo, seguí el procedimiento del fabricante como árbol principal y respetá su orden de comprobaciones.
 Las reparaciones históricas son evidencia secundaria: usalas sólo para contrastar patrones, nunca para desplazar una medición o decisión indicada por el fabricante.
+El campo problem del contexto operativo es el diagnóstico inicial del vendedor. Debés conservar todos los hechos observados que contiene en DATOS OBSERVADOS, junto con lo informado por el técnico; no lo reduzcas al último mensaje.
+En el lenguaje de ingreso de MACCELL, "no lee chip" significa que no reconoce la tarjeta SIM, salvo que se indique un designador electrónico concreto. Nunca propongas un lector de chips externo ni inventes un "módulo lector": buscá bandeja/conector SIM, detección, alimentación, líneas SIM y baseband según el schematic.
 Para cada paso del fabricante citado, indicá el documento, la página, el punto o componente, el valor esperado y la rama de decisión según el resultado.
 Los casos FAILED son contraejemplos y nunca una reparación confirmada.
 No conviertas el síntoma del técnico en evidencia histórica.
