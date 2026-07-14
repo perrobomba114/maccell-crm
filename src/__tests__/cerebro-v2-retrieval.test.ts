@@ -13,6 +13,7 @@ const baseRow: RetrievalRow = {
     modelFamily: "GALAXY A40",
     title: "Reparación confirmada",
     pageNumber: null,
+    content: "PROBLEMA: no enciende\nSOLUCION: reemplazo confirmado",
     semanticScore: 0.8,
     keywordScore: 0.5,
     componentMatch: false,

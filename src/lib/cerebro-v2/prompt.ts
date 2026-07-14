@@ -1,6 +1,6 @@
 import type { CerebroSource } from "./types";
 
-export type CerebroEvidence = CerebroSource & { content: string };
+export type CerebroEvidence = CerebroSource;
 
 const PRICE_PATTERN = /(?:US\$|USD|ARS|\$)\s*\d[\d.,]*/gi;
 const MAX_SOURCE_CHARACTERS = 3_500;
@@ -28,6 +28,9 @@ export function buildCerebroSystemPrompt(
                 documentId: source.documentId,
                 pageNumber: source.pageNumber,
                 title: source.title,
+                url: source.sourceType === "PDF"
+                    ? `/api/cerebro-v2/documents/${source.documentId}#page=${source.pageNumber ?? 1}`
+                    : null,
                 content,
             })}\n--- END SOURCE ${source.chunkId} ---`,
         );

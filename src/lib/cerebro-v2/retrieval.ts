@@ -21,6 +21,7 @@ export type RetrievalRow = {
     modelFamily: string | null;
     title: string;
     pageNumber: number | null;
+    content: string;
     semanticScore: number;
     keywordScore: number;
     componentMatch: boolean;
@@ -42,6 +43,7 @@ WITH candidates AS (
         document.model_family AS "modelFamily",
         document.title,
         page.page_number AS "pageNumber",
+        chunk.content,
         1 - (chunk.embedding <=> $5::vector) AS "semanticScore",
         ts_rank_cd(chunk.search_vector, plainto_tsquery('simple', $4)) AS "keywordScore",
         chunk.component_codes && $6::text[] AS "componentMatch"
@@ -107,6 +109,7 @@ export async function retrieveCerebroSources(
             model: row.model,
             title: row.title,
             pageNumber: row.pageNumber,
+            content: row.content,
             score: scoreRow(row, input),
         }))
         .sort((left, right) => {

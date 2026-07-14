@@ -3,7 +3,6 @@ export const vendorGroups = [
         label: "Principal",
         items: [
             { href: "/vendor/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-            { href: "/vendor/cerebro", label: "Cerebro AI", icon: "BrainCircuit" },
         ]
     },
     {

@@ -27,11 +27,10 @@ type ChatFinishPayload = {
 interface UseCerebroChatProps {
     conversationId: string;
     initialMessages?: UIMessage[];
-    mode: "STANDARD" | "MENTOR";
     deviceContext: { brand: string; model: string };
 }
 
-export function useCerebroChat({ conversationId, initialMessages = [], mode, deviceContext }: UseCerebroChatProps) {
+export function useCerebroChat({ conversationId, initialMessages = [], deviceContext }: UseCerebroChatProps) {
     const [input, setInput] = useState("");
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,9 +74,8 @@ export function useCerebroChat({ conversationId, initialMessages = [], mode, dev
         id: conversationId,
         messages: initialMessages,
         transport: new DefaultChatTransport({
-            api: "/api/cerebro/chat",
+            api: "/api/cerebro-v2/chat",
             body: {
-                guidedMode: mode === "MENTOR",
                 deviceContext
             }
         }),

@@ -5,15 +5,12 @@ import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Bot, Send, User, BrainCircuit, X, FileIcon,
-    Loader2, Paperclip, FileText, Microscope,
-    BookMarked, Zap, ChevronDown, Wrench, Radio,
+    Loader2, Paperclip, FileText,
+    BookMarked, Zap, ChevronDown, Radio,
     Waves, Flame, Droplets, Shield
 } from "lucide-react";
 import { useCerebroChat } from "./use-cerebro-chat";
 import { MarkdownContent, MessageActions, TokenBar, TypingIndicator, Lightbox } from "./chat-components";
-import type { LucideIcon } from "lucide-react";
-
-type ChatMode = "STANDARD" | "MENTOR";
 interface CerebroChatProps { conversationId: string; initialMessages?: UIMessage[]; }
 
 type CerebroDisplayPart = UIMessage["parts"][number] & {
@@ -42,14 +39,8 @@ const QUICK_CHIPS = [
     { icon: Flame, label: "Reinicia solo", prompt: "El equipo reinicia constantemente (bootloop)." },
 ];
 
-const MODES: { id: ChatMode; label: string; icon: LucideIcon; desc: string }[] = [
-    { id: "STANDARD", label: "Directo", icon: Wrench, desc: "Diagnóstico completo en una sola respuesta." },
-    { id: "MENTOR", label: "Guiado", icon: Microscope, desc: "Una sola medición por turno." },
-];
-
 export function CerebroChat({ conversationId, initialMessages = [] }: CerebroChatProps) {
-    const [mode, setMode] = useState<ChatMode>("STANDARD");
-    const [brand, setBrand] = useState("Auto");
+    const [brand, setBrand] = useState("Samsung");
     const [model, setModel] = useState("");
 
     const {
@@ -57,7 +48,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
         zoom, setZoom, tokenUsage, atBottom, setAtBottom, scrollRef, bottomRef, textareaRef,
         messages, isLoading, error, stop, submit, handleScroll, adjustTextarea, handleFileChange,
         removeFile, handleSummarize
-    } = useCerebroChat({ conversationId, initialMessages, mode, deviceContext: { brand, model } });
+    } = useCerebroChat({ conversationId, initialMessages, deviceContext: { brand, model } });
 
     const onSubmit = (e: React.FormEvent) => { e.preventDefault(); submit(input); };
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(input); } };
@@ -68,24 +59,13 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
             <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-[#161b22]/90 backdrop-blur-md shrink-0">
                 <div className="flex items-center gap-2 bg-[#060e20] p-1 rounded-lg border border-[#4a4455]/40">
                     <select value={brand} onChange={(e) => setBrand(e.target.value)} className="bg-transparent text-[12px] text-[#dae2fd] outline-none pl-2 pr-1 py-1 cursor-pointer">
-                        <option value="Auto">Detectar Automático</option>
                         <option value="Samsung">Samsung</option>
                         <option value="Apple">Apple / iPhone</option>
                         <option value="Motorola">Motorola</option>
                         <option value="Xiaomi">Xiaomi / Redmi</option>
                         <option value="Huawei">Huawei</option>
                     </select>
-                    {brand !== "Auto" && (
-                        <input type="text" value={model} onChange={(e) => setModel(e.target.value)} placeholder="Modelo" className="bg-transparent text-[12px] text-[#ccc3d8] outline-none w-28 border-l border-[#4a4455]/50 pl-2 ml-1" />
-                    )}
-                </div>
-                <div className="flex items-center gap-1 bg-[#060e20] p-1 rounded-lg border border-[#4a4455]/40">
-                    {MODES.map(m => (
-                        <button key={m.id} onClick={() => setMode(m.id)} title={m.desc} className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${mode === m.id ? "bg-violet-500/20 text-violet-300 shadow-[0_0_8px_rgba(124,58,237,0.3)]" : "text-[#958da1] hover:text-[#dae2fd]"}`}>
-                            <span className="hidden sm:inline">{m.label}</span>
-                            <m.icon size={11} className="sm:hidden" />
-                        </button>
-                    ))}
+                    <input type="text" value={model} onChange={(e) => setModel(e.target.value)} placeholder="Modelo obligatorio" className="bg-transparent text-[12px] text-[#ccc3d8] outline-none w-32 border-l border-[#4a4455]/50 pl-2 ml-1" />
                 </div>
                 <div className="flex-1" />
                 {messages.length > 1 && (
@@ -197,7 +177,7 @@ export function CerebroChat({ conversationId, initialMessages = [] }: CerebroCha
                                 {isLoading ? (
                                     <button type="button" onClick={() => stop()} className="h-9 w-9 rounded-lg bg-red-600 text-white flex items-center justify-center"><X size={15} /></button>
                                 ) : (
-                                    <button type="submit" disabled={isLoading || (!input.trim() && files.length === 0)} className="h-9 w-9 rounded-lg bg-[#7c3aed] text-white disabled:opacity-40 flex items-center justify-center shadow-[0_0_12px_rgba(124,58,237,0.4)]"><Send size={15} /></button>
+                                    <button type="submit" disabled={isLoading || !model.trim() || (!input.trim() && files.length === 0)} className="h-9 w-9 rounded-lg bg-[#7c3aed] text-white disabled:opacity-40 flex items-center justify-center shadow-[0_0_12px_rgba(124,58,237,0.4)]"><Send size={15} /></button>
                                 )}
                             </div>
                         </div>

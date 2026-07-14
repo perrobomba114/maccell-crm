@@ -21,7 +21,9 @@ services:
       - /var/lib/maccell/rag-pages:/page-cache
       - /var/lib/maccell/rag-models:/model-cache
     networks:
-      - dokploy-network
+      dokploy-network:
+        aliases:
+          - maccell-rag-worker
     deploy:
       resources:
         limits:

@@ -21,5 +21,6 @@ export type CerebroSource = {
     model: string;
     title: string;
     pageNumber: number | null;
+    content: string;
     score: number;
 };

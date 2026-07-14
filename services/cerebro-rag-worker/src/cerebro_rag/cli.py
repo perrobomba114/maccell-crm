@@ -9,6 +9,8 @@ from cerebro_rag.config import WorkerSettings
 from cerebro_rag.embeddings import get_embedding_service
 from cerebro_rag.indexer import PdfIndexer
 from cerebro_rag.pdf_inventory import iter_pdf_inventory
+from cerebro_rag.repair_indexer import RepairIndexer, repair_source_from_row
+from cerebro_rag.repairs import REPAIR_EXPORT_QUERY
 
 
 def index_pdfs(settings: WorkerSettings, limit: int | None, model: str | None) -> None:
@@ -40,6 +42,34 @@ def index_pdfs(settings: WorkerSettings, limit: int | None, model: str | None) -
         raise SystemExit(1)
 
 
+def index_repairs(settings: WorkerSettings, limit: int | None) -> None:
+    indexed = skipped = processed = 0
+    embeddings = get_embedding_service(settings.embedding_model, settings.batch_size)
+    with (
+        psycopg.connect(settings.source_database_url.get_secret_value()) as source_connection,
+        psycopg.connect(settings.rag_database_url.get_secret_value()) as rag_connection,
+    ):
+        source_connection.read_only = True
+        repair_indexer = RepairIndexer(rag_connection, embeddings)
+        batch = []
+        for row in source_connection.execute(REPAIR_EXPORT_QUERY):
+            if limit is not None and processed >= limit:
+                break
+            batch.append(repair_source_from_row(row))
+            processed += 1
+            if len(batch) == settings.batch_size:
+                batch_indexed, batch_skipped = repair_indexer.index_batch(batch)
+                indexed += batch_indexed
+                skipped += batch_skipped
+                batch.clear()
+                print(f"REPAIRS processed={processed} indexed={indexed} skipped={skipped}", flush=True)
+        if batch:
+            batch_indexed, batch_skipped = repair_indexer.index_batch(batch)
+            indexed += batch_indexed
+            skipped += batch_skipped
+    print(f"SUMMARY processed={processed} indexed={indexed} skipped={skipped}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="cerebro-rag")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -49,12 +79,16 @@ def main() -> None:
     pilot = commands.add_parser("pilot")
     pilot.add_argument("--model", default="SM-A405FN")
     pilot.add_argument("--pdf-limit", type=int, default=2)
+    repairs = commands.add_parser("index-repairs")
+    repairs.add_argument("--limit", type=int)
     args = parser.parse_args()
     settings = WorkerSettings()
     if args.command == "index-pdfs":
         index_pdfs(settings, args.limit, args.model)
     elif args.command == "pilot":
         index_pdfs(settings, args.pdf_limit, args.model)
+    elif args.command == "index-repairs":
+        index_repairs(settings, args.limit)
 
 
 if __name__ == "__main__":

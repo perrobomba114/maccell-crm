@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+from cerebro_rag.repair_indexer import repair_source_from_row
 from cerebro_rag.repairs import REPAIR_EXPORT_QUERY, RepairSource, build_repair_content, sanitize_technical_text
 
 
@@ -47,6 +48,14 @@ class RepairReconstructionTest(unittest.TestCase):
         self.assertNotIn("customer", lowered)
         self.assertNotIn("estimatedprice", lowered)
         self.assertNotIn("estimated_price", lowered)
+
+    def test_maps_export_row_without_customer_or_financial_data(self) -> None:
+        source = repair_source_from_row(
+            (1, "MAC-1", "Samsung", "A405FN", "No enciende", "PMIC", "", "Finalizado OK", ["Cambio"], ["U5002"], ["En proceso"])
+        )
+        self.assertEqual(source.repair_id, "1")
+        self.assertEqual(source.observations, ("Cambio",))
+        self.assertEqual(source.parts, ("U5002",))
 
 
 if __name__ == "__main__":
