@@ -1,212 +1,240 @@
-# Cerebro V2 — UX unificada y sincronización continua
+# Cerebro V2 — asistente técnico nuevo con RAG y PDF integrado
 
-**Fecha:** 2026-07-14  
-**Estado:** Aprobado conceptualmente por el usuario  
-**Alcance:** Reemplazo completo de la interfaz heredada de Cerebro, migración controlada del conocimiento técnico útil y sincronización automática de reparaciones nuevas o modificadas.
+**Fecha:** 2026-07-14
+**Estado:** Revisión solicitada por el usuario
+**Alcance:** Reemplazo completo de Cerebro para `ADMIN` y `TECHNICIAN`, historial V2 nuevo, RAG aislado, sincronización continua y evidencia PDF visible dentro del chat.
 
 ## 1. Objetivo
 
-Cerebro debe ser una única herramienta de diagnóstico técnico para usuarios `ADMIN` y `TECHNICIAN`. La pantalla debe concentrarse en consultar, responder, mostrar evidencia y abrir documentación. No debe exponer funciones heredadas que ya no formen parte del flujo V2.
+Cerebro V2 será una única herramienta de diagnóstico para reparación de equipos. Permitirá iniciar y guardar conversaciones nuevas, consultar reparaciones históricas y documentación PDF mediante RAG y ver la página citada dentro del chat con zoom.
 
-La aplicación conservará el historial de conversaciones, utilizará exclusivamente el RAG aislado para evidencia y mantendrá dicho RAG actualizado sin escribir en la base principal.
+No reutilizará la UX, los chats, la Wiki, los embeddings ni los schematics heredados. El sistema comenzará con un historial V2 vacío y utilizará exclusivamente fuentes reconstruidas y auditables del RAG aislado.
+
+La base principal continuará protegida: el worker solo tendrá acceso de lectura a las tablas técnicas autorizadas y nunca escribirá en ella.
 
 ## 2. Situación actual verificada
 
-La interfaz desplegada todavía monta `CerebroLayout`, un componente heredado de 485 líneas que incluye:
+La interfaz desplegada todavía monta `CerebroLayout`, un componente heredado de 485 líneas que incluye Wiki, carga manual de schematics, guardar resumen, tokens y eventos globales que no pertenecen al producto nuevo.
 
-- Wiki Técnica y edición manual de artículos.
-- Carga manual de schematics.
-- Acción “Guardar Wiki”.
-- Indicador de tokens.
-- Eventos globales `window.dispatchEvent`.
-- Paneles y controles que no están conectados al RAG V2.
-
-La base principal conserva:
+La base principal conserva, pero Cerebro V2 no utilizará:
 
 - 1.870 filas en `repair_embeddings`.
 - 688 artículos en `repair_knowledge`.
 - 4 filas en `cerebro_schematics`.
-- 18 conversaciones y 76 mensajes de Cerebro.
+- 18 conversaciones y 76 mensajes del Cerebro anterior.
 
-El RAG V2 contiene las 3.308 reparaciones del corte inicial. El proceso masivo pasó después a los PDF, por lo que actualmente no existe reconciliación continua de reparaciones nuevas o modificadas.
+El RAG V2 contiene las 3.308 reparaciones del corte inicial. El proceso masivo pasó después a los PDF, por lo que falta reconciliación continua de reparaciones nuevas o modificadas.
+
+La prueba autenticada de `POST /api/cerebro-v2/chat` confirmó que autenticación, streaming, embeddings, recuperación y citas PDF están funcionando. Sin embargo, una consulta real sobre un SM-A405FN fijo en 0,08 A devolvió una respuesta demasiado genérica: citó páginas correctas, pero no interpretó suficientemente el patrón de consumo ni priorizó un protocolo técnico de placa. La infraestructura funciona; la calidad diagnóstica todavía no está aprobada.
 
 ## 3. Experiencia de usuario
 
-### 3.1 Dirección visual
-
-La herramienta seguirá una estética industrial y operativa, inspirada en instrumental de laboratorio: fondo oscuro neutro, alto contraste, tipografía legible, acentos verdes para evidencia disponible y ámbar para estados incompletos. No utilizará gradientes decorativos, paneles superpuestos innecesarios ni una apariencia de landing page.
-
-La prioridad visual será:
-
-1. Dispositivo seleccionado.
-2. Consulta y respuesta.
-3. Evidencia recuperada.
-4. Acceso al documento fuente.
-
-### 3.2 Estructura
+### 3.1 Estructura
 
 La pantalla tendrá cuatro áreas funcionales:
 
-1. **Barra superior:** marca, modelo, estado del RAG y acción “Nueva consulta”.
-2. **Historial plegable:** conversaciones del usuario agrupadas por fecha, con selección y eliminación.
-3. **Chat central:** mensajes, estado de procesamiento y compositor.
-4. **Panel contextual de fuentes:** oculto cuando no hay evidencia; muestra reparaciones, Wiki migrada y PDF relevantes.
+1. **Barra superior:** marca, modelo, estado del servicio y acción “Nuevo chat”.
+2. **Historial V2 plegable:** únicamente conversaciones creadas con el sistema nuevo, agrupadas por fecha, con selección, renombrado y eliminación.
+3. **Chat central:** mensajes, estado de análisis, compositor y evidencia citada.
+4. **Visor contextual:** fuentes y páginas PDF; aparece solo cuando el técnico abre una cita.
 
-En dispositivos móviles, historial y fuentes serán paneles temporales. En escritorio, el chat conservará el ancho principal y las fuentes ocuparán una columna secundaria únicamente cuando se abran.
+El chat se guardará automáticamente. “Nuevo chat” creará una sesión vacía sin perder las anteriores. No se importará ni mostrará ningún chat viejo.
+
+En móvil, historial y visor serán paneles temporales. En escritorio, el chat conservará el ancho principal y el visor ocupará una columna secundaria cuando se abra.
+
+### 3.2 Dirección visual
+
+La estética será operativa, inspirada en instrumental de laboratorio: fondo oscuro neutro, alto contraste, tipografía legible, verde para evidencia confirmada, ámbar para hipótesis o casos incompletos y rojo reservado para advertencias. No habrá gradientes decorativos ni paneles heredados superpuestos.
+
+La prioridad será:
+
+1. Dispositivo y síntoma.
+2. Próxima medición segura y concreta.
+3. Razonamiento diagnóstico.
+4. Evidencia recuperada y página documental.
 
 ### 3.3 Compositor
 
-El compositor incluirá:
+Incluirá texto técnico, marca y modelo obligatorios, imágenes opcionales, enviar y detener generación. No incluirá Wiki, carga manual de PDF, modo mentor, guardar resumen ni contador de tokens.
 
-- Texto técnico.
-- Marca obligatoria.
-- Modelo obligatorio.
-- Adjuntar imágenes.
-- Enviar y detener generación.
+Las imágenes solo estarán habilitadas cuando exista un proveedor de visión saludable. Si falla, el técnico recibirá un error explícito; el sistema no fingirá haber analizado la imagen.
 
-No incluirá:
+### 3.4 Respuesta técnica
 
-- Adjuntar PDF manualmente.
-- Modo guiado.
-- Guardar en Wiki.
-- Resumen automático.
-- Contador de tokens.
+La respuesta deberá separar claramente:
 
-Las imágenes solo se mostrarán como disponibles cuando exista un proveedor de visión configurado. Si falla la visión, el usuario recibirá un error explícito y la imagen no se tratará silenciosamente como texto.
+- **Datos observados:** lo informado por el técnico.
+- **Evidencia recuperada:** reparaciones confirmadas o páginas documentales.
+- **Hipótesis:** ordenadas por probabilidad cualitativa, sin porcentajes inventados.
+- **Próxima medición:** punto, modo del multímetro/fuente, valor esperado y criterio para decidir el siguiente paso.
+- **Advertencias:** límites de corriente, temperatura o riesgo cuando correspondan y estén respaldados.
 
-### 3.4 Respuestas y evidencia
+No expondrá UUID internos, rutas físicas, precios ni datos personales. Un caso fallido se mostrará como contraejemplo, nunca como reparación confirmada.
 
-Cada respuesta mantendrá el formato técnico directo de Cerebro V2. Las fuentes se enviarán al cliente como datos estructurados independientes del texto generado.
+### 3.5 PDF dentro del chat
 
-Cada fuente mostrará:
+Al pulsar una cita, Cerebro solicitará solamente la página necesaria al worker, que la renderizará y almacenará temporalmente como imagen WebP o PNG. Next.js la entregará mediante un proxy autenticado.
 
-- Tipo: reparación, conocimiento técnico o PDF.
-- Marca y modelo normalizados.
-- Título o ticket.
-- Autoridad: éxito confirmado, documento técnico, incompleto o fallido.
-- Página cuando corresponda.
-- Fragmento utilizado.
+El visor permitirá:
 
-Los PDF se abrirán mediante el proxy autenticado existente y posicionados en la página citada. Los casos fallidos se identificarán visualmente como contraejemplos y nunca como soluciones confirmadas.
+- Ver la página dentro de la misma pantalla.
+- Zoom entre 50 % y 300 %.
+- Desplazar la imagen ampliada.
+- Página anterior y siguiente.
+- Saltar a un número de página.
+- Volver a la respuesta sin perder el chat.
+
+La cita mostrará nombre legible del documento y página. El PDF completo seguirá disponible como respaldo autenticado, pero no será el flujo principal.
 
 ## 4. Arquitectura frontend
 
-Se crearán componentes V2 nuevos, cada uno por debajo de 300 líneas:
+Se crearán componentes nuevos, cada uno por debajo de 300 líneas:
 
-- `cerebro-v2-shell.tsx`: composición general y estado de paneles.
-- `cerebro-v2-header.tsx`: dispositivo, estado y nueva consulta.
-- `cerebro-v2-history.tsx`: historial de conversaciones.
-- `cerebro-v2-chat.tsx`: lista de mensajes y streaming.
+- `cerebro-v2-shell.tsx`: composición general.
+- `cerebro-v2-header.tsx`: dispositivo, salud y nuevo chat.
+- `cerebro-v2-history.tsx`: historial exclusivo V2.
+- `cerebro-v2-chat.tsx`: mensajes y streaming.
 - `cerebro-v2-composer.tsx`: texto e imágenes.
 - `cerebro-v2-sources.tsx`: evidencia estructurada.
+- `cerebro-v2-pdf-viewer.tsx`: página renderizada, zoom y navegación.
 - `use-cerebro-v2-chat.ts`: transporte, persistencia y errores.
 
-No se extenderá `CerebroLayout`. Las páginas de administrador y técnico montarán directamente el shell V2. Las conversaciones y mensajes existentes continuarán usando `cerebro_conversations` y `cerebro_messages`.
+No se extenderá `CerebroLayout`. Las páginas de administrador y técnico montarán el mismo shell V2. No habrá eventos globales de Wiki; la comunicación se realizará mediante props, estado acotado y callbacks estables.
 
-Los eventos globales de Wiki serán eliminados del flujo. La comunicación entre componentes se realizará mediante props, estado local acotado y callbacks estables.
+## 5. Persistencia nueva de chats
 
-## 5. API de chat y visión
+Los chats V2 se almacenarán en tablas nuevas dentro de la base aislada de RAG:
 
-`POST /api/cerebro-v2/chat` seguirá autenticando antes de leer el cuerpo y continuará restringido a `ADMIN` y `TECHNICIAN`.
+- `rag_chat_sessions`: usuario, título, marca, modelo, fechas y estado.
+- `rag_chat_messages`: sesión, rol, contenido, adjuntos, fuentes estructuradas y fecha.
 
-El flujo será:
+Todas las operaciones verificarán que la sesión pertenezca al usuario autenticado. Se implementarán rutas autenticadas para listar, crear, leer, renombrar y eliminar sesiones, además de persistir los mensajes sin duplicarlos durante el streaming.
 
-1. Validar marca, modelo, mensajes e imágenes.
-2. Generar embedding de la consulta.
-3. Recuperar evidencia con aislamiento obligatorio de marca.
-4. Emitir al stream un bloque de fuentes estructuradas.
-5. Elegir modelo de texto o visión según los adjuntos.
-6. Emitir la respuesta del modelo con `maxRetries: 0`.
-7. Persistir la conversación sin duplicar mensajes.
+Las tablas `cerebro_conversations` y `cerebro_messages` no serán consultadas, migradas ni mostradas. Permanecerán intactas durante la validación para permitir rollback; su eliminación física requerirá backup verificado y autorización destructiva separada.
 
-Groq seguirá siendo principal y OpenRouter fallback. El identificador del modelo de visión será configurable por entorno para no depender de un modelo retirado.
+## 6. API, proveedores y salud
 
-## 6. Datos heredados
+`POST /api/cerebro-v2/chat` continuará restringido a `ADMIN` y `TECHNICIAN`. El flujo será:
 
-### 6.1 Datos conservados
+1. Validar sesión, pertenencia del chat, marca, modelo, mensajes e imágenes.
+2. Generar el embedding de la consulta.
+3. Recuperar evidencia con aislamiento obligatorio de marca y preferencia estricta por modelo.
+4. Entregar fuentes estructuradas al cliente, separadas del texto del modelo.
+5. Elegir texto o visión según los adjuntos.
+6. Generar con Groq principal y OpenRouter fallback, sin `maxRetries` de Groq.
+7. Persistir mensajes y fuentes de forma idempotente.
 
-`cerebro_conversations` y `cerebro_messages` permanecen activos porque forman parte de la UX nueva.
+Habrá un diagnóstico administrativo autenticado y sanitizado para verificar:
 
-### 6.2 Wiki técnica
+- Conexión a la base RAG.
+- Servicio de embeddings.
+- Recuperación híbrida.
+- Disponibilidad de las claves Groq sin revelarlas.
+- Fallback OpenRouter.
+- Modelo de visión configurado.
+- Worker de PDF y render de páginas.
+- Último cursor y último error de ingestión.
 
-Los 688 registros de `repair_knowledge` se migrarán al RAG aislado como `source_type = 'WIKI'`:
+El proveedor y modelo usados se registrarán como telemetría interna sanitizada, sin exponer claves ni contenido técnico completo.
 
-- Se normalizarán marca y modelo.
-- Se sanearán datos personales, teléfonos, correos e importes.
-- Se generarán embeddings BGE-M3 de 1.024 dimensiones.
-- Se versionarán por hash.
-- Se marcarán con autoridad `TECHNICAL_DOCUMENT`.
+## 7. Auditoría y reemplazo de prompts
 
-La Wiki dejará de editarse desde Cerebro. Su contenido histórico quedará disponible como evidencia de solo lectura.
+Los prompts antiguos no se reutilizarán. La auditoría detectó reglas contradictorias, referencias técnicas no verificadas, porcentajes inventados, componentes específicos aplicados sin evidencia y ejemplos desactualizados. Las rutas heredadas que todavía los consuman quedarán fuera del flujo V2 y luego se desactivarán.
 
-### 6.3 Embeddings antiguos
+El prompt V2 será corto, versionado y testeable. Sus reglas obligatorias serán:
 
-`repair_embeddings` no se migrará porque contiene vectores antiguos de 384 dimensiones derivados de información que ya fue reconstruida desde las tablas canónicas.
+- Usar primero la evidencia recuperada y citar documento/página o reparación.
+- No convertir el síntoma del usuario en una supuesta evidencia histórica.
+- No afirmar que una página contiene un dato que no aparece en el fragmento recuperado.
+- Separar hechos, hipótesis y próximos pasos.
+- Reconocer evidencia insuficiente y pedir una medición concreta.
+- No inventar porcentajes, valores, componentes, precios ni resultados.
+- Respetar marca, modelo y plataforma; nunca mezclar marcas.
+- Priorizar procedimientos reversibles y seguros antes de retirar, puentear o inyectar.
 
-La tabla no se eliminará durante este cambio. Quedará sin consumidores y podrá archivarse en una tarea posterior, después de backup y período de observación.
+Cada respuesta guardará la versión del prompt y los identificadores públicos de las fuentes para poder auditar regresiones.
 
-### 6.4 Schematics antiguos
+## 8. Fuentes del RAG nuevo
 
-Los 4 registros de `cerebro_schematics` se auditarán por contenido y correspondencia con los PDF del RAID. Si existe un PDF equivalente, prevalecerá el PDF. Solo se migrará texto único, identificable y técnicamente útil; no se crearán fuentes duplicadas.
+Solo se indexarán dos familias de fuentes:
 
-## 7. Sincronización incremental de reparaciones
+1. **Reparaciones canónicas:** reconstruidas desde las tablas técnicas autorizadas, sanitizadas y clasificadas por resultado.
+2. **PDF técnicos:** los 1.814 archivos del RAID, fragmentados por página y sección, con metadatos normalizados de marca, modelo, documento y página.
 
-El worker mantendrá acceso `SELECT` únicamente sobre las tablas técnicas autorizadas de la base principal.
+No se migrarán los 688 artículos de `repair_knowledge`, los vectores de `repair_embeddings`, los 4 `cerebro_schematics` ni los chats anteriores. Ninguna ruta V2 consultará esas tablas.
 
-La sincronización utilizará un cursor persistente compuesto por `updatedAt` e `id`, almacenado en `rag_ingestion_jobs`. En cada ciclo:
+Los datos heredados quedarán aislados y sin consumidores. Después de validar el producto nuevo se preparará un inventario y backup para que el usuario decida si desea archivarlos o eliminarlos físicamente.
 
-1. Leer un lote ordenado de reparaciones posteriores al cursor.
-2. Reconstruir el documento técnico desde problema, diagnóstico, diagnóstico enriquecido, observaciones, repuestos y estados.
-3. Sanear información personal e importes.
-4. Calcular el hash del contenido.
+## 9. Sincronización incremental de reparaciones
+
+El worker mantendrá acceso `SELECT` únicamente sobre las tablas técnicas autorizadas. Usará un cursor persistente `(updatedAt, id)` en `rag_ingestion_jobs`.
+
+En cada ciclo:
+
+1. Leer un lote ordenado posterior al cursor.
+2. Reconstruir el documento desde problema, diagnóstico, diagnóstico enriquecido, observaciones, repuestos y estados.
+3. Sanear datos personales e importes.
+4. Calcular el hash.
 5. Omitir versiones idénticas.
 6. Insertar la nueva versión y retirar la anterior en una transacción.
-7. Actualizar el cursor solo después del commit del lote.
+7. Actualizar el cursor solo después del commit.
 
-La autoridad se recalculará en cada versión:
+La autoridad se recalculará como `CONFIRMED_SUCCESS`, `FAILED` o `INCOMPLETE`. El proceso se ejecutará al iniciar y periódicamente. Un fallo conservará el cursor anterior y registrará un error sanitizado.
 
-- `CONFIRMED_SUCCESS`: diagnóstico con estado final exitoso actual o histórico.
-- `FAILED`: estado “No Reparado”.
-- `INCOMPLETE`: diagnóstico ausente o reparación todavía no confirmada.
+La sincronización no será solo para reparaciones nuevas: reindexará cualquier reparación cuyo `updatedAt` cambie.
 
-El servicio se ejecutará periódicamente y también al iniciar el Compose. Si un ciclo falla, conservará el cursor anterior, registrará un error sanitizado y reintentará sin perder reparaciones.
+## 10. Evaluación técnica obligatoria
 
-La actualización no será “solo nuevas”: también reindexará reparaciones existentes cuyo `updatedAt` cambie, por ejemplo al agregar diagnóstico, observación, repuesto o cambiar el estado.
+Antes de habilitar Cerebro V2 se construirá un conjunto de pruebas doradas con casos reales sanitizados de distintas marcas y tipos de falla. Cada caso evaluará:
 
-## 8. Seguridad y errores
+- Aislamiento de marca y modelo.
+- Recuperación de la reparación o página esperada.
+- Interpretación del síntoma y las mediciones aportadas.
+- Primera medición concreta y segura.
+- Ausencia de UUID, precios, datos personales y afirmaciones no respaldadas.
+- Cita correcta y render de la página indicada.
+- Comportamiento explícito cuando no existe evidencia suficiente.
+- Fallback real cuando falla el proveedor principal.
+
+El caso SM-A405FN con consumo fijo de 0,08 A formará parte del conjunto de regresión. No se aprobará solo porque la API responda 200: deberá ofrecer una secuencia diagnóstica útil para un técnico y fundamentada en fuentes.
+
+También se realizará una sesión de aceptación con un técnico: consultas reales, mediciones sucesivas, recuperación de chats, apertura de páginas y evaluación de utilidad. Los resultados fallidos se usarán para ajustar recuperación, metadatos o prompt, no para agregar conocimiento inventado al prompt.
+
+## 11. Seguridad y errores
 
 - La base principal no recibirá escrituras del worker.
-- Las rutas antiguas de Wiki y schematics dejarán de estar accesibles desde la UI y se retirarán o responderán como función descontinuada.
-- Los PDF continuarán protegidos por sesión y secreto interno.
-- No se expondrán rutas físicas, credenciales ni contenido completo de fuentes en logs.
+- Toda ruta nueva verificará sesión, rol y pertenencia del recurso.
+- Los PDF y páginas renderizadas continuarán protegidos por sesión y secreto interno.
+- No se expondrán credenciales, rutas físicas ni fuentes completas en logs.
 - Un fallo de RAG mostrará un estado visible; no se inventará evidencia.
-- Un fallo del proveedor intentará el siguiente proveedor configurado sin reintentos automáticos de Groq.
+- Un fallo del proveedor usará el siguiente proveedor configurado sin reintentos automáticos de Groq.
+- Se mantendrá el aislamiento estricto por marca en recuperación, prompt y pruebas.
 
-## 9. Verificación
+## 12. Criterios de aceptación
 
-La entrega se considerará funcional cuando:
+- ADMIN y TECHNICIAN ven la misma interfaz V2; VENDOR no accede.
+- No aparecen Wiki, schematics, tokens, modo mentor ni guardar resumen.
+- El historial V2 comienza vacío y guarda únicamente chats nuevos.
+- Nuevo chat, reabrir, renombrar y eliminar funcionan sin duplicados.
+- Texto devuelve respuesta y fuentes estructuradas.
+- Imagen usa visión saludable o muestra un error explícito.
+- Una cita renderiza dentro del chat la página correcta con zoom y navegación.
+- Una reparación creada o modificada aparece tras el siguiente ciclo.
+- Una reparación sin cambios no crea otra versión.
+- Las fuentes V2 se limitan a reparaciones canónicas y los 1.814 PDF.
+- La pantalla administrativa confirma salud o error de cada dependencia sin secretos.
+- Los casos dorados y la aceptación del técnico alcanzan los umbrales definidos en el plan de implementación.
+- Tests, TypeScript, lint de archivos tocados, build y comprobación de diff pasan.
 
-- ADMIN y TECHNICIAN vean la misma interfaz V2.
-- VENDOR no pueda acceder.
-- No aparezcan Wiki, carga de schematics, tokens, modo guiado ni guardar resumen.
-- El historial existente continúe disponible.
-- Una consulta de texto devuelva respuesta y fuentes estructuradas.
-- Una imagen utilice visión o muestre un error explícito.
-- Una cita PDF abra el archivo y página correctos.
-- Una reparación creada o modificada aparezca en el RAG después del siguiente ciclo.
-- Una reparación sin cambios no genere una versión duplicada.
-- Los 688 artículos técnicos válidos queden consultables desde el RAG nuevo.
-- Los tests, TypeScript, lint de archivos tocados, build y comprobación de diff pasen.
-
-## 10. Despliegue
+## 13. Despliegue y rollback
 
 El despliegue será aditivo:
 
-1. Implementar y probar sincronización y migración.
-2. Migrar Wiki y auditar schematics sin borrar datos antiguos.
-3. Desplegar APIs y fuentes estructuradas.
-4. Desplegar el shell V2 para ambas páginas.
-5. Ejecutar pruebas autenticadas de chat, visión y PDF.
-6. Observar logs y métricas de sincronización.
+1. Crear persistencia V2 y sincronización incremental.
+2. Auditar proveedores, reemplazar prompt y agregar evaluación.
+3. Implementar fuentes estructuradas y render de páginas.
+4. Implementar el shell V2 para ambos roles.
+5. Ejecutar pruebas autenticadas, casos dorados y aceptación técnica.
+6. Habilitar V2 y observar salud, calidad y sincronización.
 
-El rollback consiste en volver al commit anterior de la aplicación. La base RAG y las tablas heredadas permanecen intactas, por lo que el rollback no requiere restauración de datos.
+El rollback volverá al commit anterior de la aplicación. La base RAG y las tablas heredadas permanecerán intactas; no será necesaria una restauración de datos.
