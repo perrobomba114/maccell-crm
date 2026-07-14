@@ -17,6 +17,9 @@ const baseRow: RetrievalRow = {
     semanticScore: 0.8,
     keywordScore: 0.5,
     componentMatch: false,
+    section: "POWER",
+    subsystems: ["POWER"],
+    identityMatch: false,
 };
 
 function adapterFor(rows: RetrievalRow[]): RetrievalAdapter {
@@ -101,11 +104,45 @@ test("filters the exact model before limiting database candidates", async () => 
         { brand: "APPLE", model: "IPHONE 8", text: "no enciende", embedding: [0.1] },
         {
             async search(sql, params) {
-                assert.match(sql, /semantic_ids[\s\S]+normalized_model = \$5/);
-                assert.match(sql, /keyword_ids[\s\S]+normalized_model = \$5/);
-                assert.equal(params[4], "IPHONE 8");
+                assert.match(sql, /rag_device_aliases/);
+                assert.match(sql, /semantic_ids[\s\S]+normalized_model IN \(SELECT model FROM resolved_models\)/);
+                assert.match(sql, /keyword_ids[\s\S]+normalized_model IN \(SELECT model FROM resolved_models\)/);
+                assert.deepEqual(params[4], ["IPHONE 8"]);
                 return [];
             },
         },
     );
+});
+
+test("allows only explicitly declared model aliases before the SQL limit", async () => {
+    const a12 = { ...baseRow, chunkId: "a12", model: "GALAXY A12", modelFamily: "GALAXY A12", identityMatch: true };
+    const a13 = { ...baseRow, chunkId: "a13", model: "GALAXY A13", modelFamily: "GALAXY A13" };
+    const results = await retrieveCerebroSources(
+        {
+            brand: "SAMSUNG",
+            model: "SM-A125M",
+            modelAliases: ["SM-A125M", "GALAXY A12", "A12"],
+            modelFamily: "GALAXY A12",
+            text: "no enciende",
+            embedding: [0.1],
+        },
+        {
+            async search(_sql, params) {
+                assert.deepEqual(params[4], ["SM-A125M", "GALAXY A12", "A12"]);
+                return [a13, a12];
+            },
+        },
+    );
+
+    assert.deepEqual(results.map((source) => source.chunkId), ["a12"]);
+});
+
+test("boosts pages whose section matches the planned subsystem", async () => {
+    const charging = { ...baseRow, chunkId: "charging", section: "USB CHARGING", subsystems: ["CHARGING"], semanticScore: 0.6 };
+    const radio = { ...baseRow, chunkId: "radio", section: "RF", subsystems: ["RF"], semanticScore: 0.7 };
+    const results = await retrieveCerebroSources(
+        { brand: "SAMSUNG", model: "SM-A405FN", text: "no carga", subsystemTerms: ["CHARGING", "VBUS"], embedding: [0.1] },
+        adapterFor([radio, charging]),
+    );
+    assert.equal(results[0].chunkId, "charging");
 });

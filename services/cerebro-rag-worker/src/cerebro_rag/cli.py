@@ -6,6 +6,7 @@ from pathlib import Path
 import psycopg
 
 from cerebro_rag.config import WorkerSettings
+from cerebro_rag.device_alias_catalog import catalog_pdf_aliases
 from cerebro_rag.embeddings import get_embedding_service
 from cerebro_rag.indexer import PdfIndexer
 from cerebro_rag.migrations import apply_migrations
@@ -90,6 +91,7 @@ def main() -> None:
     repairs = commands.add_parser("index-repairs")
     repairs.add_argument("--limit", type=int)
     commands.add_parser("migrate")
+    commands.add_parser("catalog-aliases")
     sync = commands.add_parser("sync-repairs")
     sync.add_argument("--interval", type=int, default=300)
     args = parser.parse_args()
@@ -103,6 +105,10 @@ def main() -> None:
     elif args.command == "migrate":
         with psycopg.connect(settings.rag_database_url.get_secret_value()) as connection:
             apply_migrations(connection)
+    elif args.command == "catalog-aliases":
+        with psycopg.connect(settings.rag_database_url.get_secret_value()) as connection:
+            count = catalog_pdf_aliases(settings.library_root, connection)
+        print(f"ALIASES cataloged={count}", flush=True)
     elif args.command == "sync-repairs":
         run_repair_sync(settings, max(60, args.interval))
 

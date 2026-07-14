@@ -37,7 +37,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     user: "1000:1000"
-    command: ["sh", "-lc", "cerebro-rag migrate && exec uvicorn cerebro_rag.server:app --host 0.0.0.0 --port 8080"]
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag catalog-aliases && exec uvicorn cerebro_rag.server:app --host 0.0.0.0 --port 8080"]
     environment:
       SOURCE_DATABASE_URL: ${SOURCE_DATABASE_URL}
       RAG_DATABASE_URL: ${RAG_DATABASE_URL}

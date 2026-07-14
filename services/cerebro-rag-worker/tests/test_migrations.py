@@ -13,6 +13,8 @@ class MigrationTest(unittest.TestCase):
         self.assertIn("CREATE TABLE IF NOT EXISTS rag_chat_messages", migration_sql)
         self.assertIn("UNIQUE (session_id, client_message_id)", migration_sql)
         self.assertIn("ON DELETE CASCADE", migration_sql)
+        self.assertIn("ADD COLUMN IF NOT EXISTS repair_id", migration_sql)
+        self.assertIn("ADD COLUMN IF NOT EXISTS metadata", migration_sql)
         self.assertNotIn("cerebro_conversations", migration_sql)
         self.assertNotIn("repair_knowledge", migration_sql)
 

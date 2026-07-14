@@ -4,10 +4,12 @@ import type { CerebroAuthority, CerebroSource, CerebroSourceType } from "./types
 export type RetrievalInput = {
     brand: string;
     model: string;
+    modelAliases?: readonly string[];
     modelFamily?: string;
     text: string;
     embedding: readonly number[];
     componentCodes?: readonly string[];
+    subsystemTerms?: readonly string[];
     limit?: number;
 };
 
@@ -25,6 +27,9 @@ export type RetrievalRow = {
     semanticScore: number;
     keywordScore: number;
     componentMatch: boolean;
+    section: string | null;
+    subsystems: string[];
+    identityMatch: boolean;
 };
 
 export type RetrievalAdapter = {
@@ -32,12 +37,26 @@ export type RetrievalAdapter = {
 };
 
 const HYBRID_SQL = `
-WITH semantic_ids AS (
+WITH input_models AS (
+    SELECT unnest($5::text[]) AS model
+), resolved_models AS (
+    SELECT model FROM input_models
+    UNION
+    SELECT alias.canonical_model
+    FROM rag_device_aliases AS alias
+    WHERE alias.normalized_brand = $1
+      AND alias.normalized_alias IN (SELECT model FROM input_models)
+    UNION
+    SELECT alias.normalized_alias
+    FROM rag_device_aliases AS alias
+    WHERE alias.normalized_brand = $1
+      AND alias.canonical_model IN (SELECT model FROM input_models)
+), semantic_ids AS (
     SELECT chunk.id
     FROM rag_chunks AS chunk
     JOIN rag_documents AS document ON document.id = chunk.document_id
     WHERE chunk.normalized_brand = $1
-      AND chunk.normalized_model = $5
+      AND chunk.normalized_model IN (SELECT model FROM resolved_models)
       AND document.status = 'READY'
       AND document.retired_at IS NULL
     ORDER BY chunk.embedding <=> $3::vector
@@ -47,7 +66,7 @@ WITH semantic_ids AS (
     FROM rag_chunks AS chunk
     JOIN rag_documents AS document ON document.id = chunk.document_id
     WHERE chunk.normalized_brand = $1
-      AND chunk.normalized_model = $5
+      AND chunk.normalized_model IN (SELECT model FROM resolved_models)
       AND document.status = 'READY'
       AND document.retired_at IS NULL
       AND chunk.search_vector @@ plainto_tsquery('simple', $2)
@@ -58,7 +77,7 @@ WITH semantic_ids AS (
     FROM rag_chunks AS chunk
     JOIN rag_documents AS document ON document.id = chunk.document_id
     WHERE chunk.normalized_brand = $1
-      AND chunk.normalized_model = $5
+      AND chunk.normalized_model IN (SELECT model FROM resolved_models)
       AND document.status = 'READY'
       AND document.retired_at IS NULL
       AND chunk.component_codes && $4::text[]
@@ -79,6 +98,11 @@ WITH semantic_ids AS (
         document.title,
         page.page_number AS "pageNumber",
         chunk.content,
+        true AS "identityMatch",
+        chunk.section,
+        COALESCE(ARRAY(
+            SELECT jsonb_array_elements_text(COALESCE(chunk.metadata->'subsystems', '[]'::jsonb))
+        ), '{}'::text[]) AS subsystems,
         1 - (chunk.embedding <=> $3::vector) AS "semanticScore",
         ts_rank_cd(chunk.search_vector, plainto_tsquery('simple', $2)) AS "keywordScore",
         chunk.component_codes && $4::text[] AS "componentMatch"
@@ -87,7 +111,7 @@ WITH semantic_ids AS (
     JOIN rag_documents AS document ON document.id = chunk.document_id
     LEFT JOIN rag_pages AS page ON page.id = chunk.page_id
     WHERE chunk.normalized_brand = $1
-      AND chunk.normalized_model = $5`;
+      AND chunk.normalized_model IN (SELECT model FROM resolved_models)`;
 
 const AUTHORITY_WEIGHT: Readonly<Record<CerebroAuthority, number>> = {
     CONFIRMED_SUCCESS: 1,
@@ -105,8 +129,11 @@ function scoreRow(row: RetrievalRow, input: RetrievalInput, semanticRank: number
     const exactModel = row.model === input.model ? 0.3 : 0;
     const family = input.modelFamily && row.modelFamily === input.modelFamily ? 0.1 : 0;
     const component = row.componentMatch ? 0.25 : 0;
+    const subsystemTerms = input.subsystemTerms ?? [];
+    const searchable = `${row.section ?? ""} ${row.subsystems.join(" ")} ${row.content}`.toUpperCase();
+    const subsystem = subsystemTerms.some((term) => searchable.includes(term.toUpperCase())) ? 0.18 : 0;
     const reciprocalRankFusion = 30 * (1 / (60 + semanticRank) + 1 / (60 + keywordRank));
-    const fused = reciprocalRankFusion + exactModel + family + component;
+    const fused = reciprocalRankFusion + exactModel + family + component + subsystem;
     return fused * AUTHORITY_WEIGHT[row.authority];
 }
 
@@ -120,7 +147,7 @@ export async function retrieveCerebroSources(
         input.text,
         vector,
         input.componentCodes ?? [],
-        input.model,
+        input.modelAliases ?? [input.model],
     ]);
     const semanticRanks = new Map(
         [...rows].sort((left, right) => right.semanticScore - left.semanticScore)
@@ -134,7 +161,10 @@ export async function retrieveCerebroSources(
         row.brand === input.brand
         && (row.sourceType === "REPAIR" || row.sourceType === "PDF")
     ));
-    const scopedRows = allowedRows.filter((row) => row.model === input.model);
+    const requestedModels = new Set(input.modelAliases ?? [input.model]);
+    const scopedRows = allowedRows.filter((row) => (
+        requestedModels.has(row.model) || row.identityMatch
+    ));
     return scopedRows
         .map((row) => ({
             chunkId: row.chunkId,

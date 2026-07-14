@@ -48,3 +48,17 @@ export function ragDocumentPageUrl(documentId: string, pageNumber: number): stri
 export function ragWorkerAuthorization(): string {
     return `Bearer ${workerConfiguration().secret}`;
 }
+
+export async function requestRagPageImage(
+    documentId: string,
+    pageNumber: number,
+    fetchImplementation: typeof fetch = fetch,
+): Promise<Uint8Array> {
+    const response = await fetchImplementation(ragDocumentPageUrl(documentId, pageNumber), {
+        headers: { Authorization: ragWorkerAuthorization() },
+        cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Error(`RAG page render failed (${response.status})`);
+    return new Uint8Array(await response.arrayBuffer());
+}

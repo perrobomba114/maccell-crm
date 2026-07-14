@@ -5,31 +5,27 @@ import { parseCerebroChatRequest } from "@/lib/cerebro-v2/chat-contract";
 
 const sessionId = "4aefc8c0-31f4-4b6c-bf43-c8fb277d547f";
 
-test("rejects a technical query without a model before persistence", () => {
+test("accepts a query without client-controlled device identity", () => {
     const result = parseCerebroChatRequest({
         sessionId,
         clientMessageId: "message-1",
         messages: [{ role: "user", parts: [{ type: "text", text: "No enciende" }] }],
-        deviceContext: { brand: "Samsung", model: "" },
     });
 
-    assert.equal(result.success, false);
-    if (!result.success) {
-        assert.equal(result.error, "Seleccioná marca y modelo antes de consultar");
-    }
+    assert.equal(result.success, true);
 });
 
-test("accepts a same-device technical query", () => {
+test("drops a manipulated device identity sent by an old client", () => {
     const result = parseCerebroChatRequest({
         sessionId,
         clientMessageId: "message-2",
         messages: [{ role: "user", parts: [{ type: "text", text: "Consume 0,08 A fijo" }] }],
-        deviceContext: { brand: "Samsung", model: "SM-A405FN" },
+        deviceContext: { brand: "Apple", model: "IPHONE 15" },
     });
 
     assert.equal(result.success, true);
     if (result.success) {
-        assert.equal(result.data.deviceContext.model, "SM-A405FN");
+        assert.equal("deviceContext" in result.data, false);
     }
 });
 
@@ -41,9 +37,20 @@ test("rejects PDF uploads in the unified technical chat", () => {
             role: "user",
             parts: [{ type: "file", mediaType: "application/pdf", url: "data:application/pdf;base64,AAAA" }],
         }],
-        deviceContext: { brand: "Samsung", model: "SM-A405FN" },
     });
 
     assert.equal(result.success, false);
     if (!result.success) assert.equal(result.error, "Solo se pueden adjuntar imágenes");
+});
+
+test("accepts a structured answer to the pending guided question", () => {
+    const result = parseCerebroChatRequest({
+        sessionId,
+        clientMessageId: "message-4",
+        messages: [{ role: "user", parts: [{ type: "text", text: "Pulso y vuelve a cero" }] }],
+        guidedAnswer: { questionId: "question-1", optionId: "pulse-zero" },
+    });
+
+    assert.equal(result.success, true);
+    if (result.success) assert.equal(result.data.guidedAnswer?.optionId, "pulse-zero");
 });

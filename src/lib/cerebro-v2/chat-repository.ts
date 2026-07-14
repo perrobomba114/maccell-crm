@@ -1,13 +1,15 @@
 import type { QueryResultRow } from "pg";
 
 import { queryRag } from "./rag-db";
-import type { CerebroPublicSource } from "./types";
+import type { CerebroPublicSource, CerebroStoredMessageMetadata } from "./types";
 
 export type ChatSession = {
     id: string;
     title: string;
     brand: string;
     model: string;
+    repairId: string | null;
+    ticketNumber: string | null;
     createdAt: Date;
     updatedAt: Date;
 };
@@ -21,6 +23,7 @@ export type ChatMessage = {
     sources: CerebroPublicSource[];
     promptVersion: string | null;
     provider: string | null;
+    metadata: CerebroStoredMessageMetadata;
     createdAt: Date;
 };
 
@@ -34,6 +37,15 @@ export type AppendChatMessageInput = {
     sources: readonly CerebroPublicSource[];
     promptVersion: string | null;
     provider: string | null;
+    metadata: CerebroStoredMessageMetadata;
+};
+
+export type CreateChatSessionInput = {
+    userId: string;
+    repairId: string;
+    ticketNumber: string;
+    brand: string;
+    model: string;
 };
 
 export type ChatQueryAdapter = {
@@ -48,7 +60,8 @@ const defaultAdapter: ChatQueryAdapter = { query: queryRag };
 export function createChatRepository(adapter: ChatQueryAdapter = defaultAdapter) {
     return {
         listSessions: (userId: string) => adapter.query<SessionRow>(`
-            SELECT id::text, title, brand, model,
+            SELECT id::text, title, brand, model, repair_id AS "repairId",
+                   ticket_number AS "ticketNumber",
                    created_at AS "createdAt", updated_at AS "updatedAt"
             FROM rag_chat_sessions
             WHERE user_id = $1
@@ -56,19 +69,22 @@ export function createChatRepository(adapter: ChatQueryAdapter = defaultAdapter)
             LIMIT 100
         `, [userId]),
 
-        createSession: async (userId: string, brand: string, model: string) => {
+        createSession: async (input: CreateChatSessionInput) => {
             const rows = await adapter.query<SessionRow>(`
-                INSERT INTO rag_chat_sessions (user_id, title, brand, model)
-                VALUES ($1, 'Nuevo diagnóstico', $2, $3)
-                RETURNING id::text, title, brand, model,
+                INSERT INTO rag_chat_sessions (
+                    user_id, repair_id, ticket_number, title, brand, model
+                ) VALUES ($1, $2, $3, 'Nuevo diagnóstico', $4, $5)
+                RETURNING id::text, title, brand, model, repair_id AS "repairId",
+                          ticket_number AS "ticketNumber",
                           created_at AS "createdAt", updated_at AS "updatedAt"
-            `, [userId, brand, model]);
+            `, [input.userId, input.repairId, input.ticketNumber, input.brand, input.model]);
             return rows[0] ?? null;
         },
 
         getSession: async (userId: string, sessionId: string) => {
             const rows = await adapter.query<SessionRow>(`
-                SELECT id::text, title, brand, model,
+                SELECT id::text, title, brand, model, repair_id AS "repairId",
+                       ticket_number AS "ticketNumber",
                        created_at AS "createdAt", updated_at AS "updatedAt"
                 FROM rag_chat_sessions
                 WHERE user_id = $1 AND id = $2::uuid
@@ -81,7 +97,7 @@ export function createChatRepository(adapter: ChatQueryAdapter = defaultAdapter)
             SELECT message.id::text, message.client_message_id AS "clientMessageId",
                    message.role, message.content, message.attachments,
                    message.sources, message.prompt_version AS "promptVersion",
-                   message.provider, message.created_at AS "createdAt"
+                   message.provider, message.metadata, message.created_at AS "createdAt"
             FROM rag_chat_messages AS message
             JOIN rag_chat_sessions AS session ON session.id = message.session_id
             WHERE session.user_id = $1 AND session.id = $2::uuid
@@ -93,7 +109,8 @@ export function createChatRepository(adapter: ChatQueryAdapter = defaultAdapter)
                 UPDATE rag_chat_sessions
                 SET title = $3, updated_at = now()
                 WHERE user_id = $1 AND id = $2::uuid
-                RETURNING id::text, title, brand, model,
+                RETURNING id::text, title, brand, model, repair_id AS "repairId",
+                          ticket_number AS "ticketNumber",
                           created_at AS "createdAt", updated_at AS "updatedAt"
             `, [userId, sessionId, title.slice(0, 80)]);
             return rows[0] ?? null;
@@ -108,9 +125,9 @@ export function createChatRepository(adapter: ChatQueryAdapter = defaultAdapter)
         appendMessage: (input: AppendChatMessageInput) => adapter.query<QueryResultRow>(`
             INSERT INTO rag_chat_messages (
                 session_id, client_message_id, role, content, attachments,
-                sources, prompt_version, provider
+                sources, prompt_version, provider, metadata
             )
-            SELECT session.id, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9
+            SELECT session.id, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9, $10::jsonb
             FROM rag_chat_sessions AS session
             WHERE session.user_id = $1 AND session.id = $2::uuid
             ON CONFLICT (session_id, client_message_id) DO NOTHING
@@ -125,16 +142,16 @@ export function createChatRepository(adapter: ChatQueryAdapter = defaultAdapter)
             JSON.stringify(input.sources),
             input.promptVersion,
             input.provider,
+            JSON.stringify(input.metadata),
         ]),
 
-        touchSession: (userId: string, sessionId: string, brand: string, model: string, title?: string) =>
+        touchSession: (userId: string, sessionId: string, title?: string) =>
             adapter.query<QueryResultRow>(`
                 UPDATE rag_chat_sessions
-                SET brand = $3, model = $4, updated_at = now(),
-                    title = COALESCE($5, title)
+                SET updated_at = now(), title = COALESCE($3, title)
                 WHERE user_id = $1 AND id = $2::uuid
                 RETURNING id
-            `, [userId, sessionId, brand, model, title ?? null]),
+            `, [userId, sessionId, title ?? null]),
     };
 }
 

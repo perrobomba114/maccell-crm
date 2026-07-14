@@ -3,15 +3,13 @@ import test from "node:test";
 
 import { buildCerebroRequestBody, readCerebroApiError } from "@/lib/cerebro-v2/transport";
 
-test("builds each request with the latest selected device", () => {
+test("builds requests without client-controlled device identity", () => {
     const body = buildCerebroRequestBody({
         sessionId: "session-1",
         clientMessageId: "message-1",
         messages: [],
-        brand: "Samsung",
-        model: "SM-A405FN",
     });
-    assert.deepEqual(body.deviceContext, { brand: "Samsung", model: "SM-A405FN" });
+    assert.equal("deviceContext" in body, false);
 });
 
 test("shows the server error instead of a generic connection error", async () => {

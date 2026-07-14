@@ -47,6 +47,7 @@ LEFT JOIN LATERAL (
     JOIN repair_statuses AS value ON value.id = transition."toStatusId"
     WHERE transition."repairId" = repair.id
 ) AS history ON true
+WHERE repair."statusId" IN (5, 6, 7, 8, 9, 10)
 """
 
 REPAIR_EXPORT_QUERY = REPAIR_EXPORT_BASE + "\nORDER BY effective_updated_at, repair.id"
@@ -95,6 +96,15 @@ def sanitize_technical_text(value: str) -> str:
 
 def technical_observations(values: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(value for value in values if not OPERATIONAL_OBSERVATION_PATTERN.match(value.strip()))
+
+
+def has_useful_technical_content(source: RepairSource) -> bool:
+    candidates = (
+        source.diagnosis,
+        source.enriched_diagnosis,
+        *technical_observations(source.observations),
+    )
+    return any(len(sanitize_technical_text(value)) >= 12 for value in candidates)
 
 
 def build_repair_content(source: RepairSource) -> str:

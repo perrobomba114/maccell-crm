@@ -11,6 +11,28 @@ from cerebro_rag.repair_cursor import RepairCursor
 from cerebro_rag.repair_indexer import RepairIndexer, repair_source_from_row
 from cerebro_rag.repairs import REPAIR_SYNC_QUERY
 
+ACTIVE_REPAIR_IDS_QUERY = 'SELECT id FROM repairs WHERE "statusId" IN (1, 2, 3, 4)'
+
+
+def _retire_active_repairs(
+    source_connection: psycopg.Connection[object],
+    rag_connection: psycopg.Connection[object],
+) -> int:
+    active_ids = [str(row[0]) for row in source_connection.execute(ACTIVE_REPAIR_IDS_QUERY)]
+    if not active_ids:
+        return 0
+    result = rag_connection.execute(
+        """
+        UPDATE rag_documents
+        SET retired_at = now(), updated_at = now()
+        WHERE source_type = 'REPAIR'
+          AND source_id = ANY(%s)
+          AND retired_at IS NULL
+        """,
+        (active_ids,),
+    )
+    return result.rowcount
+
 def _load_cursor(connection: psycopg.Connection[object]) -> RepairCursor:
     connection.execute(
         """
@@ -33,6 +55,8 @@ def sync_repairs_once(settings: WorkerSettings) -> tuple[int, int]:
         psycopg.connect(settings.rag_database_url.get_secret_value()) as rag_connection,
     ):
         source_connection.read_only = True
+        _retire_active_repairs(source_connection, rag_connection)
+        rag_connection.commit()
         cursor = _load_cursor(rag_connection)
         indexer = RepairIndexer(rag_connection, embeddings)
         while True:

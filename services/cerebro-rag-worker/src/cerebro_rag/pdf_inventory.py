@@ -37,16 +37,15 @@ def parse_pdf_identity(relative_path: Path) -> PdfIdentity:
     first_directory = relative_path.parts[0].strip() if len(relative_path.parts) > 1 else ""
     brand = normalize_brand(first_directory)
 
-    samsung_matches = re.findall(
-        r"(?<![A-Z0-9])SM[\s_-]*([A-Z]\d{3,4}[A-Z]{0,3})(?![A-Z0-9])",
-        searchable,
-    )
+    samsung_pattern = r"(?<![A-Z0-9])((?:SM|GT)[\s_-]*[A-Z]?\d{3,5}[A-Z]{0,3})(?![A-Z0-9])"
+    filename_matches = re.findall(samsung_pattern, _searchable(relative_path.name))
+    samsung_matches = filename_matches or re.findall(samsung_pattern, searchable)
     motorola = re.search(r"\bXT\d{4,5}\b", searchable)
     if samsung_matches:
         # A parent directory often contains a family model (for example SM-A405F)
         # while the PDF filename contains the exact variant (SM-A405FN). Prefer the
         # most specific match so model-scoped pilots and retrieval do not miss it.
-        model = f"SM-{max(samsung_matches, key=len)}"
+        model = re.sub(r"[\s_-]+", "-", max(samsung_matches, key=len))
     elif motorola:
         model = motorola.group(0)
     elif brand == "APPLE":

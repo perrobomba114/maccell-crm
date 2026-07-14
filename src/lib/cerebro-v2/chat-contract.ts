@@ -23,10 +23,10 @@ const requestSchema = z.object({
     sessionId: z.string().uuid(),
     clientMessageId: z.string().min(1).max(180),
     messages: z.array(messageSchema).min(1).max(20),
-    deviceContext: z.object({
-        brand: z.string().trim().min(1).max(60),
-        model: z.string().trim().min(1).max(120),
-    }),
+    guidedAnswer: z.object({
+        questionId: z.string().min(1).max(180),
+        optionId: z.string().min(1).max(180),
+    }).optional(),
 }).superRefine((value, context) => {
     const fileParts = value.messages.flatMap((message) => message.parts ?? [])
         .filter((part) => part.type === "file");
@@ -54,10 +54,5 @@ export function parseCerebroChatRequest(input: unknown): CerebroChatRequestResul
     const parsed = requestSchema.safeParse(input);
     if (parsed.success) return { success: true, data: parsed.data };
 
-    const modelIssue = parsed.error.issues.some((issue) => issue.path.join(".") === "deviceContext.model");
-    const brandIssue = parsed.error.issues.some((issue) => issue.path.join(".") === "deviceContext.brand");
-    if (modelIssue || brandIssue) {
-        return { success: false, error: "Seleccioná marca y modelo antes de consultar" };
-    }
     return { success: false, error: parsed.error.issues[0]?.message ?? "Consulta técnica inválida" };
 }

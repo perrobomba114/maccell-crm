@@ -10,8 +10,8 @@ from cerebro_rag.chunking import extract_component_codes
 from cerebro_rag.document_versions import DocumentDescriptor, DocumentVersionRepository
 from cerebro_rag.embeddings import EmbeddingService
 from cerebro_rag.indexer import vector_literal
-from cerebro_rag.normalize import normalize_brand, normalize_model
-from cerebro_rag.repairs import RepairSource, build_repair_content
+from cerebro_rag.normalize import model_family, normalize_brand, normalize_model
+from cerebro_rag.repairs import RepairSource, build_repair_content, has_useful_technical_content
 
 
 def repair_source_from_row(row: tuple[object, ...]) -> RepairSource:
@@ -37,9 +37,24 @@ class RepairIndexer:
         self.versions = DocumentVersionRepository(connection)
 
     def index_batch(self, sources: Iterable[RepairSource]) -> tuple[int, int]:
-        prepared = [(source, build_repair_content(source)) for source in sources]
+        source_list = list(sources)
+        unusable = [source for source in source_list if not has_useful_technical_content(source)]
+        for source in unusable:
+            self.connection.execute(
+                """
+                UPDATE rag_documents
+                SET retired_at = now(), updated_at = now()
+                WHERE source_type = 'REPAIR' AND source_id = %s AND retired_at IS NULL
+                """,
+                (source.repair_id,),
+            )
+        prepared = [
+            (source, build_repair_content(source))
+            for source in source_list
+            if has_useful_technical_content(source)
+        ]
         pending: list[tuple[RepairSource, str]] = []
-        skipped = 0
+        skipped = len(source_list) - len(prepared)
         for source, content in prepared:
             digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
             existing = self.connection.execute(
@@ -55,6 +70,8 @@ class RepairIndexer:
                 pending.append((source, content))
 
         if not pending:
+            if unusable:
+                self.connection.commit()
             return 0, skipped
 
         vectors = self.embeddings.embed_passages([content for _, content in pending])
@@ -102,6 +119,7 @@ class RepairIndexer:
                 normalized_model=model,
                 document_type="REPAIR_HISTORY",
                 authority=authority,
+                model_family=model_family(brand, model),
             )
         )
         self.connection.execute("DELETE FROM rag_chunks WHERE document_id = %s", (document_id,))

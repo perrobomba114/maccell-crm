@@ -36,8 +36,42 @@ export type CerebroPublicSource = {
     excerpt: string;
 };
 
+export type GuidedObservation = {
+    kind: "current" | "voltage" | "resistance" | "visual" | "behavior";
+    value?: string;
+    unit?: string;
+    conditions: string;
+};
+
+export type GuidedOption = {
+    id: string;
+    label: string;
+    observation: GuidedObservation;
+};
+
+export type GuidedQuestion = {
+    id: string;
+    prompt: string;
+    measurement: string;
+    conditions: string;
+    options: GuidedOption[];
+    sourceDocumentIds: string[];
+    allowFreeText: true;
+};
+
+export type GuidedAnswer = {
+    questionId: string;
+    optionId: string;
+};
+
+export type CerebroStoredMessageMetadata = {
+    guidedQuestion?: GuidedQuestion;
+    guidedAnswer?: GuidedAnswer & { observation?: GuidedObservation };
+};
+
 export type CerebroMessageMetadata = {
     promptVersion: string;
     provider: string;
     sources: CerebroPublicSource[];
+    guidedQuestion?: GuidedQuestion;
 };

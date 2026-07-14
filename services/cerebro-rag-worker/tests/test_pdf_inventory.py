@@ -25,6 +25,21 @@ class PdfInventoryTest(unittest.TestCase):
         )
         self.assertEqual(identity.model, "SM-A405FN")
 
+    def test_prefers_filename_board_variant_when_folder_uses_another_market_code(self) -> None:
+        identity = parse_pdf_identity(
+            Path(
+                "SAMSUNG/Serie Z/SM-F926W Samsung Galaxy Z Fold 3/"
+                "SM-F926B_QCOM_ESQUEMATICO COMPLETO.pdf"
+            )
+        )
+        self.assertEqual(identity.model, "SM-F926B")
+
+    def test_parses_legacy_gt_samsung_codes(self) -> None:
+        identity = parse_pdf_identity(
+            Path("SAMSUNG/Serie S/Samsung Galaxy S4 GT-I9500/GT-I9500 Schematic.pdf")
+        )
+        self.assertEqual(identity.model, "GT-I9500")
+
     def test_parses_motorola_schematic_path(self) -> None:
         identity = parse_pdf_identity(
             Path("Motorola /Moto Z/Moto Z4/Esquematico completo XT1980 (Moto Z4).pdf")

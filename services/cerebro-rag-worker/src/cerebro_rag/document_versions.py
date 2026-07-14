@@ -19,6 +19,7 @@ class DocumentDescriptor:
     normalized_model: str
     document_type: str
     authority: str
+    model_family: str | None = None
 
 
 class DocumentVersionRepository:
@@ -31,9 +32,9 @@ class DocumentVersionRepository:
             INSERT INTO rag_documents (
                 source_type, source_id, relative_path, sha256, title,
                 original_brand, original_model, normalized_brand, normalized_model,
-                document_type, authority
+                model_family, document_type, authority
             )
-            VALUES (%s::rag_source_type, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::rag_authority)
+            VALUES (%s::rag_source_type, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::rag_authority)
             ON CONFLICT (source_type, source_id, sha256) DO NOTHING
             RETURNING id
             """,
@@ -47,6 +48,7 @@ class DocumentVersionRepository:
                 document.original_model,
                 document.normalized_brand,
                 document.normalized_model,
+                document.model_family,
                 document.document_type,
                 document.authority,
             ),

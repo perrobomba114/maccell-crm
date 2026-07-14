@@ -1,14 +1,14 @@
 import { getCurrentUser } from "@/actions/auth-actions";
 import { canUseCerebroV2 } from "@/lib/cerebro-v2/access";
 import { cerebroChatRepository } from "@/lib/cerebro-v2/chat-repository";
+import { getAuthorizedCerebroRepair } from "@/lib/cerebro-v2/repair-context";
 import { normalizeDeviceIdentity } from "@/lib/cerebro-v2/normalization";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 const createSchema = z.object({
-    brand: z.string().trim().min(1).max(60),
-    model: z.string().trim().min(1).max(120),
+    repairId: z.string().trim().min(1).max(80),
 });
 
 async function authorizedUser() {
@@ -34,10 +34,20 @@ export async function POST(request: Request): Promise<Response> {
         if (!user) return Response.json({ error: "No autorizado" }, { status: 401 });
         const parsed = createSchema.safeParse(await request.json());
         if (!parsed.success) {
-            return Response.json({ error: "Seleccioná marca y modelo" }, { status: 400 });
+            return Response.json({ error: "Seleccioná una reparación" }, { status: 400 });
         }
-        const { brand, model } = normalizeDeviceIdentity(parsed.data.brand, parsed.data.model);
-        const session = await cerebroChatRepository.createSession(user.id, brand, model);
+        const repair = await getAuthorizedCerebroRepair(user, parsed.data.repairId);
+        if (!repair) {
+            return Response.json({ error: "La reparación no está asignada o ya no está activa" }, { status: 403 });
+        }
+        const { brand, model } = normalizeDeviceIdentity(repair.deviceBrand, repair.deviceModel);
+        const session = await cerebroChatRepository.createSession({
+            userId: user.id,
+            repairId: repair.id,
+            ticketNumber: repair.ticketNumber,
+            brand,
+            model,
+        });
         if (!session) return Response.json({ error: "No se pudo crear el chat" }, { status: 500 });
         return Response.json({ session }, { status: 201 });
     } catch (error) {

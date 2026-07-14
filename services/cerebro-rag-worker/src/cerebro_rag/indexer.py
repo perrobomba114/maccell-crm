@@ -4,12 +4,15 @@ from pathlib import Path
 from uuid import UUID
 
 from psycopg import Connection
+from psycopg.types.json import Jsonb
 
 from cerebro_rag.chunking import PageChunk, chunk_page, embedding_projection
 from cerebro_rag.document_versions import DocumentDescriptor, DocumentVersionRepository
 from cerebro_rag.embeddings import EmbeddingService
 from cerebro_rag.pdf_extract import ExtractedPage, extract_pdf_pages
 from cerebro_rag.pdf_inventory import PdfInventoryEntry
+from cerebro_rag.normalize import model_family
+from cerebro_rag.page_metadata import technical_page_metadata
 
 
 def vector_literal(vector: tuple[float, ...]) -> str:
@@ -54,6 +57,7 @@ class PdfIndexer:
             normalized_model=entry.identity.model,
             document_type=entry.identity.document_type,
             authority="TECHNICAL_DOCUMENT",
+            model_family=model_family(entry.identity.brand, entry.identity.model),
         )
         document_id = self.versions.create_or_get(descriptor)
         status = self.connection.execute(
@@ -116,10 +120,17 @@ class PdfIndexer:
                 """
                 INSERT INTO rag_pages (
                     document_id, page_number, extracted_text, extraction_method,
-                    rendered_path, status
-                ) VALUES (%s, %s, %s, %s, %s, 'READY') RETURNING id
+                    rendered_path, status, metadata
+                ) VALUES (%s, %s, %s, %s, %s, 'READY', %s) RETURNING id
                 """,
-                (document_id, page.page_number, page.text, page.method.value, str(page.rendered_path)),
+                (
+                    document_id,
+                    page.page_number,
+                    page.text,
+                    page.method.value,
+                    str(page.rendered_path),
+                    Jsonb(technical_page_metadata(page.text)),
+                ),
             ).fetchone()
             ids[page.page_number] = row[0]
         return ids
@@ -134,13 +145,15 @@ class PdfIndexer:
         entry: PdfInventoryEntry,
     ) -> None:
         for chunk, vector in zip(chunks, vectors, strict=True):
+            metadata = technical_page_metadata(chunk.content)
             self.connection.execute(
                 """
                 INSERT INTO rag_chunks (
                     document_id, page_id, component_codes, content, token_count,
-                    embedding, model_version_id, authority, normalized_brand, normalized_model
+                    embedding, model_version_id, authority, normalized_brand, normalized_model,
+                    section, metadata
                 ) VALUES (%s, %s, %s, %s, %s, %s::vector, %s,
-                          'TECHNICAL_DOCUMENT', %s, %s)
+                          'TECHNICAL_DOCUMENT', %s, %s, %s, %s)
                 """,
                 (
                     document_id,
@@ -152,5 +165,7 @@ class PdfIndexer:
                     model_version_id,
                     entry.identity.brand,
                     entry.identity.model,
+                    metadata["section"],
+                    Jsonb(metadata),
                 ),
             )

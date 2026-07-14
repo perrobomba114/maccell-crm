@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeBrand, normalizeDeviceIdentity, normalizeModel } from "../lib/cerebro-v2/normalization";
+import { deviceModelAliases, normalizeBrand, normalizeDeviceIdentity, normalizeModel } from "../lib/cerebro-v2/normalization";
 
 test("normalizes known brands without cross-brand aliases", () => {
     assert.equal(normalizeBrand("smsung"), "SAMSUNG");
@@ -25,4 +25,24 @@ test("corrects an incompatible selected brand from an explicit iPhone model", ()
         brand: "APPLE",
         model: "IPHONE 8",
     });
+});
+
+test("maps SM-A125M to the declared Galaxy A12 identity", () => {
+    const identity = normalizeDeviceIdentity("Samsung", "SM-A125M");
+
+    assert.equal(identity.brand, "SAMSUNG");
+    assert.equal(identity.model, "SM-A125M");
+    assert.equal(identity.modelFamily, "GALAXY A12");
+    assert.deepEqual(deviceModelAliases(identity), ["SM-A125M", "GALAXY A12", "A12"]);
+});
+
+test("does not infer an unregistered Samsung board variant", () => {
+    const identity = normalizeDeviceIdentity("Samsung", "SM-A125F");
+
+    assert.equal(identity.model, "SM-A125F");
+    assert.deepEqual(deviceModelAliases(identity), ["SM-A125F"]);
+});
+
+test("removes a duplicated brand prefix from commercial repair models", () => {
+    assert.equal(normalizeModel("Samsung", "Samsung Galaxy S21 Ultra 5G"), "GALAXY S21 ULTRA 5G");
 });

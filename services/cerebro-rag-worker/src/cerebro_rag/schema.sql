@@ -63,6 +63,21 @@ CREATE TABLE rag_documents (
 CREATE INDEX rag_documents_source
     ON rag_documents (source_type, source_id, retired_at);
 
+CREATE TABLE rag_device_aliases (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    normalized_brand text NOT NULL,
+    canonical_model text NOT NULL,
+    normalized_alias text NOT NULL,
+    source_path text NOT NULL,
+    confidence real NOT NULL DEFAULT 1 CHECK (confidence >= 0 AND confidence <= 1),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (normalized_brand, canonical_model, normalized_alias)
+);
+
+CREATE INDEX rag_device_aliases_lookup
+    ON rag_device_aliases (normalized_brand, normalized_alias, canonical_model);
+
 CREATE TABLE rag_pages (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id uuid NOT NULL REFERENCES rag_documents(id) ON DELETE CASCADE,
@@ -72,6 +87,9 @@ CREATE TABLE rag_pages (
     rendered_path text,
     status rag_job_status NOT NULL DEFAULT 'PENDING',
     error_message varchar(500),
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    vision_summary text,
+    vision_cached_at timestamptz,
     UNIQUE (document_id, page_number)
 );
 

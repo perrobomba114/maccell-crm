@@ -2,8 +2,6 @@ export type BuildCerebroRequestInput = {
     sessionId: string;
     clientMessageId: string;
     messages: readonly unknown[];
-    brand: string;
-    model: string;
 };
 
 export function buildCerebroRequestBody(input: BuildCerebroRequestInput) {
@@ -11,7 +9,6 @@ export function buildCerebroRequestBody(input: BuildCerebroRequestInput) {
         sessionId: input.sessionId,
         clientMessageId: input.clientMessageId,
         messages: input.messages,
-        deviceContext: { brand: input.brand, model: input.model },
     };
 }
 

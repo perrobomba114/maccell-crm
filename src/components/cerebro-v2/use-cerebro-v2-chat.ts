@@ -5,14 +5,12 @@ import { DefaultChatTransport, type FileUIPart, type TextUIPart, type UIMessage 
 import { useCallback, useState } from "react";
 
 import { readCerebroApiError } from "@/lib/cerebro-v2/transport";
-import type { CerebroMessageMetadata } from "@/lib/cerebro-v2/types";
+import type { CerebroMessageMetadata, GuidedAnswer } from "@/lib/cerebro-v2/types";
 
 export type CerebroUiMessage = UIMessage<CerebroMessageMetadata>;
 
 type UseCerebroV2ChatInput = {
     sessionId: string;
-    brand: string;
-    model: string;
     initialMessages: CerebroUiMessage[];
     onConversationUpdated: () => void;
 };
@@ -48,13 +46,9 @@ export function useCerebroV2Chat(input: UseCerebroV2ChatInput) {
         onFinish: () => input.onConversationUpdated(),
     });
 
-    const send = useCallback(async (text: string, files: readonly File[]) => {
+    const send = useCallback(async (text: string, files: readonly File[], guidedAnswer?: GuidedAnswer) => {
         setClientError(null);
         chat.clearError();
-        if (!input.model.trim()) {
-            setClientError("Seleccioná marca y modelo antes de consultar");
-            return false;
-        }
         if (!text.trim() && files.length === 0) return false;
         if (files.length > 5) {
             setClientError("Podés adjuntar hasta 5 imágenes");
@@ -72,7 +66,7 @@ export function useCerebroV2Chat(input: UseCerebroV2ChatInput) {
                     body: {
                         sessionId: input.sessionId,
                         clientMessageId,
-                        deviceContext: { brand: input.brand, model: input.model },
+                        ...(guidedAnswer ? { guidedAnswer } : {}),
                     },
                 },
             );
@@ -81,7 +75,7 @@ export function useCerebroV2Chat(input: UseCerebroV2ChatInput) {
             setClientError(error instanceof Error ? error.message : "No se pudo enviar la consulta");
             return false;
         }
-    }, [chat, input.brand, input.model, input.sessionId]);
+    }, [chat, input.sessionId]);
 
     return {
         messages: chat.messages,
