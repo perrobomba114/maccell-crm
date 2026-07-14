@@ -8,6 +8,11 @@ from pathlib import Path
 NATIVE_TEXT_THRESHOLD = 40
 
 
+def sanitize_extracted_text(text: str) -> str:
+    """Remove NUL bytes that PostgreSQL cannot store in text columns."""
+    return text.replace("\x00", "")
+
+
 class ExtractionMethod(StrEnum):
     NATIVE = "NATIVE"
     OCR = "OCR"
@@ -41,7 +46,7 @@ def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> t
     extracted: list[ExtractedPage] = []
 
     for index, page in enumerate(reader.pages, start=1):
-        native_text = (page.extract_text() or "").strip()
+        native_text = sanitize_extracted_text(page.extract_text() or "").strip()
         method = choose_extraction_method(native_text)
         if not render_during_ingestion(method):
             extracted.append(ExtractedPage(index, native_text, method, None))
@@ -63,7 +68,7 @@ def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> t
             continue
         image = images[0]
         image.save(rendered_path, "PNG")
-        text = pytesseract.image_to_string(image, lang="eng+spa")
+        text = sanitize_extracted_text(pytesseract.image_to_string(image, lang="eng+spa"))
         extracted.append(ExtractedPage(index, text.strip(), method, rendered_path))
 
     return tuple(extracted)

@@ -16,8 +16,8 @@ x-ingestion-base: &ingestion-base
     REMOTE_EMBEDDING_SECRET: ${INTERNAL_API_SECRET}
     REMOTE_EMBEDDING_TIMEOUT_SECONDS: "45"
     HF_HOME: /model-cache
-    OMP_NUM_THREADS: "7"
-    MKL_NUM_THREADS: "7"
+    OMP_NUM_THREADS: "3"
+    MKL_NUM_THREADS: "3"
   volumes:
     - /mnt/data2:/library:ro
     - /var/lib/maccell/rag-pages:/page-cache
@@ -27,11 +27,11 @@ x-ingestion-base: &ingestion-base
   deploy:
     resources:
       limits:
-        cpus: "7"
-        memory: 24G
+        cpus: "3"
+        memory: 12G
       reservations:
-        cpus: "2"
-        memory: 4G
+        cpus: "1"
+        memory: 2G
 
 services:
   worker:
@@ -74,15 +74,39 @@ services:
 
   ingestion-0:
     <<: *ingestion-base
-    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 3 --shard-index 0"]
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 9 --shard-index 0"]
 
   ingestion-1:
     <<: *ingestion-base
-    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 3 --shard-index 1"]
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 9 --shard-index 1"]
 
   ingestion-2:
     <<: *ingestion-base
-    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 3 --shard-index 2"]
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 9 --shard-index 2"]
+
+  ingestion-3:
+    <<: *ingestion-base
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 9 --shard-index 3"]
+
+  ingestion-4:
+    <<: *ingestion-base
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 9 --shard-index 4"]
+
+  ingestion-5:
+    <<: *ingestion-base
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 9 --shard-index 5"]
+
+  ingestion-6:
+    <<: *ingestion-base
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 9 --shard-index 6"]
+
+  ingestion-7:
+    <<: *ingestion-base
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 9 --shard-index 7"]
+
+  ingestion-8:
+    <<: *ingestion-base
+    command: ["sh", "-lc", "cerebro-rag migrate && cerebro-rag index-pdfs --shard-count 9 --shard-index 8"]
 
   repair-sync:
     build:

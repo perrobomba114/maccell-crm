@@ -3,7 +3,11 @@ from __future__ import annotations
 import unittest
 
 import cerebro_rag.pdf_extract as pdf_extract
-from cerebro_rag.pdf_extract import ExtractionMethod, choose_extraction_method
+from cerebro_rag.pdf_extract import (
+    ExtractionMethod,
+    choose_extraction_method,
+    sanitize_extracted_text,
+)
 
 
 class PdfExtractionTest(unittest.TestCase):
@@ -19,6 +23,12 @@ class PdfExtractionTest(unittest.TestCase):
 
         self.assertFalse(should_render(ExtractionMethod.NATIVE))
         self.assertTrue(should_render(ExtractionMethod.OCR))
+
+    def test_removes_postgres_incompatible_null_bytes(self) -> None:
+        self.assertEqual(
+            sanitize_extracted_text("PP_VDD_MAIN\x00 PMIC\x00\n"),
+            "PP_VDD_MAIN PMIC\n",
+        )
 
 
 if __name__ == "__main__":
