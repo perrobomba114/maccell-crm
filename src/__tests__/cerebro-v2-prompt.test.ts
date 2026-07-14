@@ -78,3 +78,47 @@ test("preserves the seller diagnosis and interprets chip as SIM in repair contex
     assert.match(prompt, /conservar todos los hechos observados/i);
     assert.doesNotMatch(prompt, /consumo en fuente/i);
 });
+
+test("prioritizes a known-good display when repeated confirmed repairs solved the same symptom", () => {
+    const displayRepair = (suffix: string): CerebroSource => ({
+        ...source,
+        chunkId: `display-${suffix}`,
+        documentId: `display-doc-${suffix}`,
+        model: "G52",
+        title: `Reparación ${suffix}`,
+        content: "PROBLEMA: no da imagen. DIAGNOSTICO: módulo OLED defectuoso. SOLUCION: cambio de módulo confirmado.",
+    });
+    const prompt = buildCerebroSystemPrompt("MOTOROLA", "G52", [
+        { ...displayRepair("1"), brand: "MOTOROLA" },
+        { ...displayRepair("2"), brand: "MOTOROLA" },
+    ], {
+        ticketNumber: "TEST-G52",
+        problem: "La imagen se torna verde y se tilda",
+        diagnosis: null,
+        observations: [],
+        isWet: false,
+        isWarranty: false,
+    });
+
+    assert.match(prompt, /pantalla conocida buena o nueva compatible/i);
+    assert.match(prompt, /antes de iniciar mediciones eléctricas/i);
+    assert.match(prompt, /no autoriza el reemplazo definitivo/i);
+});
+
+test("does not prioritize a display swap without repeated confirmed same-model evidence", () => {
+    const prompt = buildCerebroSystemPrompt("MOTOROLA", "G52", [{
+        ...source,
+        brand: "MOTOROLA",
+        model: "G52",
+        content: "DIAGNOSTICO: cambio de módulo confirmado",
+    }], {
+        ticketNumber: "TEST-G52",
+        problem: "No da imagen",
+        diagnosis: null,
+        observations: [],
+        isWet: false,
+        isWarranty: false,
+    });
+
+    assert.doesNotMatch(prompt, /pantalla conocida buena o nueva compatible/i);
+});

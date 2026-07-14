@@ -17,7 +17,17 @@ test("suppresses numeric electrical values absent from evidence", () => {
         ["Inspect battery connector without a specified value"],
     );
     assert.doesNotMatch(answer, /3\.8 V|120 mA/);
-    assert.match(answer, /registrar el valor medido/i);
+    assert.match(answer, /un valor no respaldado por la evidencia/i);
+});
+
+test("replaces unsupported values with grammatically safe evidence language", () => {
+    const answer = suppressUnsupportedMeasurements(
+        "La señal presenta una caída a 0 V y queda inestable.",
+        ["PWRHOLD expected 1.8V"],
+    );
+
+    assert.doesNotMatch(answer, /caída a registrar el valor medido/i);
+    assert.match(answer, /caída a un valor no respaldado por la evidencia/i);
 });
 
 test("deterministically preserves the seller intake in observed facts", () => {

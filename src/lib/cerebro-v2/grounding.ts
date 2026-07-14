@@ -14,7 +14,7 @@ export function suppressUnsupportedMeasurements(answer: string, evidence: readon
     const sanitized = answer.replace(MEASUREMENT_PATTERN, (measurement) => {
         if (supported.has(canonicalMeasurement(measurement))) return measurement;
         replaced = true;
-        return "registrar el valor medido";
+        return "un valor no respaldado por la evidencia";
     });
     if (!replaced) return sanitized;
     return `${sanitized}\n\n> Los valores numéricos sin respaldo documental se omitieron. Registrá el valor real medido para continuar.`;

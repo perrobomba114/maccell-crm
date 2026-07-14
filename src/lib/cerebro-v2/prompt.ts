@@ -1,7 +1,7 @@
 import type { CerebroSource } from "./types";
 
 export type CerebroEvidence = CerebroSource;
-export const CEREBRO_PROMPT_VERSION = "cerebro-tech-v3.2-one-measurement-grounded";
+export const CEREBRO_PROMPT_VERSION = "cerebro-tech-v3.3-display-known-good-first";
 
 export type CerebroRepairPromptContext = {
     ticketNumber: string;
@@ -62,6 +62,19 @@ export function buildCerebroSystemPrompt(
     const evidenceRule = blocks.length === 0
         ? `NO HAY EVIDENCIA EXACTA PARA ESTE MODELO. Decilo explícitamente, no cites fuentes y no traslades soluciones de otros modelos. ${missingEvidenceAction}; no inventes valores esperados.`
         : "Usá y citá únicamente la evidencia exacta incluida abajo.";
+    const displaySymptom = Boolean(repair && /NO (?:DA|TIENE) IMAGEN|SIN IMAGEN|PANTALLA|DISPLAY|IMAGEN.*(?:VERDE|VIOLETA|AZUL)|T[ÁA]CTIL|TOUCH/i.test(repair.problem));
+    const confirmedDisplayRepairs = evidence.filter((source) => (
+        source.brand === brand
+        && source.model === model
+        && source.sourceType === "REPAIR"
+        && source.authority === "CONFIRMED_SUCCESS"
+        && /NO (?:DA|TIENE) IMAGEN|SIN IMAGEN|PANTALLA|DISPLAY|OLED|LCD/i.test(source.content)
+        && /(?:CAMBI|REEMPLAZ).{0,60}(?:M[ÓO]DULO|PANTALLA|DISPLAY|OLED|LCD)|(?:M[ÓO]DULO|PANTALLA|DISPLAY|OLED|LCD).{0,60}(?:CAMBI|REEMPLAZ)/i.test(source.content)
+    )).length;
+    const knownGoodDisplayFirst = displaySymptom && confirmedDisplayRepairs >= 2;
+    const displayPriorityRule = knownGoodDisplayFirst
+        ? "EXCEPCIÓN DE PRIORIDAD PARA ESTA FALLA DE IMAGEN: múltiples reparaciones CONFIRMED_SUCCESS del mismo modelo resolvieron el síntoma con módulo/pantalla. Si es posible hacerlo sin riesgo, la ÚNICA próxima comprobación debe ser conectar temporalmente una pantalla conocida buena o nueva compatible antes de iniciar mediciones eléctricas. Es una prueba reversible: no autoriza el reemplazo definitivo. Si da imagen estable, confirmá el módulo original como principal sospechoso y pedí validación funcional antes de reemplazar; si la falla continúa, recién entonces seguí el árbol eléctrico del manual. Para esta comprobación funcional no exijas multímetro, escala ni voltaje."
+        : "";
 
     const repairBlock = repair ? JSON.stringify({
         ticket: repair.ticketNumber,
@@ -80,6 +93,7 @@ REGLA ABSOLUTA: usá únicamente evidencia de la MISMA MARCA (${brand}).
 La evidencia MACCELL y documental tiene prioridad sobre conocimiento general.
 Si existe TROUBLESHOOTING o manual de servicio del modelo, seguí el procedimiento del fabricante como árbol principal y respetá su orden de comprobaciones.
 Las reparaciones históricas son evidencia secundaria: usalas sólo para contrastar patrones, nunca para desplazar una medición o decisión indicada por el fabricante.
+${displayPriorityRule}
 El campo problem del contexto operativo es el diagnóstico inicial del vendedor. Debés conservar todos los hechos observados que contiene en DATOS OBSERVADOS, junto con lo informado por el técnico; no lo reduzcas al último mensaje.
 En el lenguaje de ingreso de MACCELL, "no lee chip" significa que no reconoce la tarjeta SIM, salvo que se indique un designador electrónico concreto. Nunca propongas un lector de chips externo ni inventes un "módulo lector": buscá bandeja/conector SIM, detección, alimentación, líneas SIM y baseband según el schematic.
 Ante "no lee chip/SIM", no propongas retirar, reparar ni reemplazar baseband como primera acción. Primero separá: SIM conocida y bandeja, detección mecánica/conector, y recién después líneas SIM visibles en el schematic. Si la evidencia solo muestra el pinout de baseband pero no la ruta SIM, decilo y no inventes componentes intermedios.
@@ -104,7 +118,9 @@ FORMATO OBLIGATORIO:
 ## EVIDENCIA
 ## HIPÓTESIS
 ## PRÓXIMA MEDICIÓN
-Incluí una sola acción con punto de prueba, instrumento/escala y valor o comportamiento esperado.
+${knownGoodDisplayFirst
+        ? "Incluí únicamente la prueba temporal con pantalla conocida buena o nueva compatible y el comportamiento esperado."
+        : "Incluí una sola acción con punto de prueba, instrumento/escala y valor o comportamiento esperado."}
 ## CRITERIO DE DECISIÓN
 Indicá únicamente las dos ramas inmediatas según el resultado de esa comprobación; no adelantes reparaciones.
 ## FUENTES UTILIZADAS
