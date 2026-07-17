@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/actions/auth-actions";
 import { generateAfipInvoiceForSale } from "./checkout-afip";
 import { saveSaleTransaction } from "./checkout-db";
 import { sendPostSaleNotifications } from "./checkout-notifications";
+import { normalizeFiscalEntityFromBranch } from "../invoice-summary-helpers";
 
 export async function processPosSale(data: {
     vendorId: string;
@@ -44,6 +45,7 @@ export async function processPosSale(data: {
     
     const safeVendorId = caller.id;
     const safeBranchId = caller.branch?.id || data.branchId;
+    const billingEntity = normalizeFiscalEntityFromBranch(caller.branch);
 
     if (!data.items || data.items.length === 0) {
         return { success: false, error: "El carrito está vacío." };
@@ -74,18 +76,19 @@ export async function processPosSale(data: {
         }
     }
 
-    let afipResult: any = null;
+    let afipResult: Awaited<ReturnType<typeof generateAfipInvoiceForSale>> | null = null;
     let totalNet = 0;
     let totalVat = 0;
 
     if (data.invoiceData && data.invoiceData.generate) {
         try {
-            afipResult = await generateAfipInvoiceForSale(data, safeBranchId);
+            afipResult = await generateAfipInvoiceForSale(data, safeBranchId, billingEntity);
             totalNet = afipResult.totalNet;
             totalVat = afipResult.totalVat;
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error creating invoice:", error);
-            return { success: false, error: error.message || "Error al generar factura en AFIP." };
+            const message = error instanceof Error ? error.message : "Error al generar factura en AFIP.";
+            return { success: false, error: message };
         }
     }
 
@@ -122,8 +125,9 @@ export async function processPosSale(data: {
             } : undefined
         };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error processing sale FULL:", error);
-        return { success: false, error: `Error al procesar la venta: ${error.message}` };
+        const message = error instanceof Error ? error.message : String(error);
+        return { success: false, error: `Error al procesar la venta: ${message}` };
     }
 }

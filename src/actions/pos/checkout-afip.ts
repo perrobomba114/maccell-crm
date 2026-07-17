@@ -1,9 +1,51 @@
 import { createAfipInvoice } from "@/lib/afip";
 import { getIvaConditionId } from "@/lib/afip-utils";
+import type { InvoiceFiscalEntity } from "../invoice-summary-helpers";
 
 const formatAmount = (num: number) => Math.round(num * 100) / 100;
 
-export async function generateAfipInvoiceForSale(data: any, branchId: string) {
+type PosInvoiceSaleInput = {
+    total: number;
+    items: Array<{ price: number; quantity: number }>;
+    invoiceData?: {
+        invoiceType: "A" | "B";
+        docType: "CUIT" | "DNI" | "FINAL";
+        docNumber: string;
+        salesPoint: number;
+        concept?: number;
+        serviceDateFrom?: string;
+        serviceDateTo?: string;
+        paymentDueDate?: string;
+        ivaCondition?: string;
+    };
+};
+
+type AfipCaeData = {
+    voucherNumber?: string | number;
+    cbteNro?: string | number;
+    CbteNro?: string | number;
+    cae?: string | number;
+    CAE?: string | number;
+    caeFchVto?: string | number;
+    CAEFchVto?: string | number;
+    FECAESolicitarResult?: {
+        FeDetReq: Array<{
+            CbteDesde?: string | number;
+            CAE?: string | number;
+            CAEFchVto?: string | number;
+        }>;
+    };
+};
+
+export async function generateAfipInvoiceForSale(
+    data: PosInvoiceSaleInput,
+    branchId: string,
+    billingEntity: InvoiceFiscalEntity
+) {
+    if (!data.invoiceData) {
+        throw new Error("Faltan los datos requeridos para generar la factura.");
+    }
+
     const voucherType = data.invoiceData.invoiceType === "A" ? 1 : 6;
     let docTypeCode = 99;
     if (data.invoiceData.docType === "CUIT") docTypeCode = 80;
@@ -13,8 +55,8 @@ export async function generateAfipInvoiceForSale(data: any, branchId: string) {
 
     let totalNet21 = 0;
     let totalVat21 = 0;
-    let totalNet105 = 0;
-    let totalVat105 = 0;
+    const totalNet105 = 0;
+    const totalVat105 = 0;
 
     for (const item of data.items) {
         const itemTotal = item.price * item.quantity;
@@ -59,14 +101,15 @@ export async function generateAfipInvoiceForSale(data: any, branchId: string) {
         serviceDateTo: data.invoiceData.serviceDateTo,
         paymentDueDate: data.invoiceData.paymentDueDate,
         ivaConditionId: getIvaConditionId(data.invoiceData.ivaCondition || ""),
-        branchId: branchId
+        branchId: branchId,
+        billingEntity: billingEntity
     });
 
     if (!afipRes.success || !afipRes.data) {
         throw new Error(afipRes.error || "Error desconocido en AFIP");
     }
 
-    const caeData = afipRes.data as any;
+    const caeData = afipRes.data as AfipCaeData;
     const rawVoucher = caeData.voucherNumber || caeData.cbteNro || caeData.CbteNro || (caeData.FECAESolicitarResult ? caeData.FECAESolicitarResult.FeDetReq[0].CbteDesde : undefined);
     const rawCae = caeData.cae || caeData.CAE || (caeData.FECAESolicitarResult ? caeData.FECAESolicitarResult.FeDetReq[0].CAE : undefined);
     const rawCaeFchVto = caeData.caeFchVto || caeData.CAEFchVto || (caeData.FECAESolicitarResult ? caeData.FECAESolicitarResult.FeDetReq[0].CAEFchVto : undefined);
