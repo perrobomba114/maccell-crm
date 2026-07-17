@@ -160,8 +160,10 @@ async function readVoucherSummary(
     );
     if (!response) return null;
 
-    const cae = String(findValue(response, ["CAE", "cae"]) || "").trim();
-    if (!cae || cae === "0") return null;
+    const authorizationCode = String(
+        findValue(response, ["CodAutorizacion", "codAutorizacion", "CAE", "cae"]) || ""
+    ).trim();
+    if (!authorizationCode || authorizationCode === "0") return null;
 
     const dateRaw = findValue(response, ["CbteFch", "cbteFch", "FchCbte", "fecha", "fechaComprobante"]);
     const voucherDate = toDate(dateRaw);
