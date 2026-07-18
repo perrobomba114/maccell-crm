@@ -86,6 +86,7 @@ GEMINI.md
 .kiro/
 .qwen/
 .worktrees/
+.superpowers/
 
 # Docs generados por agentes
 docs/agent-tooling.md
