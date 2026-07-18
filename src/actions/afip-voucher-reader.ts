@@ -4,6 +4,8 @@ import {
     type InvoiceEntitySummary,
     type InvoiceFiscalEntity,
 } from "./invoice-summary-helpers";
+import type { AfipVoucherLookup } from "./invoice-afip-control-helpers";
+import { parseAfipVoucherSummary } from "./afip-voucher-response";
 
 type VoucherType = 1 | 6 | 11;
 
@@ -18,6 +20,7 @@ export type AfipVoucherReadRange = {
 export type AfipReadResult = {
     summaries: InvoiceEntitySummary[];
     warnings: string[];
+    queriedVouchers: AfipVoucherLookup[];
 };
 
 type AfipReadRangeOptions = {
@@ -32,84 +35,6 @@ const MAX_PARALLEL_REQUESTS = 4;
 const LOOKUP_TIMEOUT_MS = 2500;
 const LOOKUP_BUDGET_MS = 12000;
 const CLIENT_INIT_TIMEOUT_MS = 1500;
-
-function normalizeLookupKey(key: string) {
-    return key.replace(/[^a-z0-9]/gi, "").toLowerCase();
-}
-
-function findValue(payload: unknown, keys: string[]): unknown | null {
-    if (payload === null || payload === undefined) {
-        return null;
-    }
-
-    const wanted = new Set(keys.map((key) => normalizeLookupKey(key)));
-
-    if (typeof payload === "string" || typeof payload === "number" || typeof payload === "boolean") {
-        return null;
-    }
-
-    if (Array.isArray(payload)) {
-        for (const item of payload) {
-            const value = findValue(item, keys);
-            if (value !== null) {
-                return value;
-            }
-        }
-        return null;
-    }
-
-    const record = payload as Record<string, unknown>;
-    for (const [rawKey, rawValue] of Object.entries(record)) {
-        if (wanted.has(normalizeLookupKey(rawKey))) {
-            return rawValue;
-        }
-
-        const nested = findValue(rawValue, keys);
-        if (nested !== null) {
-            return nested;
-        }
-    }
-
-    return null;
-}
-
-function toNumber(value: unknown): number | null {
-    if (typeof value === "number") return Number.isFinite(value) ? value : null;
-    if (typeof value === "string") {
-        const parsed = Number(value.replace(/[^0-9.-]/g, ""));
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-    return null;
-}
-
-function toDate(value: unknown): Date | null {
-    if (typeof value === "number") {
-        const text = String(value);
-        if (text.length === 8) {
-            const year = Number(text.slice(0, 4));
-            const month = Number(text.slice(4, 6));
-            const day = Number(text.slice(6, 8));
-            if (Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)) {
-                return new Date(year, month - 1, day);
-            }
-        }
-        return null;
-    }
-
-    if (typeof value === "string") {
-        const digits = value.replace(/[^0-9]/g, "");
-        if (digits.length === 8) {
-            const year = Number(digits.slice(0, 4));
-            const month = Number(digits.slice(4, 6));
-            const day = Number(digits.slice(6, 8));
-            if (Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)) {
-                return new Date(year, month - 1, day);
-            }
-        }
-    }
-
-    return null;
-}
 
 function isInRange(date: Date, start?: Date, end?: Date) {
     if (!start || !end) return true;
@@ -160,22 +85,13 @@ async function readVoucherSummary(
     );
     if (!response) return null;
 
-    const authorizationCode = String(
-        findValue(response, ["CodAutorizacion", "codAutorizacion", "CAE", "cae"]) || ""
-    ).trim();
-    if (!authorizationCode || authorizationCode === "0") return null;
-
-    const dateRaw = findValue(response, ["CbteFch", "cbteFch", "FchCbte", "fecha", "fechaComprobante"]);
-    const voucherDate = toDate(dateRaw);
-    if (voucherDate && !isInRange(voucherDate, startDate, endDate)) {
+    const summary = parseAfipVoucherSummary(response);
+    if (!summary) return null;
+    if (summary.voucherDate && !isInRange(summary.voucherDate, startDate, endDate)) {
         return null;
     }
 
-    const total = toNumber(findValue(response, ["ImpTotal", "impTotal", "total"])) || 0;
-    const net = toNumber(findValue(response, ["ImpNeto", "impNeto", "neto"])) || 0;
-    const vat = toNumber(findValue(response, ["ImpIVA", "impIva", "iva", "IVA"])) || 0;
-
-    return { total, net, vat, voucherDate };
+    return summary;
 }
 
 function emptySummaries() {
@@ -213,12 +129,14 @@ export async function getAfipVoucherReadSummaries({
                 { entity: "MACCELL", label: "MACCELL - 3 locales", count: 0, totalAmount: 0, totalNet: 0, totalVat: 0, branches: [] },
                 { entity: "8BIT", label: "8 Bit Accesorios", count: 0, totalAmount: 0, totalNet: 0, totalVat: 0, branches: [] },
             ],
-            warnings: []
+            warnings: [],
+            queriedVouchers: [],
         };
     }
 
     const summaries = emptySummaries();
     const warnings: string[] = [];
+    const queriedVouchers: AfipVoucherLookup[] = [];
     const startedAt = Date.now();
     const clientsByEntity = new Map<InvoiceFiscalEntity, {
         getVoucherInfo?: (voucherNumber: number, salesPoint: number, voucherType: number) => Promise<unknown>;
@@ -235,7 +153,7 @@ export async function getAfipVoucherReadSummaries({
             : range.minVoucherNumber;
 
         if (scannedTotal > maxScanPerRange) {
-            warnings.push(`Rango ACTIVO para ${range.entity} (${range.voucherType}) truncado a ${maxScanPerRange} comprobantes por rendimiento.`);
+            warnings.push(`Comparación parcial para ${range.entity} (${range.voucherType}): se consultaron los últimos ${maxScanPerRange} números de comprobante.`);
         }
 
         let svc = clientsByEntity.get(range.entity);
@@ -262,16 +180,21 @@ export async function getAfipVoucherReadSummaries({
         }
 
         const voucherNumbers = [];
+        let failedLookups = 0;
         for (let voucherNumber = range.maxVoucherNumber; voucherNumber >= effectiveStart; voucherNumber -= 1) {
             voucherNumbers.push(voucherNumber);
         }
 
         for (const batch of chunkArray(voucherNumbers, MAX_PARALLEL_REQUESTS)) {
             if (Date.now() - startedAt > LOOKUP_BUDGET_MS) {
+                if (failedLookups > 0) {
+                    warnings.push(`${range.entity}: ${failedLookups} consultas no completadas quedaron fuera de la comparación.`);
+                }
                 warnings.push("Tiempo de lectura AFIP excedido. Se deja en valores parciales.");
                 return {
                     summaries: Array.from(summaries.values()),
                     warnings,
+                    queriedVouchers,
                 };
             }
 
@@ -281,8 +204,20 @@ export async function getAfipVoucherReadSummaries({
 
             let shouldStop = false;
 
-            for (const result of batchResults) {
-                if (result.status !== "fulfilled" || !result.value) continue;
+            for (const [resultIndex, result] of batchResults.entries()) {
+                if (result.status !== "fulfilled") {
+                    failedLookups += 1;
+                    continue;
+                }
+
+                queriedVouchers.push({
+                    entity: range.entity,
+                    salesPoint: range.salesPoint,
+                    voucherType: range.voucherType,
+                    voucherNumber: batch[resultIndex],
+                });
+
+                if (!result.value) continue;
 
                 const summary = summaries.get(range.entity);
                 if (!summary) continue;
@@ -303,10 +238,15 @@ export async function getAfipVoucherReadSummaries({
                 break;
             }
         }
+
+        if (failedLookups > 0) {
+            warnings.push(`${range.entity}: ${failedLookups} consultas no completadas quedaron fuera de la comparación.`);
+        }
     }
 
     return {
         summaries: Array.from(summaries.values()),
         warnings,
+        queriedVouchers,
     };
 }

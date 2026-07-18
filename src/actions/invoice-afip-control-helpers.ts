@@ -5,7 +5,14 @@ import {
     type InvoiceFiscalEntity,
 } from "./invoice-summary-helpers";
 
-type VoucherType = 1 | 6 | 11;
+export type VoucherType = 1 | 6 | 11;
+
+export type AfipVoucherLookup = {
+    entity: InvoiceFiscalEntity;
+    salesPoint: number;
+    voucherType: VoucherType;
+    voucherNumber: number;
+};
 
 export type InvoiceForAfipSeed = {
     billingEntity: string | null;
@@ -67,6 +74,31 @@ function parseVoucherNumber(invoiceNumber: string) {
     }
 
     return parsed;
+}
+
+function buildInvoiceLookupKey(invoice: InvoiceForAfipSeed) {
+    const entity = normalizeBillingEntity(invoice);
+    const voucherType = invoiceTypeToVoucherType(invoice.invoiceType);
+    const voucherNumber = parseVoucherNumber(invoice.invoiceNumber);
+
+    if (!voucherType || !voucherNumber) return null;
+
+    return `${entity}:${ENTITY_SALES_POINT[entity]}:${voucherType}:${voucherNumber}`;
+}
+
+function buildAfipLookupKey(lookup: AfipVoucherLookup) {
+    return `${lookup.entity}:${lookup.salesPoint}:${lookup.voucherType}:${lookup.voucherNumber}`;
+}
+
+export function filterInvoicesByAfipLookups(
+    invoices: InvoiceForAfipSeed[],
+    lookups: AfipVoucherLookup[]
+) {
+    const completedLookupKeys = new Set(lookups.map(buildAfipLookupKey));
+    return invoices.filter((invoice) => {
+        const lookupKey = buildInvoiceLookupKey(invoice);
+        return lookupKey ? completedLookupKeys.has(lookupKey) : false;
+    });
 }
 
 export function buildAfipRanges(invoices: InvoiceForAfipSeed[]) {

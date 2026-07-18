@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildAfipRanges } from "../actions/invoice-afip-control-helpers";
+import {
+    buildAfipRanges,
+    filterInvoicesByAfipLookups,
+    type InvoiceForAfipSeed,
+} from "../actions/invoice-afip-control-helpers";
 import { buildDebitVatSummary } from "../actions/invoice-summary-helpers";
 
 test("builds ARCA voucher ranges by fiscal entity and voucher type", () => {
@@ -100,4 +104,46 @@ test("builds debit VAT summary without subtracting local expenses as received VA
             debitVat: 105,
         },
     ]);
+});
+
+test("compares only local invoices whose exact ARCA lookup completed", () => {
+    const invoices: InvoiceForAfipSeed[] = [
+        {
+            billingEntity: null,
+            totalAmount: 1210,
+            netAmount: 1000,
+            vatAmount: 210,
+            invoiceType: "B",
+            invoiceNumber: "00010-00000100",
+            createdAt: new Date("2026-06-01T12:00:00.000Z"),
+            sale: { branch: { name: "MACCELL 1", code: "M1" } },
+        },
+        {
+            billingEntity: null,
+            totalAmount: 2420,
+            netAmount: 2000,
+            vatAmount: 420,
+            invoiceType: "B",
+            invoiceNumber: "00010-00000101",
+            createdAt: new Date("2026-06-01T13:00:00.000Z"),
+            sale: { branch: { name: "MACCELL 2", code: "M2" } },
+        },
+        {
+            billingEntity: "8BIT",
+            totalAmount: 605,
+            netAmount: 500,
+            vatAmount: 105,
+            invoiceType: "B",
+            invoiceNumber: "00003-00000100",
+            createdAt: new Date("2026-06-01T14:00:00.000Z"),
+            sale: { branch: { name: "8 BIT ACCESORIOS", code: "8BIT" } },
+        },
+    ];
+
+    const compared = filterInvoicesByAfipLookups(invoices, [
+        { entity: "MACCELL", salesPoint: 10, voucherType: 6, voucherNumber: 100 },
+        { entity: "8BIT", salesPoint: 3, voucherType: 6, voucherNumber: 100 },
+    ]);
+
+    assert.deepEqual(compared, [invoices[0], invoices[2]]);
 });

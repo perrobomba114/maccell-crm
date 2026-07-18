@@ -12,15 +12,12 @@ const formatAmount = (num: number) => Math.round(num * 100) / 100;
 const PRODUCTION = String(process.env.AFIP_PRODUCTION).toLowerCase() === 'true';
 const CUIT = parseInt(process.env.AFIP_CUIT || '0');
 
-console.warn(`[DEBUG] [AFIP] Initializing Client. Production: ${PRODUCTION} (Env: ${process.env.AFIP_PRODUCTION})`);
-
 export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' | '8BIT') {
     let shouldUse8Bit = false;
 
     // Determine credentials: Force Entity takes precedence, then Branch
     if (forceEntity) {
         shouldUse8Bit = forceEntity === '8BIT';
-        console.warn(`[DEBUG] [AFIP] Forcing entity to: ${forceEntity}`);
     } else if (branchId) {
         try {
             const branch = await db.branch.findUnique({
@@ -30,8 +27,8 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
             if (branch && branch.code === '8BIT') {
                 shouldUse8Bit = true;
             }
-        } catch (error) {
-            console.error("Error fetching branch for AFIP context:", error);
+        } catch {
+            console.error("Unable to resolve the AFIP branch context.");
             // Fallback to default
         }
     }
@@ -42,14 +39,11 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
     let selectedKeyEnv = process.env.AFIP_KEY;
 
     if (shouldUse8Bit) {
-        console.warn("[DEBUG] [AFIP] Using credentials for **8 BIT ACCESORIOS**");
         const cuit8bit = process.env.AFIP_CUIT_8BIT;
         if (cuit8bit) selectedCuit = parseInt(cuit8bit);
 
         selectedCertEnv = process.env.AFIP_CERT_8BIT;
         selectedKeyEnv = process.env.AFIP_KEY_8BIT;
-    } else {
-        console.warn("[DEBUG] [AFIP] Using default credentials (MACCELL)");
     }
 
 
@@ -65,7 +59,6 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
     try {
         // 1. Try ENV Content directly
         if (selectedCertEnv && selectedKeyEnv) {
-            console.warn(`[DEBUG] [AFIP] Loaded credentials from ENV for ${shouldUse8Bit ? '8BIT' : 'DEFAULT'}`);
             certContent = selectedCertEnv;
             keyContent = selectedKeyEnv;
         }
@@ -77,8 +70,6 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
 
             const certPath = path.join(certDir, certFilename);
             const keyPath = path.join(certDir, keyFilename);
-
-            console.warn(`[DEBUG] [AFIP] Looking for credentials at: ${certPath}`);
 
             if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
                 certContent = fs.readFileSync(certPath, 'utf8');
@@ -92,12 +83,6 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
             }
         }
 
-        // DEBUG: Print credential details (Partial)
-        console.warn(`[DEBUG] [AFIP] CUIT: ${selectedCuit}`);
-        console.warn(`[DEBUG] [AFIP] Cert Start: ${certContent.substring(0, 30)}...`);
-        console.warn(`[DEBUG] [AFIP] Cert End: ...${certContent.substring(certContent.length - 30)}`);
-        console.warn(`[DEBUG] [AFIP] Key Length: ${keyContent.length}`);
-
         // Handle Base64 from ENV if needed
         if (!certContent.includes('-----BEGIN')) {
             certContent = Buffer.from(certContent, 'base64').toString('utf-8');
@@ -106,8 +91,8 @@ export async function getAfipClient(branchId?: string, forceEntity?: 'MACCELL' |
             keyContent = Buffer.from(keyContent, 'base64').toString('utf-8');
         }
 
-    } catch (error) {
-        console.error("❌ Error reading certificates:", error);
+    } catch {
+        console.error("Unable to load AFIP credentials.");
         throw new Error("Could not read AFIP certificates.");
     }
 
@@ -138,7 +123,7 @@ export async function getServerStatus() {
         const status = await arca.electronicBillingService.getServerStatus();
         return { success: true, status };
     } catch (error: unknown) {
-        console.error('Error checking AFIP status:', error);
+        console.error("AFIP status request failed.");
         const message = error instanceof Error ? error.message : String(error);
         return { success: false, error: message };
     }
@@ -153,7 +138,7 @@ export async function getLastVoucher(salesPoint: number, type: number) {
         const last = await arca.electronicBillingService.getLastVoucher(salesPoint, type);
         return { success: true, lastVoucher: last.cbteNro };
     } catch (error: unknown) {
-        console.error("AFIP LastVoucher Error:", error);
+        console.error("AFIP last-voucher request failed.");
         const message = error instanceof Error ? error.message : String(error);
         return { success: false, error: message };
     }
@@ -264,7 +249,6 @@ export async function createAfipInvoice(data: {
         }
 
         payload['CondicionIVAReceptorId'] = condicionIvaId;
-        console.warn(`[DEBUG] [AFIP] Invoicing with CondicionIVAReceptorId: ${condicionIvaId}`);
 
         // TECH_DEBT(2026-04): SDK retorna shape no documentado en ICreateVoucherResult
         // (response.FeDetResp / Errors). Casteamos vía unknown a interfaz mínima local.
@@ -285,7 +269,6 @@ export async function createAfipInvoice(data: {
         };
         // SDK input type es INextVoucher; usamos cast porque el payload se construye dinámicamente.
         const res = await arca.electronicBillingService.createNextVoucher(payload as unknown as Parameters<typeof arca.electronicBillingService.createNextVoucher>[0]) as unknown as AfipVoucherResponse;
-        console.warn("[DEBUG] AFIP SDK Result:", JSON.stringify(res, null, 2));
 
         // SDK returns { cae: string, caeFchVto: string, response: object }
         // If rejected, cae is empty string.
@@ -321,12 +304,12 @@ export async function createAfipInvoice(data: {
         }
 
         // 3. Fallback
-        console.error("Critical: SDK Response unexpected", res);
+        console.error("AFIP returned an unexpected empty authorization response.");
         throw new Error("AFIP rechazó la operación (CAE vacío) sin reportar errores explícitos.");
 
 
     } catch (error: unknown) {
-        console.error("AFIP CreateVoucher Error:", error);
+        console.error("AFIP invoice request failed.");
         // Clean error message if it's an Error object
         const msg = error instanceof Error ? error.message : String(error);
         return { success: false, error: msg };
@@ -350,7 +333,7 @@ type AfipTaxItem = {
     id?: string | number;
 };
 
-// TECH_DEBT(2026-04): el SDK tipa el resultado con [key: string]: any.
+// TECH_DEBT(2026-04): el SDK tipa el resultado con un índice dinámico sin contrato concreto.
 // Usamos un tipo local que cubre los campos accedidos (todos opcionales para
 // soportar fallbacks taxPayer.persona ?? taxPayer ?? root).
 // Fix real: el SDK debería exportar un tipo concreto para Padron A13.
@@ -379,8 +362,6 @@ type AfipPadronNode = {
 export async function getTaxpayerDetails(cuit: number) {
     try {
         const arca = await getAfipClient();
-        console.warn(`[DEBUG] [AFIP] Fetching details for CUIT ${cuit}...`);
-
         const taxPayer = await arca.registerScopeThirteenService.getTaxpayerDetails(cuit) as unknown as AfipPadronNode | null;
 
         if (!taxPayer) {
@@ -427,7 +408,6 @@ export async function getTaxpayerDetails(cuit: number) {
         };
 
         const taxes = getTaxes(datosRegimen);
-        console.warn(`[DEBUG] [AFIP] CUIT ${cuit} Taxes:`, JSON.stringify(taxes));
 
         // Tax Codes Definitions
         const COD_MONOTRIBUTO = [20];
@@ -477,10 +457,8 @@ export async function getTaxpayerDetails(cuit: number) {
                     if (tipoClave === "CUIT" && hasActivity) {
                         condition = "Responsable Inscripto";
                         isRespInscripto = true;
-                        console.warn(`[DEBUG] [AFIP] CUIT ${cuit} - Active CUIT with activity but no taxes fetched. Assuming RI.`);
                     } else {
                         condition = "Consumidor Final";
-                        console.warn(`[DEBUG] [AFIP] CUIT ${cuit} - Active ${tipoClave} with no explicit activity/taxes. Assuming CF.`);
                     }
                 }
             }
@@ -500,7 +478,7 @@ export async function getTaxpayerDetails(cuit: number) {
         };
 
     } catch (error: unknown) {
-        console.error("AFIP Padron Error:", error);
+        console.error("AFIP taxpayer request failed.");
         const message = error instanceof Error ? error.message : String(error);
         if (message.includes("401") || message.includes("Unauthorized")) {
             return {

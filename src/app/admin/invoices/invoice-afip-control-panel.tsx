@@ -177,6 +177,9 @@ function AfipEntityRow({
     loadedSummary?: InvoiceSystemAfipDiffSummary;
 }) {
     const Icon = localSummary.entity === "8BIT" ? Store : Landmark;
+    const localComparedAmount = loadedSummary
+        ? currencyFormatter.format(loadedSummary.systemAmount)
+        : "Sin consultar";
     const afipAmount = loadedSummary ? currencyFormatter.format(loadedSummary.afipAmount) : "Sin consultar";
     const differenceAmount = loadedSummary ? currencyFormatter.format(loadedSummary.differenceAmount) : "Pendiente";
     const differenceTone = loadedSummary && Math.abs(loadedSummary.differenceAmount) < 0.01
@@ -190,15 +193,19 @@ function AfipEntityRow({
                     <Icon className="h-4 w-4 shrink-0 text-amber-500" />
                     <span className="min-w-0 text-sm font-bold text-foreground">{localSummary.label}</span>
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                    {localSummary.count.toLocaleString("es-AR")} local
-                    {loadedSummary ? ` · ${loadedSummary.afipCount.toLocaleString("es-AR")} ARCA` : ""}
-                </span>
+                <div className="shrink-0 text-right text-xs text-muted-foreground">
+                    <p>{localSummary.count.toLocaleString("es-AR")} comprobantes del período</p>
+                    {loadedSummary && (
+                        <p>
+                            {loadedSummary.systemCount.toLocaleString("es-AR")} local · {loadedSummary.afipCount.toLocaleString("es-AR")} ARCA comparados
+                        </p>
+                    )}
+                </div>
             </div>
 
             <div className="grid gap-2 text-xs">
-                <MetricLine label="Local" value={currencyFormatter.format(localSummary.totalAmount)} />
-                <MetricLine label="ARCA" value={afipAmount} muted={!loadedSummary} />
+                <MetricLine label="Local comparado" value={localComparedAmount} muted={!loadedSummary} />
+                <MetricLine label="ARCA comparado" value={afipAmount} muted={!loadedSummary} />
                 <MetricLine label="Diferencia" value={differenceAmount} valueClassName={differenceTone} muted={!loadedSummary} />
             </div>
         </div>

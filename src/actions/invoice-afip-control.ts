@@ -12,6 +12,7 @@ import { getAfipVoucherReadSummaries } from "./afip-voucher-reader";
 import {
     buildAfipRanges,
     createEmptyAfipSummaries,
+    filterInvoicesByAfipLookups,
     resolveInvoiceDateRange,
     type InvoiceForAfipSeed,
 } from "./invoice-afip-control-helpers";
@@ -84,7 +85,7 @@ export async function getInvoiceAfipControl(date?: string): Promise<InvoiceAfipC
     if (!ranges.length) {
         return {
             success: true,
-            summaries: emptyDiff,
+            summaries: buildSystemAfipDiffSummary(createEmptyAfipSummaries(), createEmptyAfipSummaries()),
             warnings: ["No hay comprobantes locales con numeración válida para consultar."],
             readAt: new Date().toISOString(),
         };
@@ -96,10 +97,15 @@ export async function getInvoiceAfipControl(date?: string): Promise<InvoiceAfipC
             startDate: range.start,
             endDate: range.end,
         });
+        const comparedInvoices = filterInvoicesByAfipLookups(
+            systemInvoices as InvoiceForAfipSeed[],
+            afipReadResult.queriedVouchers
+        );
+        const comparedSystemSummaries = buildEntitySummaries(comparedInvoices);
 
         return {
             success: true,
-            summaries: buildSystemAfipDiffSummary(systemSummaries, afipReadResult.summaries),
+            summaries: buildSystemAfipDiffSummary(comparedSystemSummaries, afipReadResult.summaries),
             warnings: afipReadResult.warnings,
             readAt: new Date().toISOString(),
         };
