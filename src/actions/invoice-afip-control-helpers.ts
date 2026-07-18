@@ -31,13 +31,9 @@ export type InvoiceForAfipSeed = {
 };
 
 type AfipReadRangeAccumulator = {
+    salesPoint: number;
     min: number;
     max: number;
-};
-
-const ENTITY_SALES_POINT: Record<InvoiceFiscalEntity, number> = {
-    MACCELL: 10,
-    "8BIT": 3,
 };
 
 export function resolveInvoiceDateRange(date?: string) {
@@ -64,26 +60,32 @@ function invoiceTypeToVoucherType(invoiceType: string): VoucherType | null {
     return null;
 }
 
-function parseVoucherNumber(invoiceNumber: string) {
+function parseVoucherIdentity(invoiceNumber: string) {
     const parts = invoiceNumber.split("-");
     if (parts.length < 2) return null;
 
-    const parsed = Number(parts[1]);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
+    const salesPoint = Number(parts[0]);
+    const voucherNumber = Number(parts[1]);
+    if (!Number.isInteger(salesPoint) || salesPoint <= 0 || !Number.isInteger(voucherNumber) || voucherNumber <= 0) {
         return null;
     }
 
-    return parsed;
+    return { salesPoint, voucherNumber };
+}
+
+export function parseInvoiceVoucherIdentity(invoice: InvoiceForAfipSeed): AfipVoucherLookup | null {
+    const entity = normalizeBillingEntity(invoice);
+    const voucherType = invoiceTypeToVoucherType(invoice.invoiceType);
+    const identity = parseVoucherIdentity(invoice.invoiceNumber);
+
+    if (!voucherType || !identity) return null;
+
+    return { entity, voucherType, ...identity };
 }
 
 function buildInvoiceLookupKey(invoice: InvoiceForAfipSeed) {
-    const entity = normalizeBillingEntity(invoice);
-    const voucherType = invoiceTypeToVoucherType(invoice.invoiceType);
-    const voucherNumber = parseVoucherNumber(invoice.invoiceNumber);
-
-    if (!voucherType || !voucherNumber) return null;
-
-    return `${entity}:${ENTITY_SALES_POINT[entity]}:${voucherType}:${voucherNumber}`;
+    const identity = parseInvoiceVoucherIdentity(invoice);
+    return identity ? buildAfipLookupKey(identity) : null;
 }
 
 function buildAfipLookupKey(lookup: AfipVoucherLookup) {
@@ -101,6 +103,17 @@ export function filterInvoicesByAfipLookups(
     });
 }
 
+export function compareInvoiceLookups(local: AfipVoucherLookup[], afip: AfipVoucherLookup[]) {
+    const localKeys = new Set(local.map(buildAfipLookupKey));
+    const afipKeys = new Set(afip.map(buildAfipLookupKey));
+
+    return {
+        matched: local.filter((lookup) => afipKeys.has(buildAfipLookupKey(lookup))),
+        onlyLocal: local.filter((lookup) => !afipKeys.has(buildAfipLookupKey(lookup))),
+        onlyAfip: afip.filter((lookup) => !localKeys.has(buildAfipLookupKey(lookup))),
+    };
+}
+
 export function buildAfipRanges(invoices: InvoiceForAfipSeed[]) {
     const rangesByEntityAndType = new Map<InvoiceFiscalEntity, Map<VoucherType, AfipReadRangeAccumulator>>([
         ["MACCELL", new Map()],
@@ -110,22 +123,25 @@ export function buildAfipRanges(invoices: InvoiceForAfipSeed[]) {
     for (const invoice of invoices) {
         const entity = normalizeBillingEntity(invoice);
         const voucherType = invoiceTypeToVoucherType(invoice.invoiceType);
-        const voucherNumber = parseVoucherNumber(invoice.invoiceNumber);
+        const identity = parseVoucherIdentity(invoice.invoiceNumber);
 
-        if (!voucherType || !voucherNumber) continue;
+        if (!voucherType || !identity) continue;
 
         const byType = rangesByEntityAndType.get(entity);
         if (!byType) continue;
 
         const currentRange = byType.get(voucherType);
         if (!currentRange) {
-            byType.set(voucherType, { min: voucherNumber, max: voucherNumber });
+            byType.set(voucherType, { salesPoint: identity.salesPoint, min: identity.voucherNumber, max: identity.voucherNumber });
             continue;
         }
 
+        if (currentRange.salesPoint !== identity.salesPoint) continue;
+
         byType.set(voucherType, {
-            min: Math.min(currentRange.min, voucherNumber),
-            max: Math.max(currentRange.max, voucherNumber),
+            salesPoint: currentRange.salesPoint,
+            min: Math.min(currentRange.min, identity.voucherNumber),
+            max: Math.max(currentRange.max, identity.voucherNumber),
         });
     }
 
@@ -134,7 +150,7 @@ export function buildAfipRanges(invoices: InvoiceForAfipSeed[]) {
             .filter(([, boundaries]) => boundaries.max >= boundaries.min)
             .map(([voucherType, boundaries]) => ({
                 entity,
-                salesPoint: ENTITY_SALES_POINT[entity],
+                salesPoint: boundaries.salesPoint,
                 voucherType,
                 minVoucherNumber: boundaries.min,
                 maxVoucherNumber: boundaries.max,

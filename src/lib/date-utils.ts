@@ -3,6 +3,11 @@ import { startOfMonth, endOfMonth, startOfDay, endOfDay, subDays } from "date-fn
 
 export const TIMEZONE = "America/Argentina/Buenos_Aires";
 
+/** Formats a real instant using Argentina's fiscal calendar date. */
+export function formatArgentinaDate(date = new Date(), pattern = "yyyy-MM-dd") {
+    return formatInTimeZone(date, TIMEZONE, pattern);
+}
+
 /**
  * Returns the current date/time in Argentina Timezone, as a Date object (system time equivalent).
  * Useful for logging or displaying "Now" in UI references.

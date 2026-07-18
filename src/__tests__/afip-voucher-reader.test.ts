@@ -5,7 +5,7 @@ import test from "node:test";
 import { parseAfipVoucherSummary } from "../actions/afip-voucher-response";
 
 const voucherReaderSource = readFileSync(
-    new URL("../actions/afip-voucher-reader.ts", import.meta.url),
+    new URL("../actions/afip-voucher-period-reader.ts", import.meta.url),
     "utf8"
 );
 
@@ -25,7 +25,7 @@ test("parses the normalized ARCA SDK voucher response", () => {
         }),
         {
             authorizationCode: "12345678901234",
-            voucherDate: new Date(2026, 6, 17),
+            voucherDate: new Date("2026-07-17T03:00:00.000Z"),
             total: 1210,
             net: 1000,
             vat: 210,
@@ -34,5 +34,6 @@ test("parses the normalized ARCA SDK voucher response", () => {
 });
 
 test("reports ARCA lookups that failed instead of hiding them", () => {
-    assert.match(voucherReaderSource, /consultas no completadas/);
+    assert.match(voucherReaderSource, /failedVoucherNumbers/);
+    assert.doesNotMatch(voucherReaderSource, /MAX_SCAN_PER_RANGE_DEFAULT|120/);
 });

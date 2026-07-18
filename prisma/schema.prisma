@@ -393,24 +393,24 @@ model Repair {
 /// Cierre técnico estructurado usado por Cerebro para distinguir una solución confirmada.
 /// La migración es aditiva: no modifica reparaciones existentes ni sus estados.
 model RepairLearningRecord {
-  id                 String   @id @default(cuid())
-  repairId           String   @unique
+  id                 String    @id @default(cuid())
+  repairId           String    @unique
   technicianId       String
   symptom            String
   rootCause          String
   confirmingEvidence String
   intervention       String
   verification       String
-  affectedReferences String[] @default([])
+  affectedReferences String[]  @default([])
   schematicPages     Json?
   externalSources    Json?
-  authority          String   @default("INCOMPLETE")
+  authority          String    @default("INCOMPLETE")
   reviewedBy         String?
   reviewedAt         DateTime?
-  trainingEligible   Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  repair             Repair   @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  trainingEligible   Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  repair             Repair    @relation(fields: [repairId], references: [id], onDelete: Cascade)
 
   @@index([authority, trainingEligible])
   @@index([technicianId])
@@ -494,6 +494,49 @@ model Expense {
   @@index([branchId])
   @@index([userId])
   @@map("expenses")
+}
+
+model AfipReconciliation {
+  id               String                   @id @default(cuid())
+  period           String
+  entity           String
+  status           AfipReconciliationStatus @default(RUNNING)
+  localCount       Int                      @default(0)
+  afipCount        Int                      @default(0)
+  localTotal       Float                    @default(0)
+  afipTotal        Float                    @default(0)
+  differenceAmount Float                    @default(0)
+  discrepancies    Json?
+  warnings         Json?
+  startedAt        DateTime                 @default(now())
+  completedAt      DateTime?
+  updatedAt        DateTime                 @updatedAt
+
+  @@unique([period, entity])
+  @@index([period])
+  @@map("afip_reconciliations")
+}
+
+model FiscalEmissionAttempt {
+  id            String               @id
+  requestedById String
+  branchId      String
+  billingEntity String
+  salesPoint    Int
+  invoiceType   String
+  payload       Json
+  status        FiscalEmissionStatus @default(PENDING)
+  cae           String?
+  voucherNumber String?
+  caeExpiresAt  DateTime?
+  saleId        String?
+  error         String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([requestedById, createdAt])
+  @@index([status])
+  @@map("fiscal_emission_attempts")
 }
 
 model ReturnRequest {
@@ -661,6 +704,20 @@ enum Role {
   ADMIN
   VENDOR
   TECHNICIAN
+}
+
+enum AfipReconciliationStatus {
+  RUNNING
+  COMPLETE
+  INCOMPLETE
+  FAILED
+}
+
+enum FiscalEmissionStatus {
+  PENDING
+  AUTHORIZED_PENDING_SYNC
+  COMPLETED
+  FAILED
 }
 
 enum PaymentMethod {

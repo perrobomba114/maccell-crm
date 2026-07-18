@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { constants } from 'crypto';
 import { db } from "@/lib/db";
+import { formatArgentinaDate } from "@/lib/date-utils";
 
 
 // Helper to handle currency rounding
@@ -172,7 +173,7 @@ export async function createAfipInvoice(data: {
         const arca = await getAfipClient(data.branchId, data.billingEntity);
 
         // Construct payload for createNextVoucher (INextVoucher)
-        const date = new Date(Date.now() - ((new Date()).getTimezoneOffset() * 60000)).toISOString().split('T')[0].replace(/-/g, '');
+        const date = formatArgentinaDate(new Date(), "yyyyMMdd");
 
         const ivaArray = [];
         let calculatedNet = 0;
@@ -215,7 +216,7 @@ export async function createAfipInvoice(data: {
             'Concepto': data.concept,
             'DocTipo': data.docType,
             'DocNro': data.docNumber,
-            'CbteFch': parseInt(date),
+            'CbteFch': Number(date),
             'ImpTotal': headerAmount,
             'ImpTotConc': 0,
             'ImpNeto': formatAmount(calculatedNet),

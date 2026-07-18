@@ -6,19 +6,23 @@ const panelSource = readFileSync(
     new URL("../app/admin/invoices/invoice-afip-control-panel.tsx", import.meta.url),
     "utf8"
 );
+const summarySource = readFileSync(
+    new URL("../app/admin/invoices/invoice-summary-cards.tsx", import.meta.url),
+    "utf8"
+);
 
-test("labels period totals separately from the ARCA comparison sample", () => {
-    assert.match(panelSource, /Local total del período/);
-    assert.match(panelSource, /Local comparado/);
-    assert.match(panelSource, /ARCA comparado/);
-    assert.match(panelSource, /Diferencia de la muestra/);
-    assert.match(panelSource, /localSummary\.totalAmount/);
-    assert.match(panelSource, /loadedSummary\.systemAmount/);
+test("labels reconciliation as the complete ARCA period instead of a sample", () => {
+    assert.match(panelSource, /Período completo ARCA/);
+    assert.match(panelSource, /Solo en local/);
+    assert.match(panelSource, /Solo en ARCA/);
+    assert.match(panelSource, /Completo/);
+    assert.match(panelSource, /Incompleto/);
+    assert.doesNotMatch(panelSource, /Muestra ARCA|muestra conciliada|Diferencia de la muestra/i);
 });
 
-test("shows a clear reconciliation status without crowding the entity title", () => {
-    assert.match(panelSource, /Muestra conciliada/);
-    assert.match(panelSource, /Revisar diferencia en la muestra/);
-    assert.match(panelSource, /Total período/);
-    assert.match(panelSource, /Muestra ARCA/);
+test("uses unambiguous sales and debit VAT labels", () => {
+    assert.match(summarySource, /Ventas facturadas/);
+    assert.match(summarySource, /Neto gravado/);
+    assert.match(summarySource, /IVA débito fiscal/);
+    assert.match(summarySource, /Compras \/ crédito fiscal no integrados/);
 });

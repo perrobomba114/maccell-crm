@@ -29,6 +29,9 @@ export type InvoiceSystemAfipDiffSummary = {
     differenceAmount: number;
     systemCount: number;
     afipCount: number;
+    status?: "RUNNING" | "COMPLETE" | "INCOMPLETE" | "FAILED";
+    onlyLocalCount?: number;
+    onlyAfipCount?: number;
 };
 
 type BranchLike = {

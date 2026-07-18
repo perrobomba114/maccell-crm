@@ -44,7 +44,10 @@ function toDate(value: unknown): Date | null {
     const day = Number(digits.slice(6, 8));
     if (![year, month, day].every(Number.isFinite)) return null;
 
-    return new Date(year, month - 1, day);
+    return fromZonedTime(
+        `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")} 00:00:00`,
+        TIMEZONE
+    );
 }
 
 export function parseAfipVoucherSummary(payload: unknown) {
@@ -62,3 +65,5 @@ export function parseAfipVoucherSummary(payload: unknown) {
         vat: toNumber(findValue(payload, ["ImpIVA", "impIva", "iva", "IVA"])) || 0,
     };
 }
+import { TIMEZONE } from "@/lib/date-utils";
+import { fromZonedTime } from "date-fns-tz";

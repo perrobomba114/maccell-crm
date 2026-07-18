@@ -1,42 +1,42 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { generateAdminInvoice, searchCuit } from "@/lib/actions/admin-invoice";
-import type { InvoiceBranchOption, InvoiceItemField, InvoiceItemForm, InvoiceItemValue } from "@/types/invoice-form";
+import { validateAndCalculateAdminInvoice } from "@/lib/admin-invoice-validation";
+import type { InvoiceBranchOption, InvoiceItemField, InvoiceItemForm, InvoiceItemValue, InvoicePaymentMethod } from "@/types/invoice-form";
+import { formatArgentinaDate } from "@/lib/date-utils";
 
-export function useInvoiceForm(branches: InvoiceBranchOption[], userId: string, initialBranchId?: string) {
+type InvoiceFormStep = "FORM" | "REVIEW" | "SUCCESS";
+
+export function useInvoiceForm(branches: InvoiceBranchOption[], initialBranchId?: string) {
     const [open, setOpen] = useState(false);
+    const [step, setStep] = useState<InvoiceFormStep>("FORM");
     const [isLoading, setIsLoading] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
+    const [result, setResult] = useState<{ cae: string; voucherNumber: string; caeExpiresAt: string } | null>(null);
+    const requestIdRef = useRef(crypto.randomUUID());
 
-    // Form State
     const [branchId, setBranchId] = useState(initialBranchId || branches[0]?.id || "");
-    const [salesPoint, setSalesPoint] = useState("10");
     const [invoiceType, setInvoiceType] = useState<"A" | "B">("B");
     const [billingEntity, setBillingEntity] = useState<"MACCELL" | "8BIT">("MACCELL");
     const [concept, setConcept] = useState<1 | 2 | 3>(1);
-
-    // Dates for Services
-    const today = new Date().toISOString().split('T')[0];
+    const [paymentMethod, setPaymentMethod] = useState<InvoicePaymentMethod>("CASH");
+    const today = formatArgentinaDate();
     const [serviceDateFrom, setServiceDateFrom] = useState(today);
     const [serviceDateTo, setServiceDateTo] = useState(today);
     const [paymentDueDate, setPaymentDueDate] = useState(today);
-
-    // Customer
     const [docType, setDocType] = useState<"CUIT" | "DNI" | "FINAL">("FINAL");
     const [docNumber, setDocNumber] = useState("");
-    const [customerName, setCustomerName] = useState("");
+    const [customerName, setCustomerName] = useState("Consumidor Final");
     const [customerAddress, setCustomerAddress] = useState("");
-    const [ivaCondition, setIvaCondition] = useState("");
-
-    // Items
+    const [ivaCondition, setIvaCondition] = useState("Consumidor Final");
     const [items, setItems] = useState<InvoiceItemForm[]>([
-        { id: "1", description: "", quantity: 1, unitPrice: 0, vatCondition: "21" }
+        { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, vatCondition: "21" },
     ]);
 
     const branchesByEntity = useMemo(() => ({
-        MACCELL: branches.filter((branch) => branch.name.toUpperCase().includes("MACCELL")),
+        MACCELL: branches.filter((branch) => branch.code !== "8BIT" && !branch.name.toUpperCase().includes("8 BIT")),
         "8BIT": branches.filter((branch) => branch.code === "8BIT" || branch.name.toUpperCase().includes("8 BIT")),
     }), [branches]);
 
@@ -46,147 +46,119 @@ export function useInvoiceForm(branches: InvoiceBranchOption[], userId: string, 
         if (firstBranchId && !entityBranches.some((branch) => branch.id === branchId)) {
             setBranchId(firstBranchId);
         }
-        setSalesPoint(billingEntity === "8BIT" ? "3" : "10");
     }, [billingEntity, branchId, branchesByEntity]);
 
-    // Totals
-    const [totals, setTotals] = useState({ net: 0, vat: 0, total: 0 });
-
-    useEffect(() => {
-        let net = 0;
-        let vat = 0;
-
-        items.forEach(item => {
-            const totalItem = item.quantity * item.unitPrice;
-            const rate = 1.21;
-            const itemNet = totalItem / rate;
-            const itemVat = totalItem - itemNet;
-
-            net += itemNet;
-            vat += itemVat;
-        });
-
-        setTotals({
-            net: Math.round(net * 100) / 100,
-            vat: Math.round(vat * 100) / 100,
-            total: Math.round((net + vat) * 100) / 100
-        });
+    const totals = useMemo(() => {
+        const total = Math.round(items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 100) / 100;
+        const net = Math.round((total / 1.21) * 100) / 100;
+        return { net, vat: Math.round((total - net) * 100) / 100, total };
     }, [items]);
 
-    const handleAddItem = () => {
-        setItems([...items, {
-            id: Math.random().toString(),
-            description: "",
-            quantity: 1,
-            unitPrice: 0,
-            vatCondition: "21"
-        }]);
-    };
+    function buildInput() {
+        return {
+            requestId: requestIdRef.current,
+            branchId,
+            invoiceType,
+            concept,
+            serviceDateFrom: concept === 1 ? undefined : serviceDateFrom,
+            serviceDateTo: concept === 1 ? undefined : serviceDateTo,
+            paymentDueDate: concept === 1 ? undefined : paymentDueDate,
+            customer: { docType, docNumber, name: customerName, address: customerAddress, ivaCondition },
+            items: items.map(({ description, quantity, unitPrice, vatCondition }) => ({ description, quantity, unitPrice, vatCondition })),
+            paymentMethod,
+        };
+    }
 
-    const handleRemoveItem = (id: string) => {
-        setItems(items.filter(i => i.id !== id));
-    };
-
+    const handleAddItem = () => setItems((current) => [
+        ...current,
+        { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, vatCondition: "21" },
+    ]);
+    const handleRemoveItem = (id: string) => setItems((current) => current.filter((item) => item.id !== id));
     const handleUpdateItem = (id: string, field: InvoiceItemField, value: InvoiceItemValue) => {
-        setItems(items.map(i => i.id === id ? { ...i, [field]: value } : i));
+        setItems((current) => current.map((item) => item.id === id ? { ...item, [field]: value } : item));
     };
 
-    const handleSearchCuit = async () => {
+    async function handleSearchCuit() {
         if (!docNumber) return;
         setIsSearching(true);
         try {
-            const cuitNum = parseInt(docNumber.replace(/\D/g, ''));
-            const res = await searchCuit(cuitNum);
-
-            if (res.success && res.data) {
-                setCustomerName(res.data.name);
-                setCustomerAddress(res.data.address);
-                setIvaCondition(res.data.ivaCondition || "Consumidor Final");
-
-                if (res.data.ivaCondition === "Responsable Inscripto") {
-                    setInvoiceType("A");
-                } else {
-                    setInvoiceType("B");
-                }
-                toast.success("Cliente encontrado: " + res.data.name);
+            const response = await searchCuit(Number(docNumber.replace(/\D/g, "")));
+            if (response.success && "data" in response && response.data) {
+                setCustomerName(response.data.name);
+                setCustomerAddress(response.data.address);
+                setIvaCondition(response.data.ivaCondition || "Consumidor Final");
+                setInvoiceType(response.data.ivaCondition === "Responsable Inscripto" ? "A" : "B");
+                toast.success(`Cliente encontrado: ${response.data.name}`);
             } else {
-                toast.error(res.error || "Verifique el CUIT");
+                toast.error(response.error || "Verificá el CUIT.");
             }
-        } catch (error) {
-            toast.error("Error al buscar CUIT");
+        } catch {
+            toast.error("No se pudo consultar el CUIT.");
         } finally {
             setIsSearching(false);
         }
-    };
+    }
 
-    const handleSubmit = async () => {
+    function handleReview() {
+        const validation = validateAndCalculateAdminInvoice(buildInput());
+        if (!validation.success) {
+            toast.error(validation.error);
+            return;
+        }
+        setStep("REVIEW");
+    }
+
+    async function handleSubmit() {
+        if (isLoading) return;
         setIsLoading(true);
         try {
-            const res = await generateAdminInvoice({
-                userId,
-                branchId,
-                salesPoint: parseInt(salesPoint),
-                invoiceType,
-                concept,
-                serviceDateFrom: concept === 1 ? undefined : serviceDateFrom,
-                serviceDateTo: concept === 1 ? undefined : serviceDateTo,
-                paymentDueDate: concept === 1 ? undefined : paymentDueDate,
-                customer: {
-                    docType,
-                    docNumber,
-                    name: customerName,
-                    address: customerAddress,
-                    ivaCondition
-                },
-                items: items.map(i => ({
-                    description: i.description,
-                    quantity: i.quantity,
-                    unitPrice: i.unitPrice,
-                    vatCondition: i.vatCondition
-                })),
-                paymentMethod: "CASH",
-                billingEntity
-            });
-
-            if (res.success) {
-                toast.success("Factura Generada Correctamente");
-                setOpen(false);
+            const response = await generateAdminInvoice(buildInput());
+            if (response.success && response.invoice) {
+                setResult(response.invoice);
+                setStep("SUCCESS");
+                requestIdRef.current = crypto.randomUUID();
+                toast.success("Factura autorizada y guardada correctamente.");
             } else {
-                toast.error(res.error || "Error al generar factura");
+                toast.error(response.error || "No se pudo emitir la factura.");
             }
-        } catch (error) {
-            toast.error("Ocurrió un error inesperado");
+        } catch {
+            toast.error("Ocurrió un error inesperado. No vuelvas a emitir sin revisar ARCA.");
         } finally {
             setIsLoading(false);
         }
-    };
+    }
 
-    const handleDocNumberChange = (val: string) => {
-        const cleanVal = val.replace(/\D/g, '');
-        setDocNumber(cleanVal);
-
-        if (cleanVal.length === 0 || cleanVal === "0") {
+    function handleDocNumberChange(value: string) {
+        const cleanValue = value.replace(/\D/g, "");
+        setDocNumber(cleanValue);
+        if (!cleanValue || cleanValue === "0") {
             setDocType("FINAL");
-        } else if (cleanVal.length === 11) {
+            setCustomerName("Consumidor Final");
+            setIvaCondition("Consumidor Final");
+        } else if (cleanValue.length === 11) {
             setDocType("CUIT");
-        } else if (cleanVal.length === 7 || cleanVal.length === 8) {
+        } else if (cleanValue.length === 7 || cleanValue.length === 8) {
             setDocType("DNI");
         }
-    };
+    }
+
+    function handleOpenChange(nextOpen: boolean) {
+        if (isLoading) return;
+        setOpen(nextOpen);
+        if (!nextOpen) {
+            setStep("FORM");
+            setResult(null);
+            requestIdRef.current = crypto.randomUUID();
+        }
+    }
 
     return {
-        open, setOpen, isLoading, isSearching,
-        branchId, setBranchId, salesPoint, setSalesPoint,
-        invoiceType: invoiceType as "A" | "B", setInvoiceType,
-        billingEntity: billingEntity as "MACCELL" | "8BIT", setBillingEntity,
-        branchesByEntity,
-        concept: concept as 1 | 2 | 3, setConcept,
-        serviceDateFrom, setServiceDateFrom,
+        open, setOpen: handleOpenChange, step, setStep, result, isLoading, isSearching,
+        branchId, setBranchId, invoiceType, setInvoiceType, billingEntity, setBillingEntity,
+        branchesByEntity, concept, setConcept, paymentMethod, setPaymentMethod, serviceDateFrom, setServiceDateFrom,
         serviceDateTo, setServiceDateTo, paymentDueDate, setPaymentDueDate,
-        docType, docNumber, setDocNumber: handleDocNumberChange,
-        customerName, setCustomerName, customerAddress, setCustomerAddress,
-        ivaCondition, items, totals,
-        handleAddItem, handleRemoveItem, handleUpdateItem,
-        handleSearchCuit, handleSubmit
+        docType, docNumber, setDocNumber: handleDocNumberChange, customerName, setCustomerName,
+        customerAddress, setCustomerAddress, ivaCondition, items, totals,
+        handleAddItem, handleRemoveItem, handleUpdateItem, handleSearchCuit, handleReview, handleSubmit,
     };
 }

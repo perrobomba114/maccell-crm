@@ -2,12 +2,13 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, FileText } from "lucide-react";
-import type { InvoiceBranchOption } from "@/types/invoice-form";
+import type { InvoiceBranchOption, InvoicePaymentMethod } from "@/types/invoice-form";
 
 interface InvoiceConfigSectionProps {
     billingEntity: "MACCELL" | "8BIT";
     invoiceType: "A" | "B";
     concept: 1 | 2 | 3;
+    paymentMethod: InvoicePaymentMethod;
     serviceDateFrom: string;
     serviceDateTo: string;
     paymentDueDate: string;
@@ -17,6 +18,7 @@ interface InvoiceConfigSectionProps {
     setBillingEntity: (val: "MACCELL" | "8BIT") => void;
     setInvoiceType: (val: "A" | "B") => void;
     setConcept: (val: 1 | 2 | 3) => void;
+    setPaymentMethod: (val: InvoicePaymentMethod) => void;
     setServiceDateFrom: (val: string) => void;
     setServiceDateTo: (val: string) => void;
     setPaymentDueDate: (val: string) => void;
@@ -24,9 +26,9 @@ interface InvoiceConfigSectionProps {
 }
 
 export function InvoiceConfigSection({
-    billingEntity, invoiceType, concept, serviceDateFrom, serviceDateTo, paymentDueDate,
+    billingEntity, invoiceType, concept, paymentMethod, serviceDateFrom, serviceDateTo, paymentDueDate,
     branchId, branches, branchesByEntity, setBillingEntity, setInvoiceType, setConcept,
-    setServiceDateFrom, setServiceDateTo, setPaymentDueDate, setBranchId
+    setPaymentMethod, setServiceDateFrom, setServiceDateTo, setPaymentDueDate, setBranchId
 }: InvoiceConfigSectionProps) {
     return (
         <div className="lg:col-span-5 space-y-6 flex flex-col">
@@ -93,6 +95,20 @@ export function InvoiceConfigSection({
                             <span className="text-lg font-bold">Servicios</span>
                         </button>
                     </div>
+                </div>
+
+                <div className="space-y-3">
+                    <Label className="text-zinc-400 font-medium">Medio de pago</Label>
+                    <Select value={paymentMethod} onValueChange={(value: InvoicePaymentMethod) => setPaymentMethod(value)}>
+                        <SelectTrigger className="h-11 border-zinc-700 bg-zinc-950">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="border-zinc-800 bg-zinc-900">
+                            <SelectItem value="CASH">Efectivo</SelectItem>
+                            <SelectItem value="CARD">Tarjeta</SelectItem>
+                            <SelectItem value="MERCADOPAGO">Mercado Pago</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 {concept === 2 && (

@@ -1,225 +1,169 @@
 "use server";
 
+import { getCurrentUser } from "@/actions/auth-actions";
 import { db } from "@/lib/db";
-import { revalidatePath } from "next/cache";
-import { createAfipInvoice, getTaxpayerDetails } from "@/lib/afip";
+import { createAfipInvoice, getAfipClient, getTaxpayerDetails } from "@/lib/afip";
 import { getIvaConditionId } from "@/lib/afip-utils";
+import { recoverAuthorizedVoucher } from "@/lib/afip-voucher-recovery";
+import {
+    resolveAdminFiscalContext,
+    validateAndCalculateAdminInvoice,
+    type AdminInvoiceInput,
+} from "@/lib/admin-invoice-validation";
+import {
+    createEmissionAttempt,
+    markEmissionAttemptFailed,
+    persistAuthorizedAdminInvoice,
+    storeAuthorizedAttempt,
+    type AuthorizedInvoiceData,
+} from "./admin-invoice-persistence";
+import { revalidatePath } from "next/cache";
 
-// Helper for formatting doubles
-function formatAmount(num: number) {
-    return Math.round(num * 100) / 100;
+async function getAdminCaller() {
+    const user = await getCurrentUser();
+    return user && user.role === "ADMIN" ? user : null;
 }
 
-// Wrapper for CUIT Search to be used by Client Component
 export async function searchCuit(cuit: number) {
-    return await getTaxpayerDetails(cuit);
+    const caller = await getAdminCaller();
+    if (!caller) return { success: false, error: "No autorizado." };
+    if (!Number.isInteger(cuit) || String(cuit).length !== 11) {
+        return { success: false, error: "Ingresá un CUIT válido de 11 dígitos." };
+    }
+    return getTaxpayerDetails(cuit);
 }
 
-export type AdminInvoiceItem = {
-    description: string;
-    quantity: number;
-    unitPrice: number;
-    vatCondition: "21";
-};
+function parseCaeExpiration(value: string) {
+    if (!/^\d{8}$/.test(value)) throw new Error("ARCA no devolvió un vencimiento de CAE válido.");
+    const year = Number(value.slice(0, 4));
+    const month = Number(value.slice(4, 6));
+    const day = Number(value.slice(6, 8));
+    return new Date(Date.UTC(year, month - 1, day, 12));
+}
 
-export async function generateAdminInvoice(data: {
-    branchId: string;
-    userId: string;
-    customer: {
-        docType: "CUIT" | "DNI" | "FINAL";
-        docNumber: string;
-        name: string;
-        address: string;
-        ivaCondition: string; // Just for reference
+export async function generateAdminInvoice(input: AdminInvoiceInput) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") {
+        return { success: false, error: "No autorizado." };
+    }
+
+    const validation = validateAndCalculateAdminInvoice(input);
+    if (!validation.success) return validation;
+
+    const branch = await db.branch.findUniqueOrThrow({
+        where: { id: validation.data.branchId },
+        select: { id: true, name: true, code: true },
+    });
+    const fiscalContext = resolveAdminFiscalContext(branch);
+    const context = {
+        requestedById: caller.id,
+        billingEntity: fiscalContext.billingEntity,
+        salesPoint: fiscalContext.salesPoint,
+        input: validation.data,
+        totals: validation.totals,
     };
-    items: AdminInvoiceItem[];
-    salesPoint: number;
-    invoiceType: "A" | "B"; // Admin selects this explicitly
-    paymentMethod: "CASH" | "CARD" | "TRANSFER" | "OTHER";
-    concept?: number;
-    serviceDateFrom?: string; // YYYY-MM-DD
-    serviceDateTo?: string; // YYYY-MM-DD
-    paymentDueDate?: string; // YYYY-MM-DD
-    billingEntity?: 'MACCELL' | '8BIT';
-}) {
-    try {
-        if (!data.items || data.items.length === 0) {
-            return { success: false, error: "Debe agregar al menos un ítems." };
-        }
+    const attemptResult = await createEmissionAttempt(context);
+    const attempt = attemptResult.attempt;
 
-        // 1. Calculate Totals (Server-side validation)
-        let totalNet21 = 0;
-        let totalVat21 = 0;
+    if (attempt.requestedById !== caller.id) {
+        return { success: false, error: "El identificador de emisión pertenece a otra operación." };
+    }
 
-        for (const item of data.items) {
-            const itemTotal = item.quantity * item.unitPrice;
-            const rate = 1.21;
-            const net = itemTotal / rate;
-            const vat = itemTotal - net;
-
-            totalNet21 += net;
-            totalVat21 += vat;
-        }
-
-        totalNet21 = formatAmount(totalNet21);
-        totalVat21 = formatAmount(totalVat21);
-
-        const totalNet = totalNet21;
-        const totalVat = totalVat21;
-        const totalAmount = formatAmount(totalNet + totalVat);
-
-        // Prepare detailed IVA items for AFIP
-        const ivaItems = [];
-        if (totalNet21 > 0) {
-            ivaItems.push({ id: 5, base: totalNet21, amount: totalVat21 });
-        }
-        // 2. Prepare AFIP Payload
-        const concept = data.concept || 1; // 1: Products, 2: Services, 3: Mixed
-
-        let serviceDateFrom: string | undefined;
-        let serviceDateTo: string | undefined;
-        let paymentDueDate: string | undefined;
-
-        if (concept !== 1) {
-            if (!data.serviceDateFrom || !data.serviceDateTo || !data.paymentDueDate) {
-                return { success: false, error: "Para Servicios, las fechas son obligatorias." };
-            }
-            serviceDateFrom = data.serviceDateFrom;
-            serviceDateTo = data.serviceDateTo;
-            paymentDueDate = data.paymentDueDate;
-        }
-
-        const docNumber = parseInt(data.customer.docNumber.replace(/\D/g, '')) || 0;
-        let docTypeCode = 99; // Final
-        if (data.customer.docType === "CUIT") docTypeCode = 80;
-        if (data.customer.docType === "DNI") docTypeCode = 96;
-
-        const voucherType = data.invoiceType === "A" ? 1 : 6; // 6 = B
-
-        const afipData = {
-            salesPoint: data.salesPoint,
-            type: voucherType,
-            concept: concept,
-            docType: docTypeCode,
-            docNumber: docNumber,
-            cbteDesde: 0, // Ignored
-            cbteHasta: 0, // Ignored
-            amount: totalAmount,
-            vatAmount: totalVat,
-            netAmount: totalNet,
-            exemptAmount: 0,
-            ivaItems: ivaItems, // NEW: Detailed VAT
-            // Dates required if Concept != 1
-            serviceDateFrom: serviceDateFrom,
-            serviceDateTo: serviceDateTo,
-            paymentDueDate: paymentDueDate
+    if (attempt.status === "COMPLETED" && attempt.cae && attempt.voucherNumber && attempt.caeExpiresAt) {
+        return {
+            success: true,
+            invoice: {
+                cae: attempt.cae,
+                voucherNumber: attempt.voucherNumber,
+                caeExpiresAt: attempt.caeExpiresAt.toISOString(),
+                syncStatus: "COMPLETED" as const,
+            },
         };
+    }
 
-        // 3. Call AFIP
-        const ivaConditionId = getIvaConditionId(data.customer.ivaCondition || "");
-
-        const afipRes = await createAfipInvoice({
-            ...afipData,
-            ivaConditionId,
-            billingEntity: data.billingEntity
+    let authorization: AuthorizedInvoiceData;
+    if (attempt.status === "AUTHORIZED_PENDING_SYNC" && attempt.cae && attempt.voucherNumber && attempt.caeExpiresAt) {
+        authorization = {
+            cae: attempt.cae,
+            voucherNumber: attempt.voucherNumber,
+            caeExpiresAt: attempt.caeExpiresAt,
+        };
+    } else if (attempt.status !== "PENDING" || !attemptResult.created) {
+        return { success: false, error: "La emisión anterior no puede repetirse automáticamente. Revisá su estado en ARCA." };
+    } else {
+        const docNumber = Number(validation.data.customer.docNumber.replace(/\D/g, "")) || 0;
+        const docType = validation.data.customer.docType === "CUIT"
+            ? 80
+            : validation.data.customer.docType === "DNI" ? 96 : 99;
+        const voucherType = validation.data.invoiceType === "A" ? 1 : 6;
+        const afipResult = await createAfipInvoice({
+            salesPoint: fiscalContext.salesPoint,
+            type: voucherType,
+            concept: validation.data.concept,
+            docType,
+            docNumber,
+            cbteDesde: 0,
+            cbteHasta: 0,
+            amount: validation.totals.total,
+            vatAmount: validation.totals.vat,
+            netAmount: validation.totals.net,
+            exemptAmount: 0,
+            ivaItems: [{ id: 5, base: validation.totals.net, amount: validation.totals.vat }],
+            serviceDateFrom: validation.data.serviceDateFrom,
+            serviceDateTo: validation.data.serviceDateTo,
+            paymentDueDate: validation.data.paymentDueDate,
+            ivaConditionId: getIvaConditionId(validation.data.customer.ivaCondition),
+            branchId: branch.id,
+            billingEntity: fiscalContext.billingEntity,
         });
 
-        if (!afipRes.success) {
-            return { success: false, error: "AFIP Error: " + afipRes.error };
+        if (!afipResult.success || !afipResult.data) {
+            const error = afipResult.error || "ARCA rechazó la emisión.";
+            await markEmissionAttemptFailed(validation.data.requestId, error);
+            return { success: false, error };
         }
 
-        if (!afipRes.data) {
-            throw new Error("AFIP returned success but no data.");
+        let voucherNumber = afipResult.data.voucherNumber;
+        let caeExpiration = afipResult.data.caeFchVto;
+        if (!voucherNumber || !caeExpiration) {
+            const client = await getAfipClient(branch.id, fiscalContext.billingEntity);
+            const recovered = await recoverAuthorizedVoucher(
+                client.electronicBillingService,
+                fiscalContext.salesPoint,
+                voucherType,
+                afipResult.data.cae
+            );
+            voucherNumber = recovered.voucherNumber;
+            caeExpiration = recovered.caeExpiresAt;
         }
-        const cae = afipRes.data.cae;
-        const caeFchVto = afipRes.data.caeFchVto;
-        // @ts-expect-error TECH_DEBT(2026-04): cbteNro no está declarado en data; mantenemos
-        // el fallback runtime por si el SDK lo agrega en futuras respuestas.
-        const voucherNum = afipRes.data.voucherNumber || afipRes.data.cbteNro || 0;
 
-        // 4. Create Sale & Invoice in DB
-        const saleNumber = `ADM-${Date.now()}`;
+        authorization = {
+            cae: afipResult.data.cae,
+            voucherNumber: `${String(fiscalContext.salesPoint).padStart(5, "0")}-${String(voucherNumber).padStart(8, "0")}`,
+            caeExpiresAt: parseCaeExpiration(caeExpiration),
+        };
+        await storeAuthorizedAttempt(validation.data.requestId, authorization);
+    }
 
-        await db.$transaction(async (tx) => {
-            // Create Sale
-            const sale = await tx.sale.create({
-                data: {
-                    saleNumber,
-                    total: totalAmount,
-                    vendorId: data.userId, // Admin
-                    branchId: data.branchId, // Selected Branch
-                    paymentMethod: "CASH" // Default or passed? (Assume Cash/Other for Admin)
-                }
-            });
-
-            // Create Items
-            /*
-            await tx.saleItem.createMany({
-                data: data.items.map(i => ({
-                    saleId: sale.id,
-                    name: i.description,
-                    quantity: i.quantity,
-                    price: i.unitPrice,
-                    productId: null // No product link for manual items
-                }))
-            });
-            */
-            // loop for sale items
-            for (const item of data.items) {
-                await tx.saleItem.create({
-                    data: {
-                        saleId: sale.id,
-                        name: item.description,
-                        quantity: item.quantity,
-                        price: item.unitPrice,
-                        productId: null
-                    }
-                })
-            }
-
-            // Create Invoice
-            // Format number?
-            // If the SDK result doesn't give the number, we might guess it.
-            // But let's look at `afip.ts`: `return { success: true, data: res };`
-
-            // We'll trust the flow succeeded.
-            // For proper Number display we might need to fetch last again or use returned data.
-            // Only `CAE` is critical.
-
-            // Let's try to parse expiration
-            let caeExpiresAt = new Date();
-            if (caeFchVto && caeFchVto.length === 8) {
-                const y = parseInt(caeFchVto.substring(0, 4));
-                const m = parseInt(caeFchVto.substring(4, 6)) - 1;
-                const d = parseInt(caeFchVto.substring(6, 8));
-                caeExpiresAt = new Date(y, m, d);
-            }
-
-            await tx.saleInvoice.create({
-                data: {
-                    saleId: sale.id,
-                    invoiceType: data.invoiceType,
-                    invoiceNumber: `${data.salesPoint.toString().padStart(5, '0')}-${(voucherNum || 0).toString().padStart(8, '0')}`,
-                    cae: cae,
-                    caeExpiresAt: caeExpiresAt,
-                    customerDocType: data.customer.docType,
-                    customerDoc: data.customer.docNumber,
-                    customerName: data.customer.name,
-                    customerAddress: data.customer.address,
-                    netAmount: totalNet,
-                    vatAmount: totalVat,
-                    totalAmount: totalAmount,
-                    billingEntity: data.billingEntity || "MACCELL"
-                }
-            });
-        });
-
+    try {
+        const persisted = await persistAuthorizedAdminInvoice(context, authorization);
         revalidatePath("/admin/invoices");
-        return { success: true };
-
+        return {
+            success: true,
+            invoice: {
+                cae: persisted.cae,
+                voucherNumber: persisted.voucherNumber,
+                caeExpiresAt: persisted.caeExpiresAt.toISOString(),
+                syncStatus: "COMPLETED" as const,
+            },
+        };
     } catch (error: unknown) {
-        console.error("Generate Admin Invoice Error:", error);
         const message = error instanceof Error ? error.message : String(error);
-        return { success: false, error: message };
+        console.error("Admin invoice local synchronization failed:", message);
+        return {
+            success: false,
+            error: "ARCA autorizó la factura, pero quedó pendiente de sincronización local. No vuelvas a emitirla.",
+            syncStatus: "AUTHORIZED_PENDING_SYNC" as const,
+        };
     }
 }

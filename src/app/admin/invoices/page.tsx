@@ -15,6 +15,11 @@ import { ReceiptText } from "lucide-react";
 import { CreateInvoiceModal } from "./create-invoice-modal";
 import { InvoicePrintButton } from "./invoice-print-button";
 import { getInvoices } from "@/actions/invoice-actions";
+import { getStoredInvoiceAfipControl, type InvoiceAfipControlResult } from "@/actions/invoice-afip-control";
+import { getCurrentUser } from "@/actions/auth-actions";
+import { TIMEZONE } from "@/lib/date-utils";
+import { formatInTimeZone } from "date-fns-tz";
+import { redirect } from "next/navigation";
 import { InvoiceDateFilter } from "./invoice-date-filter";
 import { InvoicePagination } from "./invoice-pagination";
 import { InvoiceDetailModal } from "./invoice-detail-modal";
@@ -34,6 +39,9 @@ export default async function InvoicesPage({
 }: {
     searchParams: Promise<{ page?: string, date?: string, view?: string }>
 }) {
+    const caller = await getCurrentUser();
+    if (!caller || caller.role !== "ADMIN") redirect("/login");
+
     const resolvedParams = await searchParams;
     const page = Number(resolvedParams.page) || 1;
     const viewAll = resolvedParams.view === 'all';
@@ -41,25 +49,21 @@ export default async function InvoicesPage({
     // Default to Current Month if not "view all" and no date provided
     let date = resolvedParams.date;
     if (!date && !viewAll) {
-        date = format(new Date(), 'yyyy-MM');
+        date = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM");
     }
 
-    // Determine User/Branch (Mock or real if auth available)
-    const adminUser = await db.user.findFirst({
-        where: { role: 'ADMIN' }
-    }) || await db.user.findFirst();
-
-    const adminUserId = adminUser?.id || "admin-user";
-
-    // Fetch Branches for the modal
-    const branches = await db.branch.findMany({ select: { id: true, name: true, code: true } });
-
-    // Fetch Invoices via Server Action
-    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalNet, totalVat, entitySummaries, debitVatSummary } = await getInvoices({
-        page,
-        limit: 25,
-        date
-    });
+    const emptyAfipControl: InvoiceAfipControlResult = {
+        success: true,
+        summaries: [],
+        warnings: [],
+        readAt: new Date().toISOString(),
+    };
+    const [branches, invoiceData, initialAfipControl] = await Promise.all([
+        db.branch.findMany({ select: { id: true, name: true, code: true } }),
+        getInvoices({ page, limit: 25, date }),
+        date ? getStoredInvoiceAfipControl(date) : Promise.resolve(emptyAfipControl),
+    ]);
+    const { invoices, totalPages, currentPage, totalAmount, totalCount, totalNet, totalVat, entitySummaries } = invoiceData;
 
     const periodLabel = !date
         ? "del historial completo"
@@ -102,7 +106,7 @@ export default async function InvoicesPage({
                 <div className="flex flex-wrap items-center gap-3 border-t bg-gradient-to-r from-emerald-500/5 via-blue-500/5 to-purple-500/5 p-4 sm:p-5">
                     <InvoiceDateFilter />
                     <div className="ml-auto">
-                        <CreateInvoiceModal branches={branches} userId={adminUserId} />
+                        <CreateInvoiceModal branches={branches} />
                     </div>
                 </div>
 
@@ -114,7 +118,7 @@ export default async function InvoicesPage({
                     periodLabel={periodLabel}
                     date={date}
                     entitySummaries={entitySummaries}
-                    debitVatSummary={debitVatSummary}
+                    initialAfipControl={initialAfipControl}
                 />
             </section>
 

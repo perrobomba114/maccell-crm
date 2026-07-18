@@ -4,6 +4,8 @@ export type InvoiceBranchOption = {
     code?: string | null;
 };
 
+export type InvoicePaymentMethod = "CASH" | "CARD" | "MERCADOPAGO";
+
 export type InvoiceItemForm = {
     id: string;
     description: string;

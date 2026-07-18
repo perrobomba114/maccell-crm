@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
     buildAfipRanges,
+    compareInvoiceLookups,
     filterInvoicesByAfipLookups,
+    parseInvoiceVoucherIdentity,
     type InvoiceForAfipSeed,
 } from "../actions/invoice-afip-control-helpers";
 import { buildDebitVatSummary } from "../actions/invoice-summary-helpers";
@@ -146,4 +148,41 @@ test("compares only local invoices whose exact ARCA lookup completed", () => {
     ]);
 
     assert.deepEqual(compared, [invoices[0], invoices[2]]);
+});
+
+test("parses the real sales point and voucher number from a local invoice", () => {
+    const identity = parseInvoiceVoucherIdentity({
+        billingEntity: null,
+        totalAmount: 19000,
+        netAmount: 15702.48,
+        vatAmount: 3297.52,
+        invoiceType: "B",
+        invoiceNumber: "00010-00027897",
+        createdAt: new Date("2026-07-17T23:54:00.000Z"),
+        sale: { branch: { name: "MACCELL 3", code: "M3" } },
+    });
+
+    assert.deepEqual(identity, {
+        entity: "MACCELL",
+        salesPoint: 10,
+        voucherType: 6,
+        voucherNumber: 27897,
+    });
+});
+
+test("compares local and ARCA voucher identities in both directions", () => {
+    const local = [
+        { entity: "MACCELL" as const, salesPoint: 10, voucherType: 6 as const, voucherNumber: 100 },
+        { entity: "MACCELL" as const, salesPoint: 10, voucherType: 6 as const, voucherNumber: 101 },
+    ];
+    const afip = [
+        { entity: "MACCELL" as const, salesPoint: 10, voucherType: 6 as const, voucherNumber: 101 },
+        { entity: "MACCELL" as const, salesPoint: 10, voucherType: 6 as const, voucherNumber: 102 },
+    ];
+
+    assert.deepEqual(compareInvoiceLookups(local, afip), {
+        matched: [local[1]],
+        onlyLocal: [local[0]],
+        onlyAfip: [afip[1]],
+    });
 });
