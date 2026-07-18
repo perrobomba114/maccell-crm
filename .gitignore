@@ -52,6 +52,11 @@ upload/
 *.zip
 *.tar.gz
 
+# Local analysis and private generated reports
+/tmp/
+/informe_garantias_*.pdf
+/SM-A405FN_*.pdf
+
 # AFIP Certs
 afip-certs/
 
