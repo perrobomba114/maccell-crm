@@ -182,32 +182,56 @@ function AfipEntityRow({
         : "Sin consultar";
     const afipAmount = loadedSummary ? currencyFormatter.format(loadedSummary.afipAmount) : "Sin consultar";
     const differenceAmount = loadedSummary ? currencyFormatter.format(loadedSummary.differenceAmount) : "Pendiente";
-    const differenceTone = loadedSummary && Math.abs(loadedSummary.differenceAmount) < 0.01
+    const isReconciled = loadedSummary
+        ? Math.abs(loadedSummary.differenceAmount) < 0.01
+            && loadedSummary.systemCount === loadedSummary.afipCount
+        : false;
+    const differenceTone = isReconciled
         ? "text-emerald-600 dark:text-emerald-300"
-        : "text-foreground";
+        : "text-rose-600 dark:text-rose-300";
 
     return (
         <div className="rounded-md border border-white/10 bg-background/40 p-3">
-            <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2">
-                    <Icon className="h-4 w-4 shrink-0 text-amber-500" />
-                    <span className="min-w-0 text-sm font-bold text-foreground">{localSummary.label}</span>
+            <div className="mb-3 flex min-w-0 items-center gap-2">
+                <Icon className="h-4 w-4 shrink-0 text-amber-500" />
+                <span className="min-w-0 text-sm font-bold text-foreground">{localSummary.label}</span>
+            </div>
+
+            <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="min-w-0 rounded-md bg-muted/35 px-2.5 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total período</p>
+                    <p className="mt-1 font-bold tabular-nums text-foreground">
+                        {localSummary.count.toLocaleString("es-AR")} comprobantes
+                    </p>
                 </div>
-                <div className="shrink-0 text-right text-xs text-muted-foreground">
-                    <p>{localSummary.count.toLocaleString("es-AR")} comprobantes del período</p>
-                    {loadedSummary && (
-                        <p>
-                            {loadedSummary.systemCount.toLocaleString("es-AR")} local · {loadedSummary.afipCount.toLocaleString("es-AR")} ARCA comparados
-                        </p>
-                    )}
+                <div className="min-w-0 rounded-md bg-muted/35 px-2.5 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Muestra ARCA</p>
+                    <p className="mt-1 font-bold tabular-nums text-foreground">
+                        {loadedSummary
+                            ? `${loadedSummary.systemCount.toLocaleString("es-AR")} local · ${loadedSummary.afipCount.toLocaleString("es-AR")} ARCA`
+                            : "Pendiente"}
+                    </p>
                 </div>
             </div>
 
             <div className="grid gap-2 text-xs">
+                <MetricLine label="Local total del período" value={currencyFormatter.format(localSummary.totalAmount)} />
+                <div className="my-1 border-t border-white/10" />
                 <MetricLine label="Local comparado" value={localComparedAmount} muted={!loadedSummary} />
                 <MetricLine label="ARCA comparado" value={afipAmount} muted={!loadedSummary} />
-                <MetricLine label="Diferencia" value={differenceAmount} valueClassName={differenceTone} muted={!loadedSummary} />
+                <MetricLine label="Diferencia de la muestra" value={differenceAmount} valueClassName={differenceTone} muted={!loadedSummary} />
             </div>
+
+            {loadedSummary && (
+                <p className={cn(
+                    "mt-3 rounded-md px-2.5 py-2 text-xs font-semibold",
+                    isReconciled
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                        : "bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                )}>
+                    {isReconciled ? "Muestra conciliada" : "Revisar diferencia en la muestra"}
+                </p>
+            )}
         </div>
     );
 }
