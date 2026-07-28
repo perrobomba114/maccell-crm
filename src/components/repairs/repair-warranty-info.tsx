@@ -54,14 +54,14 @@ export function RepairWarrantyInfo({
                     }
                 }}
                 className={cn(
-                    "w-full rounded-xl border border-amber-400/45 bg-amber-500/10 p-3 text-left transition-colors",
+                    "w-full rounded-xl border border-amber-400/45 bg-amber-500/10 p-2.5 text-left transition-colors",
                     canOpenLinkedRepair && "cursor-pointer hover:border-yellow-300 hover:bg-yellow-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
                     !canOpenLinkedRepair && "cursor-default",
                 )}
                 title={canOpenLinkedRepair ? "Ver detalle de la reparación vinculada" : undefined}
             >
-                <div className="flex min-w-0 items-start gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/10">
+                <div className="flex min-w-0 items-start gap-2.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/10">
                         <ShieldAlert className="size-4 text-amber-300" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -78,13 +78,13 @@ export function RepairWarrantyInfo({
                                 <span className="truncate font-bold uppercase text-white">{originalTechnician ?? "Sin registro"}</span>
                             </p>
                         ) : null}
-                        <p className="mt-1 line-clamp-2 text-xs font-medium leading-4 text-slate-300">
+                        <p className="mt-1 line-clamp-1 text-xs font-medium leading-4 text-slate-300">
                             <span className="font-bold text-amber-400">Problema anterior:</span>{" "}
                             {linkedRepair.problemDescription}
                         </p>
                     </div>
                     {canOpenLinkedRepair && (
-                        <div className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-amber-400/30 bg-black/20 text-amber-200" aria-label="Ver reparación vinculada">
+                        <div className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-amber-400/30 bg-black/20 text-amber-200" aria-label="Ver reparación vinculada">
                             <Eye className="h-3.5 w-3.5" />
                         </div>
                     )}

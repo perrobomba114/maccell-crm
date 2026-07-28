@@ -221,7 +221,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                     </DialogHeader>
 
                     {/* Scrollable Content */}
-                    <div className="min-w-0 flex-1 overflow-hidden bg-muted/5 dark:bg-muted/10">
+                    <div className="custom-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-muted/5 dark:bg-muted/10 lg:overflow-y-hidden">
                         <div className="min-w-0 space-y-3 p-4">
 
                             {/* Top Stats Row - Vibrant Centered Cards */}
@@ -459,11 +459,16 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                 </div>
                             </div>
 
-                            {/* Full-width activity blocks */}
+                            <div className={cn(
+                                repair.observations && repair.observations.length > 0 && chronologicalHistory.length > 0
+                                    ? "grid items-start gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,2.2fr)]"
+                                    : "space-y-3",
+                            )}>
+                            {/* Activity blocks */}
                             {repair.observations && repair.observations.length > 0 && (
-                                <div className="space-y-3 border-t border-slate-800 pt-4">
+                                <div className="min-w-0 space-y-3 border-t border-slate-800 pt-3">
                                     <h3 className="pl-1 text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">NOTAS / OBSERVACIONES</h3>
-                                    <div className={cn("grid gap-2", repair.observations.length > 1 && "lg:grid-cols-2")}>
+                                    <div className="grid gap-2">
                                         {repair.observations.map((obs, idx) => (
                                             <div key={idx} className="relative rounded-xl border border-white/[0.06] bg-slate-900 p-3">
                                                 <div className="mb-2 flex items-start justify-between">
@@ -486,26 +491,26 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                             )}
 
                             {chronologicalHistory.length > 0 && (
-                                <div className="space-y-3 border-t border-slate-800 pt-4">
+                                <div className="min-w-0 space-y-3 border-t border-slate-800 pt-3">
                                     <div className="flex items-center justify-between gap-3 px-1">
                                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">HISTORIAL DE ESTADOS</h3>
                                         <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400">Ingreso → cierre</span>
                                     </div>
-                                    <div className="relative flex flex-nowrap overflow-hidden rounded-xl border border-white/[0.06] bg-slate-950/70 px-2 py-3">
+                                    <div className="relative grid gap-1.5 overflow-hidden rounded-xl border border-white/[0.06] bg-slate-950/70 p-2 sm:flex sm:flex-nowrap sm:px-2 sm:py-3">
                                         <div className="absolute left-[8%] right-[8%] top-[54px] hidden h-px bg-gradient-to-r from-blue-500/20 via-blue-400/60 to-emerald-400/30 xl:block" />
                                         {chronologicalHistory.map((history, idx) => (
-                                            <div key={idx} className="relative z-10 flex min-w-0 flex-1 basis-0 flex-col items-center px-2 py-1 text-center">
-                                                <div className="flex items-baseline gap-1.5 tabular-nums">
+                                            <div key={idx} className="relative z-10 flex min-w-0 items-center gap-2 rounded-lg bg-slate-900/70 px-2 py-1.5 text-left sm:flex-1 sm:basis-0 sm:flex-col sm:gap-0 sm:bg-transparent sm:py-1 sm:text-center">
+                                                <div className="flex w-16 shrink-0 items-baseline gap-1.5 tabular-nums sm:w-auto">
                                                     <span className="text-[10px] font-black text-white">{format(new Date(history.createdAt), "dd/MM")}</span>
                                                     <span className="text-[9px] font-bold text-slate-500">{format(new Date(history.createdAt), "HH:mm")}</span>
                                                 </div>
-                                                <div className="my-2 flex size-7 items-center justify-center rounded-full border-2 border-blue-400 bg-slate-950 text-[10px] font-black text-blue-300 shadow-[0_0_14px_rgba(96,165,250,0.3)]">
+                                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-blue-400 bg-slate-950 text-[10px] font-black text-blue-300 shadow-[0_0_14px_rgba(96,165,250,0.3)] sm:my-2">
                                                     {idx + 1}
                                                 </div>
                                                 <Badge variant="outline" className={cn("max-w-full truncate rounded-md border px-2 py-0.5 text-[8px] font-black uppercase", statusColorMap[history.toStatus.color ?? ""] || "bg-slate-800 text-white border-slate-700")}>
                                                     {history.toStatus.name}
                                                 </Badge>
-                                                <span className="mt-1.5 max-w-full truncate text-[8px] font-bold uppercase tracking-wider text-slate-500">
+                                                <span className="ml-auto max-w-20 truncate text-[8px] font-bold uppercase tracking-wider text-slate-500 sm:ml-0 sm:mt-1.5 sm:max-w-full">
                                                     {history.user?.name.split(" ")[0] || (history.userId ? history.userId.slice(-4) : "Sistema")}
                                                 </span>
                                             </div>
@@ -513,6 +518,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     </div>
                                 </div>
                             )}
+                            </div>
                         </div>
                     </div>
                 </DialogContent>
