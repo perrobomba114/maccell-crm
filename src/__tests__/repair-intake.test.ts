@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -81,4 +82,16 @@ test("normalizes values read from FormData", () => {
             hasMemoryCard: true,
         },
     });
+});
+
+test("repair creation validates and persists normalized intake fields", () => {
+    const source = readFileSync(new URL("../actions/repairs/create.ts", import.meta.url), "utf8");
+
+    assert.match(source, /readRepairIntakeFormData\(formData\)/);
+    assert.match(source, /accessType:\s*intakeResult\.data\.accessType/);
+    assert.match(source, /accessCredential:\s*intakeResult\.data\.accessCredential/);
+    assert.match(source, /hasSimCard:\s*intakeResult\.data\.hasSimCard/);
+    assert.match(source, /hasMemoryCard:\s*intakeResult\.data\.hasMemoryCard/);
+    assert.match(source, /statusId:\s*REPAIR_STATUS\.PENDING/);
+    assert.doesNotMatch(source, /\bany\b/);
 });

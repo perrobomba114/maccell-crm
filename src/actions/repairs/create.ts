@@ -10,6 +10,8 @@ import { es } from "date-fns/locale";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { isValidImg } from "@/lib/utils";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { readRepairIntakeFormData } from "@/lib/repairs/intake";
+import { REPAIR_STATUS } from "@/lib/repairs/status";
 import { checkTicketAvailability } from "./reference";
 
 export async function createRepairAction(formData: FormData) {
@@ -30,6 +32,11 @@ export async function createRepairAction(formData: FormData) {
             return { success: false, error: ticketCheck.error };
         }
 
+        const intakeResult = readRepairIntakeFormData(formData);
+        if (!intakeResult.success) {
+            return { success: false, error: intakeResult.error };
+        }
+
         const customer = await customerService.findOrCreate({
             name: formData.get("customerName") as string,
             phone: formData.get("customerPhone") as string,
@@ -41,8 +48,17 @@ export async function createRepairAction(formData: FormData) {
 
         const savedImages = await saveRepairImages(formData, ticketNumber);
 
-        const partsJson = formData.get("spareParts") as string;
-        const parts = partsJson ? JSON.parse(partsJson) : [];
+        const partsJson = formData.get("spareParts");
+        const parsedParts: unknown = typeof partsJson === "string" && partsJson.length > 0
+            ? JSON.parse(partsJson)
+            : [];
+        if (!Array.isArray(parsedParts) || !parsedParts.every((part) => {
+            if (typeof part !== "object" || part === null || !("id" in part)) return false;
+            return typeof part.id === "string" && part.id.length > 0;
+        })) {
+            return { success: false, error: "La selección de repuestos no es válida." };
+        }
+        const parts = parsedParts.map((part) => ({ id: part.id }));
         if (parts.length > 3) {
             return { success: false, error: "Máximo 3 repuestos permitidos." };
         }
@@ -65,9 +81,13 @@ export async function createRepairAction(formData: FormData) {
                 branchId,
                 customerId: customer.id,
                 userId,
-                statusId: 1, // Ingresado
+                statusId: REPAIR_STATUS.PENDING,
                 deviceBrand,
                 deviceModel,
+                accessType: intakeResult.data.accessType,
+                accessCredential: intakeResult.data.accessCredential,
+                hasSimCard: intakeResult.data.hasSimCard,
+                hasMemoryCard: intakeResult.data.hasMemoryCard,
                 problemDescription,
                 deviceImages: savedImages.filter(isValidImg),
                 promisedAt,
@@ -76,14 +96,14 @@ export async function createRepairAction(formData: FormData) {
                 isWet,
                 originalRepairId: isWarranty ? originalRepairId : null,
                 parts: {
-                    create: parts.map((p: any) => ({
+                    create: parts.map((p) => ({
                         sparePartId: p.id,
                         quantity: 1
                     }))
                 },
                 statusHistory: {
                     create: {
-                        toStatusId: 1,
+                        toStatusId: REPAIR_STATUS.PENDING,
                         userId
                     }
                 },
@@ -128,8 +148,7 @@ export async function createRepairAction(formData: FormData) {
             const formattedDate = formatInTimeZone(promisedAt, TIMEZONE, "dd/MM/yyyy", { locale: es });
             const formattedTime = formatInTimeZone(promisedAt, TIMEZONE, "HH:mm", { locale: es });
 
-            for (const tech of technicians) {
-                await createNotificationAction({
+            await Promise.all(technicians.map((tech) => createNotificationAction({
                     userId: tech.id,
                     title: `Nueva Reparación #${ticketNumber}`,
                     message: `Ingreso de reparación. Fecha prometida: ${formattedDate} ${formattedTime}`,
@@ -141,8 +160,7 @@ export async function createRepairAction(formData: FormData) {
                         customerName: customer.name
                     },
                     link: `/technician/tickets`
-                });
-            }
+                })));
         } catch (notifError) {
             console.error("Error sending notifications:", notifError);
         }
