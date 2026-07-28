@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { toast } from "sonner";
 import type { RepairChatMessage, RepairChatPreview, RepairChatSummary, RepairSearchResult } from "./repair-chat-types";
 import { RepairChatWidget } from "./repair-chat-widget";
+import type { RepairChatRole } from "@/lib/repair-chat/navigation";
 
 const CHAT_NOTIFICATION_SOUND = "/chat.mp3";
 const CHAT_NOTIFICATION_VOLUME = 0.9;
@@ -77,6 +78,7 @@ function reducer(state: State, action: Action): State {
 
 type ContextValue = State & {
     currentUserId: string;
+    currentUserRole: RepairChatRole;
     unreadCount: number;
     setOpen: (value: boolean) => void;
     setNewChatOpen: (value: boolean) => void;
@@ -98,7 +100,7 @@ export function useRepairChat(): ContextValue {
     return value;
 }
 
-export function RepairChatProvider({ userId, children }: { userId: string; children: React.ReactNode }) {
+export function RepairChatProvider({ userId, role, children }: { userId: string; role: RepairChatRole; children: React.ReactNode }) {
     const [state, dispatch] = useReducer(reducer, initialState);
     const scopeRef = useRef(state.scope);
     const selectedRef = useRef(state.selected);
@@ -238,6 +240,7 @@ export function RepairChatProvider({ userId, children }: { userId: string; child
     const value = useMemo<ContextValue>(() => ({
         ...state,
         currentUserId: userId,
+        currentUserRole: role,
         unreadCount: state.chats.filter((chat) => chat.unread).length,
         setOpen: (value) => {
             if (value) dispatch({ type: "preview", value: null });
@@ -252,7 +255,7 @@ export function RepairChatProvider({ userId, children }: { userId: string; child
         loadMore: () => loadChats(scopeRef.current, true),
         loadOlderMessages,
         search, selectRepair, send,
-    }), [loadChats, loadOlderMessages, loadThread, search, selectRepair, send, state, userId]);
+    }), [loadChats, loadOlderMessages, loadThread, role, search, selectRepair, send, state, userId]);
 
     return <RepairChatContext.Provider value={value}>{children}<RepairChatWidget /></RepairChatContext.Provider>;
 }

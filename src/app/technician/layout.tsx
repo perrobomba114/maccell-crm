@@ -91,7 +91,7 @@ export default function TechnicianLayout({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <RepairChatProvider userId={userId ?? ""}>
+        <RepairChatProvider userId={userId ?? ""} role="TECHNICIAN">
         <div className="flex min-h-screen" suppressHydrationWarning>
             <PresenceHeartbeat />
             <TechnicianDeadlineMonitor userId={userId} />

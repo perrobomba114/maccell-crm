@@ -19,6 +19,7 @@ import type { LoadingRepairAction } from "./components/AdminRepairRowActions";
 import { shouldPauseAdminRepairsAutoRefresh } from "@/lib/admin-repairs-refresh";
 import { usePolling } from "@/hooks/use-polling";
 import { buildAdminRepairSearchParamUpdates } from "@/lib/admin-repairs-filter-updates";
+import { removeRepairDetailsParam } from "@/lib/repair-chat/navigation";
 
 export function AdminRepairsTable({ repairsData, branches }: { repairsData: AdminRepairsResult, branches: AdminRepairBranch[] }) {
     const searchParams = useSearchParams();
@@ -29,6 +30,7 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
     const selectedBranchId = searchParams.get('branch') || 'ALL';
     const currentPage = repairsData.page;
     const showOnlyWarranty = searchParams.get('warranty') === '1';
+    const requestedRepairId = searchParams.get("repairId");
 
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [viewRepair, setViewRepair] = useState<RepairDetails | null>(null);
@@ -39,6 +41,7 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
 
     const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
     const pendingSearchTermRef = useRef<string | null>(null);
+    const openedRepairIdRef = useRef<string | null>(null);
 
     const updateParams = useCallback((updates: Record<string, string | null>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -115,6 +118,18 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
         }
     }, []);
 
+    useEffect(() => {
+        if (!requestedRepairId || openedRepairIdRef.current === requestedRepairId) return;
+        openedRepairIdRef.current = requestedRepairId;
+        void handleOpenRepairDetails(requestedRepairId);
+    }, [handleOpenRepairDetails, requestedRepairId]);
+
+    const closeRepairDetails = useCallback(() => {
+        setViewRepair(null);
+        openedRepairIdRef.current = null;
+        router.replace(removeRepairDetailsParam(pathname, searchParams), { scroll: false });
+    }, [pathname, router, searchParams]);
+
     const currencyFormatter = useMemo(() => new Intl.NumberFormat("es-AR", {
         style: "currency",
         currency: "ARS",
@@ -180,7 +195,7 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
 
             <RepairDetailsDialog
                 isOpen={!!viewRepair}
-                onClose={() => setViewRepair(null)}
+                onClose={closeRepairDetails}
                 repair={viewRepair}
                 onOpenRepair={(repairId) => void handleOpenRepairDetails(repairId)}
             />

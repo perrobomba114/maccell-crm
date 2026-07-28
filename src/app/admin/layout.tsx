@@ -116,7 +116,7 @@ export default function AdminLayout({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <RepairChatProvider userId={userId ?? ""}>
+        <RepairChatProvider userId={userId ?? ""} role="ADMIN">
         <div className="flex min-h-screen" suppressHydrationWarning>
             <PresenceHeartbeat />
             <div className="print:hidden">

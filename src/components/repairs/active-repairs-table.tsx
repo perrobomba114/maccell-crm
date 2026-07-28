@@ -4,7 +4,7 @@
 // pull-to-refresh (mobile), and all dialogs for the active repairs view.
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import { type ActiveRepair, type ActiveRepairsTableProps } from "./active-repair
 import { getRepairImageCount } from "./repair-images-action-button";
 import { printRepairTicketSequence } from "@/lib/repair-print-sequence";
 import { cn } from "@/lib/utils";
+import { removeRepairDetailsParam } from "@/lib/repair-chat/navigation";
 
 export function ActiveRepairsTable({
     repairs,
@@ -45,6 +46,30 @@ export function ActiveRepairsTable({
     const [transferRepair, setTransferRepair] = useState<ActiveRepair | null>(null);
     const [addPartRepair, setAddPartRepair] = useState<ActiveRepair | null>(null);
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const requestedRepairId = searchParams.get("repairId");
+    const openedRepairIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!requestedRepairId || openedRepairIdRef.current === requestedRepairId) return;
+        const requestedRepair = repairs.find((repair) => repair.id === requestedRepairId);
+        if (!requestedRepair) return;
+        openedRepairIdRef.current = requestedRepairId;
+        setViewDetailsRepair(requestedRepair);
+    }, [repairs, requestedRepairId]);
+
+    const closeRepairDetails = useCallback(() => {
+        setViewDetailsRepair(null);
+        openedRepairIdRef.current = null;
+        router.replace(removeRepairDetailsParam(pathname, searchParams), { scroll: false });
+    }, [pathname, router, searchParams]);
+
+    const openAddPartFromDetails = useCallback(() => {
+        if (!viewDetailsRepair) return;
+        setAddPartRepair(viewDetailsRepair);
+        closeRepairDetails();
+    }, [closeRepairDetails, viewDetailsRepair]);
 
     // ── Pull-to-refresh (mobile) ───────────────────────────────────────────
     const listRef = useRef<HTMLUListElement>(null);
@@ -196,10 +221,10 @@ export function ActiveRepairsTable({
             {viewDetailsRepair && (
                 <RepairDetailsDialog
                     isOpen={!!viewDetailsRepair}
-                    onClose={() => setViewDetailsRepair(null)}
+                    onClose={closeRepairDetails}
                     repair={viewDetailsRepair}
                     currentUserId={currentUserId}
-                    onAddPart={() => { setAddPartRepair(viewDetailsRepair); setViewDetailsRepair(null); }}
+                    onAddPart={openAddPartFromDetails}
                 />
             )}
             {transferRepair && <TransferRepairDialog isOpen={!!transferRepair} onClose={() => setTransferRepair(null)} repair={transferRepair} currentUserId={currentUserId} />}

@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, ChevronLeft, ChevronRight, History } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useEffect, useState, useTransition, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState, useTransition, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { RepairDetailsDialog } from "@/components/repairs/repair-details-dialog";
 import { RepairImagesDialog } from "@/components/repairs/repair-images-dialog";
 import { getRepairByIdAction } from "@/lib/actions/repairs";
@@ -22,6 +22,7 @@ import { RepairHistoryCard } from "./repair-history-card";
 import { RepairHistoryRow } from "./repair-history-row";
 import { getRepairImageCount } from "./repair-images-action-button";
 import { printRepairTicketSequence } from "@/lib/repair-print-sequence";
+import { removeRepairDetailsParam } from "@/lib/repair-chat/navigation";
 
 export interface HistoryRepairsTableProps {
     repairs: RepairData[];
@@ -31,7 +32,9 @@ export interface HistoryRepairsTableProps {
 
 export function HistoryRepairsTable({ repairs, currentPage, totalPages }: HistoryRepairsTableProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
+    const requestedRepairId = searchParams.get("repairId");
 
     const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
     const debouncedSearch = useDebounce(searchTerm, 500);
@@ -42,12 +45,13 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [loadingId, setLoadingId] = useState<string | null>(null);
+    const openedRepairIdRef = useRef<string | null>(null);
 
     const handlePrint = (repair: RepairData) => {
         printRepairTicketSequence(repair);
     };
 
-    const handleViewDetails = (repairId: string) => {
+    const handleViewDetails = useCallback((repairId: string) => {
         setLoadingId(repairId);
         startTransition(async () => {
             try {
@@ -57,7 +61,20 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
             } catch { toast.error("Error al cargar detalles."); }
             finally { setLoadingId(null); }
         });
-    };
+    }, []);
+
+    useEffect(() => {
+        if (!requestedRepairId || openedRepairIdRef.current === requestedRepairId) return;
+        openedRepairIdRef.current = requestedRepairId;
+        handleViewDetails(requestedRepairId);
+    }, [handleViewDetails, requestedRepairId]);
+
+    const closeRepairDetails = useCallback(() => {
+        setIsDetailsOpen(false);
+        setSelectedRepair(null);
+        openedRepairIdRef.current = null;
+        router.replace(removeRepairDetailsParam(pathname, searchParams), { scroll: false });
+    }, [pathname, router, searchParams]);
 
     useEffect(() => {
         if (!isMounted.current) { isMounted.current = true; return; }
@@ -183,7 +200,7 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
                 </div>
             )}
 
-            <RepairDetailsDialog isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} repair={selectedRepair} />
+            <RepairDetailsDialog isOpen={isDetailsOpen} onClose={closeRepairDetails} repair={selectedRepair} />
             <RepairImagesDialog isOpen={!!imageRepair} onClose={() => setImageRepair(null)} repair={imageRepair} />
         </div>
     );

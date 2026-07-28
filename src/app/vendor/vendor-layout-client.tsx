@@ -108,7 +108,7 @@ export function VendorLayoutClient({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <RepairChatProvider userId={userId ?? ""}>
+        <RepairChatProvider userId={userId ?? ""} role="VENDOR">
         <div className={cn("flex min-h-screen", isPosRoute && "h-dvh overflow-hidden")} suppressHydrationWarning>
             <PresenceHeartbeat />
             <Sidebar

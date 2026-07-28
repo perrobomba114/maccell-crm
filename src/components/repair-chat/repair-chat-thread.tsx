@@ -1,18 +1,21 @@
 "use client";
 
-import { ArrowLeft, CheckCheck, MessageCirclePlus, MessagesSquare, Reply } from "lucide-react";
+import { ArrowLeft, CheckCheck, ExternalLink, MessageCirclePlus, MessagesSquare, Reply } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useRepairChat } from "./repair-chat-provider";
 import type { RepairChatMessage } from "./repair-chat-types";
 import { RepairChatComposer } from "./repair-chat-composer";
 import { TIMEZONE } from "@/lib/date-utils";
+import { buildRepairDetailsHref } from "@/lib/repair-chat/navigation";
 
 type Reader = { lastReadAt: string; user: { id: string; name: string } };
 const ROLE_LABELS: Record<string, string> = { ADMIN: "Administrador", VENDOR: "Vendedor", TECHNICIAN: "Técnico" };
 
 export function RepairChatThread() {
     const chat = useRepairChat();
+    const router = useRouter();
     const [reply, setReply] = useState<RepairChatMessage | null>(null);
     const [readers, setReaders] = useState<{ messageId: string; items: Reader[] } | null>(null);
     const endRef = useRef<HTMLDivElement>(null);
@@ -25,11 +28,16 @@ export function RepairChatThread() {
         if (response.ok) setReaders({ messageId, items: (await response.json()).readers });
     };
     if (!chat.selected) return null;
+    const openRepairDetails = () => {
+        const href = buildRepairDetailsHref(chat.currentUserRole, chat.selected!);
+        chat.setOpen(false);
+        router.push(href);
+    };
     return (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <div className="flex min-w-0 items-center gap-2 border-b px-3 py-2.5">
                 <button type="button" aria-label="Volver a chats" onClick={chat.backToInbox} className="rounded-lg p-2 hover:bg-muted"><ArrowLeft className="h-4 w-4" /></button>
-                <div className="min-w-0 flex-1"><strong className="block truncate text-sm">#{chat.selected.ticketNumber}</strong><small className="block truncate text-muted-foreground">{chat.selected.deviceBrand} {chat.selected.deviceModel} · {chat.selected.status.name}{chat.selected.assignedTo ? ` · ${chat.selected.assignedTo.name}` : ""}</small></div>
+                <button type="button" onClick={openRepairDetails} aria-label={`Abrir detalles de la reparación ${chat.selected.ticketNumber}`} title="Abrir detalle completo" className="group min-w-0 flex-1 rounded-lg px-1 py-1 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"><span className="flex min-w-0 items-center gap-1"><strong className="truncate text-sm underline-offset-4 group-hover:underline">#{chat.selected.ticketNumber}</strong><ExternalLink className="h-3.5 w-3.5 shrink-0 text-sky-500" /></span><small className="block truncate text-muted-foreground">{chat.selected.deviceBrand} {chat.selected.deviceModel} · {chat.selected.status.name}{chat.selected.assignedTo ? ` · ${chat.selected.assignedTo.name}` : ""}</small></button>
                 <button type="button" aria-label="Nuevo chat" title="Nuevo chat" onClick={() => chat.setNewChatOpen(true)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950"><MessageCirclePlus className="h-4 w-4" /></button>
             </div>
             {readers ? <div role="dialog" aria-label="Quién lo leyó" className="border-b bg-sky-50 px-4 py-3 text-sm text-slate-900 dark:bg-sky-950 dark:text-slate-100"><div className="flex items-center justify-between"><strong>Quién lo leyó</strong><button type="button" onClick={() => setReaders(null)} aria-label="Cerrar lectores"><span aria-hidden>×</span></button></div>{readers.items.length ? <ul className="mt-2 space-y-1">{readers.items.map((reader) => <li key={reader.user.id}>{reader.user.name} · {new Date(reader.lastReadAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: TIMEZONE })}</li>)}</ul> : <p className="mt-2 text-muted-foreground">Todavía nadie más lo leyó.</p>}</div> : null}

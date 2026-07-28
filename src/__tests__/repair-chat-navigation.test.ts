@@ -1,0 +1,48 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import { buildRepairDetailsHref, removeRepairDetailsParam } from "../lib/repair-chat/navigation";
+
+const readComponent = (name: string) => readFileSync(new URL(`../components/${name}`, import.meta.url), "utf8");
+
+test("builds the repair detail destination for every chat role", () => {
+    const activeRepair = { id: "repair-active", statusId: 4 };
+    const archivedRepair = { id: "repair-final", statusId: 6 };
+
+    assert.equal(buildRepairDetailsHref("ADMIN", activeRepair), "/admin/repairs?repairId=repair-active");
+    assert.equal(buildRepairDetailsHref("VENDOR", activeRepair), "/vendor/repairs/active?repairId=repair-active");
+    assert.equal(buildRepairDetailsHref("VENDOR", archivedRepair), "/vendor/repairs/history?repairId=repair-final");
+    assert.equal(buildRepairDetailsHref("TECHNICIAN", activeRepair), "/technician/repairs?repairId=repair-active");
+    assert.equal(buildRepairDetailsHref("TECHNICIAN", archivedRepair), "/technician/history?repairId=repair-final");
+});
+
+test("removes only the repair detail parameter when closing the dialog", () => {
+    assert.equal(
+        removeRepairDetailsParam("/vendor/repairs/history", new URLSearchParams("q=samsung&page=2&repairId=repair-final")),
+        "/vendor/repairs/history?q=samsung&page=2",
+    );
+    assert.equal(removeRepairDetailsParam("/technician/repairs", new URLSearchParams("repairId=repair-active")), "/technician/repairs");
+});
+
+test("chat ticket closes the widget and navigates to the repair details", () => {
+    const thread = readComponent("repair-chat/repair-chat-thread.tsx");
+    assert.match(thread, /buildRepairDetailsHref/);
+    assert.match(thread, /chat\.setOpen\(false\)/);
+    assert.match(thread, /router\.push\(href\)/);
+    assert.match(thread, /aria-label={`Abrir detalles de la reparación/);
+});
+
+test("repair pages consume repairId and open their detail dialog", () => {
+    for (const file of ["repairs/admin-repairs-table.tsx", "repairs/active-repairs-table.tsx", "repairs/history-repairs-table.tsx"]) {
+        const source = readComponent(file);
+        assert.match(source, /searchParams\.get\(["']repairId["']\)/, file);
+        assert.match(source, /removeRepairDetailsParam/, file);
+    }
+});
+
+test("chat inbox constrains active rows and labels on narrow screens", () => {
+    const inbox = readComponent("repair-chat/repair-chat-inbox.tsx");
+    assert.match(inbox, /overflow-hidden/);
+    assert.match(inbox, /max-w-\[45%\]/);
+    assert.match(inbox, /min-w-0/);
+});
