@@ -97,7 +97,6 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
         if (!added) return false;
 
         toast.success(`Agregado: ${part.name}`);
-        setShowScanner(false);
         return true;
     };
 
@@ -183,7 +182,7 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
                     ));
                 }}
             >
-                <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+                <DialogContent showCloseButton={false} className="sm:max-w-md p-0 overflow-hidden">
                     <DialogTitle className="sr-only">Escanear repuesto</DialogTitle>
                     <BarcodeScanner
                         onResult={async (code) => {
@@ -205,7 +204,6 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
                                     if (exactMatch) {
                                         return handleScannedPart(exactMatch);
                                     } else {
-                                        setShowScanner(false);
                                         setOpen(true);
                                         toast.info("Múltiples coincidencias, seleccione una.");
                                         return true;

@@ -107,17 +107,92 @@ test("single part returns authenticate the assigned technician first", () => {
     assert.match(source, /createSinglePartReturnAction[\s\S]*?getCurrentUser\(\)[\s\S]*?currentUser\.role !== "TECHNICIAN"[\s\S]*?currentUser\.id !== technicianId/);
 });
 
-test("a successful spare-part scan closes the camera immediately", () => {
+test("a successful spare-part scan closes only after releasing the camera", () => {
     const selector = readFileSync(new URL("../components/repairs/spare-part-selector.tsx", import.meta.url), "utf8");
     const scanner = readFileSync(new URL("../components/ui/barcode-scanner.tsx", import.meta.url), "utf8");
+    const scannerHook = readFileSync(new URL("../components/ui/use-barcode-scanner.ts", import.meta.url), "utf8");
     const handlerStart = selector.indexOf("const handleScannedPart");
     const handlerEnd = selector.indexOf("return (", handlerStart);
     const scannedPartHandler = selector.slice(handlerStart, handlerEnd);
 
     assert.doesNotMatch(scannedPartHandler, /shouldContinueRepairPartScanning/);
     assert.doesNotMatch(scannedPartHandler, /Escaneá otro repuesto/);
-    assert.match(scannedPartHandler, /toast\.success[\s\S]*setShowScanner\(false\)[\s\S]*return true/);
-    assert.doesNotMatch(scanner, /setTimeout\(startScanner/);
+    assert.match(scannedPartHandler, /toast\.success[\s\S]*return true/);
+    assert.doesNotMatch(scannedPartHandler, /setShowScanner\(false\)/);
+    assert.match(scannerHook, /await stopScanner[\s\S]*onCloseRef\.current\(\)/);
+    assert.doesNotMatch(scannerHook, /CameraAccess\.release\(/);
+    assert.doesNotMatch(scannerHook, /setTimeout\(startScanner/);
+    assert.match(scanner, /shutdownAndClose/);
+});
+
+test("camera shutdown is idempotent and removes the detector once", async () => {
+    let createBarcodeScannerShutdown: typeof import("../lib/barcode-scanner-lifecycle").createBarcodeScannerShutdown;
+    try {
+        ({ createBarcodeScannerShutdown } = await import("../lib/barcode-scanner-lifecycle"));
+    } catch {
+        assert.fail("Falta un cierre idempotente para la cámara del escáner");
+    }
+
+    let stops = 0;
+    let removals = 0;
+    const detector = () => undefined;
+    const shutdown = createBarcodeScannerShutdown({
+        stop: async () => { stops += 1; },
+        offDetected: (handler) => {
+            assert.equal(handler, detector);
+            removals += 1;
+        },
+    }, detector);
+
+    await Promise.all([shutdown(), shutdown(), shutdown()]);
+    assert.equal(stops, 1);
+    assert.equal(removals, 1);
+});
+
+test("barcode camera requests continuous focus only when supported", async () => {
+    let buildBarcodeTrackConstraints: typeof import("../lib/barcode-scanner-lifecycle").buildBarcodeTrackConstraints;
+    try {
+        ({ buildBarcodeTrackConstraints } = await import("../lib/barcode-scanner-lifecycle"));
+    } catch {
+        assert.fail("Falta adaptar el foco del escáner a las capacidades del teléfono");
+    }
+
+    assert.deepEqual(
+        buildBarcodeTrackConstraints({
+            focusMode: ["manual", "continuous"],
+            zoom: { min: 1, max: 3 },
+        }),
+        { advanced: [{ focusMode: "continuous", zoom: 1.4 }] },
+    );
+    assert.equal(buildBarcodeTrackConstraints({}), null);
+});
+
+test("barcode camera transitions never overlap on Quagga's shared instance", async () => {
+    let queueBarcodeCameraTransition: typeof import("../lib/barcode-scanner-lifecycle").queueBarcodeCameraTransition;
+    try {
+        ({ queueBarcodeCameraTransition } = await import("../lib/barcode-scanner-lifecycle"));
+    } catch {
+        assert.fail("Falta serializar los cambios de cámara del lector compartido");
+    }
+
+    const events: string[] = [];
+    const firstGate: { release?: () => void } = {};
+    const first = queueBarcodeCameraTransition(async () => {
+        events.push("first:start");
+        await new Promise<void>((resolve) => { firstGate.release = resolve; });
+        events.push("first:end");
+    });
+    const second = queueBarcodeCameraTransition(async () => {
+        events.push("second:start");
+        events.push("second:end");
+    });
+
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.deepEqual(events, ["first:start"]);
+    assert.ok(firstGate.release);
+    firstGate.release();
+    await Promise.all([first, second]);
+    assert.deepEqual(events, ["first:start", "first:end", "second:start", "second:end"]);
 });
 
 test("takeover dialog state is isolated by repair and unmounted after closing", () => {
