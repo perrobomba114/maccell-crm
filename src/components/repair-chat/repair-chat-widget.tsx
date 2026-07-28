@@ -5,11 +5,12 @@ import { MessageCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRepairChat } from "./repair-chat-provider";
 import { RepairChatInbox } from "./repair-chat-inbox";
+import { RepairChatNewPanel } from "./repair-chat-new-panel";
 
 const POSITION_KEY = "maccell:repair-chat-position:v1";
 
 export function RepairChatWidget() {
-    const { open, setOpen, unreadCount, preview, dismissPreview, selectRepair } = useRepairChat();
+    const { open, newChatOpen, setOpen, unreadCount, preview, dismissPreview, selectRepair } = useRepairChat();
     const [position, setPosition] = useState({ x: 0, y: 0 });
     useEffect(() => {
         const saved = localStorage.getItem(POSITION_KEY);
@@ -23,13 +24,18 @@ export function RepairChatWidget() {
                 {open ? (
                     <motion.section
                         initial={{ opacity: 0, y: 18, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.98 }}
-                        className="pointer-events-auto fixed inset-x-2 bottom-20 flex h-[min(76dvh,720px)] flex-col overflow-hidden rounded-3xl border border-sky-500/25 bg-background/98 shadow-2xl shadow-black/35 backdrop-blur-xl sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[430px]"
+                        className={`pointer-events-auto fixed inset-x-2 bottom-20 flex h-[min(76dvh,720px)] flex-col overflow-hidden rounded-3xl border border-sky-500/25 bg-background/98 shadow-2xl shadow-black/35 backdrop-blur-xl sm:inset-auto sm:bottom-24 sm:right-6 sm:max-w-[calc(100vw-3rem)] ${newChatOpen ? "sm:w-[820px]" : "sm:w-[430px]"}`}
                     >
                         <div className="flex items-center justify-between border-b bg-slate-950 px-4 py-3 text-white">
                             <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-300">Interno</p><h2 className="font-semibold">Chats de reparaciones</h2></div>
                             <button type="button" aria-label="Cerrar chat" onClick={() => setOpen(false)} className="rounded-full p-2 hover:bg-white/10"><X className="h-5 w-5" /></button>
                         </div>
-                        <RepairChatInbox />
+                        <div className="relative flex min-h-0 flex-1">
+                            <div className="flex min-w-0 flex-1 sm:w-[430px] sm:flex-none"><RepairChatInbox /></div>
+                            <AnimatePresence>
+                                {newChatOpen ? <motion.div key="new-chat" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} className="absolute inset-0 z-10 border-l sm:relative sm:inset-auto sm:z-auto"><RepairChatNewPanel /></motion.div> : null}
+                            </AnimatePresence>
+                        </div>
                     </motion.section>
                 ) : null}
             </AnimatePresence>

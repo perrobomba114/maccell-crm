@@ -27,6 +27,11 @@ test("searches active and archived repair conversations explicitly", () => {
     assert.equal(repairChatSearchSchema.parse({ query: "MAC-42", scope: "archived" }).scope, "archived");
 });
 
+test("allows an empty query to list recent repairs for a new chat", () => {
+    const result = repairChatSearchSchema.safeParse({ query: "", scope: "active" });
+    assert.equal(result.success, true);
+});
+
 test("round-trips an opaque pagination cursor", () => {
     const cursor = { id: "chat-1", at: "2026-07-28T04:00:00.000Z" };
     assert.deepEqual(decodeRepairChatCursor(encodeRepairChatCursor(cursor)), cursor);

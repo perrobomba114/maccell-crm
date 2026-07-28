@@ -7,6 +7,7 @@ import { RepairChatWidget } from "./repair-chat-widget";
 
 type State = {
     open: boolean;
+    newChatOpen: boolean;
     scope: "active" | "archived";
     chats: RepairChatSummary[];
     nextCursor: string | null;
@@ -21,6 +22,7 @@ type State = {
 
 type Action =
     | { type: "open"; value: boolean }
+    | { type: "newChat"; value: boolean }
     | { type: "scope"; value: State["scope"] }
     | { type: "chats"; value: RepairChatSummary[]; nextCursor: string | null; append?: boolean }
     | { type: "select"; value: RepairChatSummary["repair"] | null }
@@ -29,10 +31,11 @@ type Action =
     | { type: "preview"; value: RepairChatPreview | null }
     | { type: "loading"; value: boolean };
 
-const initialState: State = { open: false, scope: "active", chats: [], nextCursor: null, selected: null, messages: [], messageCursor: null, searchResults: [], readOnly: false, loading: false, preview: null };
+const initialState: State = { open: false, newChatOpen: false, scope: "active", chats: [], nextCursor: null, selected: null, messages: [], messageCursor: null, searchResults: [], readOnly: false, loading: false, preview: null };
 function reducer(state: State, action: Action): State {
     switch (action.type) {
         case "open": return { ...state, open: action.value };
+        case "newChat": return { ...state, newChatOpen: action.value, searchResults: action.value ? [] : state.searchResults };
         case "scope": return { ...state, scope: action.value, chats: [], nextCursor: null, selected: null, messages: [], messageCursor: null };
         case "chats": return {
             ...state,
@@ -50,12 +53,13 @@ function reducer(state: State, action: Action): State {
 type ContextValue = State & {
     unreadCount: number;
     setOpen: (value: boolean) => void;
+    setNewChatOpen: (value: boolean) => void;
     setScope: (value: State["scope"]) => void;
     backToInbox: () => void;
     dismissPreview: () => void;
     loadMore: () => Promise<void>;
     loadOlderMessages: () => Promise<void>;
-    search: (query: string) => Promise<void>;
+    search: (query: string, scope?: State["scope"]) => Promise<void>;
     selectRepair: (repair: RepairChatSummary["repair"]) => Promise<void>;
     send: (content: string, images: File[], replyToId?: string) => Promise<boolean>;
 };
@@ -160,14 +164,14 @@ export function RepairChatProvider({ userId, children }: { userId: string; child
         return () => source.close();
     }, [fetchChats, loadChats, loadThread, userId]);
 
-    const search = useCallback(async (query: string) => {
-        if (!query.trim()) return dispatch({ type: "search", value: [] });
-        const response = await fetch(`/api/repair-chats/search?q=${encodeURIComponent(query)}&scope=${scopeRef.current}`, { cache: "no-store" });
+    const search = useCallback(async (query: string, scope?: State["scope"]) => {
+        const response = await fetch(`/api/repair-chats/search?q=${encodeURIComponent(query)}&scope=${scope ?? scopeRef.current}`, { cache: "no-store" });
         if (response.ok) dispatch({ type: "search", value: (await response.json()).items });
     }, []);
 
     const selectRepair = useCallback(async (repair: RepairChatSummary["repair"]) => {
         dispatch({ type: "preview", value: null });
+        dispatch({ type: "newChat", value: false });
         dispatch({ type: "select", value: repair });
         await loadThread(repair);
     }, [loadThread]);
@@ -212,9 +216,11 @@ export function RepairChatProvider({ userId, children }: { userId: string; child
         unreadCount: state.chats.filter((chat) => chat.unread).length,
         setOpen: (value) => {
             if (value) dispatch({ type: "preview", value: null });
+            if (!value) dispatch({ type: "newChat", value: false });
             dispatch({ type: "open", value });
             if (value && selectedRef.current) void loadThread(selectedRef.current);
         },
+        setNewChatOpen: (value) => dispatch({ type: "newChat", value }),
         setScope: (value) => dispatch({ type: "scope", value }),
         backToInbox: () => dispatch({ type: "select", value: null }),
         dismissPreview: () => dispatch({ type: "preview", value: null }),
