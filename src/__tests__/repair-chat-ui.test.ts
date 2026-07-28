@@ -44,4 +44,22 @@ test("thread supports replies, images, receipts and archived read-only mode", ()
     assert.match(thread, /readers/);
     assert.match(thread, /Quién lo leyó/);
     assert.match(thread, /Cargar mensajes anteriores/);
+    assert.match(thread, /Todavía no hay mensajes/);
+    assert.match(thread, /currentUserId/);
+    assert.match(composer, /onKeyDown/);
+    assert.match(composer, /event\.key === "Enter"/);
+    assert.match(composer, /!event\.shiftKey/);
+    assert.match(composer, /event\.nativeEvent\.isComposing/);
+    assert.match(composer, /aria-label="Enviar mensaje"/);
+    assert.match(composer, /min-w-0/);
+});
+
+test("chat and header use different sounds at reduced volumes", () => {
+    const provider = read("repair-chat-provider.tsx");
+    const notificationBell = readFileSync(new URL("../components/ui/notification-bell.tsx", import.meta.url), "utf8");
+    assert.match(provider, /chat\.mp3/);
+    assert.match(provider, /CHAT_NOTIFICATION_VOLUME = 0\.3/);
+    assert.doesNotMatch(provider, /new Audio\("\/notificacion\.mp3"\)/);
+    assert.match(notificationBell, /HEADER_NOTIFICATION_VOLUME = 0\.45/);
+    assert.doesNotMatch(notificationBell, /audio\.volume = 0\.6/);
 });

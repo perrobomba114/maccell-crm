@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ interface NotificationBellProps {
 
 // Local file from public folder
 const NOTIFICATION_SOUND = "/notificacion.mp3";
+const HEADER_NOTIFICATION_VOLUME = 0.45;
 // Backup base64 just in case offline (Short Click)
 // const NOTIFICATION_SOUND_BACKUP = "data:audio/wav;base64,UklGRiGCCABXQVZFbW...
 // const NOTIFICATION_SOUND_BACKUP = "data:audio/wav;base64,UklGRiGCCABXQVZFbW...
@@ -31,13 +32,13 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [previousUnreadCount, setPreviousUnreadCount] = useState(0);
+    const previousUnreadCountRef = useRef(0);
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     const playSound = () => {
         const audio = new Audio(NOTIFICATION_SOUND);
-        audio.volume = 0.6;
+        audio.volume = HEADER_NOTIFICATION_VOLUME;
         audio.play().catch(e => console.error("Audio play error", e));
     };
 
@@ -45,7 +46,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     useEffect(() => {
         const triggerSound = async () => {
             const audio = new Audio(NOTIFICATION_SOUND);
-            audio.volume = 0.6;
+            audio.volume = HEADER_NOTIFICATION_VOLUME;
 
             try {
                 await audio.play();
@@ -53,7 +54,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                 // Fallback: Play on next click
                 const playOnInteraction = () => {
                     const audioRetry = new Audio(NOTIFICATION_SOUND);
-                    audioRetry.volume = 0.6;
+                    audioRetry.volume = HEADER_NOTIFICATION_VOLUME;
                     audioRetry.play().catch(e => console.error(e));
                     document.removeEventListener("click", playOnInteraction);
                     document.removeEventListener("keydown", playOnInteraction);
@@ -65,10 +66,10 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         };
 
         // Play sound if there are ANY unread notifications on load (prev=0) OR if unread count increases
-        if (unreadCount > 0 && (previousUnreadCount === 0 || unreadCount > previousUnreadCount)) {
+        if (unreadCount > 0 && (previousUnreadCountRef.current === 0 || unreadCount > previousUnreadCountRef.current)) {
             triggerSound();
         }
-        setPreviousUnreadCount(unreadCount);
+        previousUnreadCountRef.current = unreadCount;
     }, [unreadCount]);
 
     const fetchNotifications = useCallback(async () => {
@@ -80,7 +81,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
             } else {
                 setNotifications([]);
             }
-        } catch (error) {
+        } catch (error: unknown) {
             console.error("Failed to fetch notifications", error);
         }
     }, [userId]);
@@ -122,7 +123,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
             } else {
                 toast.error(result.error || "Error al responder");
             }
-        } catch (error) {
+        } catch {
             toast.error("Error de conexión");
         } finally {
             setLoading(false);

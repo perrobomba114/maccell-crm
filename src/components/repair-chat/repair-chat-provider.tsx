@@ -5,6 +5,31 @@ import { toast } from "sonner";
 import type { RepairChatMessage, RepairChatPreview, RepairChatSummary, RepairSearchResult } from "./repair-chat-types";
 import { RepairChatWidget } from "./repair-chat-widget";
 
+const CHAT_NOTIFICATION_SOUND = "/chat.mp3";
+const CHAT_NOTIFICATION_VOLUME = 0.3;
+let waitingForChatSoundInteraction = false;
+
+function playChatNotificationSound(): void {
+    const audio = new Audio(CHAT_NOTIFICATION_SOUND);
+    audio.volume = CHAT_NOTIFICATION_VOLUME;
+    void audio.play().catch(() => {
+        if (waitingForChatSoundInteraction) return;
+        waitingForChatSoundInteraction = true;
+        const retry = () => {
+            waitingForChatSoundInteraction = false;
+            document.removeEventListener("pointerdown", retry);
+            document.removeEventListener("keydown", retry);
+            const retryAudio = new Audio(CHAT_NOTIFICATION_SOUND);
+            retryAudio.volume = CHAT_NOTIFICATION_VOLUME;
+            void retryAudio.play().catch((error: unknown) => {
+                console.warn("[REPAIR_CHAT] Notification sound unavailable:", error instanceof Error ? error.message : "unknown error");
+            });
+        };
+        document.addEventListener("pointerdown", retry, { once: true });
+        document.addEventListener("keydown", retry, { once: true });
+    });
+}
+
 type State = {
     open: boolean;
     newChatOpen: boolean;
@@ -51,6 +76,7 @@ function reducer(state: State, action: Action): State {
 }
 
 type ContextValue = State & {
+    currentUserId: string;
     unreadCount: number;
     setOpen: (value: boolean) => void;
     setNewChatOpen: (value: boolean) => void;
@@ -144,9 +170,7 @@ export function RepairChatProvider({ userId, children }: { userId: string; child
                         sender: latest.sender.name,
                         snippet: latest.content || (latest.imageUrls.length ? "Imagen" : "Nuevo mensaje"),
                     } });
-                    const audio = new Audio("/notificacion.mp3");
-                    audio.volume = 0.5;
-                    void audio.play().catch(() => undefined);
+                    playChatNotificationSound();
                 }
             } else {
                 await loadChats(scopeRef.current);
@@ -213,6 +237,7 @@ export function RepairChatProvider({ userId, children }: { userId: string; child
 
     const value = useMemo<ContextValue>(() => ({
         ...state,
+        currentUserId: userId,
         unreadCount: state.chats.filter((chat) => chat.unread).length,
         setOpen: (value) => {
             if (value) dispatch({ type: "preview", value: null });
@@ -227,7 +252,7 @@ export function RepairChatProvider({ userId, children }: { userId: string; child
         loadMore: () => loadChats(scopeRef.current, true),
         loadOlderMessages,
         search, selectRepair, send,
-    }), [loadChats, loadOlderMessages, loadThread, search, selectRepair, send, state]);
+    }), [loadChats, loadOlderMessages, loadThread, search, selectRepair, send, state, userId]);
 
     return <RepairChatContext.Provider value={value}>{children}<RepairChatWidget /></RepairChatContext.Provider>;
 }
