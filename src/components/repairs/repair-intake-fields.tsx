@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { RepairPatternBoard } from "./repair-pattern-board";
 import {
     appendPatternPoint,
     serializePattern,
@@ -128,38 +129,12 @@ export function RepairIntakeFields({ value, error, onChange }: RepairIntakeField
                                 Limpiar
                             </Button>
                         </div>
-                        <div
-                            className="mx-auto grid w-48 touch-none grid-cols-3 gap-5 rounded-2xl border border-amber-500/25 bg-background/70 p-5 sm:mx-0"
-                            onPointerUp={() => setIsDrawing(false)}
-                            onPointerLeave={() => setIsDrawing(false)}
-                        >
-                            {Array.from({ length: 9 }, (_, index) => index + 1).map((point) => {
-                                const order = patternPoints.indexOf(point);
-                                return (
-                                    <button
-                                        key={point}
-                                        type="button"
-                                        aria-label={`Punto ${point}${order >= 0 ? `, posición ${order + 1}` : ""}`}
-                                        onPointerDown={(event) => {
-                                            event.preventDefault();
-                                            setIsDrawing(true);
-                                            addPatternPoint(point);
-                                        }}
-                                        onPointerEnter={(event) => {
-                                            if (isDrawing && event.buttons === 1) addPatternPoint(point);
-                                        }}
-                                        className={cn(
-                                            "flex h-11 w-11 items-center justify-center rounded-full border-2 text-sm font-black transition-colors",
-                                            order >= 0
-                                                ? "border-amber-300 bg-amber-400 text-slate-950 shadow-md shadow-amber-400/25"
-                                                : "border-border bg-muted/60 text-muted-foreground hover:border-amber-400/60 hover:text-foreground",
-                                        )}
-                                    >
-                                        {order >= 0 ? order + 1 : ""}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        <RepairPatternBoard
+                            selectedPoints={patternPoints}
+                            isDrawing={isDrawing}
+                            onDrawingChange={setIsDrawing}
+                            onPointSelect={addPatternPoint}
+                        />
                     </div>
                 ) : null}
 
