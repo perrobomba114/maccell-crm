@@ -89,27 +89,35 @@ export function ImagePreviewModal({ isOpen, onClose, images, currentIndex, onInd
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-[100vw] w-screen h-screen p-0 m-0 overflow-hidden bg-black/98 border-none flex flex-col items-center justify-center outline-none">
+            <DialogContent
+                showCloseButton={false}
+                className="m-0 flex h-screen w-screen max-w-[100vw] flex-col items-center justify-center overflow-hidden border-none bg-black/98 p-0 outline-none"
+            >
                 <DialogTitle className="sr-only">Vista previa de imagen</DialogTitle>
 
                 {/* Header / Controls */}
-                <div className="absolute top-6 right-6 z-[60] flex gap-3">
-                    <div className="bg-black/80 rounded-2xl flex p-1.5 backdrop-blur-xl border border-white/10 shadow-2xl">
-                        <Button size="icon" variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 h-10 w-10 transition-colors" onClick={handleZoomOut}>
+                <div className="absolute inset-x-4 top-4 z-[60] grid grid-cols-[64px_1fr_56px] items-center gap-2 sm:inset-x-6 sm:top-6">
+                    <div className="whitespace-nowrap justify-self-start rounded-xl border border-white/10 bg-black/80 px-3 py-2 text-center text-xs font-black tracking-wide text-white/90 shadow-2xl backdrop-blur-xl">
+                        {currentIndex + 1} <span className="mx-1 text-white/30">/</span> {images.length}
+                    </div>
+
+                    <div className="flex justify-self-center rounded-2xl border border-white/10 bg-black/80 p-1 shadow-2xl backdrop-blur-xl">
+                        <Button size="icon" variant="ghost" className="size-9 text-white/70 transition-colors hover:bg-white/10 hover:text-white" onClick={handleZoomOut} aria-label="Alejar imagen">
                             <ZoomOut className="h-5 w-5" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 px-4 w-auto h-10 transition-colors" onClick={handleReset}>
+                        <Button size="icon" variant="ghost" className="h-9 w-auto min-w-14 px-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white" onClick={handleReset} aria-label="Restablecer zoom">
                             <span className="text-xs font-black uppercase tracking-tighter italic">{Math.round(scale * 100)}%</span>
                         </Button>
-                        <Button size="icon" variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 h-10 w-10 transition-colors" onClick={handleZoomIn}>
+                        <Button size="icon" variant="ghost" className="size-9 text-white/70 transition-colors hover:bg-white/10 hover:text-white" onClick={handleZoomIn} aria-label="Acercar imagen">
                             <ZoomIn className="h-5 w-5" />
                         </Button>
-                        <div className="w-px h-6 bg-white/10 mx-1 self-center" />
-                        <Button size="icon" variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 h-10 w-10 transition-colors" onClick={handleReset}>
+                        <div className="mx-1 h-6 w-px self-center bg-white/10" />
+                        <Button size="icon" variant="ghost" className="size-9 text-white/70 transition-colors hover:bg-white/10 hover:text-white" onClick={handleReset} aria-label="Restablecer imagen">
                             <RotateCcw className="h-5 w-5" />
                         </Button>
                     </div>
-                    <Button size="icon" variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 h-10 w-10 bg-black/80 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl" onClick={onClose}>
+
+                    <Button size="icon" variant="ghost" className="size-10 justify-self-end rounded-xl border border-white/10 bg-black/80 text-white/70 shadow-2xl backdrop-blur-xl hover:bg-white/10 hover:text-white" onClick={onClose} aria-label="Cerrar visor">
                         <X className="h-5 w-5" />
                     </Button>
                 </div>
@@ -136,17 +144,10 @@ export function ImagePreviewModal({ isOpen, onClose, images, currentIndex, onInd
                     </>
                 )}
 
-                {/* Image Counter */}
-                {images.length > 1 && (
-                    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[60] bg-black/80 backdrop-blur-xl border border-white/10 px-8 py-2.5 rounded-full text-white/90 font-black italic text-sm tracking-widest uppercase shadow-2xl">
-                        {currentIndex + 1} <span className="opacity-30 mx-2 text-xs">/</span> {images.length}
-                    </div>
-                )}
-
                 {/* Main View Area */}
                 <div
                     ref={containerRef}
-                    className="relative w-full h-full flex items-center justify-center overflow-hidden cursor-move select-none"
+                    className="relative flex h-full w-full cursor-move select-none items-center justify-center overflow-hidden px-3 pb-12 pt-20 sm:px-20 sm:pb-14 sm:pt-24"
                     onMouseDown={onMouseDown}
                     onMouseMove={onMouseMove}
                     onMouseUp={onMouseUp}

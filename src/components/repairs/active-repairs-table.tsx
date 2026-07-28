@@ -164,7 +164,7 @@ export function ActiveRepairsTable({
                                 <TableHead key={h} className="text-center px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">{h}</TableHead>
                             ))}
                             {showActionColumn && (
-                                <TableHead className="text-center w-[190px] px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">Acciones</TableHead>
+                                <TableHead className="h-12 w-[250px] px-1 text-center text-xs font-extrabold uppercase tracking-[0.08em] text-foreground">Acciones</TableHead>
                             )}
                         </TableRow>
                     </TableHeader>

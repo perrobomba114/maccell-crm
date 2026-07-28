@@ -158,8 +158,8 @@ export function ActiveRepairRow({
             </TableCell>
 
             {showActionColumn && (
-                <TableCell className="text-center px-1">
-                    <div className="flex h-9 items-center justify-center gap-1">
+                <TableCell className="min-w-[250px] px-1 text-center">
+                    <div className="grid h-10 grid-cols-[36px_36px_36px_96px_36px] items-center justify-center gap-1">
                         <Button
                             type="button"
                             size="icon"
@@ -172,49 +172,55 @@ export function ActiveRepairRow({
                             <Eye className="h-4 w-4" />
                         </Button>
 
-                        <RepairImagesActionButton
-                            images={repair.deviceImages}
-                            ticketNumber={repair.ticketNumber}
-                            onClick={() => onViewImages(repair)}
-                        />
+                        <div className="flex size-9 items-center justify-center">
+                            <RepairImagesActionButton
+                                images={repair.deviceImages}
+                                ticketNumber={repair.ticketNumber}
+                                onClick={() => onViewImages(repair)}
+                            />
+                        </div>
 
-                        {enableTakeover && (
-                            <Button size="xs" onClick={() => onTakeover(repair)} className="w-[85px] justify-center bg-blue-600 px-2 font-bold text-white hover:bg-blue-700">
-                                <span className="truncate">Retirar</span>
-                            </Button>
-                        )}
+                        <div className="flex size-9 items-center justify-center">
+                            {enableImageUpload && imageCount < 3 ? (
+                                <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => onImageUpload(repair)}
+                                    className="size-9 rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                    title="Cargar fotos"
+                                    aria-label={`Cargar fotos para reparación ${repair.ticketNumber}`}
+                                >
+                                    <Camera className="h-4 w-4" />
+                                </Button>
+                            ) : !enableManagement ? (
+                                <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => onPrint(repair)}
+                                    className="size-9 rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                    title="Imprimir"
+                                    aria-label={`Imprimir reparación ${repair.ticketNumber}`}
+                                >
+                                    <Printer className="h-4 w-4" />
+                                </Button>
+                            ) : null}
+                        </div>
 
-                        {enableImageUpload && imageCount < 3 && (
-                            <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => onImageUpload(repair)}
-                                className="size-9 rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                                title="Cargar fotos"
-                                aria-label={`Cargar fotos para reparación ${repair.ticketNumber}`}
-                            >
-                                <Camera className="h-4 w-4" />
-                            </Button>
-                        )}
-
-                        {!enableManagement && (
-                            <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => onPrint(repair)}
-                                className="size-9 rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                                title="Imprimir"
-                                aria-label={`Imprimir reparación ${repair.ticketNumber}`}
-                            >
-                                <Printer className="h-4 w-4" />
-                            </Button>
-                        )}
-
-                        {enableManagement && (
-                            <div className="flex items-center gap-1">
+                        <div className="flex w-24 items-center justify-center">
+                            {enableTakeover ? (
+                                <Button size="xs" onClick={() => onTakeover(repair)} className="w-[85px] justify-center bg-blue-600 px-2 font-bold text-white hover:bg-blue-700">
+                                    <span className="truncate">Retirar</span>
+                                </Button>
+                            ) : null}
+                            {enableManagement ? (
                                 <TechnicianActionButton repair={repair} currentUserId={currentUserId} />
+                            ) : null}
+                        </div>
+
+                        <div className="flex size-9 items-center justify-center">
+                            {enableManagement ? (
                                 <Button
                                     type="button"
                                     size="icon"
@@ -226,8 +232,8 @@ export function ActiveRepairRow({
                                 >
                                     <Share2 className="h-4 w-4" />
                                 </Button>
-                            </div>
-                        )}
+                            ) : null}
+                        </div>
                     </div>
                 </TableCell>
             )}
