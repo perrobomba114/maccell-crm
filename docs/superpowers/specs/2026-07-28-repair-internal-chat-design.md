@@ -128,10 +128,10 @@ Los estados operativos son `1`, `2`, `3`, `4`, `8` y `9`. Los estados `8` y `9` 
 
 Los estados finales que archivan el chat son:
 
-- `5`: reparación exitosa/lista
-- `6`: entregada
-- `7`: sin reparación
-- `10`: facturada
+- `5`: finalizado correctamente
+- `6`: no reparado
+- `7`: diagnosticado y cerrado en el flujo actual
+- `10`: entregado
 
 Estas reglas se expresarán mediante constantes compartidas, no números mágicos. Cambiar a un estado final publicará un evento y convertirá el chat en solo lectura. Volver a un estado operativo lo reactivará sin perder mensajes ni lecturas.
 
