@@ -65,7 +65,7 @@ export function RepairFormSection({
         <section
             aria-labelledby={titleId}
             className={cn(
-                "overflow-hidden rounded-2xl border bg-card/90 shadow-sm transition-colors duration-200",
+                "flex flex-col overflow-hidden rounded-2xl border bg-card/90 shadow-sm transition-colors duration-200",
                 tone.border,
                 className,
             )}
@@ -91,7 +91,7 @@ export function RepairFormSection({
                 </div>
                 {action ? <div className="shrink-0 self-start sm:self-auto">{action}</div> : null}
             </div>
-            <div className={cn("p-4 sm:p-5", tone.surface)}>{children}</div>
+            <div className={cn("flex-1 p-4 sm:p-5", tone.surface)}>{children}</div>
         </section>
     );
 }

@@ -68,8 +68,8 @@ export function DeviceDetails({
                     name="device-problem"
                     value={problem} onChange={(e) => onProblemChange(handleCapitalize(e.target.value))}
                     placeholder="Describe el problema..."
-                    rows={3}
-                    className={cn("min-h-24 resize-y bg-background/70 text-base", errors?.problem && "border-destructive focus-visible:ring-destructive/20")}
+                    rows={2}
+                    className={cn("min-h-20 resize-y bg-background/70 text-base", errors?.problem && "border-destructive focus-visible:ring-destructive/20")}
                 />
                 {errors?.problem ? <p role="alert" className="text-xs font-medium text-destructive">{errors.problem}</p> : null}
             </div>

@@ -67,11 +67,12 @@ export function CreateRepairFormFields({
 
     return (
         <div className="rounded-[28px] border border-sky-500/20 bg-gradient-to-br from-sky-500/[0.12] via-card/80 to-violet-500/[0.12] p-2 shadow-xl shadow-black/15 sm:p-3">
-            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
                     <RepairFormSection
                         step={1}
                         title="Cliente"
                         icon={UserRound}
+                        className="h-full"
                         action={<WarrantySection
                             isWarranty={isWarranty}
                             onIsWarrantyChange={(value) => dispatch({ type: "setField", field: "isWarranty", value })}
@@ -112,6 +113,7 @@ export function CreateRepairFormFields({
                         step={2}
                         title="Dispositivo"
                         icon={Smartphone}
+                        className="h-full"
                     >
                         <DeviceDetails
                         brand={brand}
@@ -142,8 +144,9 @@ export function CreateRepairFormFields({
                         icon={Ticket}
                         className="lg:col-span-2"
                     >
-                        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-                            <div className="rounded-2xl border border-sky-500/30 bg-sky-500/[0.09] p-4">
+                        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+                            <div className="flex min-h-36 items-center rounded-2xl border border-sky-500/30 bg-sky-500/[0.09] p-4">
+                                <div className="w-full">
                                 <TicketInput
                                     value={ticketNumber}
                                     onChange={(value) => dispatch({ type: "setField", field: "ticketNumber", value })}
@@ -151,8 +154,9 @@ export function CreateRepairFormFields({
                                     ticketPrefix={activeTicketPrefix}
                                     error={errors.ticket}
                                 />
+                                </div>
                             </div>
-                            <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/[0.09] p-4">
+                            <div className="min-h-36 rounded-2xl border border-cyan-500/30 bg-cyan-500/[0.09] p-4">
                                 <RepairImages />
                             </div>
                             {!hideParts ? (
@@ -173,8 +177,8 @@ export function CreateRepairFormFields({
                         icon={CalendarClock}
                         className="lg:col-span-2"
                     >
-                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]">
-                            <div className="space-y-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.09] p-4">
+                        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+                            <div className="flex h-full flex-col gap-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.09] p-4">
                                 <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 transition-colors hover:bg-muted/30">
                                     <Checkbox
                                         id="isWet"
@@ -200,12 +204,12 @@ export function CreateRepairFormFields({
                                 </div>
                             </div>
 
-                            <div className="space-y-5 rounded-2xl border border-sky-500/30 bg-sky-500/[0.09] p-4">
+                            <div className="flex h-full flex-col gap-5 rounded-2xl border border-sky-500/30 bg-sky-500/[0.09] p-4">
                                 <PromisedDateSelector
                                     date={promisedAt}
                                     onChange={(value) => dispatch({ type: "setField", field: "promisedAt", value })}
                                 />
-                                <Button type="submit" className="min-h-12 w-full rounded-xl px-8 text-base font-semibold shadow-lg shadow-primary/20" disabled={isSubmitting}>
+                                <Button type="submit" className="mt-auto min-h-12 w-full rounded-xl px-8 text-base font-semibold shadow-lg shadow-primary/20" disabled={isSubmitting}>
                                     {isSubmitting ? <Loader2 aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" /> : <Save aria-hidden="true" className="mr-2 h-5 w-5" />}
                                     <span aria-live="polite">{isSubmitting ? "Registrando reparación…" : "Ingresar reparación"}</span>
                                 </Button>

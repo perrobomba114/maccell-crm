@@ -100,7 +100,7 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                 <Button
                     type="button"
                     variant="outline"
-                    className="min-h-11 bg-background/50 font-medium"
+                    className="min-h-11 !border-cyan-400/60 !bg-cyan-500/20 font-semibold !text-cyan-100 shadow-sm shadow-cyan-500/15 hover:!border-cyan-300 hover:!bg-cyan-500/35 hover:!text-white"
                     onClick={() => handleAddMinutes(30)}
                     disabled={loading}
                 >
@@ -109,7 +109,7 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                 <Button
                     type="button"
                     variant="outline"
-                    className="min-h-11 bg-background/50 font-medium"
+                    className="min-h-11 !border-violet-400/60 !bg-violet-500/20 font-semibold !text-violet-100 shadow-sm shadow-violet-500/15 hover:!border-violet-300 hover:!bg-violet-500/35 hover:!text-white"
                     onClick={() => handleAddMinutes(60)}
                     disabled={loading}
                 >
