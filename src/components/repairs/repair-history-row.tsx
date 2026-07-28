@@ -11,7 +11,6 @@ import { es } from "date-fns/locale";
 import { Eye, Loader2, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RepairImagesActionButton } from "./repair-images-action-button";
-import { RepairAccessIndicator } from "./repair-access-indicator";
 import { type RepairData, STATUS_COLOR_MAP, calcDuration, durationColorClass } from "./repair-history-types";
 
 interface RepairHistoryRowProps {
@@ -87,14 +86,6 @@ export function RepairHistoryRow({ repair, isPending, loadingId, onPrint, onView
                         </span>
                     )}
                 </div>
-            </TableCell>
-
-            <TableCell className="max-w-[180px] text-center px-3">
-                <RepairAccessIndicator
-                    accessType={repair.accessType}
-                    accessCredential={repair.accessCredential}
-                    className="mx-auto"
-                />
             </TableCell>
 
             <TableCell className="w-[100px] text-center px-3">

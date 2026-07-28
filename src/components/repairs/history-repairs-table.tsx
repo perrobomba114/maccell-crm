@@ -153,7 +153,7 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
                         <Table>
                             <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
                                 <TableRow className="hover:bg-transparent border-none">
-                                    {["Ticket", "Fecha", "Duración", "Cliente", "Dispositivo", "Acceso", "Técnico", "Precio", "Estado", "Acciones"].map((h) => (
+                                    {["Ticket", "Fecha", "Duración", "Cliente", "Dispositivo", "Técnico", "Precio", "Estado", "Acciones"].map((h) => (
                                         <TableHead key={h} className="text-center px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">{h}</TableHead>
                                     ))}
                                 </TableRow>
