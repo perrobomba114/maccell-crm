@@ -227,7 +227,7 @@ Run:
 .agents/skills/maccell/scripts/verify-production-safety.sh --with-build
 ```
 
-Expected: TypeScript, lint, `git diff --check`, 179 tests y build pasan.
+Expected: TypeScript, lint, `git diff --check`, la suite completa y el build pasan.
 
 - [ ] **Step 6: Commit final**
 
