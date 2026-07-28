@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 FROM node:20-slim AS base
 RUN apt-get update && apt-get install -y --no-install-recommends openssl libssl3 tzdata libc6-dev && rm -rf /var/lib/apt/lists/*
 ENV TZ="America/Argentina/Buenos_Aires"
@@ -14,13 +16,12 @@ RUN if [ -f package-lock.json ]; then npm ci --legacy-peer-deps --no-audit --fun
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
-ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx prisma generate
-RUN npm run build
+RUN --mount=type=secret,id=NEXT_SERVER_ACTIONS_ENCRYPTION_KEY,required=true \
+  NEXT_SERVER_ACTIONS_ENCRYPTION_KEY="$(cat /run/secrets/NEXT_SERVER_ACTIONS_ENCRYPTION_KEY)" npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner

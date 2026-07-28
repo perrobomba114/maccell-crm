@@ -13,7 +13,11 @@ test("does not log AFIP credentials, taxpayer identifiers or raw SDK responses",
     assert.doesNotMatch(afipSource, /console\.error\([^;\n]*,\s*(?:error|res)\)/);
 });
 
-test("provides a persistent Server Actions encryption key to the Next build", () => {
-    assert.match(dockerfile, /ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY/);
-    assert.match(dockerfile, /ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=\$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY[\s\S]*RUN npm run build/);
+test("mounts the Server Actions encryption key as a required build secret", () => {
+    assert.match(
+        dockerfile,
+        /RUN --mount=type=secret,id=NEXT_SERVER_ACTIONS_ENCRYPTION_KEY,required=true[\s\S]*NEXT_SERVER_ACTIONS_ENCRYPTION_KEY="\$\(cat \/run\/secrets\/NEXT_SERVER_ACTIONS_ENCRYPTION_KEY\)" npm run build/,
+    );
+    assert.doesNotMatch(dockerfile, /ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY/);
+    assert.doesNotMatch(dockerfile, /ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=/);
 });
