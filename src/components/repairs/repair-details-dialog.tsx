@@ -187,14 +187,14 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
     return (
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="sm:max-w-4xl lg:max-w-5xl xl:max-w-6xl p-0 overflow-hidden flex flex-col h-[95dvh] sm:h-auto max-h-[90vh]">
+                <DialogContent className="flex h-[94dvh] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] min-w-0 flex-col overflow-hidden p-0 sm:max-w-[calc(100vw-2rem)] xl:max-w-7xl">
                     {/* Header with Solid Color Background */}
-                    <DialogHeader className={`p-5 sm:p-7 border-b shrink-0 relative overflow-hidden ${repair.isWet ? "bg-blue-600" : "bg-slate-900"}`}>
+                    <DialogHeader className={`relative shrink-0 overflow-hidden border-b px-5 py-4 sm:px-6 sm:py-5 ${repair.isWet ? "bg-blue-600" : "bg-slate-900"}`}>
                         <div className="absolute inset-0 bg-grid-white/[0.05] pointer-events-none" />
                         <div className="flex items-center justify-between gap-4 w-full relative z-10">
                             <div className="space-y-1.5 min-w-0">
                                 <div className="flex items-center gap-3 flex-wrap">
-                                    <DialogTitle className="text-xl sm:text-3xl font-black tracking-tighter text-white uppercase italic">
+                                    <DialogTitle className="text-xl font-black uppercase italic tracking-tighter text-white sm:text-2xl">
                                         Ticket #{repair.ticketNumber}
                                     </DialogTitle>
                                     <Badge className={`font-black border-2 rounded-md px-3 py-1 shadow-lg uppercase text-[10px] sm:text-xs ${colorClass}`}>
@@ -218,13 +218,13 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                     </DialogHeader>
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto bg-muted/5 dark:bg-muted/10 custom-scrollbar">
-                        <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
+                    <div className="custom-scrollbar min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-muted/5 dark:bg-muted/10">
+                        <div className="min-w-0 space-y-4 p-4 sm:p-5">
 
                             {/* Top Stats Row - Vibrant Centered Cards */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                                <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl shadow-xl flex flex-col items-center justify-center text-center group hover:border-blue-500 transition-all">
-                                    <div className="flex items-center gap-2 text-blue-400 mb-2">
+                            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                                <div className="group flex min-h-24 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-3 text-center shadow-lg transition-all hover:border-blue-500">
+                                    <div className="mb-1.5 flex items-center gap-2 text-blue-400">
                                         <Calendar className="w-4 h-4" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Ingreso</span>
                                     </div>
@@ -232,8 +232,8 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     <p className="text-[11px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{format(new Date(repair.createdAt), "HH:mm", { locale: es })} hs</p>
                                 </div>
 
-                                <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl shadow-xl flex flex-col items-center justify-center text-center group hover:border-amber-500 transition-all">
-                                    <div className="flex items-center gap-2 text-amber-400 mb-2">
+                                <div className="group flex min-h-24 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-3 text-center shadow-lg transition-all hover:border-amber-500">
+                                    <div className="mb-1.5 flex items-center gap-2 text-amber-400">
                                         <Clock className="w-4 h-4" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Prometido</span>
                                     </div>
@@ -241,8 +241,8 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     <p className="text-[11px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{format(new Date(repair.promisedAt), "HH:mm", { locale: es })} hs</p>
                                 </div>
 
-                                <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl shadow-xl flex flex-col items-center justify-center text-center group hover:border-purple-500 transition-all">
-                                    <div className="flex items-center gap-2 text-purple-400 mb-2">
+                                <div className="group flex min-h-24 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-3 text-center shadow-lg transition-all hover:border-purple-500">
+                                    <div className="mb-1.5 flex items-center gap-2 text-purple-400">
                                         <User className="w-4 h-4" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Técnico</span>
                                     </div>
@@ -259,30 +259,30 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     </p>
                                 </div>
 
-                                <div className="bg-blue-600 border-2 border-blue-400 p-4 rounded-2xl shadow-[0_0_20px_rgba(37,99,235,0.4)] flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                                <div className="group relative flex min-h-24 flex-col items-center justify-center overflow-hidden rounded-xl border border-blue-400 bg-blue-600 p-3 text-center shadow-[0_0_18px_rgba(37,99,235,0.32)]">
                                     <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50" />
-                                    <div className="flex items-center gap-2 text-blue-100 mb-2 relative z-10">
+                                    <div className="relative z-10 mb-1.5 flex items-center gap-2 text-blue-100">
                                         <DollarSign className="w-5 h-5" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Presupuesto</span>
                                     </div>
-                                    <p className="text-2xl font-black text-white relative z-10 tracking-tighter italic">
+                                    <p className="relative z-10 text-xl font-black italic tracking-tighter text-white">
                                         {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice?.toLocaleString()}` : "A COTIZAR"}
                                     </p>
                                 </div>
                             </div>
 
                             {/* Main Content Grid */}
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                            <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-12">
 
                                 {/* LEFT COLUMN: Context (Customer + Device) - Sticky on LG */}
-                                <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-0">
+                                <div className="space-y-4 lg:col-span-3">
                                     {/* Customer Section - Modern Centered */}
-                                    <div className="bg-slate-900 border-2 border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col items-center text-center group transition-all hover:bg-slate-800/80">
-                                        <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20 shadow-inner">
-                                            <User className="w-6 h-6 text-blue-400" />
+                                    <div className="group flex flex-col items-center rounded-xl border border-slate-800 bg-slate-900 p-4 text-center shadow-lg transition-all hover:bg-slate-800/80">
+                                        <div className="mb-2 flex size-10 items-center justify-center rounded-full border border-blue-500/20 bg-blue-500/10 shadow-inner">
+                                            <User className="size-5 text-blue-400" />
                                         </div>
                                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1">Cliente</span>
-                                        <p className="text-2xl font-black text-white uppercase tracking-tight leading-none mb-3">
+                                        <p className="mb-2 text-xl font-black uppercase leading-tight tracking-tight text-white">
                                             {repair.customer.name}
                                         </p>
                                         <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-full border border-slate-700 shadow-sm">
@@ -292,25 +292,25 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     </div>
 
                                     {/* Device Section - Modern Centered */}
-                                    <div className="bg-slate-900 border-2 border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col items-center text-center group transition-all hover:bg-slate-800/80">
-                                        <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20 shadow-inner">
-                                            <Smartphone className="w-6 h-6 text-purple-400" />
+                                    <div className="group flex flex-col items-center rounded-xl border border-slate-800 bg-slate-900 p-4 text-center shadow-lg transition-all hover:bg-slate-800/80">
+                                        <div className="mb-2 flex size-10 items-center justify-center rounded-full border border-purple-500/20 bg-purple-500/10 shadow-inner">
+                                            <Smartphone className="size-5 text-purple-400" />
                                         </div>
                                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1">Dispositivo</span>
-                                        <p className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none">
+                                        <p className="text-xl font-black uppercase italic leading-tight tracking-tighter text-white">
                                             {repair.deviceBrand}
                                         </p>
-                                        <p className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none mt-2">
+                                        <p className="mt-1 text-xl font-black uppercase italic leading-tight tracking-tighter text-white">
                                             {repair.deviceModel}
                                         </p>
                                     </div>
                                 </div>
 
                                 {/* RIGHT COLUMN: Core Info (Problem -> Diagnosis -> Images) */}
-                                <div className="lg:col-span-8 space-y-8">
+                                <div className="min-w-0 space-y-4 lg:col-span-9">
 
                                     {/* Status of Work */}
-                                    <div className="grid grid-cols-1 gap-6">
+                                    <div className="grid min-w-0 grid-cols-1 gap-4">
 
                                         <RepairDetailsReception
                                             accessType={repair.accessType}
@@ -326,7 +326,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                         {/* Problem */}
                                         <div className="space-y-2">
                                             <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">PROBLEMA REPORTADO</h3>
-                                            <div className="bg-slate-900/80 border-2 border-slate-800 p-5 rounded-2xl shadow-inner">
+                                            <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4 shadow-inner">
                                                 <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap text-white/90 italic">
                                                     &ldquo;{repair.problemDescription}&rdquo;
                                                 </p>
@@ -341,7 +341,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                                             </h3>
                                             <div className={`
-                                                p-6 rounded-2xl border-2 shadow-2xl relative overflow-hidden
+                                                relative overflow-hidden rounded-xl border-2 p-4 shadow-xl
                                                 ${repair.diagnosis
                                                     ? "bg-blue-600/10 border-blue-500/50"
                                                     : "bg-slate-900/50 border-dashed border-slate-800"

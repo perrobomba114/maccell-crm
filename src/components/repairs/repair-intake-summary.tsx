@@ -30,7 +30,7 @@ export function RepairIntakeSummary({
     return (
         <section className={cn(
             "rounded-xl border border-amber-400/30 bg-slate-950 text-slate-100",
-            compact ? "p-3" : "p-4",
+            "p-3",
         )} aria-label="Datos de recepción del equipo">
             <div className="flex items-center gap-2 text-amber-300">
                 <ShieldCheck className="h-4 w-4" />

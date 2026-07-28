@@ -37,7 +37,7 @@ export function RepairDetailsReception({
     onOpenRepair,
 }: RepairDetailsReceptionProps) {
     return (
-        <div className="space-y-6">
+        <div className="space-y-3">
             <RepairIntakeSummary
                 accessType={accessType}
                 accessCredential={accessCredential}
