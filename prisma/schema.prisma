@@ -350,6 +350,10 @@ model Repair {
   statusId           Int                   @default(1)
   deviceBrand        String
   deviceModel        String
+  accessType         RepairAccessType      @default(NONE)
+  accessCredential   String?
+  hasSimCard         Boolean               @default(false)
+  hasMemoryCard      Boolean               @default(false)
   problemDescription String
   deviceImages       String[]
   estimatedPrice     Float?
@@ -704,6 +708,12 @@ enum Role {
   ADMIN
   VENDOR
   TECHNICIAN
+}
+
+enum RepairAccessType {
+  CODE
+  PATTERN
+  NONE
 }
 
 enum AfipReconciliationStatus {
