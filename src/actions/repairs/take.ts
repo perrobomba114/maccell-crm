@@ -8,6 +8,7 @@ import { TIMEZONE } from "@/lib/date-utils";
 import { es } from "date-fns/locale";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { REPAIR_STATUS } from "@/lib/repairs/status";
 
 export async function takeRepairAction(
     repairId: string,
@@ -38,7 +39,6 @@ export async function takeRepairAction(
         const branchIdToLog = currentUser?.branch?.id || repair.branchId;
 
         await db.$transaction(async (tx) => {
-            const targetStatusId = 2;
             let promisedAtUpdate: Date | undefined;
 
             if (extendMinutes && extendMinutes > 0) {
@@ -48,24 +48,28 @@ export async function takeRepairAction(
                 newPromisedAt = calculatedDate;
             }
 
-            const oldRepair = await tx.repair.findUnique({
-                where: { id: repairId },
-                select: { statusId: true }
-            });
-
-            await tx.repair.update({
-                where: { id: repairId },
+            const withdrawn = await tx.repair.updateMany({
+                where: {
+                    id: repairId,
+                    statusId: REPAIR_STATUS.PENDING,
+                    assignedUserId: null,
+                },
                 data: {
-                    statusId: targetStatusId,
-                    assignedUserId: userId,
+                    statusId: REPAIR_STATUS.CLAIMED,
+                    assignedUserId: null,
                     ...(promisedAtUpdate ? { promisedAt: promisedAtUpdate } : {}),
-                    statusHistory: {
-                        create: {
-                            fromStatusId: oldRepair?.statusId,
-                            toStatusId: targetStatusId,
-                            userId: userId
-                        }
-                    }
+                }
+            });
+            if (withdrawn.count !== 1) {
+                throw new Error("La reparación ya fue retirada o asignada.");
+            }
+
+            await tx.repairStatusHistory.create({
+                data: {
+                    repairId,
+                    fromStatusId: REPAIR_STATUS.PENDING,
+                    toStatusId: REPAIR_STATUS.CLAIMED,
+                    userId,
                 }
             });
 
@@ -109,7 +113,7 @@ export async function takeRepairAction(
                 }
             }
 
-            let obsContent = `Reparación tomada por técnico.`;
+            let obsContent = `Reparación retirada por técnico. Pendiente de asignación.`;
             if (extendMinutes && newPromisedAt) {
                 obsContent += ` Fecha prometida actualizada a ${formatInTimeZone(newPromisedAt, TIMEZONE, "dd/MM HH:mm", { locale: es })}.`;
             }
@@ -144,6 +148,6 @@ export async function takeRepairAction(
         return { success: true };
     } catch (error) {
         console.error("Take Repair Error:", error);
-        return { success: false, error: error instanceof Error ? error.message : "Error al asignar reparación." };
+        return { success: false, error: error instanceof Error ? error.message : "Error al retirar reparación." };
     }
 }

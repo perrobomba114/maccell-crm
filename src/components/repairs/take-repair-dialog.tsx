@@ -64,10 +64,10 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
             );
 
             if (result.success) {
-                toast.success("Reparación asignada correctamente.");
+                toast.success("Reparación retirada correctamente.");
                 onClose();
             } else {
-                toast.error(result.error || "Error al asignar.");
+                toast.error(result.error || "Error al retirar.");
             }
         } catch (error) {
             console.error(error);
@@ -87,7 +87,7 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
                             Retirar Reparación #{repair.ticketNumber}
                         </DialogTitle>
                         <DialogDescription>
-                            Asignar esta reparación a tu lista de trabajo.
+                            Mover esta reparación a la cola técnica para que pueda ser asignada.
                         </DialogDescription>
                     </DialogHeader>
                 </div>

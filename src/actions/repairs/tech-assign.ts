@@ -5,6 +5,7 @@ import { businessHoursService } from "@/lib/services/business-hours";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { REPAIR_STATUS } from "@/lib/repairs/status";
 
 export async function techTakeRepairAction(repairId: string, technicianId: string) {
     try {
@@ -12,26 +13,40 @@ export async function techTakeRepairAction(repairId: string, technicianId: strin
         if (!currentUser || currentUser.role !== "TECHNICIAN" || currentUser.id !== technicianId) {
             return { success: false, error: "No autorizado" };
         }
-        const repair = await db.repair.findUnique({ where: { id: repairId } });
+        const repair = await db.repair.findUnique({
+            where: { id: repairId },
+            select: { id: true, statusId: true, assignedUserId: true }
+        });
         if (!repair) return { success: false, error: "Reparación no encontrada" };
 
-        if (repair.assignedUserId) {
-            return { success: false, error: "Ya está asignada" };
+        if (repair.statusId !== REPAIR_STATUS.PENDING || repair.assignedUserId) {
+            return { success: false, error: "La reparación ya fue retirada o asignada" };
         }
 
-        await db.repair.update({
-            where: { id: repairId },
-            data: {
-                statusId: 2, 
-                assignedUserId: currentUser.id,
-                statusHistory: {
-                    create: {
-                        fromStatusId: repair.statusId, 
-                        toStatusId: 2,
-                        userId: technicianId
-                    }
+        await db.$transaction(async (tx) => {
+            const withdrawn = await tx.repair.updateMany({
+                where: {
+                    id: repairId,
+                    statusId: REPAIR_STATUS.PENDING,
+                    assignedUserId: null,
+                },
+                data: {
+                    statusId: REPAIR_STATUS.CLAIMED,
+                    assignedUserId: null,
                 }
+            });
+            if (withdrawn.count !== 1) {
+                throw new Error("La reparación ya fue retirada o asignada");
             }
+
+            await tx.repairStatusHistory.create({
+                data: {
+                    repairId,
+                    fromStatusId: REPAIR_STATUS.PENDING,
+                    toStatusId: REPAIR_STATUS.CLAIMED,
+                    userId: technicianId,
+                }
+            });
         });
 
         revalidatePath("/technician/tickets");
@@ -50,6 +65,11 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
     }
 
     try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser || currentUser.role !== "TECHNICIAN" || currentUser.id !== technicianId) {
+            return { success: false, error: "No autorizado" };
+        }
+
         const repair = await db.repair.findUnique({
             where: { id: repairId },
             include: { customer: true }
@@ -83,11 +103,13 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
         const isReactivation = repair.statusId === 7 || repair.statusId === 8 || repair.statusId === 9;
         const targetStatusId = (updatePromisedDate || isReactivation) ? 3 : 4;
 
-        const currentUser = await getCurrentUser();
-
         await db.$transaction(async (tx) => {
-            await tx.repair.update({
-                where: { id: repairId },
+            const assigned = await tx.repair.updateMany({
+                where: {
+                    id: repairId,
+                    statusId: repair.statusId,
+                    assignedUserId: repair.assignedUserId,
+                },
                 data: {
                     statusId: targetStatusId,
                     assignedUserId: technicianId,
@@ -95,13 +117,18 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
                     startedAt: targetStatusId === 3 ? new Date() : undefined,
                     finishedAt: null,
                     ...(newPromisedAt ? { promisedAt: newPromisedAt } : {}),
-                    statusHistory: {
-                        create: {
-                            fromStatusId: repair.statusId,
-                            toStatusId: targetStatusId,
-                            userId: technicianId
-                        }
-                    }
+                }
+            });
+            if (assigned.count !== 1) {
+                throw new Error("La reparación ya fue asignada o cambió de estado.");
+            }
+
+            await tx.repairStatusHistory.create({
+                data: {
+                    repairId,
+                    fromStatusId: repair.statusId,
+                    toStatusId: targetStatusId,
+                    userId: technicianId,
                 }
             });
 
