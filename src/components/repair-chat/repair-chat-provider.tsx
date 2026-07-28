@@ -244,9 +244,12 @@ export function RepairChatProvider({ userId, role, children }: { userId: string;
         unreadCount: state.chats.filter((chat) => chat.unread).length,
         setOpen: (value) => {
             if (value) dispatch({ type: "preview", value: null });
-            if (!value) dispatch({ type: "newChat", value: false });
+            if (!value) {
+                selectedRef.current = null;
+                dispatch({ type: "newChat", value: false });
+                dispatch({ type: "select", value: null });
+            }
             dispatch({ type: "open", value });
-            if (value && selectedRef.current) void loadThread(selectedRef.current);
         },
         setNewChatOpen: (value) => dispatch({ type: "newChat", value }),
         setScope: (value) => dispatch({ type: "scope", value }),

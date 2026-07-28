@@ -83,7 +83,7 @@ export function formatReceivedAccessories(hasSimCard: boolean, hasMemoryCard: bo
 export function formatRepairAccess(accessType: RepairAccessType): string {
     if (accessType === "CODE") return "Código/PIN registrado";
     if (accessType === "PATTERN") return "Patrón registrado";
-    return "Sin código";
+    return "Sin código / No autoriza";
 }
 
 export function summarizeRepairIntake(intake: RepairIntake) {

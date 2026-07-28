@@ -9,9 +9,11 @@ import type { RepairChatMessage } from "./repair-chat-types";
 import { RepairChatComposer } from "./repair-chat-composer";
 import { TIMEZONE } from "@/lib/date-utils";
 import { buildRepairDetailsHref } from "@/lib/repair-chat/navigation";
+import { getRepairChatMessageStyle } from "@/lib/repair-chat/message-style";
+import type { RepairChatRole } from "@/lib/repair-chat/navigation";
 
 type Reader = { lastReadAt: string; user: { id: string; name: string } };
-const ROLE_LABELS: Record<string, string> = { ADMIN: "Administrador", VENDOR: "Vendedor", TECHNICIAN: "Técnico" };
+const ROLE_LABELS: Record<RepairChatRole, string> = { ADMIN: "Administrador", VENDOR: "Vendedor", TECHNICIAN: "Técnico" };
 
 export function RepairChatThread() {
     const chat = useRepairChat();
@@ -45,15 +47,19 @@ export function RepairChatThread() {
                 {chat.messageCursor ? <button type="button" onClick={() => void chat.loadOlderMessages()} className="w-full rounded-lg px-3 py-2 text-xs font-semibold text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950">Cargar mensajes anteriores</button> : null}
                 {chat.loading ? <p className="text-center text-sm text-muted-foreground">Cargando…</p> : null}
                 {!chat.loading && chat.messages.length === 0 ? <div className="grid h-full place-content-center px-8 text-center text-muted-foreground"><MessagesSquare className="mx-auto mb-3 h-9 w-9 text-sky-500/70" /><p className="font-semibold text-foreground">Todavía no hay mensajes</p><p className="mt-1 text-xs">Escribí el primero y presioná Enter para enviarlo.</p></div> : null}
-                {chat.messages.map((message) => (
-                    <article key={message.id} className={`group max-w-[88%] rounded-2xl border p-3 shadow-sm ${message.senderId === chat.currentUserId ? "ml-auto border-sky-500/30 bg-sky-600 text-white" : "mr-auto bg-background"}`}>
-                        <p className={`mb-1 text-xs font-bold ${message.senderId === chat.currentUserId ? "text-sky-100" : "text-sky-600"}`}>{message.sender.name} · {ROLE_LABELS[message.sender.role] ?? message.sender.role}</p>
-                        {message.replyTo ? <div className={`mb-2 rounded-lg border-l-4 border-sky-400 px-2 py-1 text-xs ${message.senderId === chat.currentUserId ? "bg-black/15" : "bg-muted"}`}>{message.replyTo.sender.name}: {message.replyTo.content}</div> : null}
-                        {message.content ? <p className="whitespace-pre-wrap text-sm">{message.content}</p> : null}
-                        {message.imageUrls.map((url) => <a key={url} href={url} target="_blank" rel="noreferrer"><Image src={url} alt="Imagen del chat" width={480} height={320} unoptimized className="mt-2 max-h-56 w-auto rounded-xl object-cover" /></a>)}
-                        <div className={`mt-2 flex items-center justify-end gap-2 text-[11px] ${message.senderId === chat.currentUserId ? "text-sky-100" : "text-muted-foreground"}`}><button type="button" onClick={() => setReply(message)} className="flex items-center gap-1 opacity-70 sm:opacity-0 sm:group-hover:opacity-100"><Reply className="h-3 w-3" />Responder</button><span>{new Date(message.createdAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: TIMEZONE })}</span><button type="button" disabled={!message.readBySomeone} onClick={() => void showReaders(message.id)} title={message.readBySomeone ? "Leído: ver quién lo leyó" : "Enviado"} aria-label={message.readBySomeone ? "Leído: ver quién lo leyó" : "Enviado"}><CheckCheck className={`h-4 w-4 ${message.readBySomeone ? (message.senderId === chat.currentUserId ? "text-cyan-200" : "text-sky-500") : "opacity-60"}`} /></button></div>
-                    </article>
-                ))}
+                {chat.messages.map((message) => {
+                    const style = getRepairChatMessageStyle(message.sender.role);
+                    const alignment = message.senderId === chat.currentUserId ? "ml-auto" : "mr-auto";
+                    return (
+                        <article key={message.id} className={`group max-w-[88%] rounded-2xl border p-3 shadow-sm ${alignment} ${style.bubble}`}>
+                            <p className={`mb-1 text-xs font-bold ${style.metadata}`}>{message.sender.name} · {ROLE_LABELS[message.sender.role]}</p>
+                            {message.replyTo ? <div className={`mb-2 rounded-lg border-l-4 px-2 py-1 text-xs ${style.reply}`}>{message.replyTo.sender.name}: {message.replyTo.content}</div> : null}
+                            {message.content ? <p className="whitespace-pre-wrap text-sm">{message.content}</p> : null}
+                            {message.imageUrls.map((url) => <a key={url} href={url} target="_blank" rel="noreferrer"><Image src={url} alt="Imagen del chat" width={480} height={320} unoptimized className="mt-2 max-h-56 w-auto rounded-xl object-cover" /></a>)}
+                            <div className={`mt-2 flex items-center justify-end gap-2 text-[11px] ${style.footer}`}><button type="button" onClick={() => setReply(message)} className="flex items-center gap-1 opacity-70 sm:opacity-0 sm:group-hover:opacity-100"><Reply className="h-3 w-3" />Responder</button><span>{new Date(message.createdAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: TIMEZONE })}</span><button type="button" disabled={!message.readBySomeone} onClick={() => void showReaders(message.id)} title={message.readBySomeone ? "Leído: ver quién lo leyó" : "Enviado"} aria-label={message.readBySomeone ? "Leído: ver quién lo leyó" : "Enviado"}><CheckCheck className={`h-4 w-4 ${message.readBySomeone ? style.readReceipt : "opacity-60"}`} /></button></div>
+                        </article>
+                    );
+                })}
                 <div ref={endRef} />
             </div>
             {chat.readOnly ? <div className="border-t bg-muted p-3 text-center text-sm text-muted-foreground">Chat archivado en modo solo lectura.</div> : <RepairChatComposer reply={reply} onCancelReply={() => setReply(null)} />}

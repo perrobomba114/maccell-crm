@@ -14,7 +14,7 @@
 
 **Files:**
 - Modify: `src/__tests__/repair-intake.test.ts`
-- Modify: `src/__tests__/repair-intake-ui.test.ts`
+- Modify: `src/__tests__/repair-intake-visibility.test.ts`
 - Modify: `src/lib/repairs/intake.ts`
 - Modify: `src/components/repairs/repair-intake-fields.tsx`
 - Modify: `src/components/repairs/finish-repair-intake-check.tsx`
@@ -25,7 +25,7 @@ Agregar aserciones para que `formatRepairAccess("NONE")` sea `Sin código / No a
 
 - [ ] **Step 2: Verificar RED**
 
-Run: `npx tsx --test src/__tests__/repair-intake.test.ts src/__tests__/repair-intake-ui.test.ts`
+Run: `npx tsx --test src/__tests__/repair-intake.test.ts src/__tests__/repair-intake-visibility.test.ts`
 
 Expected: FAIL porque hoy devuelve y renderiza `Sin código`.
 
@@ -35,7 +35,7 @@ Cambiar el retorno `NONE` del formateador y los dos textos visibles. No cambiar 
 
 - [ ] **Step 4: Verificar GREEN**
 
-Run: `npx tsx --test src/__tests__/repair-intake.test.ts src/__tests__/repair-intake-ui.test.ts src/__tests__/repair-printing.test.ts`
+Run: `npx tsx --test src/__tests__/repair-intake.test.ts src/__tests__/repair-intake-visibility.test.ts src/__tests__/repair-ticket-intake.test.ts`
 
 Expected: PASS.
 
@@ -58,7 +58,7 @@ Expected: FAIL para estados `5` y `7` porque hoy pertenecen a `FINAL_REPAIR_CHAT
 
 - [ ] **Step 3: Corregir constantes compartidas**
 
-Definir `ACTIVE_REPAIR_CHAT_STATUS_IDS = [1, 2, 3, 4, 5, 7, 8, 9]` y `FINAL_REPAIR_CHAT_STATUS_IDS = [6, 10]`. No duplicar lógica en repositorio, política ni navegación.
+Definir `ACTIVE_REPAIR_CHAT_STATUS_IDS = [1, 2, 3, 4, 5, 7, 8, 9]` y `FINAL_REPAIR_CHAT_STATUS_IDS = [6, 10]`. Mantener además la navegación a las páginas históricas para estados `5`, `6`, `7` y `10`, porque esos estados no aparecen en las tablas de reparaciones activas.
 
 - [ ] **Step 4: Verificar GREEN**
 
@@ -98,6 +98,8 @@ Expected: PASS.
 
 **Files:**
 - Verify all changed files.
+
+Antes del gate, agregar en `src/__tests__/repair-chat-client-state.test.ts` una prueba fallida que exija limpiar `selected` al ejecutar `setOpen(false)`. Implementar en `src/components/repair-chat/repair-chat-provider.tsx` el reinicio sin borrar datos persistidos y verificar que la prueba pase.
 
 - [ ] **Step 1: Ejecutar gate completo**
 

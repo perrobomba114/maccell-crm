@@ -7,13 +7,18 @@ const readComponent = (name: string) => readFileSync(new URL(`../components/${na
 
 test("builds the repair detail destination for every chat role", () => {
     const activeRepair = { id: "repair-active", statusId: 4 };
-    const archivedRepair = { id: "repair-final", statusId: 6 };
+    const finishedRepair = { id: "repair-finished", statusId: 5 };
+    const deliveredRepair = { id: "repair-delivered", statusId: 6 };
+    const invoicedRepair = { id: "repair-invoiced", statusId: 10 };
 
     assert.equal(buildRepairDetailsHref("ADMIN", activeRepair), "/admin/repairs?repairId=repair-active");
     assert.equal(buildRepairDetailsHref("VENDOR", activeRepair), "/vendor/repairs/active?repairId=repair-active");
-    assert.equal(buildRepairDetailsHref("VENDOR", archivedRepair), "/vendor/repairs/history?repairId=repair-final");
+    assert.equal(buildRepairDetailsHref("VENDOR", finishedRepair), "/vendor/repairs/history?repairId=repair-finished");
+    assert.equal(buildRepairDetailsHref("VENDOR", deliveredRepair), "/vendor/repairs/history?repairId=repair-delivered");
+    assert.equal(buildRepairDetailsHref("VENDOR", invoicedRepair), "/vendor/repairs/history?repairId=repair-invoiced");
     assert.equal(buildRepairDetailsHref("TECHNICIAN", activeRepair), "/technician/repairs?repairId=repair-active");
-    assert.equal(buildRepairDetailsHref("TECHNICIAN", archivedRepair), "/technician/history?repairId=repair-final");
+    assert.equal(buildRepairDetailsHref("TECHNICIAN", finishedRepair), "/technician/history?repairId=repair-finished");
+    assert.equal(buildRepairDetailsHref("TECHNICIAN", deliveredRepair), "/technician/history?repairId=repair-delivered");
 });
 
 test("removes only the repair detail parameter when closing the dialog", () => {

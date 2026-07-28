@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
     appendPatternPoint,
+    formatRepairAccess,
     normalizeRepairIntake,
     readRepairIntakeFormData,
     serializePattern,
@@ -53,6 +54,10 @@ test("clears stale credentials when the device has no code", () => {
 
     assert.equal(result.success, true);
     if (result.success) assert.equal(result.data.accessCredential, null);
+});
+
+test("labels missing or unauthorized access consistently", () => {
+    assert.equal(formatRepairAccess("NONE"), "Sin código / No autoriza");
 });
 
 test("serializes the selected pattern in order", () => {

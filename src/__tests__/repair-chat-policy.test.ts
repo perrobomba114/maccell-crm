@@ -16,7 +16,7 @@ test("rejects vendors from another branch and technicians no longer assigned", (
     assert.equal(canAccessRepairChat({ id: "tech-old", role: "TECHNICIAN", branchId: null }, repair), false);
 });
 
-test("archives only operational final states", () => {
-    for (const statusId of [5, 6, 7, 10]) assert.equal(isRepairChatReadOnly(statusId), true);
-    for (const statusId of [1, 2, 3, 4, 8, 9]) assert.equal(isRepairChatReadOnly(statusId), false);
+test("archives chats only after delivery", () => {
+    for (const statusId of [6, 10]) assert.equal(isRepairChatReadOnly(statusId), true);
+    for (const statusId of [1, 2, 3, 4, 5, 7, 8, 9]) assert.equal(isRepairChatReadOnly(statusId), false);
 });

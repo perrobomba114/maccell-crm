@@ -17,4 +17,5 @@ test("repair ticket prints accessories without referencing the credential", () =
     assert.doesNotMatch(source, /accessCredential/);
     assert.match(source, /ACCESORIOS RECIBIDOS/);
     assert.match(source, /formatReceivedAccessories/);
+    assert.match(source, /formatRepairAccess\(repair\.accessType \?\? "NONE"\)/);
 });

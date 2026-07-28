@@ -22,6 +22,14 @@ const publicRouteSource = readFileSync(
     new URL("../app/api/public/repair-status/route.ts", import.meta.url),
     "utf8",
 );
+const intakeFieldsSource = readFileSync(
+    new URL("../components/repairs/repair-intake-fields.tsx", import.meta.url),
+    "utf8",
+);
+const finishIntakeSource = readFileSync(
+    new URL("../components/repairs/finish-repair-intake-check.tsx", import.meta.url),
+    "utf8",
+);
 
 test("private repair workflows render the received access summary", () => {
     assert.match(summarySource, /accessCredential/);
@@ -32,4 +40,11 @@ test("private repair workflows render the received access summary", () => {
 
 test("public repair status never serializes the access credential", () => {
     assert.doesNotMatch(publicRouteSource, /accessCredential/);
+});
+
+test("intake surfaces explain missing or unauthorized access consistently", () => {
+    for (const source of [intakeFieldsSource, finishIntakeSource]) {
+        assert.match(source, /Sin código \/ No autoriza/);
+        assert.match(source, /El equipo no tiene bloqueo o el cliente no autoriza el acceso/);
+    }
 });

@@ -46,6 +46,7 @@ test("thread supports replies, images, receipts and archived read-only mode", ()
     assert.match(thread, /Cargar mensajes anteriores/);
     assert.match(thread, /Todavía no hay mensajes/);
     assert.match(thread, /currentUserId/);
+    assert.match(thread, /getRepairChatMessageStyle\(message\.sender\.role\)/);
     assert.match(composer, /onKeyDown/);
     assert.match(composer, /event\.key === "Enter"/);
     assert.match(composer, /!event\.shiftKey/);

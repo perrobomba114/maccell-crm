@@ -29,7 +29,7 @@ const ACCESS_OPTIONS: Array<{
 }> = [
     { value: "CODE", label: "Código / PIN", description: "Número o contraseña" },
     { value: "PATTERN", label: "Patrón", description: "Cuadrícula de 9 puntos" },
-    { value: "NONE", label: "Sin código", description: "El equipo no tiene bloqueo" },
+    { value: "NONE", label: "Sin código / No autoriza", description: "El equipo no tiene bloqueo o el cliente no autoriza el acceso" },
 ];
 
 function parsePattern(value: string | null): number[] {

@@ -18,7 +18,7 @@ Aclarar que la ausencia de una credencial puede significar que el equipo no tien
 
 - Estados activos: Pendiente, Tomada, En proceso, Pausada, Finalizado OK, Sin solución y los estados operativos 8/9 existentes.
 - Estados archivados y de solo lectura: Entregada (`6`) y Entregada con factura (`10`).
-- La bandeja, la búsqueda, el modo de solo lectura y la navegación al detalle compartirán las mismas constantes de estado.
+- La bandeja, la búsqueda y el modo de solo lectura compartirán las constantes del chat. La navegación al detalle respetará las páginas operativas existentes: Finalizado OK y Sin solución continúan abriendo el historial de reparaciones aunque su chat siga activo hasta la entrega.
 - No se modifican reparaciones ni mensajes existentes; el cambio solamente reclasifica su bandeja según el estado actual de la reparación.
 
 ### Colores de mensajes
@@ -29,6 +29,12 @@ Aclarar que la ausencia de una credencial puede significar que el equipo no tien
 - Los tres estilos tendrán texto blanco y contraste suficiente en tema oscuro.
 - La alineación seguirá indicando mensajes propios y ajenos, pero el color dependerá siempre del rol del remitente.
 - Nombre, rol, respuesta citada, horario y confirmación de lectura deberán conservar legibilidad dentro de cada color.
+
+### Cierre y reapertura del widget
+
+- Cerrar el widget elimina únicamente la conversación seleccionada de la interfaz.
+- Al volver a abrir el chat siempre se mostrará la bandeja principal, no el último hilo visitado.
+- Mensajes, lecturas, filtros y datos persistidos no se eliminan.
 
 ## Alternativas descartadas
 

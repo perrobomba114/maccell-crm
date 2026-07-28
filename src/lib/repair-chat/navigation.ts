@@ -1,4 +1,4 @@
-import { FINAL_REPAIR_CHAT_STATUS_IDS } from "@/lib/repairs/status";
+import { REPAIR_HISTORY_STATUS_IDS } from "@/lib/repairs/status";
 
 export type RepairChatRole = "ADMIN" | "VENDOR" | "TECHNICIAN";
 
@@ -11,12 +11,12 @@ export function buildRepairDetailsHref(role: RepairChatRole, repair: RepairNavig
     const query = `repairId=${encodeURIComponent(repair.id)}`;
     if (role === "ADMIN") return `/admin/repairs?${query}`;
 
-    const isArchived = FINAL_REPAIR_CHAT_STATUS_IDS.some((statusId) => statusId === repair.statusId);
+    const isHistoryRepair = REPAIR_HISTORY_STATUS_IDS.some((statusId) => statusId === repair.statusId);
     if (role === "VENDOR") {
-        return `${isArchived ? "/vendor/repairs/history" : "/vendor/repairs/active"}?${query}`;
+        return `${isHistoryRepair ? "/vendor/repairs/history" : "/vendor/repairs/active"}?${query}`;
     }
 
-    return `${isArchived ? "/technician/history" : "/technician/repairs"}?${query}`;
+    return `${isHistoryRepair ? "/technician/history" : "/technician/repairs"}?${query}`;
 }
 
 export function removeRepairDetailsParam(pathname: string, searchParams: { toString(): string }): string {

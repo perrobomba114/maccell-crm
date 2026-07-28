@@ -21,3 +21,7 @@ test("queues a compact preview without changing the selected repair", () => {
     assert.match(provider, /latest\.sender\.id !== userId/);
     assert.doesNotMatch(provider, /dispatch\(\{ type: "select"[^}]*payload\.repairId/);
 });
+
+test("closing the widget resets the selected thread before the next open", () => {
+    assert.match(provider, /if \(!value\) \{[\s\S]*selectedRef\.current = null;[\s\S]*dispatch\(\{ type: "select", value: null \}\);[\s\S]*\}/);
+});

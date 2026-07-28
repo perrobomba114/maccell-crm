@@ -31,6 +31,7 @@ export type RepairChatMessage = {
     createdAt: string;
     senderId: string;
     readBySomeone: boolean;
-    sender: { id: string; name: string; role: string };
+    sender: { id: string; name: string; role: RepairChatRole };
     replyTo: { id: string; content: string | null; sender: { name: string } } | null;
 };
+import type { RepairChatRole } from "@/lib/repair-chat/navigation";

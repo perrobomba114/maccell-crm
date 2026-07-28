@@ -31,7 +31,7 @@ export function FinishRepairIntakeCheck({
         ? { label: "Código / PIN", value: accessCredential || "No informado", Icon: KeyRound }
         : normalizedType === "PATTERN"
             ? { label: "Patrón de acceso", value: `${patternPoints.length} puntos registrados`, Icon: Fingerprint }
-            : { label: "Sin código", value: "Equipo sin bloqueo", Icon: ShieldCheck };
+            : { label: "Sin código / No autoriza", value: "El equipo no tiene bloqueo o el cliente no autoriza el acceso", Icon: ShieldCheck };
 
     return (
         <section className="h-full rounded-2xl border border-amber-400/35 bg-amber-500/[0.055] p-3">
@@ -49,7 +49,7 @@ export function FinishRepairIntakeCheck({
                         <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Acceso del equipo</p>
                         <p className="mt-0.5 truncate text-sm font-black text-white">{accessDetails.label}</p>
                         <p className={cn(
-                            "mt-0.5 truncate text-[11px] font-bold",
+                            "mt-0.5 text-[11px] font-bold leading-snug",
                             normalizedType === "CODE" ? "font-mono tracking-widest text-amber-300" : "text-slate-500",
                         )}>
                             {accessDetails.value}
