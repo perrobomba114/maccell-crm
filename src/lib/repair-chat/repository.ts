@@ -17,7 +17,7 @@ export function buildAccessibleRepairWhere(user: RepairChatUser): Prisma.RepairW
     return { assignedUserId: user.id };
 }
 
-async function getAuthorizedRepair(user: RepairChatUser, repairId: string) {
+export async function getAuthorizedRepair(user: RepairChatUser, repairId: string) {
     const repair = await db.repair.findUnique({
         where: { id: repairId },
         select: { id: true, ticketNumber: true, branchId: true, assignedUserId: true, statusId: true },

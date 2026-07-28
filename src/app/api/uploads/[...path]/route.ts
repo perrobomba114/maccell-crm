@@ -10,6 +10,9 @@ export async function GET(
 ) {
     try {
         const { path: filePathArray } = await params;
+        if (filePathArray[0] === "repair-chat") {
+            return new NextResponse("Forbidden", { status: 403, headers: withPantallasCors() });
+        }
         const publicDir = path.resolve(process.cwd(), "public");
         const uploadDir = path.resolve(process.cwd(), "upload");
         const publicFilePath = path.resolve(publicDir, ...filePathArray);
