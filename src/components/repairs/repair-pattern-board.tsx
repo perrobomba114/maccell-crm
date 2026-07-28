@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import { cn } from "@/lib/utils";
 
 interface RepairPatternBoardProps {
@@ -20,6 +22,11 @@ type PatternSegment = {
     x2: number;
     y2: number;
 };
+
+interface RepairPatternPreviewProps {
+    selectedPoints: number[];
+    className?: string;
+}
 
 const PATTERN_COORDINATES: readonly PatternCoordinate[] = [
     { x: 22, y: 22 },
@@ -58,16 +65,113 @@ function getPatternSegment(fromPoint: number, toPoint: number): PatternSegment |
     };
 }
 
+function PatternConnections({
+    selectedPoints,
+    markerId,
+}: {
+    selectedPoints: number[];
+    markerId: string;
+}) {
+    const segments = selectedPoints.slice(1).flatMap((toPoint, index) => {
+        const segment = getPatternSegment(selectedPoints[index], toPoint);
+        return segment ? [segment] : [];
+    });
+
+    return (
+        <>
+            <defs>
+                <marker
+                    id={markerId}
+                    markerHeight="7"
+                    markerWidth="7"
+                    orient="auto"
+                    refX="6"
+                    refY="3.5"
+                    viewBox="0 0 7 7"
+                >
+                    <path d="M0 0L7 3.5L0 7Z" fill="#fde68a" />
+                </marker>
+            </defs>
+            {segments.map((segment, index) => (
+                <g key={`${selectedPoints[index]}-${selectedPoints[index + 1]}`}>
+                    <line
+                        x1={segment.x1}
+                        y1={segment.y1}
+                        x2={segment.x2}
+                        y2={segment.y2}
+                        stroke="rgba(0, 0, 0, 0.82)"
+                        strokeLinecap="round"
+                        strokeWidth="9"
+                    />
+                    <line
+                        x1={segment.x1}
+                        y1={segment.y1}
+                        x2={segment.x2}
+                        y2={segment.y2}
+                        markerEnd={`url(#${markerId})`}
+                        stroke="#fbbf24"
+                        strokeLinecap="round"
+                        strokeWidth="4"
+                    />
+                </g>
+            ))}
+        </>
+    );
+}
+
+export function RepairPatternPreview({ selectedPoints, className }: RepairPatternPreviewProps) {
+    const markerId = `repair-pattern-preview-${useId().replaceAll(":", "")}`;
+
+    return (
+        <svg
+            role="img"
+            aria-label={`Patrón registrado: ${selectedPoints.join(", ")}`}
+            className={cn(
+                "h-36 w-36 rounded-xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-slate-950 to-amber-950/30 p-2 shadow-inner shadow-black/35",
+                className,
+            )}
+            viewBox="0 0 176 176"
+        >
+            <PatternConnections selectedPoints={selectedPoints} markerId={markerId} />
+            {PATTERN_COORDINATES.map((coordinate, index) => {
+                const point = index + 1;
+                const order = selectedPoints.indexOf(point);
+                const selected = order >= 0;
+
+                return (
+                    <g key={point}>
+                        <circle
+                            cx={coordinate.x}
+                            cy={coordinate.y}
+                            r="18"
+                            fill={selected ? "#fbbf24" : "#1e293b"}
+                            stroke={selected ? "#fef3c7" : "#64748b"}
+                            strokeWidth="3"
+                        />
+                        <text
+                            x={coordinate.x}
+                            y={coordinate.y + 5}
+                            fill={selected ? "#020617" : "#cbd5e1"}
+                            fontSize="14"
+                            fontWeight="900"
+                            textAnchor="middle"
+                        >
+                            {selected ? order + 1 : "·"}
+                        </text>
+                    </g>
+                );
+            })}
+        </svg>
+    );
+}
+
 export function RepairPatternBoard({
     selectedPoints,
     isDrawing,
     onDrawingChange,
     onPointSelect,
 }: RepairPatternBoardProps) {
-    const segments = selectedPoints.slice(1).flatMap((toPoint, index) => {
-        const segment = getPatternSegment(selectedPoints[index], toPoint);
-        return segment ? [segment] : [];
-    });
+    const markerId = `repair-pattern-board-${useId().replaceAll(":", "")}`;
 
     return (
         <div
@@ -81,42 +185,7 @@ export function RepairPatternBoard({
                 className="pointer-events-none absolute left-5 top-5 h-44 w-44 overflow-visible"
                 viewBox="0 0 176 176"
             >
-                <defs>
-                    <marker
-                        id="repair-pattern-arrow"
-                        markerHeight="7"
-                        markerWidth="7"
-                        orient="auto"
-                        refX="6"
-                        refY="3.5"
-                        viewBox="0 0 7 7"
-                    >
-                        <path d="M0 0L7 3.5L0 7Z" fill="#fde68a" />
-                    </marker>
-                </defs>
-                {segments.map((segment, index) => (
-                    <g key={`${selectedPoints[index]}-${selectedPoints[index + 1]}`}>
-                        <line
-                            x1={segment.x1}
-                            y1={segment.y1}
-                            x2={segment.x2}
-                            y2={segment.y2}
-                            stroke="rgba(0, 0, 0, 0.82)"
-                            strokeLinecap="round"
-                            strokeWidth="9"
-                        />
-                        <line
-                            x1={segment.x1}
-                            y1={segment.y1}
-                            x2={segment.x2}
-                            y2={segment.y2}
-                            markerEnd="url(#repair-pattern-arrow)"
-                            stroke="#fbbf24"
-                            strokeLinecap="round"
-                            strokeWidth="4"
-                        />
-                    </g>
-                ))}
+                <PatternConnections selectedPoints={selectedPoints} markerId={markerId} />
             </svg>
 
             <div className="relative z-10 grid grid-cols-3 gap-[22px]">

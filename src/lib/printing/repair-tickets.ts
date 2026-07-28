@@ -2,7 +2,11 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { printHtml, SHARED_CSS, wrapHtml } from "./core";
 import { REPAIR_DATA_RESPONSIBILITY_TERMS } from "./repair-terms";
-import { formatReceivedAccessories } from "@/lib/repairs/intake";
+import {
+    formatReceivedAccessories,
+    formatRepairAccess,
+    type RepairAccessType,
+} from "@/lib/repairs/intake";
 
 type RepairTicketData = {
     ticketNumber: string;
@@ -17,6 +21,7 @@ type RepairTicketData = {
     deviceModel?: string | null;
     problemDescription?: string | null;
     isWet?: boolean | null;
+    accessType?: RepairAccessType | null;
     hasSimCard?: boolean | null;
     hasMemoryCard?: boolean | null;
     estimatedPrice?: number | null;
@@ -57,10 +62,14 @@ export const printRepairTicket = (repair: RepairTicketData | null | undefined) =
         </div>
 
         <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
-            <div style="font-size: 12px; font-weight: 900;">ACCESORIOS RECIBIDOS</div>
+            <div style="font-size: 12px; font-weight: 900;">RECEPCIÓN DEL EQUIPO</div>
             <div style="font-size: 14px; font-weight: bold;">
-                ${formatReceivedAccessories(Boolean(repair.hasSimCard), Boolean(repair.hasMemoryCard))}
+                Acceso: ${formatRepairAccess(repair.accessType ?? "NONE")}
             </div>
+            <div style="font-size: 14px; font-weight: bold;">
+                ACCESORIOS RECIBIDOS: ${formatReceivedAccessories(Boolean(repair.hasSimCard), Boolean(repair.hasMemoryCard))}
+            </div>
+            <div style="font-size: 10px; margin-top: 3px;">La credencial de acceso no se imprime por seguridad.</div>
         </div>
 
          <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">

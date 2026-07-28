@@ -1,6 +1,8 @@
 // Types and pure utility functions for the repair history table.
 // Keep all shared logic here to avoid duplication between mobile/desktop views.
 
+import type { RepairAccessType } from "@/lib/repairs/intake";
+
 export type RepairData = {
     id: string;
     ticketNumber: string;
@@ -13,6 +15,10 @@ export type RepairData = {
     updatedAt: Date | string | null;
     promisedAt?: Date | string | null;
     problemDescription?: string | null;
+    accessType?: RepairAccessType | null;
+    accessCredential?: string | null;
+    hasSimCard?: boolean | null;
+    hasMemoryCard?: boolean | null;
     deviceImages?: string[] | null;
     estimatedPrice?: number | null;
     customer: { name: string; phone?: string | null };

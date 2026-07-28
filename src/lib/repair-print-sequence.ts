@@ -1,4 +1,5 @@
 import { printRepairTicket, printWarrantyTicket, printWetReport } from "@/lib/print-utils";
+import type { RepairAccessType } from "@/lib/repairs/intake";
 
 type PrintRepairTicketInput = NonNullable<Parameters<typeof printRepairTicket>[0]>;
 
@@ -10,6 +11,9 @@ type PrintableRepair = {
     deviceModel?: string | null;
     problemDescription?: string | null;
     isWet?: boolean | null;
+    accessType?: RepairAccessType | null;
+    hasSimCard?: boolean | null;
+    hasMemoryCard?: boolean | null;
     estimatedPrice?: number | null;
     promisedAt?: Date | string | null;
     parts?: {
@@ -54,6 +58,9 @@ function buildRepairTicketInput(repair: PrintableRepair): PrintRepairTicketInput
         deviceModel: repair.deviceModel,
         problemDescription: repair.problemDescription,
         isWet: repair.isWet,
+        accessType: repair.accessType,
+        hasSimCard: repair.hasSimCard,
+        hasMemoryCard: repair.hasMemoryCard,
         estimatedPrice: repair.estimatedPrice,
         promisedAt: repair.promisedAt,
         parts: repair.parts

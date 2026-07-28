@@ -2,6 +2,7 @@ import { CreditCard, Fingerprint, KeyRound, MemoryStick, ShieldCheck } from "luc
 
 import { cn } from "@/lib/utils";
 import { summarizeRepairIntake, type RepairAccessType } from "@/lib/repairs/intake";
+import { RepairPatternPreview } from "./repair-pattern-board";
 
 interface RepairIntakeSummaryProps {
     accessType?: RepairAccessType | null;
@@ -9,31 +10,6 @@ interface RepairIntakeSummaryProps {
     hasSimCard?: boolean | null;
     hasMemoryCard?: boolean | null;
     compact?: boolean;
-}
-
-function PatternPreview({ credential }: { credential: string }) {
-    const points = credential.split("-").map(Number);
-
-    return (
-        <div className="grid w-24 grid-cols-3 gap-2 rounded-lg border border-slate-700 bg-slate-950 p-3" aria-label={`Patrón ${credential}`}>
-            {Array.from({ length: 9 }, (_, index) => index + 1).map((point) => {
-                const order = points.indexOf(point);
-                return (
-                    <span
-                        key={point}
-                        className={cn(
-                            "flex h-5 w-5 items-center justify-center rounded-full border text-[9px] font-black",
-                            order >= 0
-                                ? "border-amber-300 bg-amber-400 text-slate-950"
-                                : "border-slate-700 bg-slate-800 text-transparent",
-                        )}
-                    >
-                        {order >= 0 ? order + 1 : "·"}
-                    </span>
-                );
-            })}
-        </div>
-    );
 }
 
 export function RepairIntakeSummary({
@@ -73,7 +49,10 @@ export function RepairIntakeSummary({
                         </p>
                     ) : null}
                     {normalizedType === "PATTERN" && accessCredential ? (
-                        <div className="mt-2"><PatternPreview credential={accessCredential} /></div>
+                        <RepairPatternPreview
+                            className="mt-3"
+                            selectedPoints={accessCredential.split("-").map(Number)}
+                        />
                     ) : null}
                 </div>
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">

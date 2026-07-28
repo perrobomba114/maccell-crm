@@ -80,15 +80,15 @@ export function formatReceivedAccessories(hasSimCard: boolean, hasMemoryCard: bo
     return "Sin SIM ni tarjeta de memoria";
 }
 
-export function summarizeRepairIntake(intake: RepairIntake) {
-    const accessLabel = intake.accessType === "CODE"
-        ? "Código/PIN registrado"
-        : intake.accessType === "PATTERN"
-            ? "Patrón registrado"
-            : "Sin código";
+export function formatRepairAccess(accessType: RepairAccessType): string {
+    if (accessType === "CODE") return "Código/PIN registrado";
+    if (accessType === "PATTERN") return "Patrón registrado";
+    return "Sin código";
+}
 
+export function summarizeRepairIntake(intake: RepairIntake) {
     return {
-        accessLabel,
+        accessLabel: formatRepairAccess(intake.accessType),
         accessoriesLabel: formatReceivedAccessories(intake.hasSimCard, intake.hasMemoryCard),
     };
 }

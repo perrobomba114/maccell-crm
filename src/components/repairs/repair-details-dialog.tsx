@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createSinglePartReturnAction } from "@/lib/actions/repairs";
 import { useRouter } from "next/navigation";
-import { RepairWarrantyInfo } from "./repair-warranty-info";
+import type { RepairAccessType } from "@/lib/repairs/intake";
+import { RepairDetailsReception } from "./repair-details-reception";
 
 type RepairStatusColor = string | null;
 type RepairUserRole = "ADMIN" | "VENDOR" | "TECHNICIAN";
@@ -58,6 +59,10 @@ export type RepairDetails = {
     deviceImages?: string[];
     isWet?: boolean;
     isWarranty?: boolean;
+    accessType?: RepairAccessType | null;
+    accessCredential?: string | null;
+    hasSimCard?: boolean | null;
+    hasMemoryCard?: boolean | null;
     customer: {
         name: string;
         phone?: string | null;
@@ -307,7 +312,11 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     {/* Status of Work */}
                                     <div className="grid grid-cols-1 gap-6">
 
-                                        <RepairWarrantyInfo
+                                        <RepairDetailsReception
+                                            accessType={repair.accessType}
+                                            accessCredential={repair.accessCredential}
+                                            hasSimCard={repair.hasSimCard}
+                                            hasMemoryCard={repair.hasMemoryCard}
                                             isWarranty={repair.isWarranty}
                                             originalRepair={repair.originalRepair}
                                             warrantyRepairs={repair.warrantyRepairs}
