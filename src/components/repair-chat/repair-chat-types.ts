@@ -16,6 +16,14 @@ export type RepairChatSummary = {
 
 export type RepairSearchResult = RepairChatSummary["repair"] & { chat: { id: string } | null };
 
+export type RepairChatPreview = {
+    eventId: string;
+    repair: RepairChatSummary["repair"];
+    ticketNumber: string;
+    sender: string;
+    snippet: string;
+};
+
 export type RepairChatMessage = {
     id: string;
     content: string | null;

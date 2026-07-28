@@ -1,39 +1,48 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from "react";
 import { toast } from "sonner";
-import type { RepairChatMessage, RepairChatSummary, RepairSearchResult } from "./repair-chat-types";
+import type { RepairChatMessage, RepairChatPreview, RepairChatSummary, RepairSearchResult } from "./repair-chat-types";
 import { RepairChatWidget } from "./repair-chat-widget";
 
 type State = {
     open: boolean;
     scope: "active" | "archived";
     chats: RepairChatSummary[];
+    nextCursor: string | null;
     selected: RepairChatSummary["repair"] | null;
     messages: RepairChatMessage[];
+    messageCursor: string | null;
     searchResults: RepairSearchResult[];
     readOnly: boolean;
     loading: boolean;
+    preview: RepairChatPreview | null;
 };
 
 type Action =
     | { type: "open"; value: boolean }
     | { type: "scope"; value: State["scope"] }
-    | { type: "chats"; value: RepairChatSummary[] }
+    | { type: "chats"; value: RepairChatSummary[]; nextCursor: string | null; append?: boolean }
     | { type: "select"; value: RepairChatSummary["repair"] | null }
-    | { type: "thread"; messages: RepairChatMessage[]; readOnly: boolean }
+    | { type: "thread"; messages: RepairChatMessage[]; readOnly: boolean; nextCursor: string | null; prepend?: boolean }
     | { type: "search"; value: RepairSearchResult[] }
+    | { type: "preview"; value: RepairChatPreview | null }
     | { type: "loading"; value: boolean };
 
-const initialState: State = { open: false, scope: "active", chats: [], selected: null, messages: [], searchResults: [], readOnly: false, loading: false };
+const initialState: State = { open: false, scope: "active", chats: [], nextCursor: null, selected: null, messages: [], messageCursor: null, searchResults: [], readOnly: false, loading: false, preview: null };
 function reducer(state: State, action: Action): State {
     switch (action.type) {
         case "open": return { ...state, open: action.value };
-        case "scope": return { ...state, scope: action.value, selected: null, messages: [] };
-        case "chats": return { ...state, chats: action.value };
-        case "select": return { ...state, selected: action.value };
-        case "thread": return { ...state, messages: action.messages, readOnly: action.readOnly };
+        case "scope": return { ...state, scope: action.value, chats: [], nextCursor: null, selected: null, messages: [], messageCursor: null };
+        case "chats": return {
+            ...state,
+            chats: action.append ? [...state.chats, ...action.value.filter((item) => !state.chats.some((chat) => chat.repair.id === item.repair.id))] : action.value,
+            nextCursor: action.nextCursor,
+        };
+        case "select": return { ...state, selected: action.value, messageCursor: null };
+        case "thread": return { ...state, messages: action.prepend ? [...action.messages, ...state.messages] : action.messages, messageCursor: action.nextCursor, readOnly: action.readOnly };
         case "search": return { ...state, searchResults: action.value };
+        case "preview": return { ...state, preview: action.value };
         case "loading": return { ...state, loading: action.value };
     }
 }
@@ -43,6 +52,9 @@ type ContextValue = State & {
     setOpen: (value: boolean) => void;
     setScope: (value: State["scope"]) => void;
     backToInbox: () => void;
+    dismissPreview: () => void;
+    loadMore: () => Promise<void>;
+    loadOlderMessages: () => Promise<void>;
     search: (query: string) => Promise<void>;
     selectRepair: (repair: RepairChatSummary["repair"]) => Promise<void>;
     send: (content: string, images: File[], replyToId?: string) => Promise<boolean>;
@@ -58,14 +70,30 @@ export function useRepairChat(): ContextValue {
 
 export function RepairChatProvider({ userId, children }: { userId: string; children: React.ReactNode }) {
     const [state, dispatch] = useReducer(reducer, initialState);
+    const scopeRef = useRef(state.scope);
+    const selectedRef = useRef(state.selected);
+    const openRef = useRef(state.open);
+    const nextCursorRef = useRef(state.nextCursor);
+    const messageCursorRef = useRef(state.messageCursor);
+    scopeRef.current = state.scope;
+    selectedRef.current = state.selected;
+    openRef.current = state.open;
+    nextCursorRef.current = state.nextCursor;
+    messageCursorRef.current = state.messageCursor;
 
-    const loadChats = useCallback(async (scope: State["scope"]) => {
-        if (!userId) return;
-        const response = await fetch(`/api/repair-chats?scope=${scope}`, { cache: "no-store" });
-        if (response.ok) dispatch({ type: "chats", value: (await response.json()).items });
+    const fetchChats = useCallback(async (scope: State["scope"], cursor?: string): Promise<{ items: RepairChatSummary[]; nextCursor: string | null }> => {
+        if (!userId) return { items: [], nextCursor: null };
+        const cursorQuery = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
+        const response = await fetch(`/api/repair-chats?scope=${scope}${cursorQuery}`, { cache: "no-store" });
+        return response.ok ? await response.json() : { items: [], nextCursor: null };
     }, [userId]);
 
-    const loadThread = useCallback(async (repair: RepairChatSummary["repair"]) => {
+    const loadChats = useCallback(async (scope: State["scope"], append = false) => {
+        const page = await fetchChats(scope, append ? nextCursorRef.current ?? undefined : undefined);
+        dispatch({ type: "chats", value: page.items, nextCursor: page.nextCursor, append });
+    }, [fetchChats]);
+
+    const loadThread = useCallback(async (repair: RepairChatSummary["repair"], markAsRead = true) => {
         dispatch({ type: "loading", value: true });
         try {
             const response = await fetch(`/api/repair-chats/${repair.id}/messages`, { cache: "no-store" });
@@ -76,8 +104,10 @@ export function RepairChatProvider({ userId, children }: { userId: string; child
             }
             if (!response.ok) throw new Error("No se pudo abrir la conversación");
             const data = await response.json();
-            dispatch({ type: "thread", messages: data.items, readOnly: data.readOnly });
-            await fetch(`/api/repair-chats/${repair.id}/read`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ readAt: new Date().toISOString() }) });
+            dispatch({ type: "thread", messages: data.items, readOnly: data.readOnly, nextCursor: data.nextCursor });
+            if (markAsRead) {
+                await fetch(`/api/repair-chats/${repair.id}/read`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ readAt: new Date().toISOString() }) });
+            }
         } finally {
             dispatch({ type: "loading", value: false });
         }
@@ -88,30 +118,69 @@ export function RepairChatProvider({ userId, children }: { userId: string; child
     useEffect(() => {
         if (!userId) return;
         const source = new EventSource("/api/repair-chats/events");
-        const refresh = () => {
-            void loadChats(state.scope);
-            if (state.selected) void loadThread(state.selected);
-            const audio = new Audio("/notificacion.mp3");
-            audio.volume = 0.5;
-            void audio.play().catch(() => undefined);
+        const refresh = async (event: Event) => {
+            let payload: { eventId: string; repairId: string } | null = null;
+            try {
+                payload = event instanceof MessageEvent ? JSON.parse(event.data) as { eventId: string; repairId: string } : null;
+            } catch {
+                return;
+            }
+            if (!payload) return;
+            if (event.type === "message.created") {
+                const activePage = await fetchChats("active");
+                if (scopeRef.current === "active") dispatch({ type: "chats", value: activePage.items, nextCursor: activePage.nextCursor });
+                else await loadChats(scopeRef.current);
+                const chat = activePage.items.find((item) => item.repair.id === payload.repairId);
+                const latest = chat?.messages?.[0];
+                if (chat && latest && latest.sender.id !== userId) {
+                    dispatch({ type: "preview", value: {
+                        eventId: payload.eventId,
+                        repair: chat.repair,
+                        ticketNumber: chat.repair.ticketNumber,
+                        sender: latest.sender.name,
+                        snippet: latest.content || (latest.imageUrls.length ? "Imagen" : "Nuevo mensaje"),
+                    } });
+                    const audio = new Audio("/notificacion.mp3");
+                    audio.volume = 0.5;
+                    void audio.play().catch(() => undefined);
+                }
+            } else {
+                await loadChats(scopeRef.current);
+            }
+            const selected = selectedRef.current;
+            if (selected?.id === payload.repairId) {
+                await loadThread(selected, event.type === "message.created" && openRef.current);
+            }
         };
-        source.addEventListener("message.created", refresh);
-        source.addEventListener("chat.read", refresh);
-        source.addEventListener("access.changed", refresh);
-        source.addEventListener("status.changed", refresh);
+        const handleEvent = (event: Event) => { void refresh(event); };
+        source.addEventListener("message.created", handleEvent);
+        source.addEventListener("chat.read", handleEvent);
+        source.addEventListener("access.changed", handleEvent);
+        source.addEventListener("status.changed", handleEvent);
         return () => source.close();
-    }, [loadChats, loadThread, state.scope, state.selected, userId]);
+    }, [fetchChats, loadChats, loadThread, userId]);
 
     const search = useCallback(async (query: string) => {
         if (!query.trim()) return dispatch({ type: "search", value: [] });
-        const response = await fetch(`/api/repair-chats/search?q=${encodeURIComponent(query)}`, { cache: "no-store" });
+        const response = await fetch(`/api/repair-chats/search?q=${encodeURIComponent(query)}&scope=${scopeRef.current}`, { cache: "no-store" });
         if (response.ok) dispatch({ type: "search", value: (await response.json()).items });
     }, []);
 
     const selectRepair = useCallback(async (repair: RepairChatSummary["repair"]) => {
+        dispatch({ type: "preview", value: null });
         dispatch({ type: "select", value: repair });
         await loadThread(repair);
     }, [loadThread]);
+
+    const loadOlderMessages = useCallback(async () => {
+        const repair = selectedRef.current;
+        const cursor = messageCursorRef.current;
+        if (!repair || !cursor) return;
+        const response = await fetch(`/api/repair-chats/${repair.id}/messages?before=${encodeURIComponent(cursor)}`, { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        dispatch({ type: "thread", messages: data.items, readOnly: data.readOnly, nextCursor: data.nextCursor, prepend: true });
+    }, []);
 
     const send = useCallback(async (content: string, images: File[], replyToId?: string) => {
         if (!state.selected) return false;
@@ -141,11 +210,18 @@ export function RepairChatProvider({ userId, children }: { userId: string; child
     const value = useMemo<ContextValue>(() => ({
         ...state,
         unreadCount: state.chats.filter((chat) => chat.unread).length,
-        setOpen: (value) => dispatch({ type: "open", value }),
+        setOpen: (value) => {
+            if (value) dispatch({ type: "preview", value: null });
+            dispatch({ type: "open", value });
+            if (value && selectedRef.current) void loadThread(selectedRef.current);
+        },
         setScope: (value) => dispatch({ type: "scope", value }),
         backToInbox: () => dispatch({ type: "select", value: null }),
+        dismissPreview: () => dispatch({ type: "preview", value: null }),
+        loadMore: () => loadChats(scopeRef.current, true),
+        loadOlderMessages,
         search, selectRepair, send,
-    }), [search, selectRepair, send, state]);
+    }), [loadChats, loadOlderMessages, loadThread, search, selectRepair, send, state]);
 
     return <RepairChatContext.Provider value={value}>{children}<RepairChatWidget /></RepairChatContext.Provider>;
 }

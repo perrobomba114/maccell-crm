@@ -10,8 +10,11 @@ test("chat widget exposes a movable accessible launcher and repair search", () =
     assert.match(widget, /aria-label="Abrir chat interno de reparaciones"/);
     assert.match(widget, /drag/);
     assert.match(widget, /maccell:repair-chat-position:v1/);
+    assert.match(widget, /preview\.ticketNumber/);
+    assert.match(widget, /preview\.sender/);
     assert.match(inbox, /Buscar reparación/);
     assert.match(inbox, /Archivados/);
+    assert.match(inbox, /Cargar más chats/);
 });
 
 test("thread supports replies, images, receipts and archived read-only mode", () => {
@@ -24,4 +27,7 @@ test("thread supports replies, images, receipts and archived read-only mode", ()
     assert.match(thread, /backToInbox/);
     assert.doesNotMatch(thread, /location\.reload/);
     assert.match(thread, /message\.readBySomeone/);
+    assert.match(thread, /readers/);
+    assert.match(thread, /Quién lo leyó/);
+    assert.match(thread, /Cargar mensajes anteriores/);
 });

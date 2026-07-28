@@ -5,6 +5,7 @@ import {
     decodeRepairChatCursor,
     encodeRepairChatCursor,
     hasAnyExternalReader,
+    repairChatSearchSchema,
     sendRepairChatMessageSchema,
 } from "../lib/repair-chat/contracts";
 
@@ -20,6 +21,10 @@ test("accepts trimmed text or images and rejects empty messages", () => {
         content: "",
         imageUrls: [],
     }).success, false);
+});
+
+test("searches active and archived repair conversations explicitly", () => {
+    assert.equal(repairChatSearchSchema.parse({ query: "MAC-42", scope: "archived" }).scope, "archived");
 });
 
 test("round-trips an opaque pagination cursor", () => {

@@ -15,7 +15,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ re
         if (!parsed.success) return Response.json({ error: "Lectura inválida" }, { status: 400 });
         const { repairId } = await params;
         const user = { id: currentUser.id, role: currentUser.role, branchId: currentUser.branch?.id ?? null };
-        const receipt = await markRepairChatRead(user, repairId, new Date(parsed.data.readAt));
+        const receipt = await markRepairChatRead(user, repairId, new Date());
         if (!receipt) return Response.json({ error: "Sin acceso" }, { status: 403 });
         const repair = await db.repair.findUnique({ where: { id: repairId }, select: { branchId: true, assignedUserId: true } });
         if (repair) await publishRepairChatEvent({ eventId: randomUUID(), type: "chat.read", repairId, branchId: repair.branchId, assignedUserId: repair.assignedUserId, occurredAt: new Date().toISOString() });

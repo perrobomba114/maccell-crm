@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { sendRepairChatMessageSchema } from "@/lib/repair-chat/contracts";
 import { publishRepairChatEvent } from "@/lib/repair-chat/realtime";
 import { listRepairChatMessages, sendRepairChatMessage } from "@/lib/repair-chat/repository";
+import { cleanupUnreferencedRepairChatImages } from "@/lib/repair-chat/media";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,17 @@ export async function POST(request: Request, { params }: Context): Promise<Respo
         if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message ?? "Mensaje inválido" }, { status: 400 });
         const { repairId } = await params;
         const user = { id: currentUser.id, role: currentUser.role, branchId: currentUser.branch?.id ?? null };
-        const message = await sendRepairChatMessage(user, repairId, parsed.data);
-        if (!message) return Response.json({ error: "Sin acceso o chat archivado" }, { status: 403 });
+        let message;
+        try {
+            message = await sendRepairChatMessage(user, repairId, parsed.data);
+        } catch (error: unknown) {
+            await cleanupUnreferencedRepairChatImages(repairId, parsed.data.imageUrls);
+            throw error;
+        }
+        if (!message) {
+            await cleanupUnreferencedRepairChatImages(repairId, parsed.data.imageUrls);
+            return Response.json({ error: "Sin acceso o chat archivado" }, { status: 403 });
+        }
         const repair = await db.repair.findUnique({ where: { id: repairId }, select: { branchId: true, assignedUserId: true } });
         if (repair) await publishRepairChatEvent({ eventId: randomUUID(), type: "message.created", repairId, branchId: repair.branchId, assignedUserId: repair.assignedUserId, occurredAt: new Date().toISOString() });
         return Response.json({ message }, { status: 201 });

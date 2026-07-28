@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { convertRepairImageForStorage } from "@/lib/repair-image-conversion";
+import { db } from "@/lib/db";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const SAFE_IMAGE_NAME = /^[0-9a-f-]{36}\.(?:jpg|png|webp)$/i;
@@ -29,4 +30,22 @@ export async function saveRepairChatImage(repairId: string, file: File): Promise
     const fileName = `${randomUUID()}${converted.extension}`;
     await fs.writeFile(path.join(directory, fileName), converted.buffer);
     return `/api/repair-chats/${encodeURIComponent(repairId)}/images/${fileName}`;
+}
+
+export async function deleteRepairChatImages(repairId: string, imageUrls: string[]): Promise<void> {
+    await Promise.all(imageUrls.map(async (imageUrl) => {
+        const fileName = imageUrl.split("/").at(-1) ?? "";
+        const filePath = repairChatImagePath(repairId, fileName);
+        if (filePath) await fs.rm(filePath, { force: true });
+    }));
+}
+
+export async function cleanupUnreferencedRepairChatImages(repairId: string, imageUrls: string[]): Promise<void> {
+    if (imageUrls.length === 0) return;
+    const referencedMessages = await db.repairChatMessage.findMany({
+        where: { chat: { repairId }, imageUrls: { hasSome: imageUrls } },
+        select: { imageUrls: true },
+    });
+    const referenced = new Set(referencedMessages.flatMap((message) => message.imageUrls));
+    await deleteRepairChatImages(repairId, imageUrls.filter((imageUrl) => !referenced.has(imageUrl)));
 }

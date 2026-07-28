@@ -14,3 +14,11 @@ test("generic upload route blocks private chat media", () => {
     const source = readFileSync(new URL("../app/api/uploads/[...path]/route.ts", import.meta.url), "utf8");
     assert.match(source, /filePathArray\[0\] === "repair-chat"/);
 });
+
+test("chat uploads reject excess files and clean partial batches", () => {
+    const uploadRoute = readFileSync(new URL("../app/api/repair-chats/[repairId]/images/route.ts", import.meta.url), "utf8");
+    assert.match(uploadRoute, /files\.length > 4/);
+    assert.match(uploadRoute, /deleteRepairChatImages/);
+    const messageRoute = readFileSync(new URL("../app/api/repair-chats/[repairId]/messages/route.ts", import.meta.url), "utf8");
+    assert.match(messageRoute, /cleanupUnreferencedRepairChatImages/);
+});

@@ -16,7 +16,7 @@ export async function GET(request: Request): Promise<Response> {
             const unsubscribe = subscribeToRepairChatEvents((event) => {
                 const allowed = user.role === "ADMIN"
                     || (user.role === "VENDOR" && user.branch?.id === event.branchId)
-                    || (user.role === "TECHNICIAN" && user.id === event.assignedUserId);
+                    || (user.role === "TECHNICIAN" && (user.id === event.assignedUserId || user.id === event.previousAssignedUserId));
                 if (allowed) controller.enqueue(encoder.encode(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`));
             });
             request.signal.addEventListener("abort", () => {

@@ -5,11 +5,12 @@ import { z } from "zod";
 const CHANNEL = "repair_chat_events";
 
 export const repairChatEventSchema = z.object({
-    eventId: z.string().uuid(),
+    eventId: z.string().min(1).max(80),
     type: z.enum(["message.created", "chat.read", "access.changed", "status.changed"]),
     repairId: z.string().min(1).max(80),
     branchId: z.string().min(1).max(80),
     assignedUserId: z.string().min(1).max(80).nullable(),
+    previousAssignedUserId: z.string().min(1).max(80).nullable().optional(),
     occurredAt: z.string().datetime(),
 }).strict();
 
@@ -37,8 +38,12 @@ export async function ensureRepairChatListener(): Promise<pg.Client> {
         await client.query(`LISTEN ${CHANNEL}`);
         client.on("notification", (notification) => {
             if (!notification.payload) return;
-            const parsed = repairChatEventSchema.safeParse(JSON.parse(notification.payload));
-            if (parsed.success) emitter.emit(CHANNEL, parsed.data);
+            try {
+                const parsed = repairChatEventSchema.safeParse(JSON.parse(notification.payload));
+                if (parsed.success) emitter.emit(CHANNEL, parsed.data);
+            } catch (error: unknown) {
+                console.warn("[REPAIR_CHAT] Invalid PostgreSQL event:", error instanceof Error ? error.message : "unknown error");
+            }
         });
         client.on("error", (error: Error) => {
             console.warn("[REPAIR_CHAT] PostgreSQL listener disconnected:", error.message);

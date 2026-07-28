@@ -21,6 +21,7 @@ export const repairChatListSchema = z.object({
 
 export const repairChatSearchSchema = z.object({
     query: z.string().trim().min(1).max(80),
+    scope: z.enum(["active", "archived"]).default("active"),
 });
 
 export const repairChatReadSchema = z.object({

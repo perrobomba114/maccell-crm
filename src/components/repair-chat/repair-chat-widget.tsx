@@ -9,7 +9,7 @@ import { RepairChatInbox } from "./repair-chat-inbox";
 const POSITION_KEY = "maccell:repair-chat-position:v1";
 
 export function RepairChatWidget() {
-    const { open, setOpen, unreadCount } = useRepairChat();
+    const { open, setOpen, unreadCount, preview, dismissPreview, selectRepair } = useRepairChat();
     const [position, setPosition] = useState({ x: 0, y: 0 });
     useEffect(() => {
         const saved = localStorage.getItem(POSITION_KEY);
@@ -33,9 +33,21 @@ export function RepairChatWidget() {
                     </motion.section>
                 ) : null}
             </AnimatePresence>
+            <AnimatePresence>
+                {!open && preview ? (
+                    <motion.div key={preview.eventId} initial={{ opacity: 0, y: 12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8 }} className="pointer-events-auto fixed bottom-24 right-5 w-[min(340px,calc(100vw-2.5rem))] rounded-2xl border border-sky-500/30 bg-background p-3 shadow-2xl">
+                        <button type="button" aria-label="Descartar vista previa" onClick={dismissPreview} className="absolute right-2 top-2 rounded-full p-1 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => void selectRepair(preview.repair).then(() => setOpen(true))} className="w-full pr-7 text-left">
+                            <span className="block text-xs font-bold uppercase tracking-wide text-sky-600">Reparación #{preview.ticketNumber}</span>
+                            <strong className="mt-1 block truncate text-sm">{preview.sender}</strong>
+                            <span className="block truncate text-sm text-muted-foreground">{preview.snippet}</span>
+                        </button>
+                    </motion.div>
+                ) : null}
+            </AnimatePresence>
             <motion.button
                 type="button" aria-label="Abrir chat interno de reparaciones" drag dragMomentum={false}
-                animate={{ x: position.x, y: position.y }}
+                animate={{ x: position.x, y: position.y, scale: preview ? [1, 1.12, 1] : 1 }}
                 onDragEnd={(_, info) => {
                     const next = { x: Math.max(-window.innerWidth + 96, Math.min(0, position.x + info.offset.x)), y: Math.max(-window.innerHeight + 160, Math.min(0, position.y + info.offset.y)) };
                     setPosition(next); localStorage.setItem(POSITION_KEY, JSON.stringify(next));

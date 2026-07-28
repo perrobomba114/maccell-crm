@@ -36,6 +36,7 @@ export function RepairChatInbox() {
                     </button>
                 ))}
                 {!query.trim() && chat.chats.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No hay chats en esta bandeja. Buscá una reparación para iniciar uno.</p> : null}
+                {!query.trim() && chat.nextCursor ? <button type="button" onClick={() => void chat.loadMore()} className="w-full rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-muted">Cargar más chats</button> : null}
             </div>
         </div>
     );

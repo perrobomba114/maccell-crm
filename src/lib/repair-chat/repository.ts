@@ -17,6 +17,16 @@ export function buildAccessibleRepairWhere(user: RepairChatUser): Prisma.RepairW
     return { assignedUserId: user.id };
 }
 
+function buildAuthorizedReaderWhere(repair: { branchId: string; assignedUserId: string | null }): Prisma.RepairChatReadCursorWhereInput {
+    return {
+        OR: [
+            { user: { role: "ADMIN" } },
+            { user: { role: "VENDOR", branchId: repair.branchId } },
+            { user: { role: "TECHNICIAN" }, userId: repair.assignedUserId ?? "__unassigned__" },
+        ],
+    };
+}
+
 export async function getAuthorizedRepair(user: RepairChatUser, repairId: string) {
     const repair = await db.repair.findUnique({
         where: { id: repairId },
@@ -62,22 +72,25 @@ export async function listRepairChats(user: RepairChatUser, scope: "active" | "a
     const hasMore = chats.length > REPAIR_CHAT_PAGE_SIZE;
     const page = chats.slice(0, REPAIR_CHAT_PAGE_SIZE);
     const last = page.at(-1);
+    const items = page.map((chat) => ({
+        ...chat,
+        unread: chat.messages[0] ? (!chat.readCursors[0] || chat.readCursors[0].lastReadAt < chat.messages[0].createdAt) : false,
+        readCursors: undefined,
+    })).sort((left, right) => Number(right.unread) - Number(left.unread));
     return {
-        items: page.map((chat) => ({
-            ...chat,
-            unread: chat.messages[0] ? (!chat.readCursors[0] || chat.readCursors[0].lastReadAt < chat.messages[0].createdAt) : false,
-            readCursors: undefined,
-        })),
+        items,
         nextCursor: hasMore && last ? encodeRepairChatCursor({ id: last.id, at: last.lastMessageAt.toISOString() }) : null,
     };
 }
 
-export async function searchRepairChats(user: RepairChatUser, query: string) {
+export async function searchRepairChats(user: RepairChatUser, query: string, scope: "active" | "archived") {
     const words = query.trim().split(/\s+/).filter(Boolean);
+    const statusIds = scope === "active" ? ACTIVE_REPAIR_CHAT_STATUS_IDS : FINAL_REPAIR_CHAT_STATUS_IDS;
     return db.repair.findMany({
         where: {
             ...buildAccessibleRepairWhere(user),
-            statusId: { in: [...ACTIVE_REPAIR_CHAT_STATUS_IDS] },
+            statusId: { in: [...statusIds] },
+            ...(scope === "archived" ? { chat: { isNot: null } } : {}),
             AND: words.map((word) => ({
                 OR: [
                     { ticketNumber: { contains: word, mode: "insensitive" } },
@@ -114,8 +127,9 @@ export async function listRepairChatMessages(user: RepairChatUser, repairId: str
         },
     });
     const page = messages.slice(0, REPAIR_CHAT_MESSAGE_PAGE_SIZE);
+    const nextCursor = messages.length > REPAIR_CHAT_MESSAGE_PAGE_SIZE ? page.at(-1)?.createdAt.toISOString() ?? null : null;
     const readCursors = await db.repairChatReadCursor.findMany({
-        where: { chatId: chat.id },
+        where: { chatId: chat.id, ...buildAuthorizedReaderWhere(repair) },
         select: { userId: true, lastReadAt: true },
     });
     return {
@@ -125,7 +139,7 @@ export async function listRepairChatMessages(user: RepairChatUser, repairId: str
                 cursor.userId !== message.senderId && cursor.lastReadAt >= message.createdAt
             )),
         })),
-        nextCursor: messages.length > REPAIR_CHAT_MESSAGE_PAGE_SIZE ? page.at(-1)?.createdAt.toISOString() ?? null : null,
+        nextCursor,
         readOnly: isRepairChatReadOnly(repair.statusId),
     };
 }
@@ -180,7 +194,12 @@ export async function listRepairChatReaders(user: RepairChatUser, repairId: stri
     });
     if (!message) return [];
     return db.repairChatReadCursor.findMany({
-        where: { chatId: message.chatId, userId: { not: message.senderId }, lastReadAt: { gte: message.createdAt } },
+        where: {
+            chatId: message.chatId,
+            userId: { not: message.senderId },
+            lastReadAt: { gte: message.createdAt },
+            ...buildAuthorizedReaderWhere(repair),
+        },
         orderBy: { lastReadAt: "asc" },
         select: { lastReadAt: true, user: { select: { id: true, name: true } } },
     });
