@@ -153,6 +153,9 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
     if (!repair) return null;
 
     const images = (repair.deviceImages ?? []).filter(isValidImg);
+    const chronologicalHistory = [...(repair.statusHistory ?? [])].sort(
+        (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+    );
 
     const handleImageClick = (index: number) => {
         setViewerIndex(index);
@@ -187,7 +190,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
     return (
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="flex h-[94dvh] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] min-w-0 flex-col overflow-hidden p-0 sm:max-w-[calc(100vw-2rem)] xl:max-w-7xl">
+                <DialogContent className="flex h-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] min-w-0 flex-col overflow-hidden p-0 sm:max-w-[calc(100vw-2rem)] xl:max-w-7xl">
                     {/* Header with Solid Color Background */}
                     <DialogHeader className={`relative shrink-0 overflow-hidden border-b px-5 py-4 sm:px-6 sm:py-5 ${repair.isWet ? "bg-blue-600" : "bg-slate-900"}`}>
                         <div className="absolute inset-0 bg-grid-white/[0.05] pointer-events-none" />
@@ -218,12 +221,12 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                     </DialogHeader>
 
                     {/* Scrollable Content */}
-                    <div className="custom-scrollbar min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-muted/5 dark:bg-muted/10">
-                        <div className="min-w-0 space-y-4 p-4 sm:p-5">
+                    <div className="min-w-0 flex-1 overflow-hidden bg-muted/5 dark:bg-muted/10">
+                        <div className="min-w-0 space-y-3 p-4">
 
                             {/* Top Stats Row - Vibrant Centered Cards */}
                             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                                <div className="group flex min-h-24 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-3 text-center shadow-lg transition-all hover:border-blue-500">
+                                <div className="group flex min-h-20 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-center shadow-lg transition-all hover:border-blue-500">
                                     <div className="mb-1.5 flex items-center gap-2 text-blue-400">
                                         <Calendar className="w-4 h-4" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Ingreso</span>
@@ -232,7 +235,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     <p className="text-[11px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{format(new Date(repair.createdAt), "HH:mm", { locale: es })} hs</p>
                                 </div>
 
-                                <div className="group flex min-h-24 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-3 text-center shadow-lg transition-all hover:border-amber-500">
+                                <div className="group flex min-h-20 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-center shadow-lg transition-all hover:border-amber-500">
                                     <div className="mb-1.5 flex items-center gap-2 text-amber-400">
                                         <Clock className="w-4 h-4" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Prometido</span>
@@ -241,7 +244,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     <p className="text-[11px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{format(new Date(repair.promisedAt), "HH:mm", { locale: es })} hs</p>
                                 </div>
 
-                                <div className="group flex min-h-24 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-3 text-center shadow-lg transition-all hover:border-purple-500">
+                                <div className="group flex min-h-20 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-center shadow-lg transition-all hover:border-purple-500">
                                     <div className="mb-1.5 flex items-center gap-2 text-purple-400">
                                         <User className="w-4 h-4" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Técnico</span>
@@ -259,7 +262,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     </p>
                                 </div>
 
-                                <div className="group relative flex min-h-24 flex-col items-center justify-center overflow-hidden rounded-xl border border-blue-400 bg-blue-600 p-3 text-center shadow-[0_0_18px_rgba(37,99,235,0.32)]">
+                                <div className="group relative flex min-h-20 flex-col items-center justify-center overflow-hidden rounded-xl border border-blue-400 bg-blue-600 p-2.5 text-center shadow-[0_0_18px_rgba(37,99,235,0.32)]">
                                     <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50" />
                                     <div className="relative z-10 mb-1.5 flex items-center gap-2 text-blue-100">
                                         <DollarSign className="w-5 h-5" />
@@ -272,12 +275,15 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                             </div>
 
                             {/* Main Content Grid */}
-                            <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-12">
+                            <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 lg:grid-cols-12">
 
-                                {/* LEFT COLUMN: Context (Customer + Device) - Sticky on LG */}
-                                <div className="space-y-4 lg:col-span-3">
-                                    {/* Customer Section - Modern Centered */}
-                                    <div className="group flex flex-col items-center rounded-xl border border-slate-800 bg-slate-900 p-4 text-center shadow-lg transition-all hover:bg-slate-800/80">
+                                <section className="rounded-xl border border-blue-500/25 bg-slate-950 p-3 lg:col-span-6">
+                                    <div className="mb-3 flex items-center gap-2 text-blue-300">
+                                        <Smartphone className="size-4" />
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.18em]">Equipo ingresado</h3>
+                                    </div>
+                                    <div className="grid h-[calc(100%-1.75rem)] grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div className="group flex min-h-32 flex-col items-center justify-center rounded-lg border border-slate-800 bg-slate-900 p-3 text-center transition-colors hover:bg-slate-800/80">
                                         <div className="mb-2 flex size-10 items-center justify-center rounded-full border border-blue-500/20 bg-blue-500/10 shadow-inner">
                                             <User className="size-5 text-blue-400" />
                                         </div>
@@ -292,7 +298,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     </div>
 
                                     {/* Device Section - Modern Centered */}
-                                    <div className="group flex flex-col items-center rounded-xl border border-slate-800 bg-slate-900 p-4 text-center shadow-lg transition-all hover:bg-slate-800/80">
+                                    <div className="group flex min-h-32 flex-col items-center justify-center rounded-lg border border-slate-800 bg-slate-900 p-3 text-center transition-colors hover:bg-slate-800/80">
                                         <div className="mb-2 flex size-10 items-center justify-center rounded-full border border-purple-500/20 bg-purple-500/10 shadow-inner">
                                             <Smartphone className="size-5 text-purple-400" />
                                         </div>
@@ -304,27 +310,31 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                             {repair.deviceModel}
                                         </p>
                                     </div>
-                                </div>
+                                    </div>
+                                </section>
 
                                 {/* RIGHT COLUMN: Core Info (Problem -> Diagnosis -> Images) */}
-                                <div className="min-w-0 space-y-4 lg:col-span-9">
+                                <div className="min-w-0 space-y-3 lg:contents">
 
                                     {/* Status of Work */}
-                                    <div className="grid min-w-0 grid-cols-1 gap-4">
+                                    <div className="grid min-w-0 grid-cols-1 gap-3 lg:contents">
 
-                                        <RepairDetailsReception
-                                            accessType={repair.accessType}
-                                            accessCredential={repair.accessCredential}
-                                            hasSimCard={repair.hasSimCard}
-                                            hasMemoryCard={repair.hasMemoryCard}
-                                            isWarranty={repair.isWarranty}
-                                            originalRepair={repair.originalRepair}
-                                            warrantyRepairs={repair.warrantyRepairs}
-                                            onOpenRepair={onOpenRepair}
-                                        />
+                                        <div className="self-stretch lg:col-span-6">
+                                            <RepairDetailsReception
+                                                accessType={repair.accessType}
+                                                accessCredential={repair.accessCredential}
+                                                hasSimCard={repair.hasSimCard}
+                                                hasMemoryCard={repair.hasMemoryCard}
+                                                isWarranty={repair.isWarranty}
+                                                originalRepair={repair.originalRepair}
+                                                warrantyRepairs={repair.warrantyRepairs}
+                                                onOpenRepair={onOpenRepair}
+                                                fillHeight
+                                            />
+                                        </div>
 
                                         {/* Problem */}
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 lg:col-span-6">
                                             <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">PROBLEMA REPORTADO</h3>
                                             <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4 shadow-inner">
                                                 <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap text-white/90 italic">
@@ -335,7 +345,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
 
 
                                         {/* Diagnosis (Vibrant Container) */}
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 lg:col-span-6">
                                             <h3 className="text-[11px] font-black text-blue-400 uppercase tracking-[0.3em] pl-1 flex items-center gap-2">
                                                 DIAGNÓSTICO TÉCNICO
                                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -361,7 +371,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                         </div>
 
                                         {/* Assigned Parts Section */}
-                                        <div className="space-y-3">
+                                        <div className="space-y-2 lg:col-span-12">
                                             <div className="flex items-center justify-between">
                                                 <h3 className="text-sm font-semibold text-muted-foreground pl-1 flex items-center gap-2">
                                                     REPUESTOS ASIGNADOS
@@ -428,7 +438,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
 
                                         {/* Images */}
                                         {repair.deviceImages && repair.deviceImages.filter(isValidImg).length > 0 && (
-                                            <div className="space-y-2 pt-2">
+                                            <div className="space-y-2 pt-2 lg:col-span-12">
                                                 <h3 className="text-sm font-semibold text-muted-foreground pl-1">EVIDENCIA FOTOGRÁFICA</h3>
                                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                                                     {repair.deviceImages
@@ -453,9 +463,9 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                             {repair.observations && repair.observations.length > 0 && (
                                 <div className="space-y-3 border-t border-slate-800 pt-4">
                                     <h3 className="pl-1 text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">NOTAS / OBSERVACIONES</h3>
-                                    <div className="grid gap-2 lg:grid-cols-2">
+                                    <div className={cn("grid gap-2", repair.observations.length > 1 && "lg:grid-cols-2")}>
                                         {repair.observations.map((obs, idx) => (
-                                            <div key={idx} className="relative rounded-xl border border-white/[0.03] bg-slate-900 p-3 shadow-lg md:p-4">
+                                            <div key={idx} className="relative rounded-xl border border-white/[0.06] bg-slate-900 p-3">
                                                 <div className="mb-2 flex items-start justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <div className="flex size-6 items-center justify-center rounded-full border border-slate-700 bg-slate-800">
@@ -475,38 +485,29 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                 </div>
                             )}
 
-                            {repair.statusHistory && repair.statusHistory.length > 0 && (
+                            {chronologicalHistory.length > 0 && (
                                 <div className="space-y-3 border-t border-slate-800 pt-4">
-                                    <h3 className="pl-1 text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">HISTORIAL DE ESTADOS</h3>
-                                    <div className="grid gap-2 lg:grid-cols-2">
-                                        {repair.statusHistory.map((history, idx) => (
-                                            <div key={idx} className="flex min-w-0 items-center gap-3 rounded-xl border border-white/[0.03] bg-slate-900 p-3 shadow-lg transition-colors duration-300 hover:border-blue-500/20">
-                                                <div className="flex min-w-[55px] shrink-0 flex-col items-center border-r border-white/5 pr-3">
-                                                    <span className="text-[10px] font-black italic leading-none tracking-tighter text-white">{format(new Date(history.createdAt), "dd/MM")}</span>
-                                                    <span className="mt-1 text-[9px] font-black uppercase leading-none text-slate-500">{format(new Date(history.createdAt), "HH:mm")}</span>
+                                    <div className="flex items-center justify-between gap-3 px-1">
+                                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">HISTORIAL DE ESTADOS</h3>
+                                        <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400">Ingreso → cierre</span>
+                                    </div>
+                                    <div className="relative flex flex-nowrap overflow-hidden rounded-xl border border-white/[0.06] bg-slate-950/70 px-2 py-3">
+                                        <div className="absolute left-[8%] right-[8%] top-[54px] hidden h-px bg-gradient-to-r from-blue-500/20 via-blue-400/60 to-emerald-400/30 xl:block" />
+                                        {chronologicalHistory.map((history, idx) => (
+                                            <div key={idx} className="relative z-10 flex min-w-0 flex-1 basis-0 flex-col items-center px-2 py-1 text-center">
+                                                <div className="flex items-baseline gap-1.5 tabular-nums">
+                                                    <span className="text-[10px] font-black text-white">{format(new Date(history.createdAt), "dd/MM")}</span>
+                                                    <span className="text-[9px] font-bold text-slate-500">{format(new Date(history.createdAt), "HH:mm")}</span>
                                                 </div>
-                                                <div className="flex min-w-0 flex-1 items-center gap-2 px-1">
-                                                    {history.fromStatus ? (
-                                                        <>
-                                                            <span className="max-w-24 truncate text-[10px] font-black uppercase italic tracking-tighter text-slate-500">{history.fromStatus.name}</span>
-                                                            <div className="flex size-2 shrink-0 items-center justify-center rounded-full bg-slate-800">
-                                                                <div className="size-0.5 rounded-full bg-slate-600" />
-                                                            </div>
-                                                        </>
-                                                    ) : null}
-                                                    <Badge variant="outline" className={cn("max-w-40 truncate rounded-md border-2 px-2 py-0 text-[9px] font-black uppercase shadow-sm", statusColorMap[history.toStatus.color ?? ""] || "bg-slate-800 text-white border-slate-700")}>
-                                                        {history.toStatus.name}
-                                                    </Badge>
+                                                <div className="my-2 flex size-7 items-center justify-center rounded-full border-2 border-blue-400 bg-slate-950 text-[10px] font-black text-blue-300 shadow-[0_0_14px_rgba(96,165,250,0.3)]">
+                                                    {idx + 1}
                                                 </div>
-                                                {history.user ? (
-                                                    <div className="shrink-0 rounded-full border border-white/5 bg-slate-800/50 px-2 py-0.5">
-                                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">OP: {history.user.name.split(" ")[0]}</span>
-                                                    </div>
-                                                ) : history.userId ? (
-                                                    <div className="shrink-0 rounded-full border border-white/5 bg-slate-800/50 px-2 py-0.5">
-                                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">OP: {history.userId.slice(-4)}</span>
-                                                    </div>
-                                                ) : null}
+                                                <Badge variant="outline" className={cn("max-w-full truncate rounded-md border px-2 py-0.5 text-[8px] font-black uppercase", statusColorMap[history.toStatus.color ?? ""] || "bg-slate-800 text-white border-slate-700")}>
+                                                    {history.toStatus.name}
+                                                </Badge>
+                                                <span className="mt-1.5 max-w-full truncate text-[8px] font-bold uppercase tracking-wider text-slate-500">
+                                                    {history.user?.name.split(" ")[0] || (history.userId ? history.userId.slice(-4) : "Sistema")}
+                                                </span>
                                             </div>
                                         ))}
                                     </div>

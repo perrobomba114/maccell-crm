@@ -24,6 +24,7 @@ interface RepairDetailsReceptionProps {
         problemDescription: string;
     }[];
     onOpenRepair?: (repairId: string) => void;
+    fillHeight?: boolean;
 }
 
 export function RepairDetailsReception({
@@ -35,14 +36,16 @@ export function RepairDetailsReception({
     originalRepair,
     warrantyRepairs,
     onOpenRepair,
+    fillHeight = false,
 }: RepairDetailsReceptionProps) {
     return (
-        <div className="space-y-3">
+        <div className={fillHeight ? "h-full" : "space-y-3"}>
             <RepairIntakeSummary
                 accessType={accessType}
                 accessCredential={accessCredential}
                 hasSimCard={hasSimCard}
                 hasMemoryCard={hasMemoryCard}
+                fillHeight={fillHeight}
             />
             <RepairWarrantyInfo
                 isWarranty={isWarranty}

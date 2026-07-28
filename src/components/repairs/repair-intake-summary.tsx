@@ -10,6 +10,7 @@ interface RepairIntakeSummaryProps {
     hasSimCard?: boolean | null;
     hasMemoryCard?: boolean | null;
     compact?: boolean;
+    fillHeight?: boolean;
 }
 
 export function RepairIntakeSummary({
@@ -18,6 +19,7 @@ export function RepairIntakeSummary({
     hasSimCard = false,
     hasMemoryCard = false,
     compact = false,
+    fillHeight = false,
 }: RepairIntakeSummaryProps) {
     const normalizedType = accessType ?? "NONE";
     const summary = summarizeRepairIntake({
@@ -29,15 +31,15 @@ export function RepairIntakeSummary({
 
     return (
         <section className={cn(
-            "rounded-xl border border-amber-400/30 bg-slate-950 text-slate-100",
-            "p-3",
+            "rounded-xl border border-amber-400/30 bg-slate-950 p-3 text-slate-100",
+            fillHeight && "flex h-full flex-col",
         )} aria-label="Datos de recepción del equipo">
             <div className="flex items-center gap-2 text-amber-300">
                 <ShieldCheck className="h-4 w-4" />
                 <h3 className="text-[10px] font-black uppercase tracking-[0.18em]">Recepción verificada</h3>
             </div>
-            <div className={cn("mt-3 grid gap-3", compact ? "grid-cols-1" : "sm:grid-cols-2")}>
-                <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+            <div className={cn("mt-3 grid gap-3", compact ? "grid-cols-1" : "sm:grid-cols-2", fillHeight && "flex-1")}>
+                <div className={cn("rounded-lg border border-slate-800 bg-slate-900 p-3", fillHeight && "flex h-full flex-col justify-center")}>
                     <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                         {normalizedType === "CODE" ? <KeyRound className="h-3.5 w-3.5" /> : <Fingerprint className="h-3.5 w-3.5" />}
                         Acceso
@@ -55,7 +57,7 @@ export function RepairIntakeSummary({
                         />
                     ) : null}
                 </div>
-                <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+                <div className={cn("rounded-lg border border-slate-800 bg-slate-900 p-3", fillHeight && "flex h-full flex-col justify-center")}>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Elementos recibidos</p>
                     <p className="mt-1 text-sm font-bold text-white">{summary.accessoriesLabel}</p>
                     <div className="mt-3 flex gap-2">
