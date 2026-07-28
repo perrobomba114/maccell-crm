@@ -33,10 +33,8 @@ export function DeviceDetails({
     };
 
     return (
-        <div className="space-y-4 border p-4 rounded-lg bg-card">
-            <h3 className="font-semibold flex items-center gap-2">📱 Dispositivo</h3>
-
-            <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                     <Label htmlFor="device-brand" className="after:content-['*'] after:ml-0.5 after:text-red-500">Marca</Label>
                     <Input
@@ -44,9 +42,10 @@ export function DeviceDetails({
                         name="device-brand"
                         value={brand} onChange={(e) => onBrandChange(handleCapitalize(e.target.value))}
                         placeholder="Samsung"
-                        className={cn(errors?.brand && "border-red-500")}
+                        autoComplete="off"
+                        className={cn("min-h-11 bg-background/70 text-base", errors?.brand && "border-destructive focus-visible:ring-destructive/20")}
                     />
-                    {errors?.brand && <p className="text-xs text-red-500">{errors.brand}</p>}
+                    {errors?.brand ? <p role="alert" className="text-xs font-medium text-destructive">{errors.brand}</p> : null}
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="device-model" className="after:content-['*'] after:ml-0.5 after:text-red-500">Modelo</Label>
@@ -55,9 +54,10 @@ export function DeviceDetails({
                         name="device-model"
                         value={model} onChange={(e) => onModelChange(e.target.value)}
                         placeholder="S21, iPhone 13..."
-                        className={cn(errors?.model && "border-red-500")}
+                        autoComplete="off"
+                        className={cn("min-h-11 bg-background/70 text-base", errors?.model && "border-destructive focus-visible:ring-destructive/20")}
                     />
-                    {errors?.model && <p className="text-xs text-red-500">{errors.model}</p>}
+                    {errors?.model ? <p role="alert" className="text-xs font-medium text-destructive">{errors.model}</p> : null}
                 </div>
             </div>
 
@@ -69,12 +69,10 @@ export function DeviceDetails({
                     value={problem} onChange={(e) => onProblemChange(handleCapitalize(e.target.value))}
                     placeholder="Describe el problema..."
                     rows={3}
-                    className={cn(errors?.problem && "border-red-500")}
+                    className={cn("min-h-24 resize-y bg-background/70 text-base", errors?.problem && "border-destructive focus-visible:ring-destructive/20")}
                 />
-                {errors?.problem && <p className="text-xs text-red-500">{errors.problem}</p>}
+                {errors?.problem ? <p role="alert" className="text-xs font-medium text-destructive">{errors.problem}</p> : null}
             </div>
-
-            {/* Notes moved to main form */}
         </div>
     );
 }

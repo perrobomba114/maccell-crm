@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { checkTicketAvailability } from "@/lib/actions/repairs";
 import { cn } from "@/lib/utils";
-import { useDebounce } from "@/hooks/use-debounce"; // Assuming this exists or I will create a simple timer
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface TicketInputProps {
     value: string;
@@ -17,11 +18,12 @@ export function TicketInput({ value, onChange, branchId, ticketPrefix, error: ex
     const [isChecking, setIsChecking] = useState(false);
     const [status, setStatus] = useState<"idle" | "valid" | "invalid">("idle");
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const debouncedValue = useDebounce(value, 500);
 
     // Auto-check logic
     useEffect(() => {
         const check = async () => {
-            if (!value || value.length < 5) {
+            if (!debouncedValue || debouncedValue.length < 5) {
                 setStatus("idle");
                 return;
             }
@@ -31,13 +33,13 @@ export function TicketInput({ value, onChange, branchId, ticketPrefix, error: ex
 
             setIsChecking(true);
             try {
-                const result = await checkTicketAvailability(value, branchId);
+                const result = await checkTicketAvailability(debouncedValue, branchId);
                 if (result.available) {
                     setStatus("valid");
                     setErrorMessage(null);
                 } else {
                     setStatus("invalid");
-                    setErrorMessage(result.error || `El ticket ${value} ya existe`);
+                    setErrorMessage(result.error || `El ticket ${debouncedValue} ya existe`);
                 }
             } catch (e) {
                 console.error(e);
@@ -46,12 +48,8 @@ export function TicketInput({ value, onChange, branchId, ticketPrefix, error: ex
             }
         };
 
-        const timer = setTimeout(() => {
-            check();
-        }, 500); // Debounce 500ms
-
-        return () => clearTimeout(timer);
-    }, [value, branchId]);
+        void check();
+    }, [debouncedValue, branchId]);
 
     const handleBlur = () => {
         if (!value || !ticketPrefix) return;
@@ -66,6 +64,7 @@ export function TicketInput({ value, onChange, branchId, ticketPrefix, error: ex
 
     return (
         <div className="space-y-2">
+            <Label htmlFor="ticket-number" className="text-sm font-medium">Número de ticket</Label>
             <div className="relative">
                 <Input
                     id="ticket-number"
@@ -80,25 +79,25 @@ export function TicketInput({ value, onChange, branchId, ticketPrefix, error: ex
                     onBlur={handleBlur}
                     placeholder={ticketPrefix ? `${ticketPrefix}-00000000` : "TICKET #"}
                     className={cn(
-                        "text-lg font-bold uppercase tracking-wider h-12 border-2 pr-10",
-                        status === "valid" && "border-green-600 focus-visible:ring-green-600 bg-green-50",
-                        (status === "invalid" || externalError) && "border-red-600 focus-visible:ring-red-600 bg-red-50",
-                        status === "idle" && "border-input"
+                        "min-h-11 bg-background/70 pr-11 text-base font-semibold uppercase tracking-wide",
+                        status === "valid" && "border-emerald-500/80 bg-emerald-500/5 focus-visible:ring-emerald-500/20",
+                        (status === "invalid" || externalError) && "border-destructive bg-destructive/5 focus-visible:ring-destructive/20",
                     )}
                 />
-                <div className="absolute right-3 top-3">
-                    {isChecking && <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />}
-                    {!isChecking && status === "valid" && <CheckCircle2 className="h-6 w-6 text-green-600" />}
-                    {!isChecking && (status === "invalid" || externalError) && <XCircle className="h-6 w-6 text-red-600" />}
+                <div aria-live="polite" className="absolute inset-y-0 right-3 flex items-center">
+                    {isChecking ? <Loader2 aria-label="Verificando ticket" className="h-5 w-5 animate-spin text-muted-foreground" /> : null}
+                    {!isChecking && status === "valid" ? <CheckCircle2 aria-label="Ticket disponible" className="h-5 w-5 text-emerald-500" /> : null}
+                    {!isChecking && (status === "invalid" || externalError) ? <XCircle aria-label="Ticket no disponible" className="h-5 w-5 text-destructive" /> : null}
                 </div>
             </div>
 
-            {(status === "invalid" || externalError) && (
-                <p className="text-sm text-red-700 font-bold flex items-center gap-1">
+            {(status === "invalid" || externalError) ? (
+                <p role="alert" className="flex items-center gap-1 text-sm font-medium text-destructive">
                     {errorMessage || externalError}
                 </p>
+            ) : (
+                <p className="text-xs leading-5 text-muted-foreground">Usá el código de sucursal seguido del número correlativo.</p>
             )}
-            {/* Hide "Available" text to keep it clean, icon is enough? Or keep it? User said "warning if 22 exists". */}
         </div>
     );
 }

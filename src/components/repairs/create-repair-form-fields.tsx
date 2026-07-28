@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch } from "react";
-import { Droplets, Loader2, Save } from "lucide-react";
+import { CalendarClock, Droplets, Loader2, Save, ShieldCheck, Smartphone, Ticket, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CustomerForm } from "./customer-form";
 import { DeviceDetails } from "./device-details";
 import { PromisedDateSelector } from "./promised-date-selector";
+import { RepairFormSection } from "./repair-form-section";
 import { RepairImages } from "./repair-images";
 import { RepairIntakeFields } from "./repair-intake-fields";
 import { SmartPriceInput } from "./smart-price-input";
@@ -65,12 +66,15 @@ export function CreateRepairFormFields({
     } = state;
 
     return (
-        <div className="grid grid-cols-1 gap-8 rounded-xl border bg-card p-6 shadow-sm md:grid-cols-2">
-            <div className="flex flex-col gap-6">
+        <div className="pb-24 sm:pb-0">
+            <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(22rem,.88fr)]">
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">1. Cliente</h2>
-                        <WarrantySection
+                    <RepairFormSection
+                        step={1}
+                        title="Cliente"
+                        description="Datos de contacto y garantía del titular."
+                        icon={UserRound}
+                        action={<WarrantySection
                             isWarranty={isWarranty}
                             onIsWarrantyChange={(value) => dispatch({ type: "setField", field: "isWarranty", value })}
                             originalRepairId={originalRepairId}
@@ -78,14 +82,13 @@ export function CreateRepairFormFields({
                             onRepairSelected={onWarrantySelect}
                             branchId={branchId}
                             compact
-                        />
-                    </div>
-
-                    {vendors && vendors.length > 0 ? (
-                        <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                            <label className="mb-1 block text-sm font-medium text-muted-foreground">Vendedor Responsable</label>
+                        />}
+                    >
+                        {vendors && vendors.length > 0 ? (
+                            <div className="mb-4 rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <label className="mb-1.5 block text-sm font-medium text-foreground">Vendedor responsable</label>
                             <Select value={selectedUserId} onValueChange={(value) => dispatch({ type: "setField", field: "selectedUserId", value })}>
-                                <SelectTrigger className="w-full bg-background"><SelectValue placeholder="Seleccionar vendedor" /></SelectTrigger>
+                                <SelectTrigger className="min-h-11 w-full bg-background/70"><SelectValue placeholder="Seleccionar vendedor" /></SelectTrigger>
                                 <SelectContent>
                                     {vendors.map((vendor) => (
                                         <SelectItem key={vendor.id} value={vendor.id}>
@@ -95,9 +98,8 @@ export function CreateRepairFormFields({
                                 </SelectContent>
                             </Select>
                         </div>
-                    ) : null}
-
-                    <CustomerForm
+                        ) : null}
+                        <CustomerForm
                         name={customerName}
                         onNameChange={(value) => dispatch({ type: "setField", field: "customerName", value })}
                         phone={customerPhone}
@@ -105,13 +107,16 @@ export function CreateRepairFormFields({
                         email={customerEmail}
                         onEmailChange={(value) => dispatch({ type: "setField", field: "customerEmail", value })}
                         errors={errors}
-                    />
-                </div>
+                        />
+                    </RepairFormSection>
 
-                <div className="h-px w-full bg-border" />
-                <div className="space-y-4">
-                    <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">2. Dispositivo</h2>
-                    <DeviceDetails
+                    <RepairFormSection
+                        step={2}
+                        title="Dispositivo"
+                        description="Identificación del equipo y motivo de ingreso."
+                        icon={Smartphone}
+                    >
+                        <DeviceDetails
                         brand={brand}
                         onBrandChange={(value) => dispatch({ type: "setField", field: "brand", value })}
                         model={model}
@@ -119,71 +124,93 @@ export function CreateRepairFormFields({
                         problem={problem}
                         onProblemChange={(value) => dispatch({ type: "setField", field: "problem", value })}
                         errors={errors}
-                    />
-                    <RepairIntakeFields
+                        />
+                    </RepairFormSection>
+
+                    <RepairFormSection
+                        step={3}
+                        title="Recepción"
+                        description="Acceso y elementos que quedan bajo custodia."
+                        icon={ShieldCheck}
+                    >
+                        <RepairIntakeFields
                         value={intake}
                         error={errors.intake}
                         onChange={(value) => dispatch({ type: "setIntake", value })}
-                    />
+                        />
+                    </RepairFormSection>
                 </div>
+                <div className="space-y-4 xl:sticky xl:top-5">
+                    <RepairFormSection
+                        step={4}
+                        title="Ticket y evidencia"
+                        description="Identificador, repuestos y estado visual del equipo."
+                        icon={Ticket}
+                    >
+                        <div className="space-y-5">
+                            <TicketInput
+                                value={ticketNumber}
+                                onChange={(value) => dispatch({ type: "setField", field: "ticketNumber", value })}
+                                branchId={activeBranchId}
+                                ticketPrefix={activeTicketPrefix}
+                                error={errors.ticket}
+                            />
+                            {!hideParts ? (
+                                <SparePartSelector
+                                    selectedParts={selectedParts}
+                                    onPartsChange={(value) => dispatch({ type: "setField", field: "selectedParts", value })}
+                                    hidePrice={hidePrice}
+                                />
+                            ) : null}
+                            <RepairImages />
+                        </div>
+                    </RepairFormSection>
 
-                <div className="space-y-4">
-                    <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">3. Valor reparación</h2>
-                    <SmartPriceInput value={estimatedPrice} onChange={onPriceChange} error={errors.price} />
-                    {errors.price ? <p className="text-sm font-medium text-red-500">{errors.price}</p> : null}
+                    <RepairFormSection
+                        step={5}
+                        title="Valor y entrega"
+                        description="Condición declarada, presupuesto y compromiso de entrega."
+                        icon={CalendarClock}
+                    >
+                        <div className="space-y-5">
+                            <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 transition-colors hover:bg-muted/30">
+                                <Checkbox
+                                    id="isWet"
+                                    checked={isWet}
+                                    onCheckedChange={(checked) => dispatch({ type: "setField", field: "isWet", value: checked === true })}
+                                    className="data-[state=checked]:border-cyan-500 data-[state=checked]:bg-cyan-500"
+                                />
+                                <Droplets aria-hidden="true" className="h-5 w-5 shrink-0 text-cyan-500" />
+                                <span className="min-w-0">
+                                    <Label htmlFor="isWet" className="cursor-pointer text-sm font-semibold text-foreground">
+                                        Equipo mojado o con humedad
+                                    </Label>
+                                    <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                                        Requiere informe técnico y firma adicional.
+                                    </span>
+                                </span>
+                            </label>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="estimated-price" className="text-sm font-medium">Valor estimado</Label>
+                                <SmartPriceInput value={estimatedPrice} onChange={onPriceChange} error={errors.price} />
+                                {errors.price ? <p role="alert" className="text-sm font-medium text-destructive">{errors.price}</p> : null}
+                            </div>
+
+                            <PromisedDateSelector
+                                date={promisedAt}
+                                onChange={(value) => dispatch({ type: "setField", field: "promisedAt", value })}
+                            />
+                        </div>
+                    </RepairFormSection>
                 </div>
             </div>
 
-            <div className="flex flex-col gap-6">
-                <div className="space-y-2">
-                    <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">4. Ticket</h2>
-                    <TicketInput
-                        value={ticketNumber}
-                        onChange={(value) => dispatch({ type: "setField", field: "ticketNumber", value })}
-                        branchId={activeBranchId}
-                        ticketPrefix={activeTicketPrefix}
-                        error={errors.ticket}
-                    />
-                </div>
-
-                <div className="h-px w-full bg-border" />
-                {!hideParts ? (
-                    <SparePartSelector
-                        selectedParts={selectedParts}
-                        onPartsChange={(value) => dispatch({ type: "setField", field: "selectedParts", value })}
-                        hidePrice={hidePrice}
-                    />
-                ) : null}
-                <RepairImages />
-
-                <div className="flex items-center space-x-3 rounded-lg border border-blue-500/20 bg-blue-500/10 p-3">
-                    <Checkbox
-                        id="isWet"
-                        checked={isWet}
-                        onCheckedChange={(checked) => dispatch({ type: "setField", field: "isWet", value: checked === true })}
-                        className="data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
-                    />
-                    <div className="grid gap-1.5 leading-none">
-                        <Label htmlFor="isWet" className="flex cursor-pointer items-center gap-2 text-sm font-bold text-blue-500">
-                            <Droplets className="h-4 w-4" /> EQUIPO MOJADO / CON HUMEDAD
-                        </Label>
-                        <p className="text-[11px] text-muted-foreground">Se requiere informe técnico y firma adicional.</p>
-                    </div>
-                </div>
-
-                <div className="h-px w-full bg-border" />
-                <div className="mt-auto space-y-4 pt-4 md:pt-0">
-                    <div className="space-y-2">
-                        <h2 className="text-lg font-bold uppercase tracking-tight text-foreground">5. Entrega</h2>
-                        <PromisedDateSelector
-                            date={promisedAt}
-                            onChange={(value) => dispatch({ type: "setField", field: "promisedAt", value })}
-                        />
-                    </div>
-                    <Button type="submit" className="h-14 w-full rounded-lg text-xl font-bold shadow-md" disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="animate-spin" /> : <><Save className="mr-2 h-6 w-6" /> INGRESAR REPARACIÓN</>}
-                    </Button>
-                </div>
+            <div className="sticky bottom-3 z-20 mt-4 flex justify-end rounded-2xl border border-border/70 bg-background/90 p-2 shadow-xl shadow-black/20 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+                <Button type="submit" className="min-h-12 w-full rounded-xl px-8 text-base font-semibold shadow-lg shadow-primary/20 sm:w-auto" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" /> : <Save aria-hidden="true" className="mr-2 h-5 w-5" />}
+                    <span aria-live="polite">{isSubmitting ? "Registrando reparación…" : "Ingresar reparación"}</span>
+                </Button>
             </div>
         </div>
     );

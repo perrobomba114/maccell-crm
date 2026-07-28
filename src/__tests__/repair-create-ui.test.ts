@@ -15,3 +15,13 @@ test("repair creation uses the uniform section system", () => {
     assert.match(form, /Cliente/);
     assert.match(form, /Entrega/);
 });
+
+test("repair creation keeps labels, feedback and one primary action", () => {
+    const fields = read("components/repairs/create-repair-form-fields.tsx");
+    const ticket = read("components/repairs/ticket-input.tsx");
+
+    assert.match(fields, /RepairFormSection/);
+    assert.match(fields, /aria-live="polite"/);
+    assert.match(ticket, /htmlFor="ticket-number"/);
+    assert.equal((fields.match(/type="submit"/g) ?? []).length, 1);
+});

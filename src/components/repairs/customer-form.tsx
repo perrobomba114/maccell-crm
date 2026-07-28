@@ -48,10 +48,7 @@ export function CustomerForm({
     };
 
     return (
-        <div className="space-y-4 border p-4 rounded-lg bg-card">
-            <h3 className="font-semibold flex items-center gap-2">👤 Información del Cliente</h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                     <Label htmlFor="customer-name" className="after:content-['*'] after:ml-0.5 after:text-red-500">Nombre Completo</Label>
                     <Input
@@ -60,9 +57,10 @@ export function CustomerForm({
                         value={name}
                         onChange={handleNameChange} onBlur={handleNameBlur}
                         placeholder="Juan Pérez"
-                        className={cn(errors?.name && "border-red-500")}
+                        autoComplete="name"
+                        className={cn("min-h-11 bg-background/70 text-base", errors?.name && "border-destructive focus-visible:ring-destructive/20")}
                     />
-                    {errors?.name && <p className="text-xs text-red-500">{errors.name}</p>}
+                    {errors?.name ? <p role="alert" className="text-xs font-medium text-destructive">{errors.name}</p> : null}
                 </div>
 
                 <div className="space-y-2">
@@ -73,9 +71,12 @@ export function CustomerForm({
                         value={phone}
                         onChange={handlePhoneChange}
                         placeholder="1234567890"
-                        className={cn(errors?.phone && "border-red-500")}
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        className={cn("min-h-11 bg-background/70 text-base tabular-nums", errors?.phone && "border-destructive focus-visible:ring-destructive/20")}
                     />
-                    {errors?.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
+                    {errors?.phone ? <p role="alert" className="text-xs font-medium text-destructive">{errors.phone}</p> : null}
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
@@ -87,9 +88,10 @@ export function CustomerForm({
                         onChange={(e) => onEmailChange(e.target.value)}
                         placeholder="juan@email.com"
                         type="email"
+                        autoComplete="email"
+                        className="min-h-11 bg-background/70 text-base"
                     />
                 </div>
-            </div>
         </div>
     );
 }
