@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+const dockerfile = readFileSync(new URL("../../Dockerfile", import.meta.url), "utf8");
 const verifySql = readFileSync(
     new URL("../../scripts/db/verify-production-migration-baseline.sql", import.meta.url),
     "utf8",
@@ -25,4 +26,10 @@ test("chat trigger repair is transactional and idempotent", () => {
     assert.match(triggerSql, /DROP TRIGGER IF EXISTS repair_chat_change_notify/);
     assert.match(triggerSql, /CREATE TRIGGER repair_chat_change_notify/);
     assert.match(triggerSql, /^COMMIT;/m);
+});
+
+test("production startup uses migrations without destructive db push", () => {
+    assert.match(dockerfile, /prisma\/build\/index\.js migrate deploy/);
+    assert.doesNotMatch(dockerfile, /db push/);
+    assert.doesNotMatch(dockerfile, /accept-data-loss/);
 });
