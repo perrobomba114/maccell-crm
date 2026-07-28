@@ -135,11 +135,11 @@ export function RepairImages() {
                 Fotos del dispositivo
             </Label>
 
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2">
                 {/* Upload from gallery */}
-                <div className="group relative flex aspect-square min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/50 transition-colors hover:border-primary/50 hover:bg-primary/5">
+                <div className="group relative flex h-20 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-primary/25 bg-background/55 transition-colors hover:border-primary/60 hover:bg-primary/10">
                     <ImagePlus aria-hidden="true" className="h-6 w-6 text-muted-foreground transition-colors group-hover:text-primary" />
-                    <span className="mt-1 text-xs font-medium text-muted-foreground">Subir fotos</span>
+                    <span className="text-xs font-medium text-muted-foreground">Subir fotos</span>
                     <Input
                         ref={inputRef}
                         name="images"
@@ -159,9 +159,9 @@ export function RepairImages() {
                   - Desktop: custom WebRTC dialog (facingMode toggle, canvas capture)
                 */}
                 {isMobileBrowser() ? (
-                    <div className="group relative flex aspect-square min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/50 transition-colors hover:border-primary/50 hover:bg-primary/5">
+                    <div className="group relative flex h-20 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-primary/25 bg-background/55 transition-colors hover:border-primary/60 hover:bg-primary/10">
                         <Camera aria-hidden="true" className="h-6 w-6 text-muted-foreground transition-colors group-hover:text-primary" />
-                        <span className="mt-1 text-xs font-medium text-muted-foreground">Cámara</span>
+                        <span className="text-xs font-medium text-muted-foreground">Cámara</span>
                         <input
                             type="file"
                             accept="image/*"
@@ -176,16 +176,16 @@ export function RepairImages() {
                         type="button"
                         onClick={() => startCamera()}
                         aria-label="Abrir cámara para fotografiar el dispositivo"
-                        className="group relative flex aspect-square min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/50 transition-colors hover:border-primary/50 hover:bg-primary/5"
+                        className="group relative flex h-20 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-primary/25 bg-background/55 transition-colors hover:border-primary/60 hover:bg-primary/10"
                     >
                         <Camera aria-hidden="true" className="h-6 w-6 text-muted-foreground transition-colors group-hover:text-primary" />
-                        <span className="mt-1 text-xs font-medium text-muted-foreground">Cámara</span>
+                        <span className="text-xs font-medium text-muted-foreground">Cámara</span>
                     </button>
                 )}
 
                 {/* Previews */}
                 {previews.map((src, idx) => (
-                    <div key={src} className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-black">
+                    <div key={src} className="group relative h-20 overflow-hidden rounded-xl border border-border bg-black">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={src} alt={`Foto ${idx + 1} del dispositivo`} className="h-full w-full object-cover" />
                         <button

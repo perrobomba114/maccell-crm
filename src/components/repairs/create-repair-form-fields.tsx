@@ -66,13 +66,12 @@ export function CreateRepairFormFields({
     } = state;
 
     return (
-        <div className="rounded-[28px] border border-border/70 bg-card/55 p-2 shadow-xl shadow-black/10 sm:p-3">
-            <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+        <div className="rounded-[28px] border border-primary/15 bg-gradient-to-br from-primary/[0.08] via-card/75 to-cyan-500/[0.05] p-2 shadow-xl shadow-black/15 sm:p-3">
+            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
                     <RepairFormSection
                         step={1}
                         title="Cliente"
                         icon={UserRound}
-                        className="h-full"
                         action={<WarrantySection
                             isWarranty={isWarranty}
                             onIsWarrantyChange={(value) => dispatch({ type: "setField", field: "isWarranty", value })}
@@ -113,7 +112,6 @@ export function CreateRepairFormFields({
                         step={2}
                         title="Dispositivo"
                         icon={Smartphone}
-                        className="h-full"
                     >
                         <DeviceDetails
                         brand={brand}
@@ -144,15 +142,19 @@ export function CreateRepairFormFields({
                         icon={Ticket}
                         className="lg:col-span-2"
                     >
-                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                            <TicketInput
-                                value={ticketNumber}
-                                onChange={(value) => dispatch({ type: "setField", field: "ticketNumber", value })}
-                                branchId={activeBranchId}
-                                ticketPrefix={activeTicketPrefix}
-                                error={errors.ticket}
-                            />
-                            <RepairImages />
+                        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+                            <div className="rounded-2xl border border-primary/15 bg-primary/[0.04] p-4">
+                                <TicketInput
+                                    value={ticketNumber}
+                                    onChange={(value) => dispatch({ type: "setField", field: "ticketNumber", value })}
+                                    branchId={activeBranchId}
+                                    ticketPrefix={activeTicketPrefix}
+                                    error={errors.ticket}
+                                />
+                            </div>
+                            <div className="rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.04] p-4">
+                                <RepairImages />
+                            </div>
                             {!hideParts ? (
                                 <div className="lg:col-span-2">
                                     <SparePartSelector
@@ -172,7 +174,7 @@ export function CreateRepairFormFields({
                         className="lg:col-span-2"
                     >
                         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]">
-                            <div className="space-y-5">
+                            <div className="space-y-5 rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.04] p-4">
                                 <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 transition-colors hover:bg-muted/30">
                                     <Checkbox
                                         id="isWet"
@@ -198,7 +200,7 @@ export function CreateRepairFormFields({
                                 </div>
                             </div>
 
-                            <div className="space-y-5">
+                            <div className="space-y-5 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4">
                                 <PromisedDateSelector
                                     date={promisedAt}
                                     onChange={(value) => dispatch({ type: "setField", field: "promisedAt", value })}

@@ -200,7 +200,7 @@ export function CreateRepairForm({
             ref={formRef}
             onSubmit={handleSubmit}
             onKeyDown={handleKeyDown}
-            className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-5 md:py-6"
+            className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-5 md:py-6"
         >
             <header className="mb-5 border-b border-border/70 px-1 pb-5">
                     <div className="flex items-start gap-3.5">
