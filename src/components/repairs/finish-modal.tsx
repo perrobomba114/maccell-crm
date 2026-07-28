@@ -25,10 +25,9 @@ import {
 import { toast } from "sonner";
 import { finishRepairAction } from "@/lib/actions/repairs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ImagePreviewModal } from "./image-preview-modal";
-import { getImgUrl, isValidImg } from "@/lib/utils";
-import { SafeImageThumbnail } from "./safe-image-thumbnail";
+import { isValidImg } from "@/lib/utils";
 import { FinishRepairIntakeCheck } from "./finish-repair-intake-check";
+import { FinishRepairEvidence } from "./finish-repair-evidence";
 import type { RepairAccessType } from "@/lib/repairs/intake";
 
 type FinishRepairPart = {
@@ -83,8 +82,6 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const [hasMemoryCard, setHasMemoryCard] = useState<boolean>(!!repair.hasMemoryCard);
     const [newImages, setNewImages] = useState<File[]>([]);
     const [partsToReturn, setPartsToReturn] = useState<Set<string>>(new Set());
-    const [viewerOpen, setViewerOpen] = useState(false);
-    const [viewerIndex, setViewerIndex] = useState(0);
     const [wasEnhanced, setWasEnhanced] = useState(false);
     const [showAiWarning, setShowAiWarning] = useState(false);
 
@@ -233,8 +230,8 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                         </div>
 
                         {/* 2. Status Picker - Compact Solid Grid */}
-                        <div className="col-span-12 space-y-3 lg:col-span-7">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div className="col-span-12 h-full lg:col-span-7">
+                            <div className="grid h-full grid-cols-2 grid-rows-2 gap-2 sm:grid-cols-3">
                                 {finishStatuses.map((s) => {
                                     const isSelected = statusId === s.id.toString();
                                     const Icon = s.icon;
@@ -243,7 +240,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                             key={s.id}
                                             onClick={() => setStatusId(s.id.toString())}
                                             className={`
-                                                relative flex items-center p-3 rounded-xl border-2 transition-all gap-3 h-14 group ${s.color}
+                                                group relative flex min-h-14 items-center gap-3 rounded-xl border-2 p-3 transition-all ${s.color}
                                                 ${isSelected
                                                     ? `border-white shadow-lg ${s.glow} scale-105 z-10 brightness-110`
                                                     : "border-transparent opacity-80 hover:opacity-100 hover:scale-[1.02] grayscale-[0.2] hover:grayscale-0 shadow-sm"
@@ -267,15 +264,15 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                             </div>
                         </div>
 
-                        {/* 3. Problem & Diagnosis Grid */}
-                        <div className="col-span-12 grid grid-cols-1 gap-3 md:grid-cols-2 lg:col-span-7">
+                        {/* 3. Reports & final controls */}
+                        <div className="col-span-12 grid grid-cols-1 items-start gap-3 lg:grid-cols-3">
                             {/* Problem Reference */}
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 pl-1">
                                     <MessageSquare size={12} className="text-slate-600" />
                                     <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Reporte Entrada</Label>
                                 </div>
-                                <div className="bg-slate-900/50 border-2 border-slate-800 p-4 rounded-xl min-h-[120px]">
+                                <div className="h-[120px] overflow-y-auto rounded-xl border-2 border-slate-800 bg-slate-900/50 p-4 custom-scrollbar">
                                     <p className="text-xs font-bold text-slate-400 italic leading-relaxed">
                                         {repair.problemDescription || "Sin descripción."}
                                     </p>
@@ -295,7 +292,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                         setWasEnhanced(false);
                                     }}
                                     placeholder="Detalla la reparación realizada..."
-                                    className="min-h-[105px] bg-slate-900 border-2 border-slate-800 rounded-xl text-xs font-bold text-white p-4 focus:border-emerald-500 transition-all placeholder:text-slate-700"
+                                    className="h-[120px] min-h-[120px] resize-none rounded-xl border-2 border-slate-800 bg-slate-900 p-4 text-xs font-bold text-white transition-all placeholder:text-slate-700 focus:border-emerald-500"
                                 />
                                 {enhanceError && (
                                     <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-950/40 border border-amber-700/50 text-amber-300 text-[10px] font-bold leading-relaxed">
@@ -304,80 +301,62 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                     </div>
                                 )}
                             </div>
-                        </div>
 
-                        {/* 4. Controls & Images Row */}
-                        <div className="col-span-12 grid grid-cols-1 gap-3 lg:col-span-5">
-                            {/* Humidity Toggles & Parts */}
-                            <div className="md:col-span-12 space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {/* Humidity Toggle Card */}
+                            {/* Final verification */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 pl-1">
+                                    <Droplets size={12} className="text-slate-600" />
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Control final</Label>
+                                </div>
+                                <div className="flex h-[120px] flex-col gap-2 rounded-xl border-2 border-slate-800 bg-slate-900/50 p-2.5">
                                     <div
-                                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between group ${isWet ? "bg-blue-600 border-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.3)]" : "bg-slate-900 border-slate-800 hover:border-slate-700"}`}
+                                        className={`flex min-h-11 cursor-pointer items-center justify-between rounded-lg border px-3 transition-all ${isWet ? "border-blue-400 bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.3)]" : "border-slate-700 bg-slate-950 hover:border-slate-600"}`}
                                         onClick={() => setIsWet(!isWet)}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-2 rounded-lg ${isWet ? "bg-white/20" : "bg-slate-800"}`}>
-                                                <Droplets size={16} className={isWet ? "text-white" : "text-blue-500"} />
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`rounded-md p-1.5 ${isWet ? "bg-white/20" : "bg-slate-800"}`}>
+                                                <Droplets size={14} className={isWet ? "text-white" : "text-blue-500"} />
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className={`text-[10px] font-black uppercase tracking-widest ${isWet ? "text-white" : "text-slate-400"}`}>HUMEDAD</span>
-                                                <span className={`text-[9px] font-bold ${isWet ? "text-blue-100" : "text-slate-600"}`}>Rastros de líquido</span>
+                                                <span className={`text-[9px] font-black uppercase tracking-widest ${isWet ? "text-white" : "text-slate-300"}`}>Humedad</span>
+                                                <span className={`text-[8px] font-bold ${isWet ? "text-blue-100" : "text-slate-600"}`}>Rastros de líquido</span>
                                             </div>
                                         </div>
-                                        <Checkbox checked={isWet} onCheckedChange={(c) => setIsWet(!!c)} className={isWet ? "border-white bg-white text-blue-600" : "border-slate-700"} />
+                                        <Checkbox checked={isWet} onCheckedChange={(checked) => setIsWet(!!checked)} className={isWet ? "border-white bg-white text-blue-600" : "border-slate-700"} />
                                     </div>
 
-                                    {/* Spare parts checklist when assigned */}
-                                    {repair.parts && repair.parts.length > 0 && (
-                                        <div className="bg-slate-900 border-2 border-slate-800 p-4 rounded-xl space-y-3">
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block pl-1">DEVOLUCIÓN REPUESTOS</span>
-                                            <div className="max-h-[80px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                                                {repair.parts.map((p) => {
-                                                    const isReturned = partsToReturn.has(p.id) || statusId === "6";
-                                                    return (
-                                                        <div key={p.id} className="flex items-center justify-between p-2 bg-slate-950 rounded-lg border border-slate-800/50">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase truncate pr-4">{p.sparePart?.name}</span>
-                                                            <Checkbox checked={isReturned} onCheckedChange={() => togglePartReturn(p.id)} disabled={statusId === "6"} />
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
+                                    <div className="flex min-h-11 items-center gap-2 overflow-hidden rounded-lg border border-slate-700 bg-slate-950 px-3">
+                                        <div className="flex min-w-[76px] items-center gap-2">
+                                            <Camera size={14} className="text-cyan-500" />
+                                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-400">Evidencia</span>
                                         </div>
-                                    )}
+                                        <FinishRepairEvidence
+                                            images={images}
+                                            newImages={newImages}
+                                            onImageChange={handleImageChange}
+                                            onRemoveNewImage={(index) => setNewImages((current) => current.filter((_, imageIndex) => imageIndex !== index))}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Photo Evidence Section */}
-                            <div className="md:col-span-12 space-y-4">
-                                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">Evidencia Visual</Label>
-                                <div className="flex flex-wrap gap-3">
-                                    {/* Entrance Photos */}
-                                    {images.map((url: string, idx: number) => (
-                                        <div key={`old-${idx}`} className="w-16 h-16 rounded-xl overflow-hidden border-2 border-slate-800 bg-slate-950 cursor-pointer hover:border-slate-600 transition-all opacity-50 hover:opacity-100" onClick={() => { setViewerIndex(idx); setViewerOpen(true); }}>
-                                            <SafeImageThumbnail src={getImgUrl(url)} alt="Entrada" onClick={() => { }} />
-                                        </div>
-                                    ))}
-
-                                    {/* New Photos */}
-                                    {newImages.map((file, idx) => (
-                                        <div key={`new-${idx}`} className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-500/50 bg-slate-950 group">
-                                            <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
-                                            <button onClick={() => setNewImages(prev => prev.filter((_, i) => i !== idx))} className="absolute inset-0 bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                                                <X size={16} />
-                                            </button>
-                                        </div>
-                                    ))}
-
-                                    {/* Add Button */}
-                                    {newImages.length < 3 && (
-                                        <label className="w-16 h-16 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl bg-slate-900 hover:bg-slate-850 hover:border-slate-600 cursor-pointer transition-all group">
-                                            <Camera size={16} className="text-slate-600 group-hover:text-slate-400" />
-                                            <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
-                                        </label>
-                                    )}
+                            {/* Spare parts checklist when assigned */}
+                            {repair.parts && repair.parts.length > 0 && (
+                                <div className="lg:col-span-3 rounded-xl border border-slate-800 bg-slate-900/70 p-2.5">
+                                    <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar">
+                                        <span className="shrink-0 pl-1 text-[9px] font-black uppercase tracking-widest text-slate-500">Devolución repuestos</span>
+                                        {repair.parts.map((part) => {
+                                            const isReturned = partsToReturn.has(part.id) || statusId === "6";
+                                            return (
+                                                <label key={part.id} className="flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2">
+                                                    <span className="max-w-40 truncate text-[9px] font-black uppercase text-slate-400">{part.sparePart?.name}</span>
+                                                    <Checkbox checked={isReturned} onCheckedChange={() => togglePartReturn(part.id)} disabled={statusId === "6"} />
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
                     </div>
@@ -474,14 +453,6 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
 
                 </DialogContent>
             </Dialog>
-
-            <ImagePreviewModal
-                isOpen={viewerOpen}
-                onClose={() => setViewerOpen(false)}
-                images={images}
-                currentIndex={viewerIndex}
-                onIndexChange={setViewerIndex}
-            />
 
             <style jsx global>{`
                 .custom-scrollbar::-webkit-scrollbar {

@@ -266,6 +266,9 @@ task.catch((error: unknown) => {
 ## 10. React, UI y Performance
 
 - Para `.tsx`, hooks, dashboards, formularios y charts, aplicar `vercel-react-best-practices`.
+- Toda modificacion visual debe verificarse en la pagina real con el navegador, en el viewport relevante, antes de entregar.
+- Despues de cada cambio visual, sacar una captura de pantalla y revisarla para detectar desalineacion, espacios vacios, overflow, contraste y proporciones. Corregir los problemas encontrados y repetir la captura si fuera necesario.
+- No delegar la validacion visual al usuario cuando la aplicacion local pueda abrirse desde el navegador del agente.
 - No hooks condicionales.
 - Componentes con mas de 15 `useState`: usar `useReducer` o dividir.
 - No agregar `setInterval` manual suelto. Usar SWR o `usePolling`.
