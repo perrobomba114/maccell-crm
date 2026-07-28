@@ -9,6 +9,7 @@ import { getUserData } from "@/actions/get-user";
 import { PresenceHeartbeat } from "@/components/shared/presence-heartbeat";
 import { getTechniciansWorkload } from "@/actions/dashboard-actions";
 import { cn } from "@/lib/utils";
+import { RepairChatProvider } from "@/components/repair-chat/repair-chat-provider";
 
 interface LinkItem {
     href: string;
@@ -107,6 +108,7 @@ export function VendorLayoutClient({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
+        <RepairChatProvider userId={userId ?? ""}>
         <div className={cn("flex min-h-screen", isPosRoute && "h-dvh overflow-hidden")} suppressHydrationWarning>
             <PresenceHeartbeat />
             <Sidebar
@@ -145,5 +147,6 @@ export function VendorLayoutClient({
                 </div>
             </motion.div>
         </div>
+        </RepairChatProvider>
     );
 }

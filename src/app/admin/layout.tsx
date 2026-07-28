@@ -10,6 +10,9 @@ import { getUserData } from "@/actions/get-user";
 import { adminGroups } from "@/components/layout/nav-config";
 import { getTechniciansWorkload } from "@/actions/dashboard-actions";
 import { PresenceHeartbeat } from "@/components/shared/presence-heartbeat";
+import { RepairChatProvider } from "@/components/repair-chat/repair-chat-provider";
+
+type TechnicianWorkload = Awaited<ReturnType<typeof getTechniciansWorkload>>;
 
 export default function AdminLayout({
     children,
@@ -23,27 +26,26 @@ export default function AdminLayout({
     const [userId, setUserId] = useState<string | undefined>("");
     const pathname = usePathname();
 
-    const [techniciansWorkload, setTechniciansWorkload] = useState<any[]>([]);
+    const [techniciansWorkload, setTechniciansWorkload] = useState<TechnicianWorkload>([]);
 
     useEffect(() => {
-        const handleZenMode = (e: CustomEvent) => {
-            const shouldCollapse = e.detail?.collapsed;
+        const handleZenMode = (event: Event) => {
+            const shouldCollapse = event instanceof CustomEvent ? event.detail?.collapsed : undefined;
             if (typeof shouldCollapse === 'boolean') {
                 setIsCollapsed(shouldCollapse);
             }
         };
 
         const handleUserUpdate = () => {
-            console.log("User data update detected, refetching...");
-            fetchData();
+            void fetchData();
         };
 
-        window.addEventListener('zen-mode-change' as any, handleZenMode);
-        window.addEventListener('user-data-updated' as any, handleUserUpdate);
+        window.addEventListener("zen-mode-change", handleZenMode);
+        window.addEventListener("user-data-updated", handleUserUpdate);
 
         return () => {
-            window.removeEventListener('zen-mode-change' as any, handleZenMode);
-            window.removeEventListener('user-data-updated' as any, handleUserUpdate);
+            window.removeEventListener("zen-mode-change", handleZenMode);
+            window.removeEventListener("user-data-updated", handleUserUpdate);
         };
     }, []);
 
@@ -117,6 +119,7 @@ export default function AdminLayout({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
+        <RepairChatProvider userId={userId ?? ""}>
         <div className="flex min-h-screen" suppressHydrationWarning>
             <PresenceHeartbeat />
             <div className="print:hidden">
@@ -154,5 +157,6 @@ export default function AdminLayout({
                 </main>
             </motion.div>
         </div>
+        </RepairChatProvider>
     );
 }

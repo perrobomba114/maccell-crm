@@ -11,6 +11,10 @@ import { technicianGroups } from "@/components/layout/nav-config";
 
 import { TechnicianDeadlineMonitor } from "@/components/repairs/technician-deadline-monitor";
 import { PresenceHeartbeat } from "@/components/shared/presence-heartbeat";
+import { RepairChatProvider } from "@/components/repair-chat/repair-chat-provider";
+import { getTechniciansWorkload } from "@/actions/dashboard-actions";
+
+type TechnicianWorkload = Awaited<ReturnType<typeof getTechniciansWorkload>>;
 
 export default function TechnicianLayout({
     children,
@@ -23,7 +27,7 @@ export default function TechnicianLayout({
     const [userEmail, setUserEmail] = useState<string | undefined>("");
     const [userImage, setUserImage] = useState<string | null | undefined>(null);
     const [userId, setUserId] = useState<string | undefined>("");
-    const [techniciansWorkload, setTechniciansWorkload] = useState<any[]>([]);
+    const [techniciansWorkload, setTechniciansWorkload] = useState<TechnicianWorkload>([]);
     const pathname = usePathname();
 
     const fetchData = async () => {
@@ -38,12 +42,11 @@ export default function TechnicianLayout({
 
     useEffect(() => {
         const handleUserUpdate = () => {
-            console.log("User data update detected, refetching...");
-            fetchData();
+            void fetchData();
         };
 
-        window.addEventListener('user-data-updated' as any, handleUserUpdate);
-        return () => window.removeEventListener('user-data-updated' as any, handleUserUpdate);
+        window.addEventListener("user-data-updated", handleUserUpdate);
+        return () => window.removeEventListener("user-data-updated", handleUserUpdate);
     }, []);
 
     useEffect(() => {
@@ -58,8 +61,6 @@ export default function TechnicianLayout({
                 setUserId(user.id);
 
                 // Always fetch technicians workload
-                const { getTechniciansWorkload } = await import("@/actions/dashboard-actions");
-
                 // Initial fetch
                 const workload = await getTechniciansWorkload(user.branch?.id);
                 setTechniciansWorkload(workload);
@@ -93,6 +94,7 @@ export default function TechnicianLayout({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
+        <RepairChatProvider userId={userId ?? ""}>
         <div className="flex min-h-screen" suppressHydrationWarning>
             <PresenceHeartbeat />
             <TechnicianDeadlineMonitor userId={userId} />
@@ -129,5 +131,6 @@ export default function TechnicianLayout({
                 </div>
             </motion.div>
         </div>
+        </RepairChatProvider>
     );
 }
