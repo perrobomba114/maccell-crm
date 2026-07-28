@@ -130,21 +130,23 @@ export function RepairImages() {
 
     return (
         <div className="space-y-3">
-            <Label className="text-sm font-semibold flex items-center gap-2">
-                📸 Fotos del Dispositivo
+            <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <ImagePlus aria-hidden="true" className="h-4 w-4 text-primary" />
+                Fotos del dispositivo
             </Label>
 
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {/* Upload from gallery */}
-                <div className="relative aspect-square bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors group">
-                    <ImagePlus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                    <span className="text-[10px] text-muted-foreground mt-1 font-medium">Subir</span>
+                <div className="group relative flex aspect-square min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/50 transition-colors hover:border-primary/50 hover:bg-primary/5">
+                    <ImagePlus aria-hidden="true" className="h-6 w-6 text-muted-foreground transition-colors group-hover:text-primary" />
+                    <span className="mt-1 text-xs font-medium text-muted-foreground">Subir fotos</span>
                     <Input
                         ref={inputRef}
                         name="images"
                         type="file"
                         accept="image/*"
                         multiple
+                        aria-label="Subir fotos del dispositivo"
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                         onChange={handleChange}
                     />
@@ -157,13 +159,14 @@ export function RepairImages() {
                   - Desktop: custom WebRTC dialog (facingMode toggle, canvas capture)
                 */}
                 {isMobileBrowser() ? (
-                    <div className="relative aspect-square bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors group">
-                        <Camera className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                        <span className="text-[10px] text-muted-foreground mt-1 font-medium">Cámara</span>
+                    <div className="group relative flex aspect-square min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/50 transition-colors hover:border-primary/50 hover:bg-primary/5">
+                        <Camera aria-hidden="true" className="h-6 w-6 text-muted-foreground transition-colors group-hover:text-primary" />
+                        <span className="mt-1 text-xs font-medium text-muted-foreground">Cámara</span>
                         <input
                             type="file"
                             accept="image/*"
                             capture="environment"
+                            aria-label="Tomar foto del dispositivo"
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                             onChange={handleChange}
                         />
@@ -172,34 +175,36 @@ export function RepairImages() {
                     <button
                         type="button"
                         onClick={() => startCamera()}
-                        className="relative aspect-square bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors group"
+                        aria-label="Abrir cámara para fotografiar el dispositivo"
+                        className="group relative flex aspect-square min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/50 transition-colors hover:border-primary/50 hover:bg-primary/5"
                     >
-                        <Camera className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                        <span className="text-[10px] text-muted-foreground mt-1 font-medium">Cámara</span>
+                        <Camera aria-hidden="true" className="h-6 w-6 text-muted-foreground transition-colors group-hover:text-primary" />
+                        <span className="mt-1 text-xs font-medium text-muted-foreground">Cámara</span>
                     </button>
                 )}
 
                 {/* Previews */}
                 {previews.map((src, idx) => (
-                    <div key={idx} className="relative aspect-square bg-black rounded-lg overflow-hidden border group">
+                    <div key={src} className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-black">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={src} alt="Preview" className="object-cover w-full h-full" />
+                        <img src={src} alt={`Foto ${idx + 1} del dispositivo`} className="h-full w-full object-cover" />
                         <button
                             type="button"
                             onClick={() => handleRemove(idx)}
-                            className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 transition-colors opacity-0 group-hover:opacity-100 z-10"
+                            aria-label={`Eliminar foto ${idx + 1}`}
+                            className="absolute right-1 top-1 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/70 text-white opacity-100 transition-colors hover:bg-destructive sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
                         >
-                            <X className="w-3 h-3" />
+                            <X aria-hidden="true" className="h-4 w-4" />
                         </button>
                     </div>
                 ))}
             </div>
 
-            {files.length > 0 && (
-                <p className="text-xs text-muted-foreground text-center animate-in fade-in">
-                    {files.length} imágen(es) seleccionada(s)
+            {files.length > 0 ? (
+                <p aria-live="polite" className="text-center text-xs text-muted-foreground animate-in fade-in">
+                    {files.length} {files.length === 1 ? "imagen seleccionada" : "imágenes seleccionadas"}
                 </p>
-            )}
+            ) : null}
 
             {/* Camera Dialog — desktop only */}
             <Dialog open={isCameraOpen} onOpenChange={(open) => !open && stopCamera()}>

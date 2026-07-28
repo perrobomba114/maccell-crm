@@ -3,7 +3,7 @@
 import { useReducer, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowRight, ClipboardPlus, Wrench } from "lucide-react";
+import { Wrench } from "lucide-react";
 
 import { createRepairAction } from "@/lib/actions/repairs";
 import { printRepairTicket, printWetReport } from "@/lib/print-utils";
@@ -202,35 +202,16 @@ export function CreateRepairForm({
             onKeyDown={handleKeyDown}
             className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-5 md:py-6"
         >
-            <header className="relative mb-5 overflow-hidden rounded-2xl border border-border/70 bg-card px-5 py-5 shadow-sm sm:px-6">
-                <div aria-hidden="true" className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary/10 to-transparent" />
-                <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="flex items-start gap-4">
-                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+            <header className="mb-5 border-b border-border/70 px-1 pb-5">
+                    <div className="flex items-start gap-3.5">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
                             <Wrench aria-hidden="true" className="h-6 w-6" />
                         </span>
                         <div>
-                            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                                <ClipboardPlus aria-hidden="true" className="h-4 w-4" />
-                                Servicio técnico
-                            </div>
-                            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Nuevo ingreso</h1>
-                            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                                Registrá el equipo y verificá la recepción con el cliente antes de generar el ticket.
-                            </p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Servicio técnico</p>
+                            <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Nuevo ingreso</h1>
                         </div>
                     </div>
-                    <ol aria-label="Flujo del formulario" className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
-                        {["Cliente", "Equipo", "Recepción", "Ticket", "Entrega"].map((label, index) => (
-                            <li key={label} className="flex items-center gap-2">
-                                <span className="rounded-full border border-border/70 bg-background/60 px-3 py-1.5">
-                                    {index + 1}. {label}
-                                </span>
-                                {index < 4 ? <ArrowRight aria-hidden="true" className="hidden h-3.5 w-3.5 text-border sm:block" /> : null}
-                            </li>
-                        ))}
-                    </ol>
-                </div>
             </header>
             <CreateRepairFormFields
                 state={state}

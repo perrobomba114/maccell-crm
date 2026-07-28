@@ -66,14 +66,13 @@ export function CreateRepairFormFields({
     } = state;
 
     return (
-        <div className="pb-24 sm:pb-0">
-            <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(22rem,.88fr)]">
-                <div className="space-y-4">
+        <div className="rounded-[28px] border border-border/70 bg-card/55 p-2 shadow-xl shadow-black/10 sm:p-3">
+            <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
                     <RepairFormSection
                         step={1}
                         title="Cliente"
-                        description="Datos de contacto y garantía del titular."
                         icon={UserRound}
+                        className="h-full"
                         action={<WarrantySection
                             isWarranty={isWarranty}
                             onIsWarrantyChange={(value) => dispatch({ type: "setField", field: "isWarranty", value })}
@@ -113,8 +112,8 @@ export function CreateRepairFormFields({
                     <RepairFormSection
                         step={2}
                         title="Dispositivo"
-                        description="Identificación del equipo y motivo de ingreso."
                         icon={Smartphone}
+                        className="h-full"
                     >
                         <DeviceDetails
                         brand={brand}
@@ -130,8 +129,8 @@ export function CreateRepairFormFields({
                     <RepairFormSection
                         step={3}
                         title="Recepción"
-                        description="Acceso y elementos que quedan bajo custodia."
                         icon={ShieldCheck}
+                        className="lg:col-span-2"
                     >
                         <RepairIntakeFields
                         value={intake}
@@ -139,15 +138,13 @@ export function CreateRepairFormFields({
                         onChange={(value) => dispatch({ type: "setIntake", value })}
                         />
                     </RepairFormSection>
-                </div>
-                <div className="space-y-4 xl:sticky xl:top-5">
                     <RepairFormSection
                         step={4}
                         title="Ticket y evidencia"
-                        description="Identificador, repuestos y estado visual del equipo."
                         icon={Ticket}
+                        className="lg:col-span-2"
                     >
-                        <div className="space-y-5">
+                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                             <TicketInput
                                 value={ticketNumber}
                                 onChange={(value) => dispatch({ type: "setField", field: "ticketNumber", value })}
@@ -155,62 +152,64 @@ export function CreateRepairFormFields({
                                 ticketPrefix={activeTicketPrefix}
                                 error={errors.ticket}
                             />
-                            {!hideParts ? (
-                                <SparePartSelector
-                                    selectedParts={selectedParts}
-                                    onPartsChange={(value) => dispatch({ type: "setField", field: "selectedParts", value })}
-                                    hidePrice={hidePrice}
-                                />
-                            ) : null}
                             <RepairImages />
+                            {!hideParts ? (
+                                <div className="lg:col-span-2">
+                                    <SparePartSelector
+                                        selectedParts={selectedParts}
+                                        onPartsChange={(value) => dispatch({ type: "setField", field: "selectedParts", value })}
+                                        hidePrice={hidePrice}
+                                    />
+                                </div>
+                            ) : null}
                         </div>
                     </RepairFormSection>
 
                     <RepairFormSection
                         step={5}
                         title="Valor y entrega"
-                        description="Condición declarada, presupuesto y compromiso de entrega."
                         icon={CalendarClock}
+                        className="lg:col-span-2"
                     >
-                        <div className="space-y-5">
-                            <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 transition-colors hover:bg-muted/30">
-                                <Checkbox
-                                    id="isWet"
-                                    checked={isWet}
-                                    onCheckedChange={(checked) => dispatch({ type: "setField", field: "isWet", value: checked === true })}
-                                    className="data-[state=checked]:border-cyan-500 data-[state=checked]:bg-cyan-500"
-                                />
-                                <Droplets aria-hidden="true" className="h-5 w-5 shrink-0 text-cyan-500" />
-                                <span className="min-w-0">
-                                    <Label htmlFor="isWet" className="cursor-pointer text-sm font-semibold text-foreground">
-                                        Equipo mojado o con humedad
-                                    </Label>
-                                    <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
-                                        Requiere informe técnico y firma adicional.
+                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]">
+                            <div className="space-y-5">
+                                <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 transition-colors hover:bg-muted/30">
+                                    <Checkbox
+                                        id="isWet"
+                                        checked={isWet}
+                                        onCheckedChange={(checked) => dispatch({ type: "setField", field: "isWet", value: checked === true })}
+                                        className="data-[state=checked]:border-cyan-500 data-[state=checked]:bg-cyan-500"
+                                    />
+                                    <Droplets aria-hidden="true" className="h-5 w-5 shrink-0 text-cyan-500" />
+                                    <span className="min-w-0">
+                                        <Label htmlFor="isWet" className="cursor-pointer text-sm font-semibold text-foreground">
+                                            Equipo mojado o con humedad
+                                        </Label>
+                                        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                                            Requiere informe técnico y firma adicional.
+                                        </span>
                                     </span>
-                                </span>
-                            </label>
+                                </label>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="estimated-price" className="text-sm font-medium">Valor estimado</Label>
-                                <SmartPriceInput value={estimatedPrice} onChange={onPriceChange} error={errors.price} />
-                                {errors.price ? <p role="alert" className="text-sm font-medium text-destructive">{errors.price}</p> : null}
+                                <div className="space-y-2">
+                                    <Label htmlFor="estimated-price" className="text-sm font-medium">Valor estimado</Label>
+                                    <SmartPriceInput value={estimatedPrice} onChange={onPriceChange} error={errors.price} />
+                                    {errors.price ? <p role="alert" className="text-sm font-medium text-destructive">{errors.price}</p> : null}
+                                </div>
                             </div>
 
-                            <PromisedDateSelector
-                                date={promisedAt}
-                                onChange={(value) => dispatch({ type: "setField", field: "promisedAt", value })}
-                            />
+                            <div className="space-y-5">
+                                <PromisedDateSelector
+                                    date={promisedAt}
+                                    onChange={(value) => dispatch({ type: "setField", field: "promisedAt", value })}
+                                />
+                                <Button type="submit" className="min-h-12 w-full rounded-xl px-8 text-base font-semibold shadow-lg shadow-primary/20" disabled={isSubmitting}>
+                                    {isSubmitting ? <Loader2 aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" /> : <Save aria-hidden="true" className="mr-2 h-5 w-5" />}
+                                    <span aria-live="polite">{isSubmitting ? "Registrando reparación…" : "Ingresar reparación"}</span>
+                                </Button>
+                            </div>
                         </div>
                     </RepairFormSection>
-                </div>
-            </div>
-
-            <div className="sticky bottom-3 z-20 mt-4 flex justify-end rounded-2xl border border-border/70 bg-background/90 p-2 shadow-xl shadow-black/20 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
-                <Button type="submit" className="min-h-12 w-full rounded-xl px-8 text-base font-semibold shadow-lg shadow-primary/20 sm:w-auto" disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" /> : <Save aria-hidden="true" className="mr-2 h-5 w-5" />}
-                    <span aria-live="polite">{isSubmitting ? "Registrando reparación…" : "Ingresar reparación"}</span>
-                </Button>
             </div>
         </div>
     );

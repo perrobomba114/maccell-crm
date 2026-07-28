@@ -2,23 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Clock } from "lucide-react";
-// import { addBusinessMinutes } from "@/lib/utils/date-client"; // Logic moved to server action 
-// The task said "buttons calling the business logic service".
-// Since logic is in src/lib/services/business-hours.ts (Server/Node only mostly?), I should check if it's safe for client.
-// `Date` object operations are universal. I can move logic to a shared Util or use Server Action.
-// Using Server Action for simple date math is slow. Converting logic to client friendly util is better.
-// I'll create `src/lib/utils/date-client.ts` replicating the logic or just import the service if it doesn't use Node specific modules (Service used only native Date, so it's safe!)
-// But `BusinessHoursService` was exported as "instance".
-// I'll assume I can import it or move logic to a util.
-// Actually I'll create a Server Action `calculatePromisedDate` to keep logic centralized as requested.
-// Wait, latency for a button click? Maybe fine.
-// I'll add `calculatePromisedDate` to `src/lib/actions/repairs.ts`.
-
 import { calculatePromisedDateAction } from "@/lib/actions/repairs";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Clock, Loader2 } from "lucide-react";
 
 interface PromisedDateSelectorProps {
     date: Date;
@@ -40,20 +26,10 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
         }
     };
 
-    // Format for input datetime-local: YYYY-MM-DDTHH:mm
-    const inputValue = date ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "";
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value) {
-            onChange(new Date(e.target.value));
-        }
-    };
-
     return (
-        <div className="space-y-4">
-            <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                    <div className="flex gap-2 sm:gap-4 items-center bg-background border border-input rounded-xl px-2 sm:px-4 h-[84px] w-full">
+        <div className="space-y-3">
+            <Label htmlFor="promised-date" className="text-sm font-medium">Fecha y hora de entrega</Label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                         <input
                             type="date"
                             id="promised-date"
@@ -73,10 +49,10 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                                     onChange(newDate);
                                 }
                             }}
-                            className="flex-1 font-mono text-xl sm:text-3xl bg-transparent border-none focus:ring-0 p-0 h-full text-foreground color-scheme-dark min-w-0"
+                            className="min-h-12 min-w-0 rounded-xl border border-input bg-background/70 px-3 font-mono text-base text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
                         />
-                        <div className="h-10 sm:h-14 w-px bg-border/50 shrink-0" />
-                        <div className="flex items-center gap-0 sm:gap-1 shrink-0">
+                        <div className="flex min-h-12 items-center justify-center rounded-xl border border-input bg-background/70 px-3 font-mono tabular-nums focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+                            <Clock aria-hidden="true" className="mr-2 h-4 w-4 text-muted-foreground" />
                             <input
                                 type="number"
                                 id="promised-hour"
@@ -94,9 +70,9 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                                         onChange(newDate);
                                     }
                                 }}
-                                className="w-[3rem] sm:w-[4rem] p-0 text-center text-3xl sm:text-4xl font-bold text-green-600 dark:text-green-500 bg-transparent border-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-full leading-none"
+                                className="h-10 w-8 appearance-none border-0 bg-transparent p-0 text-center text-lg font-semibold text-foreground outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             />
-                            <span className="text-2xl sm:text-4xl font-bold text-green-600 dark:text-green-500 pb-1">:</span>
+                            <span aria-hidden="true" className="px-0.5 text-lg font-semibold text-muted-foreground">:</span>
                             <input
                                 type="number"
                                 id="promised-minutes"
@@ -115,29 +91,29 @@ export function PromisedDateSelector({ date, onChange }: PromisedDateSelectorPro
                                         onChange(newDate);
                                     }
                                 }}
-                                className="w-[3rem] sm:w-[4rem] p-0 text-center text-3xl sm:text-4xl font-bold text-green-600 dark:text-green-500 bg-transparent border-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-full leading-none"
+                                className="h-10 w-8 appearance-none border-0 bg-transparent p-0 text-center text-lg font-semibold text-foreground outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             />
                         </div>
-                    </div>
-                </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
                 <Button
                     type="button"
-                    className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold h-10"
+                    variant="outline"
+                    className="min-h-11 bg-background/50 font-medium"
                     onClick={() => handleAddMinutes(30)}
                     disabled={loading}
                 >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "+30 min"}
+                    {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : "+30 minutos"}
                 </Button>
                 <Button
                     type="button"
-                    className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold h-10"
+                    variant="outline"
+                    className="min-h-11 bg-background/50 font-medium"
                     onClick={() => handleAddMinutes(60)}
                     disabled={loading}
                 >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "+60 min"}
+                    {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : "+60 minutos"}
                 </Button>
             </div>
         </div>

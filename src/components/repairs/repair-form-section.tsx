@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 interface RepairFormSectionProps {
     step: number;
     title: string;
-    description: string;
     icon: LucideIcon;
     children: ReactNode;
     action?: ReactNode;
@@ -16,7 +15,6 @@ interface RepairFormSectionProps {
 export function RepairFormSection({
     step,
     title,
-    description,
     icon: Icon,
     children,
     action,
@@ -28,30 +26,30 @@ export function RepairFormSection({
         <section
             aria-labelledby={titleId}
             className={cn(
-                "overflow-hidden rounded-2xl border border-border/70 bg-card/80 shadow-sm",
-                "supports-[backdrop-filter]:bg-card/70 supports-[backdrop-filter]:backdrop-blur-sm",
+                "overflow-hidden rounded-2xl border border-transparent bg-background/65 shadow-none",
+                "transition-colors duration-200 hover:border-border/70",
                 className,
             )}
         >
-            <div className="flex min-h-11 items-center justify-between gap-4 border-b border-border/60 px-4 py-3 sm:px-5">
+            <div className={cn(
+                "flex min-h-14 justify-between gap-3 border-b border-border/50 px-4 py-3 sm:px-5",
+                action ? "flex-col items-stretch sm:flex-row sm:items-center" : "items-center",
+            )}>
                 <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
                     </span>
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                                Paso {step}
-                            </span>
-                            <span aria-hidden="true" className="h-1 w-1 rounded-full bg-border" />
-                            <h2 id={titleId} className="truncate text-base font-semibold tracking-tight text-foreground">
-                                {title}
-                            </h2>
-                        </div>
-                        <p className="mt-0.5 text-sm leading-5 text-muted-foreground">{description}</p>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                            Paso {step}
+                        </span>
+                        <span aria-hidden="true" className="h-1 w-1 rounded-full bg-border" />
+                        <h2 id={titleId} className="text-base font-semibold tracking-tight text-foreground">
+                            {title}
+                        </h2>
                     </div>
                 </div>
-                {action ? <div className="shrink-0">{action}</div> : null}
+                {action ? <div className="shrink-0 self-start sm:self-auto">{action}</div> : null}
             </div>
             <div className="p-4 sm:p-5">{children}</div>
         </section>

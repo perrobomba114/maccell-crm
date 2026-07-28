@@ -95,9 +95,7 @@ export function TicketInput({ value, onChange, branchId, ticketPrefix, error: ex
                 <p role="alert" className="flex items-center gap-1 text-sm font-medium text-destructive">
                     {errorMessage || externalError}
                 </p>
-            ) : (
-                <p className="text-xs leading-5 text-muted-foreground">Usá el código de sucursal seguido del número correlativo.</p>
-            )}
+            ) : null}
         </div>
     );
 }
