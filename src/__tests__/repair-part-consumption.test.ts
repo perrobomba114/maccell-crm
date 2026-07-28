@@ -124,3 +124,20 @@ test("mobile scanner stays active between parts and starts without a timer", asy
     assert.match(selector, /shouldContinueRepairPartScanning/);
     assert.doesNotMatch(scanner, /setTimeout\(startScanner/);
 });
+
+test("camera permission focus changes cannot dismiss the mobile scanner", async () => {
+    let keepScannerOpenOnImplicitDialogChange: typeof import("../lib/repairs/repair-part-scanner").keepScannerOpenOnImplicitDialogChange;
+    try {
+        ({ keepScannerOpenOnImplicitDialogChange } = await import("../lib/repairs/repair-part-scanner"));
+    } catch {
+        assert.fail("Falta proteger el escáner contra cierres implícitos durante el permiso de cámara");
+    }
+
+    assert.equal(keepScannerOpenOnImplicitDialogChange(true, false), true);
+    assert.equal(keepScannerOpenOnImplicitDialogChange(false, true), true);
+    assert.equal(keepScannerOpenOnImplicitDialogChange(false, false), false);
+
+    const selector = readFileSync(new URL("../components/repairs/spare-part-selector.tsx", import.meta.url), "utf8");
+    assert.doesNotMatch(selector, /onOpenChange=\{setShowScanner\}/);
+    assert.match(selector, /keepScannerOpenOnImplicitDialogChange/);
+});

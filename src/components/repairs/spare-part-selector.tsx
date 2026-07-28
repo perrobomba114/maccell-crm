@@ -12,7 +12,10 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { BarcodeScanner } from "@/components/ui/barcode-scanner";
 import { toast } from "sonner";
 import { Barcode } from "lucide-react";
-import { shouldContinueRepairPartScanning } from "@/lib/repairs/repair-part-scanner";
+import {
+    keepScannerOpenOnImplicitDialogChange,
+    shouldContinueRepairPartScanning,
+} from "@/lib/repairs/repair-part-scanner";
 
 export interface SparePartItem {
     id: string;
@@ -174,7 +177,14 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
                 </Button>
             </div>
 
-            <Dialog open={showScanner} onOpenChange={setShowScanner}>
+            <Dialog
+                open={showScanner}
+                onOpenChange={(requestedOpen) => {
+                    setShowScanner((currentOpen) => (
+                        keepScannerOpenOnImplicitDialogChange(currentOpen, requestedOpen)
+                    ));
+                }}
+            >
                 <DialogContent className="sm:max-w-md p-0 overflow-hidden">
                     <DialogTitle className="sr-only">Escanear repuesto</DialogTitle>
                     <BarcodeScanner
