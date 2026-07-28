@@ -24,7 +24,7 @@ export function RepairChatThread() {
                         {message.replyTo ? <div className="mb-2 rounded-lg border-l-4 border-sky-500 bg-muted px-2 py-1 text-xs">{message.replyTo.sender.name}: {message.replyTo.content}</div> : null}
                         {message.content ? <p className="whitespace-pre-wrap text-sm">{message.content}</p> : null}
                         {message.imageUrls.map((url) => <a key={url} href={url} target="_blank" rel="noreferrer"><img src={url} alt="Imagen del chat" className="mt-2 max-h-56 rounded-xl object-cover" /></a>)}
-                        <div className="mt-2 flex items-center justify-end gap-2 text-[11px] text-muted-foreground"><button type="button" onClick={() => setReply(message)} className="flex items-center gap-1 opacity-0 group-hover:opacity-100"><Reply className="h-3 w-3" />Responder</button><span>{new Date(message.createdAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}</span><span title="Leído"><CheckCheck className="h-4 w-4 text-sky-500" /></span></div>
+                        <div className="mt-2 flex items-center justify-end gap-2 text-[11px] text-muted-foreground"><button type="button" onClick={() => setReply(message)} className="flex items-center gap-1 opacity-0 group-hover:opacity-100"><Reply className="h-3 w-3" />Responder</button><span>{new Date(message.createdAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}</span><span title={message.readBySomeone ? "Leído" : "Enviado"}><CheckCheck className={`h-4 w-4 ${message.readBySomeone ? "text-sky-500" : "text-muted-foreground"}`} /></span></div>
                     </article>
                 ))}
             </div>

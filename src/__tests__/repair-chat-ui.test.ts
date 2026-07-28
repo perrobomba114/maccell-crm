@@ -23,4 +23,5 @@ test("thread supports replies, images, receipts and archived read-only mode", ()
     assert.match(composer, /accept="image\/jpeg,image\/png,image\/webp"/);
     assert.match(thread, /backToInbox/);
     assert.doesNotMatch(thread, /location\.reload/);
+    assert.match(thread, /message\.readBySomeone/);
 });

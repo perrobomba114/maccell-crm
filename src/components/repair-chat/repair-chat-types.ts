@@ -22,6 +22,7 @@ export type RepairChatMessage = {
     imageUrls: string[];
     createdAt: string;
     senderId: string;
+    readBySomeone: boolean;
     sender: { id: string; name: string; role: string };
     replyTo: { id: string; content: string | null; sender: { name: string } } | null;
 };

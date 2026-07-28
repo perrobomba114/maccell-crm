@@ -114,8 +114,17 @@ export async function listRepairChatMessages(user: RepairChatUser, repairId: str
         },
     });
     const page = messages.slice(0, REPAIR_CHAT_MESSAGE_PAGE_SIZE);
+    const readCursors = await db.repairChatReadCursor.findMany({
+        where: { chatId: chat.id },
+        select: { userId: true, lastReadAt: true },
+    });
     return {
-        items: page.reverse(),
+        items: page.reverse().map((message) => ({
+            ...message,
+            readBySomeone: readCursors.some((cursor) => (
+                cursor.userId !== message.senderId && cursor.lastReadAt >= message.createdAt
+            )),
+        })),
         nextCursor: messages.length > REPAIR_CHAT_MESSAGE_PAGE_SIZE ? page.at(-1)?.createdAt.toISOString() ?? null : null,
         readOnly: isRepairChatReadOnly(repair.statusId),
     };
