@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { Barcode } from "lucide-react";
 import {
     keepScannerOpenOnImplicitDialogChange,
-    shouldContinueRepairPartScanning,
 } from "@/lib/repairs/repair-part-scanner";
 
 export interface SparePartItem {
@@ -97,10 +96,9 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
         const added = handleSelect(part);
         if (!added) return false;
 
-        const shouldContinue = shouldContinueRepairPartScanning(selectedParts.length, maxParts);
-        toast.success(shouldContinue ? `Agregado: ${part.name}. Escaneá otro repuesto.` : `Agregado: ${part.name}`);
-        if (!shouldContinue) setShowScanner(false);
-        return !shouldContinue;
+        toast.success(`Agregado: ${part.name}`);
+        setShowScanner(false);
+        return true;
     };
 
     return (

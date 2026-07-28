@@ -107,22 +107,26 @@ test("single part returns authenticate the assigned technician first", () => {
     assert.match(source, /createSinglePartReturnAction[\s\S]*?getCurrentUser\(\)[\s\S]*?currentUser\.role !== "TECHNICIAN"[\s\S]*?currentUser\.id !== technicianId/);
 });
 
-test("mobile scanner stays active between parts and starts without a timer", async () => {
-    let shouldContinueRepairPartScanning: typeof import("../lib/repairs/repair-part-scanner").shouldContinueRepairPartScanning;
-    try {
-        ({ shouldContinueRepairPartScanning } = await import("../lib/repairs/repair-part-scanner"));
-    } catch {
-        assert.fail("Falta la política para conservar una sesión de cámara");
-    }
-
-    assert.equal(shouldContinueRepairPartScanning(0, 3), true);
-    assert.equal(shouldContinueRepairPartScanning(1, 3), true);
-    assert.equal(shouldContinueRepairPartScanning(2, 3), false);
-
+test("a successful spare-part scan closes the camera immediately", () => {
     const selector = readFileSync(new URL("../components/repairs/spare-part-selector.tsx", import.meta.url), "utf8");
     const scanner = readFileSync(new URL("../components/ui/barcode-scanner.tsx", import.meta.url), "utf8");
-    assert.match(selector, /shouldContinueRepairPartScanning/);
+    const handlerStart = selector.indexOf("const handleScannedPart");
+    const handlerEnd = selector.indexOf("return (", handlerStart);
+    const scannedPartHandler = selector.slice(handlerStart, handlerEnd);
+
+    assert.doesNotMatch(scannedPartHandler, /shouldContinueRepairPartScanning/);
+    assert.doesNotMatch(scannedPartHandler, /Escaneá otro repuesto/);
+    assert.match(scannedPartHandler, /toast\.success[\s\S]*setShowScanner\(false\)[\s\S]*return true/);
     assert.doesNotMatch(scanner, /setTimeout\(startScanner/);
+});
+
+test("takeover dialog state is isolated by repair and unmounted after closing", () => {
+    const table = readFileSync(new URL("../components/repairs/active-repairs-table.tsx", import.meta.url), "utf8");
+
+    assert.match(
+        table,
+        /\{takeoverRepair && <TakeRepairDialog key=\{takeoverRepair\.id\}/,
+    );
 });
 
 test("camera permission focus changes cannot dismiss the mobile scanner", async () => {

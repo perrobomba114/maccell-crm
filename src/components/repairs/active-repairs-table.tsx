@@ -189,7 +189,7 @@ export function ActiveRepairsTable({
             </div>
 
             {/* Dialogs */}
-            <TakeRepairDialog isOpen={!!takeoverRepair} onClose={() => setTakeoverRepair(null)} repair={takeoverRepair} currentUserId={currentUserId} />
+            {takeoverRepair && <TakeRepairDialog key={takeoverRepair.id} isOpen onClose={() => setTakeoverRepair(null)} repair={takeoverRepair} currentUserId={currentUserId} />}
             {assignmentRepair && <AssignmentModal isOpen={!!assignmentRepair} onClose={() => setAssignmentRepair(null)} repair={assignmentRepair} currentUserId={currentUserId} />}
             {imageUploadRepair && <AddImagesDialog isOpen={!!imageUploadRepair} onClose={() => setImageUploadRepair(null)} repair={imageUploadRepair} />}
             <RepairImagesDialog isOpen={!!imageViewRepair} onClose={() => setImageViewRepair(null)} repair={imageViewRepair} />
