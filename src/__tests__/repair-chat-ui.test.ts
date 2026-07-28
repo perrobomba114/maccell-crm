@@ -54,12 +54,11 @@ test("thread supports replies, images, receipts and archived read-only mode", ()
     assert.match(composer, /min-w-0/);
 });
 
-test("chat and header use different sounds at reduced volumes", () => {
+test("chat and header use different sounds at their configured volumes", () => {
     const provider = read("repair-chat-provider.tsx");
     const notificationBell = readFileSync(new URL("../components/ui/notification-bell.tsx", import.meta.url), "utf8");
     assert.match(provider, /chat\.mp3/);
-    assert.match(provider, /CHAT_NOTIFICATION_VOLUME = 0\.3/);
+    assert.match(provider, /CHAT_NOTIFICATION_VOLUME = 0\.9/);
     assert.doesNotMatch(provider, /new Audio\("\/notificacion\.mp3"\)/);
-    assert.match(notificationBell, /HEADER_NOTIFICATION_VOLUME = 0\.45/);
-    assert.doesNotMatch(notificationBell, /audio\.volume = 0\.6/);
+    assert.match(notificationBell, /HEADER_NOTIFICATION_VOLUME = 0\.6/);
 });

@@ -22,7 +22,7 @@ interface NotificationBellProps {
 
 // Local file from public folder
 const NOTIFICATION_SOUND = "/notificacion.mp3";
-const HEADER_NOTIFICATION_VOLUME = 0.45;
+const HEADER_NOTIFICATION_VOLUME = 0.6;
 // Backup base64 just in case offline (Short Click)
 // const NOTIFICATION_SOUND_BACKUP = "data:audio/wav;base64,UklGRiGCCABXQVZFbW...
 // const NOTIFICATION_SOUND_BACKUP = "data:audio/wav;base64,UklGRiGCCABXQVZFbW...

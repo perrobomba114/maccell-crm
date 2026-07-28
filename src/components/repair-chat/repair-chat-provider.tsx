@@ -6,7 +6,7 @@ import type { RepairChatMessage, RepairChatPreview, RepairChatSummary, RepairSea
 import { RepairChatWidget } from "./repair-chat-widget";
 
 const CHAT_NOTIFICATION_SOUND = "/chat.mp3";
-const CHAT_NOTIFICATION_VOLUME = 0.3;
+const CHAT_NOTIFICATION_VOLUME = 0.9;
 let waitingForChatSoundInteraction = false;
 
 function playChatNotificationSound(): void {
