@@ -7,9 +7,10 @@ import { RepairChatThread } from "./repair-chat-thread";
 
 export function RepairChatInbox() {
     const chat = useRepairChat();
+    const search = chat.search;
     const [query, setQuery] = useState("");
     const deferredQuery = useDeferredValue(query);
-    useEffect(() => { void chat.search(deferredQuery); }, [chat.search, deferredQuery]);
+    useEffect(() => { void search(deferredQuery); }, [search, deferredQuery]);
     if (chat.selected) return <RepairChatThread />;
     return (
         <div className="flex min-h-0 flex-1 flex-col">

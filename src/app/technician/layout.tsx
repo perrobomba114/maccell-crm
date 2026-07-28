@@ -4,7 +4,6 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { usePathname } from "next/navigation";
 import { getUserData } from "@/actions/get-user";
 
 import { technicianGroups } from "@/components/layout/nav-config";
@@ -28,8 +27,6 @@ export default function TechnicianLayout({
     const [userImage, setUserImage] = useState<string | null | undefined>(null);
     const [userId, setUserId] = useState<string | undefined>("");
     const [techniciansWorkload, setTechniciansWorkload] = useState<TechnicianWorkload>([]);
-    const pathname = usePathname();
-
     const fetchData = async () => {
         const user = await getUserData();
         if (user) {

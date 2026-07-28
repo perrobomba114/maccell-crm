@@ -3,8 +3,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import { getUserData } from "@/actions/get-user";
 
 import { adminGroups } from "@/components/layout/nav-config";
@@ -24,8 +23,6 @@ export default function AdminLayout({
     const [userEmail, setUserEmail] = useState<string | undefined>("");
     const [userImage, setUserImage] = useState<string | null | undefined>(null);
     const [userId, setUserId] = useState<string | undefined>("");
-    const pathname = usePathname();
-
     const [techniciansWorkload, setTechniciansWorkload] = useState<TechnicianWorkload>([]);
 
     useEffect(() => {
