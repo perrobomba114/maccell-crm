@@ -73,21 +73,22 @@ export function readRepairIntakeFormData(formData: FormData): RepairIntakeResult
     });
 }
 
+export function formatReceivedAccessories(hasSimCard: boolean, hasMemoryCard: boolean): string {
+    if (hasSimCard && hasMemoryCard) return "SIM + Tarjeta de memoria";
+    if (hasSimCard) return "SIM";
+    if (hasMemoryCard) return "Tarjeta de memoria";
+    return "Sin SIM ni tarjeta de memoria";
+}
+
 export function summarizeRepairIntake(intake: RepairIntake) {
     const accessLabel = intake.accessType === "CODE"
         ? "Código/PIN registrado"
         : intake.accessType === "PATTERN"
             ? "Patrón registrado"
             : "Sin código";
-    const accessories = [
-        intake.hasSimCard ? "SIM" : null,
-        intake.hasMemoryCard ? "Tarjeta de memoria" : null,
-    ].filter((value): value is string => value !== null);
 
     return {
         accessLabel,
-        accessoriesLabel: accessories.length > 0
-            ? accessories.join(" + ")
-            : "Sin SIM ni tarjeta de memoria",
+        accessoriesLabel: formatReceivedAccessories(intake.hasSimCard, intake.hasMemoryCard),
     };
 }

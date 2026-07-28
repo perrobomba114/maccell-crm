@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { printHtml, SHARED_CSS, wrapHtml } from "./core";
 import { REPAIR_DATA_RESPONSIBILITY_TERMS } from "./repair-terms";
+import { formatReceivedAccessories } from "@/lib/repairs/intake";
 
 type RepairTicketData = {
     ticketNumber: string;
@@ -16,6 +17,8 @@ type RepairTicketData = {
     deviceModel?: string | null;
     problemDescription?: string | null;
     isWet?: boolean | null;
+    hasSimCard?: boolean | null;
+    hasMemoryCard?: boolean | null;
     estimatedPrice?: number | null;
     promisedAt?: Date | string | null;
     parts?: {
@@ -51,6 +54,13 @@ export const printRepairTicket = (repair: RepairTicketData | null | undefined) =
         <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
             <div style="font-size: 12px; font-weight: 900;">DISPOSITIVO</div>
             <div style="font-size: 16px; font-weight: bold;">${repair.deviceBrand} ${repair.deviceModel}</div>
+        </div>
+
+        <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
+            <div style="font-size: 12px; font-weight: 900;">ACCESORIOS RECIBIDOS</div>
+            <div style="font-size: 14px; font-weight: bold;">
+                ${formatReceivedAccessories(Boolean(repair.hasSimCard), Boolean(repair.hasMemoryCard))}
+            </div>
         </div>
 
          <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
