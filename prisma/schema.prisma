@@ -35,18 +35,18 @@ model Branch {
 }
 
 model User {
-  id                    String                @id @default(cuid())
-  email                 String                @unique
+  id                    String                 @id @default(cuid())
+  email                 String                 @unique
   password              String
   name                  String
-  role                  Role                  @default(VENDOR)
+  role                  Role                   @default(VENDOR)
   branchId              String?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  isOnline              Boolean               @default(false)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  isOnline              Boolean                @default(false)
   lastActiveAt          DateTime?
   imageUrl              String?
-  avgDataQuality        Float                 @default(0)
+  avgDataQuality        Float                  @default(0)
   cashShifts            CashShift[]
   cerebroConversations  CerebroConversation[]
   customersCreated      Customer[]
@@ -54,15 +54,17 @@ model User {
   notifications         Notification[]
   repairKnowledge       RepairKnowledge[]
   observations          RepairObservation[]
-  repairsAssigned       Repair[]              @relation("AssignedRepairs")
-  repairsCreated        Repair[]              @relation("CreatedRepairs")
-  resolvedReturns       ReturnRequest[]       @relation("AdminResolvedReturns")
-  technicianReturns     ReturnRequest[]       @relation("TechnicianReturns")
+  repairsAssigned       Repair[]               @relation("AssignedRepairs")
+  repairsCreated        Repair[]               @relation("CreatedRepairs")
+  resolvedReturns       ReturnRequest[]        @relation("AdminResolvedReturns")
+  technicianReturns     ReturnRequest[]        @relation("TechnicianReturns")
   sales                 Sale[]
   sparePartHistory      SparePartHistory[]
   stockTransfersCreated StockTransfer[]
   repairStatusHistory   RepairStatusHistory[]
-  branch                Branch?               @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  repairChatMessages    RepairChatMessage[]    @relation("RepairChatMessages")
+  repairChatReadCursors RepairChatReadCursor[] @relation("RepairChatReadCursors")
+  branch                Branch?                @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([email])
   @@index([branchId])
@@ -383,6 +385,7 @@ model Repair {
   returnRequests     ReturnRequest[]
   saleItems          SaleItem[]
   learningRecord     RepairLearningRecord?
+  chat               RepairChat?
 
   @@unique([ticketNumber, branchId])
   @@index([branchId])
@@ -461,6 +464,54 @@ model Notification {
 
   @@index([userId])
   @@map("notifications")
+}
+
+model RepairChat {
+  id            String                 @id @default(cuid())
+  repairId      String                 @unique
+  lastMessageAt DateTime               @default(now())
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  repair        Repair                 @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  messages      RepairChatMessage[]
+  readCursors   RepairChatReadCursor[]
+
+  @@index([lastMessageAt])
+  @@map("repair_chats")
+}
+
+model RepairChatMessage {
+  id              String              @id @default(cuid())
+  chatId          String
+  senderId        String
+  clientRequestId String
+  content         String?
+  imageUrls       String[]            @default([])
+  replyToId       String?
+  createdAt       DateTime            @default(now())
+  chat            RepairChat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender          User                @relation("RepairChatMessages", fields: [senderId], references: [id])
+  replyTo         RepairChatMessage?  @relation("RepairChatReplies", fields: [replyToId], references: [id])
+  replies         RepairChatMessage[] @relation("RepairChatReplies")
+
+  @@unique([senderId, clientRequestId])
+  @@index([chatId, createdAt])
+  @@index([replyToId])
+  @@map("repair_chat_messages")
+}
+
+model RepairChatReadCursor {
+  id         String     @id @default(cuid())
+  chatId     String
+  userId     String
+  lastReadAt DateTime
+  updatedAt  DateTime   @updatedAt
+  chat       RepairChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user       User       @relation("RepairChatReadCursors", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@index([userId, lastReadAt])
+  @@map("repair_chat_read_cursors")
 }
 
 model CashShift {
