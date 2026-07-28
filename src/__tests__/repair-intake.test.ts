@@ -3,11 +3,16 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+    appendPatternPoint,
     normalizeRepairIntake,
     readRepairIntakeFormData,
     serializePattern,
     summarizeRepairIntake,
 } from "../lib/repairs/intake";
+import {
+    createInitialRepairFormState,
+    createRepairFormReducer,
+} from "../components/repairs/create-repair-form-state";
 
 test("normalizes a trimmed code and accessory flags", () => {
     assert.deepEqual(normalizeRepairIntake({
@@ -54,6 +59,11 @@ test("serializes the selected pattern in order", () => {
     assert.equal(serializePattern([1, 2, 5, 8]), "1-2-5-8");
 });
 
+test("appends each pattern point only once", () => {
+    assert.deepEqual(appendPatternPoint([1, 2], 2), [1, 2]);
+    assert.deepEqual(appendPatternPoint([1, 2], 5), [1, 2, 5]);
+});
+
 test("summarizes intake without returning the credential", () => {
     assert.deepEqual(summarizeRepairIntake({
         accessType: "CODE",
@@ -93,5 +103,36 @@ test("repair creation validates and persists normalized intake fields", () => {
     assert.match(source, /hasSimCard:\s*intakeResult\.data\.hasSimCard/);
     assert.match(source, /hasMemoryCard:\s*intakeResult\.data\.hasMemoryCard/);
     assert.match(source, /statusId:\s*REPAIR_STATUS\.PENDING/);
+    assert.doesNotMatch(source, /\bany\b/);
+});
+
+test("changing intake to NONE clears a previously entered credential", () => {
+    const initial = createInitialRepairFormState(new Date("2026-07-27T12:00:00.000Z"), "vendor-1");
+    const withCode = createRepairFormReducer(initial, {
+        type: "setIntake",
+        value: {
+            accessType: "CODE",
+            accessCredential: "2580",
+            hasSimCard: false,
+            hasMemoryCard: false,
+        },
+    });
+    const withoutCode = createRepairFormReducer(withCode, {
+        type: "setAccessType",
+        value: "NONE",
+    });
+
+    assert.equal(withoutCode.intake.accessCredential, null);
+});
+
+test("repair creation form integrates the typed intake section and reducer", () => {
+    const source = readFileSync(new URL("../components/repairs/create-form.tsx", import.meta.url), "utf8");
+    const fieldsSource = readFileSync(new URL("../components/repairs/create-repair-form-fields.tsx", import.meta.url), "utf8");
+
+    assert.match(source, /useReducer/);
+    assert.match(source, /summarizeRepairIntake/);
+    assert.match(source, /<CreateRepairFormFields/);
+    assert.match(source, /<RepairCreateConfirmDialog/);
+    assert.match(fieldsSource, /<RepairIntakeFields/);
     assert.doesNotMatch(source, /\bany\b/);
 });

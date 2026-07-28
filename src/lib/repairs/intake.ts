@@ -24,6 +24,10 @@ export function serializePattern(points: number[]): string {
     return points.join("-");
 }
 
+export function appendPatternPoint(points: number[], point: number): number[] {
+    return points.includes(point) ? points : [...points, point];
+}
+
 export function normalizeRepairIntake(raw: RawRepairIntake): RepairIntakeResult {
     const accessType = String(raw.accessType ?? "");
     if (!REPAIR_ACCESS_TYPES.includes(accessType as RepairAccessType)) {
