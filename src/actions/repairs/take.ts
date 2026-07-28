@@ -32,19 +32,19 @@ export async function takeRepairAction(
         ticketNumberValue = repair.ticketNumber;
 
         const currentUser = await getCurrentUser();
+        if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.id !== userId)) {
+            return { success: false, error: "No autorizado" };
+        }
         const branchIdToLog = currentUser?.branch?.id || repair.branchId;
 
         await db.$transaction(async (tx) => {
-            const updateData: any = {
-                statusId: 2,
-            };
+            const targetStatusId = 2;
+            let promisedAtUpdate: Date | undefined;
 
             if (extendMinutes && extendMinutes > 0) {
                 const now = new Date();
-                const baseDate = now > repair.promisedAt ? now : repair.promisedAt;
-
                 const calculatedDate = businessHoursService.addBusinessMinutes(now, extendMinutes);
-                updateData.promisedAt = calculatedDate;
+                promisedAtUpdate = calculatedDate;
                 newPromisedAt = calculatedDate;
             }
 
@@ -56,11 +56,13 @@ export async function takeRepairAction(
             await tx.repair.update({
                 where: { id: repairId },
                 data: {
-                    ...updateData,
+                    statusId: targetStatusId,
+                    assignedUserId: userId,
+                    ...(promisedAtUpdate ? { promisedAt: promisedAtUpdate } : {}),
                     statusHistory: {
                         create: {
                             fromStatusId: oldRepair?.statusId,
-                            toStatusId: updateData.statusId,
+                            toStatusId: targetStatusId,
                             userId: userId
                         }
                     }
@@ -93,7 +95,7 @@ export async function takeRepairAction(
                     });
 
                     if (currentUser && branchIdToLog) {
-                        await (tx as any).sparePartHistory.create({
+                        await tx.sparePartHistory.create({
                             data: {
                                 sparePartId: part.id,
                                 userId: userId, 

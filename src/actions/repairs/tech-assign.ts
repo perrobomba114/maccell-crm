@@ -8,6 +8,10 @@ import { getCurrentUser } from "@/actions/auth-actions";
 
 export async function techTakeRepairAction(repairId: string, technicianId: string) {
     try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser || currentUser.role !== "TECHNICIAN" || currentUser.id !== technicianId) {
+            return { success: false, error: "No autorizado" };
+        }
         const repair = await db.repair.findUnique({ where: { id: repairId } });
         if (!repair) return { success: false, error: "Reparación no encontrada" };
 
@@ -19,6 +23,7 @@ export async function techTakeRepairAction(repairId: string, technicianId: strin
             where: { id: repairId },
             data: {
                 statusId: 2, 
+                assignedUserId: currentUser.id,
                 statusHistory: {
                     create: {
                         fromStatusId: repair.statusId, 
@@ -126,7 +131,7 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
                     });
 
                     if (currentUser && currentUser.branch) {
-                        await (tx as any).sparePartHistory.create({
+                        await tx.sparePartHistory.create({
                             data: {
                                 sparePartId: part.id,
                                 userId: technicianId,
