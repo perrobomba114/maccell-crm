@@ -8,20 +8,33 @@ import { Input } from "@/components/ui/input";
 import { Loader2, CalendarClock, Play } from "lucide-react";
 import { toast } from "sonner";
 import { startRepairAction } from "@/lib/actions/repairs";
+import { RepairIntakeSummary } from "./repair-intake-summary";
+import type { RepairAccessType } from "@/lib/repairs/intake";
+
+type StartRepair = {
+    id: string;
+    ticketNumber: string;
+    deviceBrand: string;
+    deviceModel: string;
+    estimatedTime?: number | null;
+    accessType?: RepairAccessType | null;
+    accessCredential?: string | null;
+    hasSimCard?: boolean | null;
+    hasMemoryCard?: boolean | null;
+};
 
 interface StartRepairModalProps {
-    repair: any;
+    repair: StartRepair | null;
     currentUserId: string;
     isOpen: boolean;
     onClose: () => void;
 }
 
 export function StartRepairModal({ repair, currentUserId, isOpen, onClose }: StartRepairModalProps) {
-    if (!repair) return null;
-
     const [isLoading, setIsLoading] = useState(false);
-    // Allow empty string initially, but default to current estimatedTime if it exists
-    const [estimatedTime, setEstimatedTime] = useState<string>(repair.estimatedTime ? String(repair.estimatedTime) : "");
+    const [estimatedTime, setEstimatedTime] = useState<string>(repair?.estimatedTime ? String(repair.estimatedTime) : "");
+
+    if (!repair) return null;
 
     const handleStart = async () => {
         const time = parseInt(estimatedTime);
@@ -73,6 +86,14 @@ export function StartRepairModal({ repair, currentUserId, isOpen, onClose }: Sta
                             {repair.deviceBrand} {repair.deviceModel}
                         </p>
                     </div>
+
+                    <RepairIntakeSummary
+                        accessType={repair.accessType}
+                        accessCredential={repair.accessCredential}
+                        hasSimCard={repair.hasSimCard}
+                        hasMemoryCard={repair.hasMemoryCard}
+                        compact
+                    />
 
                     {/* Time Input Field - Focal Point */}
                     <div className="space-y-4">

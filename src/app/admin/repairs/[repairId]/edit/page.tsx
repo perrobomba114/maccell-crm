@@ -2,6 +2,7 @@
 import { getUserData } from "@/actions/get-user";
 import { getRepairByIdAction, getAllStatusesAction, getAllTechniciansAction } from "@/lib/actions/repairs";
 import { EditRepairForm } from "@/components/repairs/edit-form";
+import { RepairIntakeSummary } from "@/components/repairs/repair-intake-summary";
 import { redirect } from "next/navigation";
 
 interface EditRepairPageProps {
@@ -28,6 +29,13 @@ export default async function EditRepairPage({ params }: EditRepairPageProps) {
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Editar Reparación #{repair.ticketNumber}</h2>
             </div>
+
+            <RepairIntakeSummary
+                accessType={repair.accessType}
+                accessCredential={repair.accessCredential}
+                hasSimCard={repair.hasSimCard}
+                hasMemoryCard={repair.hasMemoryCard}
+            />
 
             <div className="bg-card rounded-lg shadow-sm border p-6">
                 <EditRepairForm

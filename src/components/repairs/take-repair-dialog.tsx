@@ -10,27 +10,48 @@ import { toast } from "sonner";
 import { takeRepairAction } from "@/lib/actions/repairs";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { getImgUrl } from "@/lib/utils";
+import { RepairIntakeSummary } from "./repair-intake-summary";
+import type { RepairAccessType } from "@/lib/repairs/intake";
+
+type TakeRepair = {
+    id: string;
+    ticketNumber: string;
+    promisedAt: Date | string;
+    customer: { name: string; phone?: string | null };
+    deviceBrand: string;
+    deviceModel: string;
+    problemDescription: string;
+    deviceImages?: string[];
+    accessType?: RepairAccessType | null;
+    accessCredential?: string | null;
+    hasSimCard?: boolean | null;
+    hasMemoryCard?: boolean | null;
+    parts?: Array<{
+        id: string;
+        quantity?: number;
+        sparePart: { name: string };
+    }>;
+};
 
 interface TakeRepairDialogProps {
-    repair: any; // Using any for simplicity in quick implementation, ideally full Repair type
+    repair: TakeRepair | null;
     isOpen: boolean;
     onClose: () => void;
     currentUserId: string; // The technician
 }
 
 export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: TakeRepairDialogProps) {
-    if (!repair) return null;
-
+    const promisedDate = repair ? new Date(repair.promisedAt) : null;
+    const isOverdue = promisedDate ? promisedDate < new Date() : false;
     const [isLoading, setIsLoading] = useState(false);
     const [selectedParts, setSelectedParts] = useState<SparePartItem[]>([]);
-    // Check if overdue
-    const promisedDate = new Date(repair.promisedAt);
-    const isOverdue = promisedDate < new Date();
-
-    const [extendTime, setExtendTime] = useState(isOverdue); // Added new state, default true if overdue
+    const [extendTime, setExtendTime] = useState(isOverdue);
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
-    const images = (repair.deviceImages || []).filter((url: string) => url && url.includes('/'));
+
+    if (!repair) return null;
+
+    const images = (repair.deviceImages || []).filter((url) => url && url.includes('/'));
 
     const handleConfirm = async () => {
         setIsLoading(true);
@@ -88,6 +109,14 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
                         <p className="text-muted-foreground font-semibold text-[10px] uppercase tracking-wider mb-1">PROBLEMA / FALLA</p>
                         <p className="font-medium text-sm leading-relaxed">{repair.problemDescription}</p>
                     </div>
+
+                    <RepairIntakeSummary
+                        accessType={repair.accessType}
+                        accessCredential={repair.accessCredential}
+                        hasSimCard={repair.hasSimCard}
+                        hasMemoryCard={repair.hasMemoryCard}
+                        compact
+                    />
 
                     {/* IMAGES SECTION */}
                     {images.length > 0 && (
@@ -161,10 +190,10 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
                                 <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">REPUESTOS YA ASIGNADOS</span>
                             </div>
                             <div className="space-y-1">
-                                {repair.parts.map((rp: any) => (
+                                {repair.parts.map((rp) => (
                                     <div key={rp.id} className="flex justify-between text-sm items-center bg-background/50 p-2 rounded border border-blue-100 dark:border-blue-800/50">
                                         <span className="font-medium text-foreground">{rp.sparePart.name}</span>
-                                        <span className="text-muted-foreground text-xs font-mono bg-muted px-1.5 py-0.5 rounded">x{rp.quantity}</span>
+                                        <span className="text-muted-foreground text-xs font-mono bg-muted px-1.5 py-0.5 rounded">x{rp.quantity ?? 1}</span>
                                     </div>
                                 ))}
                             </div>
