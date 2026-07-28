@@ -6,6 +6,7 @@ import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { REPAIR_STATUS } from "@/lib/repairs/status";
+import { consumeRepairParts } from "@/lib/repairs/consume-repair-parts";
 
 export async function techTakeRepairAction(repairId: string, technicianId: string) {
     try {
@@ -102,6 +103,7 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
 
         const isReactivation = repair.statusId === 7 || repair.statusId === 8 || repair.statusId === 9;
         const targetStatusId = (updatePromisedDate || isReactivation) ? 3 : 4;
+        let consumedPartNames: string[] = [];
 
         await db.$transaction(async (tx) => {
             const assigned = await tx.repair.updateMany({
@@ -132,45 +134,14 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
                 }
             });
 
-            if (parts.length > 0) {
-                for (const part of parts) {
-                    const sparePart = await tx.sparePart.findUnique({
-                        where: { id: part.id },
-                        select: { stockLocal: true }
-                    });
-                    if (!sparePart || sparePart.stockLocal < 1) {
-                        throw new Error(`Sin stock suficiente para el repuesto: ${part.name}`);
-                    }
-
-                    await tx.repairPart.create({
-                        data: {
-                            repairId,
-                            sparePartId: part.id,
-                            quantity: 1
-                        }
-                    });
-
-                    await tx.sparePart.update({
-                        where: { id: part.id },
-                        data: {
-                            stockLocal: { decrement: 1 }
-                        }
-                    });
-
-                    if (currentUser && currentUser.branch) {
-                        await tx.sparePartHistory.create({
-                            data: {
-                                sparePartId: part.id,
-                                userId: technicianId,
-                                branchId: currentUser.branch.id,
-                                quantity: -1,
-                                reason: `Reparación #${repair.ticketNumber} (Asignación de tiempo/repuestos)`,
-                                isChecked: false
-                            }
-                        });
-                    }
-                }
-            }
+            consumedPartNames = await consumeRepairParts(tx, {
+                repairId,
+                ticketNumber: repair.ticketNumber,
+                actorUserId: currentUser.id,
+                branchId: repair.branchId,
+                parts,
+                reason: "Asignación de tiempo/repuestos",
+            });
         });
 
         const technician = await db.user.findUnique({ where: { id: technicianId } });
@@ -183,8 +154,8 @@ export async function assignTimeAction(repairId: string, technicianId: string, e
                 message += ` Se ha actualizado la fecha prometida a: ${dateStr} ${timeStr}.`;
             }
 
-            if (parts.length > 0) {
-                message += ` Se agregaron repuestos: ${parts.map(p => p.name).join(", ")}.`;
+            if (consumedPartNames.length > 0) {
+                message += ` Se agregaron repuestos: ${consumedPartNames.join(", ")}.`;
             }
 
             await createNotificationAction({

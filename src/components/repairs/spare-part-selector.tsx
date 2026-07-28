@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { BarcodeScanner } from "@/components/ui/barcode-scanner";
 import { toast } from "sonner";
 import { Barcode } from "lucide-react";
+import { shouldContinueRepairPartScanning } from "@/lib/repairs/repair-part-scanner";
 
 export interface SparePartItem {
     id: string;
@@ -87,6 +88,16 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
 
     const handleRemove = (id: string) => {
         onPartsChange(selectedParts.filter(p => p.id !== id));
+    };
+
+    const handleScannedPart = (part: SparePartSearchResult) => {
+        const added = handleSelect(part);
+        if (!added) return false;
+
+        const shouldContinue = shouldContinueRepairPartScanning(selectedParts.length, maxParts);
+        toast.success(shouldContinue ? `Agregado: ${part.name}. Escaneá otro repuesto.` : `Agregado: ${part.name}`);
+        if (!shouldContinue) setShowScanner(false);
+        return !shouldContinue;
     };
 
     return (
@@ -178,24 +189,13 @@ export function SparePartSelector({ selectedParts, onPartsChange, maxParts = 3, 
 
                                 if (data.length === 0) {
                                     toast.error(`No se encontró repuesto con código: ${code}`);
-                                    setOpen(true);
                                     return false;
                                 } else if (data.length === 1) {
-                                    const added = handleSelect(data[0]);
-                                    if (added) {
-                                        toast.success(`Agregado: ${data[0].name}`);
-                                        setShowScanner(false);
-                                    }
-                                    return added;
+                                    return handleScannedPart(data[0]);
                                 } else {
                                     const exactMatch = findExactScannedPart(data, code);
                                     if (exactMatch) {
-                                        const added = handleSelect(exactMatch);
-                                        if (added) {
-                                            toast.success(`Agregado: ${exactMatch.name}`);
-                                            setShowScanner(false);
-                                        }
-                                        return added;
+                                        return handleScannedPart(exactMatch);
                                     } else {
                                         setShowScanner(false);
                                         setOpen(true);

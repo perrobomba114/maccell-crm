@@ -171,11 +171,10 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
             }
         };
 
-        const timer = setTimeout(startScanner, 100);
+        void startScanner();
 
         return () => {
             mounted = false;
-            clearTimeout(timer);
 
             // Only stop if we know it started successfully.
             // If it's still starting (isStarted == false), the startScanner function
@@ -217,6 +216,7 @@ export function BarcodeScanner({ onResult, onClose }: BarcodeScannerProps) {
             <div className="space-y-1.5 pt-2">
                 <h3 className="font-black text-xl text-white uppercase italic tracking-tighter">Escanear Repuesto</h3>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Código 128 del repuesto</p>
+                <p className="text-xs font-semibold text-blue-300/80">La cámara queda activa para escanear varios repuestos.</p>
             </div>
 
             <div className="relative w-full max-w-[380px] sm:max-w-md aspect-[4/3] rounded-2xl overflow-hidden border-2 border-slate-800 bg-black group transition-all hover:border-blue-500/50">

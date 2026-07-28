@@ -5,6 +5,7 @@ import { deleteRepairImageFile, saveRepairImages } from "@/lib/actions/upload";
 import { revalidatePath } from "next/cache";
 import { isValidImg } from "@/lib/utils";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { consumeRepairParts } from "@/lib/repairs/consume-repair-parts";
 
 type SubmittedRepairPart = {
     id: string;
@@ -44,7 +45,9 @@ export async function updateRepairAction(formData: FormData) {
         if (!existingRepair) return { success: false, error: "Reparación no encontrada" };
 
         const currentUser = await getCurrentUser();
-        if (!currentUser) return { success: false, error: "No autorizado" };
+        if (!currentUser || currentUser.role !== "ADMIN") {
+            return { success: false, error: "No autorizado" };
+        }
 
         await db.customer.update({
             where: { id: existingRepair.customerId },
@@ -148,34 +151,14 @@ export async function updateRepairAction(formData: FormData) {
                     }
                 }
 
-                for (const p of partsToAdd) {
-                    await tx.repairPart.create({
-                        data: {
-                            repairId,
-                            sparePartId: p.id,
-                            quantity: 1
-                        }
-                    });
-                    await tx.sparePart.update({
-                        where: { id: p.id },
-                        data: { stockLocal: { decrement: 1 } }
-                    });
-
-                    const branchIdToLog = currentUser?.branch?.id || existingRepair.branchId;
-
-                    if (currentUser && branchIdToLog) {
-                        await tx.sparePartHistory.create({
-                            data: {
-                                sparePartId: p.id,
-                                userId: currentUser.id,
-                                branchId: branchIdToLog,
-                                quantity: -1,
-                                reason: `Reparación #${existingRepair.ticketNumber} (Agregado en edición)`,
-                                isChecked: false
-                            }
-                        });
-                    }
-                }
+                await consumeRepairParts(tx, {
+                    repairId,
+                    ticketNumber: existingRepair.ticketNumber,
+                    actorUserId: currentUser.id,
+                    branchId: existingRepair.branchId,
+                    parts: partsToAdd,
+                    reason: "Agregado en edición",
+                });
             });
         }
 

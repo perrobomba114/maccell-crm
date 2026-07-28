@@ -4,9 +4,15 @@ import { db } from "@/lib/db";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { consumeRepairParts } from "@/lib/repairs/consume-repair-parts";
 
 export async function createSinglePartReturnAction(repairPartId: string, technicianId: string) {
     try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser || currentUser.role !== "TECHNICIAN" || currentUser.id !== technicianId) {
+            return { success: false, error: "No autorizado" };
+        }
+
         const repairPart = await db.repairPart.findUnique({
             where: { id: repairPartId },
             include: {
@@ -103,9 +109,14 @@ export async function addPartToRepairAction(repairId: string, technicianId: stri
             return { success: false, error: "No se seleccionaron repuestos." };
         }
 
+        const currentUser = await getCurrentUser();
+        if (!currentUser || currentUser.role !== "TECHNICIAN" || currentUser.id !== technicianId) {
+            return { success: false, error: "No autorizado" };
+        }
+
         const repair = await db.repair.findUnique({
             where: { id: repairId },
-            include: { customer: true }
+            select: { assignedUserId: true, branchId: true, ticketNumber: true }
         });
 
         if (!repair) return { success: false, error: "Reparación no encontrada" };
@@ -114,46 +125,15 @@ export async function addPartToRepairAction(repairId: string, technicianId: stri
             return { success: false, error: "No tienes asignada esta reparación" };
         }
 
-        const currentUser = await getCurrentUser();
-
         await db.$transaction(async (tx) => {
-            for (const part of parts) {
-                const sparePart = await tx.sparePart.findUnique({
-                    where: { id: part.id },
-                    select: { stockLocal: true }
-                });
-                if (!sparePart || sparePart.stockLocal < 1) {
-                    throw new Error(`Sin stock suficiente para el repuesto: ${part.name}`);
-                }
-
-                await tx.repairPart.create({
-                    data: {
-                        repairId,
-                        sparePartId: part.id,
-                        quantity: 1
-                    }
-                });
-
-                await tx.sparePart.update({
-                    where: { id: part.id },
-                    data: {
-                        stockLocal: { decrement: 1 }
-                    }
-                });
-
-                if (currentUser && currentUser.branch) {
-                    await tx.sparePartHistory.create({
-                        data: {
-                            sparePartId: part.id,
-                            userId: technicianId,
-                            branchId: currentUser.branch.id,
-                            quantity: -1,
-                            reason: `Reparación #${repair.ticketNumber} (Agregado manual)`,
-                            isChecked: false
-                        }
-                    });
-                }
-            }
+            await consumeRepairParts(tx, {
+                repairId,
+                ticketNumber: repair.ticketNumber,
+                actorUserId: currentUser.id,
+                branchId: repair.branchId,
+                parts,
+                reason: "Agregado manual",
+            });
         });
 
         revalidatePath("/technician/repairs");
@@ -162,6 +142,6 @@ export async function addPartToRepairAction(repairId: string, technicianId: stri
 
     } catch (error) {
         console.error("Error adding parts:", error);
-        return { success: false, error: "Error al agregar repuestos." };
+        return { success: false, error: error instanceof Error ? error.message : "Error al agregar repuestos." };
     }
 }

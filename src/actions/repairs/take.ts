@@ -9,6 +9,7 @@ import { es } from "date-fns/locale";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { REPAIR_STATUS } from "@/lib/repairs/status";
+import { consumeRepairParts } from "@/lib/repairs/consume-repair-parts";
 
 export async function takeRepairAction(
     repairId: string,
@@ -22,6 +23,7 @@ export async function takeRepairAction(
         let newPromisedAt: Date | null = null;
         let creatorUserId: string | null = null;
         let ticketNumberValue: string = "";
+        let consumedPartNames: string[] = [];
 
         const repair = await db.repair.findUnique({
             where: { id: repairId },
@@ -33,10 +35,11 @@ export async function takeRepairAction(
         ticketNumberValue = repair.ticketNumber;
 
         const currentUser = await getCurrentUser();
-        if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.id !== userId)) {
+        const isOwnTechnicianAction = currentUser?.role === "TECHNICIAN" && currentUser.id === userId;
+        if (!currentUser || (currentUser.role !== "ADMIN" && !isOwnTechnicianAction)) {
             return { success: false, error: "No autorizado" };
         }
-        const branchIdToLog = currentUser?.branch?.id || repair.branchId;
+        const actorUserId = currentUser.id;
 
         await db.$transaction(async (tx) => {
             let promisedAtUpdate: Date | undefined;
@@ -69,62 +72,31 @@ export async function takeRepairAction(
                     repairId,
                     fromStatusId: REPAIR_STATUS.PENDING,
                     toStatusId: REPAIR_STATUS.CLAIMED,
-                    userId,
+                    userId: actorUserId,
                 }
             });
 
-            if (parts.length > 0) {
-                for (const part of parts) {
-                    await tx.repairPart.create({
-                        data: {
-                            repairId,
-                            sparePartId: part.id,
-                            quantity: 1
-                        }
-                    });
-
-                    const partStock = await tx.sparePart.findUnique({
-                        where: { id: part.id },
-                        select: { stockLocal: true }
-                    });
-                    if (!partStock || partStock.stockLocal < 1) {
-                        throw new Error(`Sin stock suficiente para el repuesto: ${part.name}`);
-                    }
-
-                    await tx.sparePart.update({
-                        where: { id: part.id },
-                        data: {
-                            stockLocal: { decrement: 1 }
-                        }
-                    });
-
-                    if (currentUser && branchIdToLog) {
-                        await tx.sparePartHistory.create({
-                            data: {
-                                sparePartId: part.id,
-                                userId: userId, 
-                                branchId: branchIdToLog,
-                                quantity: -1,
-                                reason: `Reparación #${ticketNumberValue} (Tomado por técnico)`,
-                                isChecked: false
-                            }
-                        });
-                    }
-                }
-            }
+            consumedPartNames = await consumeRepairParts(tx, {
+                repairId,
+                ticketNumber: ticketNumberValue,
+                actorUserId,
+                branchId: repair.branchId,
+                parts,
+                reason: "Retiro técnico",
+            });
 
             let obsContent = `Reparación retirada por técnico. Pendiente de asignación.`;
             if (extendMinutes && newPromisedAt) {
                 obsContent += ` Fecha prometida actualizada a ${formatInTimeZone(newPromisedAt, TIMEZONE, "dd/MM HH:mm", { locale: es })}.`;
             }
-            if (parts.length > 0) {
-                obsContent += ` Repuestos: ${parts.map(p => p.name).join(", ")}`;
+            if (consumedPartNames.length > 0) {
+                obsContent += ` Repuestos: ${consumedPartNames.join(", ")}`;
             }
 
             await tx.repairObservation.create({
                 data: {
                     repairId,
-                    userId,
+                    userId: actorUserId,
                     content: obsContent
                 }
             });
