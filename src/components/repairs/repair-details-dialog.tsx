@@ -445,77 +445,73 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                             </div>
                                         )}
 
-                                        {/* Observations Section */}
-                                        {repair.observations && repair.observations.length > 0 && (
-                                            <div className="space-y-3 pt-4 border-t border-slate-800">
-                                                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">NOTAS / OBSERVACIONES</h3>
-                                                <div className="space-y-2">
-                                                    {repair.observations.map((obs, idx) => (
-                                                        <div key={idx} className="bg-slate-900 shadow-lg border border-white/[0.03] p-3 md:p-4 rounded-xl relative">
-                                                            <div className="flex justify-between items-start mb-2">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
-                                                                        <User className="w-3 h-3 text-slate-400" />
-                                                                    </div>
-                                                                    <span className="text-xs font-bold text-white/90">
-                                                                        {obs.user?.name || "Sistema"}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="text-right flex flex-col items-end">
-                                                                    <span className="text-[9px] md:text-[10px] font-black text-slate-500 italic tracking-tighter">{format(new Date(obs.createdAt), "dd/MM/yy")}</span>
-                                                                    <span className="text-[8px] md:text-[9px] font-bold text-slate-600">{format(new Date(obs.createdAt), "HH:mm")} hs</span>
-                                                                </div>
-                                                            </div>
-                                                            <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap text-white/80">
-                                                                {obs.content}
-                                                            </p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Status History Section */}
-                                        {repair.statusHistory && repair.statusHistory.length > 0 && (
-                                            <div className="space-y-3 pt-4 border-t border-slate-800">
-                                                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">HISTORIAL DE ESTADOS</h3>
-                                                <div className="space-y-2">
-                                                    {repair.statusHistory.map((history, idx) => (
-                                                        <div key={idx} className="flex items-center gap-3 bg-slate-900 shadow-lg border border-white/[0.03] p-3 rounded-xl hover:border-blue-500/20 transition-colors duration-300">
-                                                            <div className="flex flex-col items-center shrink-0 min-w-[55px] border-r border-white/5 pr-3">
-                                                                <span className="text-[10px] font-black text-white italic tracking-tighter leading-none">{format(new Date(history.createdAt), "dd/MM")}</span>
-                                                                <span className="text-[9px] font-black text-slate-500 uppercase mt-1 leading-none">{format(new Date(history.createdAt), "HH:mm")}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 flex-1 min-w-0 px-1">
-                                                                {history.fromStatus && (
-                                                                    <>
-                                                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter truncate max-w-[90px] italic">{history.fromStatus.name}</span>
-                                                                        <div className="flex-shrink-0 w-2 h-2 rounded-full bg-slate-800 flex items-center justify-center">
-                                                                            <div className="w-0.5 h-0.5 rounded-full bg-slate-600" />
-                                                                        </div>
-                                                                    </>
-                                                                )}
-                                                                <Badge variant="outline" className={cn("text-[9px] font-black px-2 py-0 uppercase border-2 shadow-sm rounded-md", statusColorMap[history.toStatus.color ?? ""] || "bg-slate-800 text-white border-slate-700")}>
-                                                                    {history.toStatus.name}
-                                                                </Badge>
-                                                            </div>
-                                                            {history.user ? (
-                                                                <div className="bg-slate-800/50 px-2 py-0.5 rounded-full border border-white/5">
-                                                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">OP: {history.user.name.split(" ")[0]}</span>
-                                                                </div>
-                                                            ) : history.userId ? (
-                                                                <div className="bg-slate-800/50 px-2 py-0.5 rounded-full border border-white/5">
-                                                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">OP: {history.userId.slice(-4)}</span>
-                                                                </div>
-                                                            ) : null}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Full-width activity blocks */}
+                            {repair.observations && repair.observations.length > 0 && (
+                                <div className="space-y-3 border-t border-slate-800 pt-4">
+                                    <h3 className="pl-1 text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">NOTAS / OBSERVACIONES</h3>
+                                    <div className="grid gap-2 lg:grid-cols-2">
+                                        {repair.observations.map((obs, idx) => (
+                                            <div key={idx} className="relative rounded-xl border border-white/[0.03] bg-slate-900 p-3 shadow-lg md:p-4">
+                                                <div className="mb-2 flex items-start justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex size-6 items-center justify-center rounded-full border border-slate-700 bg-slate-800">
+                                                            <User className="size-3 text-slate-400" />
+                                                        </div>
+                                                        <span className="text-xs font-bold text-white/90">{obs.user?.name || "Sistema"}</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-end text-right">
+                                                        <span className="text-[10px] font-black italic tracking-tighter text-slate-500">{format(new Date(obs.createdAt), "dd/MM/yy")}</span>
+                                                        <span className="text-[9px] font-bold text-slate-600">{format(new Date(obs.createdAt), "HH:mm")} hs</span>
+                                                    </div>
+                                                </div>
+                                                <p className="whitespace-pre-wrap text-sm font-medium leading-relaxed text-white/80">{obs.content}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {repair.statusHistory && repair.statusHistory.length > 0 && (
+                                <div className="space-y-3 border-t border-slate-800 pt-4">
+                                    <h3 className="pl-1 text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">HISTORIAL DE ESTADOS</h3>
+                                    <div className="grid gap-2 lg:grid-cols-2">
+                                        {repair.statusHistory.map((history, idx) => (
+                                            <div key={idx} className="flex min-w-0 items-center gap-3 rounded-xl border border-white/[0.03] bg-slate-900 p-3 shadow-lg transition-colors duration-300 hover:border-blue-500/20">
+                                                <div className="flex min-w-[55px] shrink-0 flex-col items-center border-r border-white/5 pr-3">
+                                                    <span className="text-[10px] font-black italic leading-none tracking-tighter text-white">{format(new Date(history.createdAt), "dd/MM")}</span>
+                                                    <span className="mt-1 text-[9px] font-black uppercase leading-none text-slate-500">{format(new Date(history.createdAt), "HH:mm")}</span>
+                                                </div>
+                                                <div className="flex min-w-0 flex-1 items-center gap-2 px-1">
+                                                    {history.fromStatus ? (
+                                                        <>
+                                                            <span className="max-w-24 truncate text-[10px] font-black uppercase italic tracking-tighter text-slate-500">{history.fromStatus.name}</span>
+                                                            <div className="flex size-2 shrink-0 items-center justify-center rounded-full bg-slate-800">
+                                                                <div className="size-0.5 rounded-full bg-slate-600" />
+                                                            </div>
+                                                        </>
+                                                    ) : null}
+                                                    <Badge variant="outline" className={cn("max-w-40 truncate rounded-md border-2 px-2 py-0 text-[9px] font-black uppercase shadow-sm", statusColorMap[history.toStatus.color ?? ""] || "bg-slate-800 text-white border-slate-700")}>
+                                                        {history.toStatus.name}
+                                                    </Badge>
+                                                </div>
+                                                {history.user ? (
+                                                    <div className="shrink-0 rounded-full border border-white/5 bg-slate-800/50 px-2 py-0.5">
+                                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">OP: {history.user.name.split(" ")[0]}</span>
+                                                    </div>
+                                                ) : history.userId ? (
+                                                    <div className="shrink-0 rounded-full border border-white/5 bg-slate-800/50 px-2 py-0.5">
+                                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">OP: {history.userId.slice(-4)}</span>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </DialogContent>
