@@ -42,6 +42,14 @@ export const STATUS_COLOR_MAP: Record<string, string> = {
     slate: "bg-slate-800 text-white border-slate-600",
 };
 
+const repairPriceFormatter = new Intl.NumberFormat("es-AR", {
+    maximumFractionDigits: 0,
+});
+
+export function formatRepairPrice(value?: number | null): string {
+    return value && value > 0 ? `$${repairPriceFormatter.format(value)}` : "-";
+}
+
 export function calcDuration(startedAt: Date | string | null, finishedAt: Date | string | null): string {
     if (!startedAt || !finishedAt) return "-";
     const diff = new Date(finishedAt).getTime() - new Date(startedAt).getTime();

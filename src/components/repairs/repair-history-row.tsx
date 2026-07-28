@@ -11,7 +11,7 @@ import { es } from "date-fns/locale";
 import { Eye, Loader2, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RepairImagesActionButton } from "./repair-images-action-button";
-import { type RepairData, STATUS_COLOR_MAP, calcDuration, durationColorClass } from "./repair-history-types";
+import { type RepairData, STATUS_COLOR_MAP, calcDuration, durationColorClass, formatRepairPrice } from "./repair-history-types";
 
 interface RepairHistoryRowProps {
     repair: RepairData;
@@ -99,7 +99,7 @@ export function RepairHistoryRow({ repair, isPending, loadingId, onPrint, onView
             </TableCell>
 
             <TableCell className="whitespace-nowrap text-center text-sm font-bold px-3">
-                {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice!.toLocaleString()}` : "-"}
+                {formatRepairPrice(repair.estimatedPrice)}
             </TableCell>
 
             <TableCell className="text-center px-3">

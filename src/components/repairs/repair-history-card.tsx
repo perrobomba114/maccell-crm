@@ -11,7 +11,7 @@ import { Eye, Loader2, Printer, Droplets, ShieldCheck, Phone, Clock } from "luci
 import { cn } from "@/lib/utils";
 import { RepairImagesActionButton } from "./repair-images-action-button";
 import { RepairAccessIndicator } from "./repair-access-indicator";
-import { type RepairData, STATUS_COLOR_MAP, calcDuration, durationColorClass } from "./repair-history-types";
+import { type RepairData, STATUS_COLOR_MAP, calcDuration, durationColorClass, formatRepairPrice } from "./repair-history-types";
 
 interface RepairHistoryCardProps {
     repair: RepairData;
@@ -113,7 +113,7 @@ export function RepairHistoryCard({ repair, isPending, loadingId, onPrint, onVie
                     {repair.assignedTo ? repair.assignedTo.name?.split(" ")[0] : "Sin técnico"}
                 </span>
                 <span className="text-sm font-black tabular-nums">
-                    {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice!.toLocaleString()}` : "-"}
+                    {formatRepairPrice(repair.estimatedPrice)}
                 </span>
             </div>
         </li>
