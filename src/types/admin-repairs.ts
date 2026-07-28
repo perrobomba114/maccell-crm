@@ -27,6 +27,8 @@ export type AdminRepair = {
     };
     deviceBrand: string;
     deviceModel: string;
+    accessType?: "CODE" | "PATTERN" | "NONE" | null;
+    accessCredential?: string | null;
     deviceImages?: string[];
     branch?: { name: string } | null;
     assignedTo?: { name: string } | null;

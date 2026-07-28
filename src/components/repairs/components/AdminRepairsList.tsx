@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import type { AdminRepair } from "@/types/admin-repairs";
 import type { RepairDetails } from "../repair-details-dialog";
+import { RepairAccessIndicator } from "../repair-access-indicator";
 import {
     AdminRepairRowActions,
     type LoadingRepairAction,
@@ -133,6 +134,12 @@ export function AdminRepairsList({
                                         </div>
                                     </div>
 
+                                    <RepairAccessIndicator
+                                        accessType={repair.accessType}
+                                        accessCredential={repair.accessCredential}
+                                        className="w-full justify-center"
+                                    />
+
                                     <div className="flex items-center justify-between gap-3 pt-1">
                                         <div className="flex min-w-0 flex-col">
                                             <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Técnico</span>
@@ -167,6 +174,7 @@ export function AdminRepairsList({
                                 <TableHead className="text-center w-[120px] uppercase text-[10px] font-bold tracking-tighter">Duración</TableHead>
                                 <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Cliente</TableHead>
                                 <TableHead className="text-center uppercase text-[10px] font-bold tracking-tighter">Dispositivo</TableHead>
+                                <TableHead className="text-center w-[180px] uppercase text-[10px] font-bold tracking-tighter">Acceso</TableHead>
                                 <TableHead className="text-center w-[130px] uppercase text-[10px] font-bold tracking-tighter">Estado</TableHead>
                                 <TableHead className="text-right w-[110px] uppercase text-[10px] font-bold tracking-tighter pr-6">Precio</TableHead>
                                 <TableHead className="text-center w-[160px] uppercase text-[10px] font-bold tracking-tighter">Acciones</TableHead>
@@ -176,7 +184,7 @@ export function AdminRepairsList({
                             <AnimatePresence>
                                 {repairs.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={9} className="h-40 text-center text-muted-foreground animate-pulse">
+                                        <TableCell colSpan={10} className="h-40 text-center text-muted-foreground animate-pulse">
                                             No se encontraron resultados para tu búsqueda…
                                         </TableCell>
                                     </TableRow>
@@ -243,6 +251,13 @@ export function AdminRepairsList({
                                                     <span className="font-bold text-sm text-foreground/80">{repair.deviceBrand}</span>
                                                     <span className="text-xs text-muted-foreground">{repair.deviceModel}</span>
                                                 </div>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <RepairAccessIndicator
+                                                    accessType={repair.accessType}
+                                                    accessCredential={repair.accessCredential}
+                                                    className="mx-auto"
+                                                />
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 <Badge variant="outline" className={cn("font-extrabold border-2 shadow-sm px-3 uppercase text-[10px]", colorClass)}>

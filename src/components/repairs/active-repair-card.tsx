@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { RepairTimer } from "./repair-timer";
 import { RepairImagesActionButton, getRepairImageCount } from "./repair-images-action-button";
 import { TechnicianActionButton } from "./technician-action-button";
+import { RepairAccessIndicator } from "./repair-access-indicator";
 import { type ActiveRepair, ACTIVE_STATUS_COLOR_MAP, positionBadgeClass, calcRepairDuration, isOverdue } from "./active-repairs-types";
 
 interface ActiveRepairCardProps {
@@ -126,6 +127,12 @@ export function ActiveRepairCard({
                     <span className="font-semibold text-sm text-right leading-tight">{repair.deviceBrand} {repair.deviceModel}</span>
                 </div>
             </div>
+
+            <RepairAccessIndicator
+                accessType={repair.accessType}
+                accessCredential={repair.accessCredential}
+                className="w-full justify-center"
+            />
 
             {/* Diagnóstico / Problema (Destacado para técnicos) */}
             {showIssueSummary && (repair.problemDescription || repair.diagnosis) && (

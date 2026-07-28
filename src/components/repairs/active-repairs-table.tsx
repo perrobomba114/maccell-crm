@@ -160,7 +160,7 @@ export function ActiveRepairsTable({
                 <Table>
                     <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
                         <TableRow className="hover:bg-transparent border-none">
-                            {["Pos.", "Ticket", "Entrega", "Est.", "Cliente", "Dispositivo", "Técnico", "Precio", "Estado"].map(h => (
+                            {["Pos.", "Ticket", "Entrega", "Est.", "Cliente", "Dispositivo", "Acceso", "Técnico", "Precio", "Estado"].map(h => (
                                 <TableHead key={h} className="text-center px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">{h}</TableHead>
                             ))}
                             {showActionColumn && (
@@ -171,7 +171,7 @@ export function ActiveRepairsTable({
                     <TableBody>
                         {filteredRepairs.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={showActionColumn ? 10 : 9} className="h-24 text-center">No se encontraron resultados.</TableCell>
+                                <TableCell colSpan={showActionColumn ? 11 : 10} className="h-24 text-center">No se encontraron resultados.</TableCell>
                             </TableRow>
                         ) : (
                             filteredRepairs.map((repair, index) => (

@@ -10,6 +10,7 @@ import { es } from "date-fns/locale";
 import { Eye, Loader2, Printer, Droplets, ShieldCheck, Phone, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RepairImagesActionButton } from "./repair-images-action-button";
+import { RepairAccessIndicator } from "./repair-access-indicator";
 import { type RepairData, STATUS_COLOR_MAP, calcDuration, durationColorClass } from "./repair-history-types";
 
 interface RepairHistoryCardProps {
@@ -90,6 +91,12 @@ export function RepairHistoryCard({ repair, isPending, loadingId, onPrint, onVie
                     )}
                 </div>
             </div>
+
+            <RepairAccessIndicator
+                accessType={repair.accessType}
+                accessCredential={repair.accessCredential}
+                className="w-full justify-center"
+            />
 
             {/* Row 3: Date + Duration */}
             <div className="flex items-center justify-between">

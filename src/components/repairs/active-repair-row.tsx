@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { RepairTimer } from "./repair-timer";
 import { RepairImagesActionButton, getRepairImageCount } from "./repair-images-action-button";
 import { TechnicianActionButton } from "./technician-action-button";
+import { RepairAccessIndicator } from "./repair-access-indicator";
 import {
     type ActiveRepair,
     ACTIVE_STATUS_COLOR_MAP,
@@ -130,6 +131,14 @@ export function ActiveRepairRow({
                         </span>
                     )}
                 </div>
+            </TableCell>
+
+            <TableCell className="max-w-[180px] text-center px-2">
+                <RepairAccessIndicator
+                    accessType={repair.accessType}
+                    accessCredential={repair.accessCredential}
+                    className="mx-auto"
+                />
             </TableCell>
 
             <TableCell className="w-[100px] text-center px-1">
