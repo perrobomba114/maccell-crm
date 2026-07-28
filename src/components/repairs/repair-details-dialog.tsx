@@ -221,7 +221,10 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                     </DialogHeader>
 
                     {/* Scrollable Content */}
-                    <div className="custom-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-muted/5 dark:bg-muted/10 lg:overflow-y-hidden">
+                    <div className={cn(
+                        "custom-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-muted/5 dark:bg-muted/10",
+                        images.length === 0 && "lg:overflow-y-hidden",
+                    )}>
                         <div className="min-w-0 space-y-3 p-4">
 
                             {/* Top Stats Row - Vibrant Centered Cards */}
