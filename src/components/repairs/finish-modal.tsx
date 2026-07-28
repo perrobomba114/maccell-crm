@@ -28,6 +28,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { getImgUrl, isValidImg } from "@/lib/utils";
 import { SafeImageThumbnail } from "./safe-image-thumbnail";
+import { FinishRepairIntakeCheck } from "./finish-repair-intake-check";
+import type { RepairAccessType } from "@/lib/repairs/intake";
 
 type FinishRepairPart = {
     id: string;
@@ -46,6 +48,10 @@ type FinishRepair = {
         name?: string | null;
     } | null;
     isWet?: boolean | null;
+    accessType?: RepairAccessType | null;
+    accessCredential?: string | null;
+    hasSimCard?: boolean | null;
+    hasMemoryCard?: boolean | null;
     deviceImages?: string[] | null;
     parts?: FinishRepairPart[] | null;
 };
@@ -73,6 +79,8 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const [statusId, setStatusId] = useState<string>("");
     const [diagnosis, setDiagnosis] = useState("");
     const [isWet, setIsWet] = useState<boolean>(!!repair.isWet);
+    const [hasSimCard, setHasSimCard] = useState<boolean>(!!repair.hasSimCard);
+    const [hasMemoryCard, setHasMemoryCard] = useState<boolean>(!!repair.hasMemoryCard);
     const [newImages, setNewImages] = useState<File[]>([]);
     const [partsToReturn, setPartsToReturn] = useState<Set<string>>(new Set());
     const [viewerOpen, setViewerOpen] = useState(false);
@@ -157,6 +165,8 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             formData.append("statusId", statusId);
             formData.append("diagnosis", diagnosis);
             formData.append("isWet", isWet.toString());
+            formData.append("hasSimCard", hasSimCard.toString());
+            formData.append("hasMemoryCard", hasMemoryCard.toString());
             formData.append("returnPartIds", JSON.stringify(Array.from(partsToReturn)));
             newImages.forEach(f => formData.append("images", f));
 
@@ -179,10 +189,10 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     return (
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="sm:max-w-[650px] p-0 overflow-hidden border-2 border-slate-800 bg-slate-950 shadow-2xl">
+                <DialogContent className="max-h-[calc(100dvh-1rem)] p-0 overflow-hidden border-2 border-slate-800 bg-slate-950 shadow-2xl sm:max-w-[min(1100px,calc(100vw-2rem))]">
 
                     {/* Header consistent with Start/Assign modals */}
-                    <DialogHeader className={`p-8 border-b-2 transition-colors duration-500 relative overflow-hidden ${activeStatus ? activeStatus.color : "bg-slate-900 border-slate-800"}`}>
+                    <DialogHeader className={`p-4 border-b-2 transition-colors duration-500 relative overflow-hidden ${activeStatus ? activeStatus.color : "bg-slate-900 border-slate-800"}`}>
                         <div className="absolute inset-0 bg-grid-white/[0.05] pointer-events-none" />
                         <div className="relative z-10 flex flex-col items-center text-center">
                             <DialogTitle className="text-2xl sm:text-3xl font-black italic tracking-tighter text-white uppercase leading-none">
@@ -192,10 +202,10 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                     </DialogHeader>
 
                     {/* Content Body */}
-                    <div className="flex-1 overflow-y-auto max-h-[70vh] custom-scrollbar p-6 space-y-6">
+                    <div className="grid flex-1 grid-cols-12 gap-4 overflow-y-auto p-4 custom-scrollbar lg:overflow-hidden">
 
                         {/* 1. Device Context - Small & Focused */}
-                        <div className="bg-slate-900 border-2 border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                        <div className="col-span-12 flex items-center justify-between rounded-xl border-2 border-slate-800 bg-slate-900 px-4 py-3">
                             <div className="space-y-1">
                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Dispositivo</span>
                                 <p className="text-sm font-black text-white italic truncate max-w-[200px] uppercase">
@@ -211,8 +221,19 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                             </div>
                         </div>
 
+                        <div className="col-span-12 lg:col-span-5">
+                            <FinishRepairIntakeCheck
+                                accessType={repair.accessType}
+                                accessCredential={repair.accessCredential}
+                                hasSimCard={hasSimCard}
+                                hasMemoryCard={hasMemoryCard}
+                                onSimCardChange={setHasSimCard}
+                                onMemoryCardChange={setHasMemoryCard}
+                            />
+                        </div>
+
                         {/* 2. Status Picker - Compact Solid Grid */}
-                        <div className="space-y-3">
+                        <div className="col-span-12 space-y-3 lg:col-span-7">
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {finishStatuses.map((s) => {
                                     const isSelected = statusId === s.id.toString();
@@ -247,7 +268,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                         </div>
 
                         {/* 3. Problem & Diagnosis Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="col-span-12 grid grid-cols-1 gap-3 md:grid-cols-2 lg:col-span-7">
                             {/* Problem Reference */}
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 pl-1">
@@ -274,7 +295,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                         setWasEnhanced(false);
                                     }}
                                     placeholder="Detalla la reparación realizada..."
-                                    className="min-h-[120px] bg-slate-900 border-2 border-slate-800 rounded-xl text-xs font-bold text-white p-4 focus:border-emerald-500 transition-all placeholder:text-slate-700"
+                                    className="min-h-[105px] bg-slate-900 border-2 border-slate-800 rounded-xl text-xs font-bold text-white p-4 focus:border-emerald-500 transition-all placeholder:text-slate-700"
                                 />
                                 {enhanceError && (
                                     <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-950/40 border border-amber-700/50 text-amber-300 text-[10px] font-bold leading-relaxed">
@@ -286,7 +307,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                         </div>
 
                         {/* 4. Controls & Images Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-2">
+                        <div className="col-span-12 grid grid-cols-1 gap-3 lg:col-span-5">
                             {/* Humidity Toggles & Parts */}
                             <div className="md:col-span-12 space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -362,7 +383,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                     </div>
 
                     {/* Footer consistent with Start/Assign modals */}
-                    <DialogFooter className="p-6 bg-slate-950 border-t-2 border-slate-900 flex flex-col sm:flex-row gap-3 mt-0 pt-6">
+                    <DialogFooter className="m-0 flex flex-col gap-3 border-t-2 border-slate-900 bg-slate-950 p-4 sm:flex-row">
                         <Button
                             variant="outline"
                             onClick={onClose}

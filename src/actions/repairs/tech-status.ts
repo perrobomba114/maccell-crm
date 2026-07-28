@@ -128,6 +128,8 @@ export async function finishRepairAction(formData: FormData) {
         const diagnosis = formData.get("diagnosis") as string;
         const createReturnRequest = formData.get("createReturnRequest") === "true";
         const isWet = formData.get("isWet") === "true";
+        const hasSimCard = formData.get("hasSimCard") === "true";
+        const hasMemoryCard = formData.get("hasMemoryCard") === "true";
 
         if (!repairId || !technicianId || !statusIdRaw) {
             return { success: false, error: "Faltan datos requeridos" };
@@ -203,7 +205,9 @@ export async function finishRepairAction(formData: FormData) {
             }
         }
 
-        dataToUpdate.isWet = isWet; 
+        dataToUpdate.isWet = isWet;
+        dataToUpdate.hasSimCard = hasSimCard;
+        dataToUpdate.hasMemoryCard = hasMemoryCard;
 
         await db.repair.update({
             where: { id: repairId },
