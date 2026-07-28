@@ -39,11 +39,9 @@ export function RepairWarrantyInfo({
     };
 
     return (
-        <div className="space-y-2">
-            <h3 className="text-[11px] font-black text-yellow-500 uppercase tracking-[0.3em] pl-1 flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-yellow-500" />
-                INFORMACIÓN DE GARANTÍA
-            </h3>
+        <div
+            className="min-w-0"
+        >
             <div
                 role={canOpenLinkedRepair ? "button" : undefined}
                 tabIndex={canOpenLinkedRepair ? 0 : undefined}
@@ -56,40 +54,38 @@ export function RepairWarrantyInfo({
                     }
                 }}
                 className={cn(
-                    "w-full text-left bg-yellow-600/20 border-2 border-yellow-500/50 p-5 rounded-2xl shadow-inner transition-all",
+                    "w-full rounded-xl border border-amber-400/45 bg-amber-500/10 p-3 text-left transition-colors",
                     canOpenLinkedRepair && "cursor-pointer hover:border-yellow-300 hover:bg-yellow-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
                     !canOpenLinkedRepair && "cursor-default",
                 )}
                 title={canOpenLinkedRepair ? "Ver detalle de la reparación vinculada" : undefined}
             >
-                <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 space-y-2">
-                        <p className="text-sm font-bold text-yellow-500">
-                            {isWarranty ? "Boleta Anterior" : "Garantía Generada"}:{" "}
-                            <span className="text-white font-black">{linkedRepair.ticketNumber}</span>
-                        </p>
-                        {isWarranty && (
-                            <p className="text-sm font-medium leading-relaxed text-white/90">
-                                <span className="inline-flex items-center gap-1 font-bold text-yellow-500">
-                                    <Wrench className="h-3.5 w-3.5" />
-                                    Técnico original:
-                                </span>{" "}
-                                <span className="font-black italic uppercase text-white">
-                                    {originalTechnician ?? "Sin registro"}
-                                </span>
+                <div className="flex min-w-0 items-start gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/10">
+                        <ShieldAlert className="size-4 text-amber-300" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center justify-between gap-3">
+                            <p className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">
+                                {isWarranty ? "Reingreso por garantía" : "Garantía vinculada"}
                             </p>
-                        )}
-                        <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap text-white/90 italic">
-                            <span className="font-bold text-yellow-500">
-                                {isWarranty ? "Problema Anterior" : "Problema Garantía"}:
-                            </span>{" "}
+                            <span className="shrink-0 font-mono text-[11px] font-black text-white">{linkedRepair.ticketNumber}</span>
+                        </div>
+                        {isWarranty ? (
+                            <p className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-slate-300">
+                                <Wrench className="size-3 shrink-0 text-amber-400" />
+                                <span className="shrink-0 text-slate-500">Técnico original:</span>
+                                <span className="truncate font-bold uppercase text-white">{originalTechnician ?? "Sin registro"}</span>
+                            </p>
+                        ) : null}
+                        <p className="mt-1 line-clamp-2 text-xs font-medium leading-4 text-slate-300">
+                            <span className="font-bold text-amber-400">Problema anterior:</span>{" "}
                             {linkedRepair.problemDescription}
                         </p>
                     </div>
                     {canOpenLinkedRepair && (
-                        <div className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-yellow-400/40 bg-black/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-yellow-200">
+                        <div className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-amber-400/30 bg-black/20 text-amber-200" aria-label="Ver reparación vinculada">
                             <Eye className="h-3.5 w-3.5" />
-                            Ver
                         </div>
                     )}
                 </div>

@@ -2,6 +2,7 @@ import type { RepairAccessType } from "@/lib/repairs/intake";
 
 import { RepairIntakeSummary } from "./repair-intake-summary";
 import { RepairWarrantyInfo } from "./repair-warranty-info";
+import { cn } from "@/lib/utils";
 
 interface RepairDetailsReceptionProps {
     accessType?: RepairAccessType | null;
@@ -38,14 +39,16 @@ export function RepairDetailsReception({
     onOpenRepair,
     fillHeight = false,
 }: RepairDetailsReceptionProps) {
+    const hasWarrantyInformation = Boolean(isWarranty ? originalRepair : warrantyRepairs?.[0]);
+
     return (
-        <div className={fillHeight ? "h-full" : "space-y-3"}>
+        <div className={cn("space-y-3", fillHeight && "h-full")}>
             <RepairIntakeSummary
                 accessType={accessType}
                 accessCredential={accessCredential}
                 hasSimCard={hasSimCard}
                 hasMemoryCard={hasMemoryCard}
-                fillHeight={fillHeight}
+                fillHeight={fillHeight && !hasWarrantyInformation}
             />
             <RepairWarrantyInfo
                 isWarranty={isWarranty}
