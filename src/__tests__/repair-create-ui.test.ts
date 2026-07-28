@@ -9,11 +9,13 @@ function read(relativePath: string): string {
 test("repair creation uses the uniform section system", () => {
     const sectionUrl = new URL("../components/repairs/repair-form-section.tsx", import.meta.url);
     const form = read("components/repairs/create-form.tsx");
+    const fields = read("components/repairs/create-repair-form-fields.tsx");
 
     assert.equal(existsSync(sectionUrl), true, "the shared repair form section must exist");
     assert.match(form, /Nuevo ingreso/);
-    assert.match(form, /Cliente/);
-    assert.match(form, /Entrega/);
+    assert.match(form, /<CreateRepairFormFields/);
+    assert.match(fields, /title="Cliente"/);
+    assert.match(fields, /title="Valor y entrega"/);
 });
 
 test("repair creation keeps labels, feedback and one primary action", () => {
