@@ -73,7 +73,7 @@ export function RepairIntakeFields({ value, error, onChange }: RepairIntakeField
                                         "min-h-16 rounded-xl border px-3 py-3 text-left transition-colors duration-200",
                                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                                         selected
-                                            ? "border-primary bg-primary/10 text-foreground shadow-sm ring-1 ring-primary/20"
+                                            ? "border-amber-400 bg-amber-400/15 text-foreground shadow-sm ring-2 ring-amber-400/35"
                                             : "border-border/70 bg-background/60 text-foreground hover:border-primary/40 hover:bg-muted/30",
                                     )}
                                 >
@@ -110,8 +110,8 @@ export function RepairIntakeFields({ value, error, onChange }: RepairIntakeField
                 ) : null}
 
                 {value.accessType === "PATTERN" ? (
-                    <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                        <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="grid gap-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                        <div className="flex items-center justify-between gap-3 sm:block">
                             <div>
                                     <p className="text-sm font-semibold text-foreground">Dibujar patrón</p>
                                     <p className="mt-0.5 text-xs text-muted-foreground">Tocá o arrastrá por 4 puntos como mínimo.</p>
@@ -122,14 +122,14 @@ export function RepairIntakeFields({ value, error, onChange }: RepairIntakeField
                                 variant="ghost"
                                 onClick={() => onChange({ ...value, accessCredential: "" })}
                                 disabled={patternPoints.length === 0}
-                                className="min-h-11 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                className="min-h-11 text-muted-foreground hover:bg-amber-500/10 hover:text-foreground sm:mt-3"
                             >
                                 <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                                 Limpiar
                             </Button>
                         </div>
                         <div
-                            className="mx-auto grid w-48 touch-none grid-cols-3 gap-5 rounded-2xl border border-border/70 bg-background/70 p-5"
+                            className="mx-auto grid w-48 touch-none grid-cols-3 gap-5 rounded-2xl border border-amber-500/25 bg-background/70 p-5 sm:mx-0"
                             onPointerUp={() => setIsDrawing(false)}
                             onPointerLeave={() => setIsDrawing(false)}
                         >
@@ -151,8 +151,8 @@ export function RepairIntakeFields({ value, error, onChange }: RepairIntakeField
                                         className={cn(
                                             "flex h-11 w-11 items-center justify-center rounded-full border-2 text-sm font-black transition-colors",
                                             order >= 0
-                                                ? "border-primary bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                                                : "border-border bg-muted/60 text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                                                ? "border-amber-300 bg-amber-400 text-slate-950 shadow-md shadow-amber-400/25"
+                                                : "border-border bg-muted/60 text-muted-foreground hover:border-amber-400/60 hover:text-foreground",
                                         )}
                                     >
                                         {order >= 0 ? order + 1 : ""}
