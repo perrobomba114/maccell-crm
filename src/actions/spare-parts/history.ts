@@ -49,7 +49,7 @@ export async function getSparePartsHistory({
             prisma.sparePartHistory.findMany({
                 where,
                 include: sparePartHistoryInclude,
-                orderBy: { createdAt: 'desc' },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
                 skip,
                 take: limit
             }),
@@ -83,13 +83,14 @@ export async function toggleHistoryChecked(id: string) {
         const item = await prisma.sparePartHistory.findUnique({ where: { id } });
         if (!item) return { success: false, error: "Registro no encontrado" };
 
+        const nextIsChecked = !item.isChecked;
         await prisma.sparePartHistory.update({
             where: { id },
-            data: { isChecked: !item.isChecked }
+            data: { isChecked: nextIsChecked }
         });
 
         revalidatePath("/admin/repuestos/historial");
-        return { success: true };
+        return { success: true, isChecked: nextIsChecked };
     } catch (error) {
         return { success: false, error: "Error al actualizar" };
     }

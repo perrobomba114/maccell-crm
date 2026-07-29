@@ -11,11 +11,12 @@ import {
     Search,
     FilterX,
     CreditCard,
-    Banknote
+    Banknote,
+    Loader2,
+    Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useVendorSales } from "./use-vendor-sales";
 
 // Components
@@ -45,9 +46,11 @@ export default function SalesClient({ branchData }: { branchData: BranchSummary 
         newPaymentMethod,
         setNewPaymentMethod,
         isUpdating,
+        isReprintingShift,
         totalSales,
         handlePrint,
         handleUpdatePayment,
+        handleReprintCashShift,
         clearFilters
     } = useVendorSales(branchData);
 
@@ -69,12 +72,25 @@ export default function SalesClient({ branchData }: { branchData: BranchSummary 
                             </div>
                         </div>
 
-                        {/* Total Filtrado Header Pill */}
-                        <div className="flex items-center gap-3 px-5 py-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl shadow-sm">
-                            <span className="text-xs font-bold text-blue-600/70 dark:text-blue-400/70 uppercase tracking-wider">Total Filtrado:</span>
-                            <span className="text-2xl font-black text-blue-600 dark:text-blue-500 tabular-nums tracking-tighter">
-                                ${totalSales.toLocaleString()}
-                            </span>
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleReprintCashShift}
+                                disabled={isReprintingShift || !date}
+                                className="h-11 justify-center border-blue-500/30 bg-blue-500/5 px-4 font-bold text-blue-600 hover:bg-blue-500/10 hover:text-blue-500"
+                            >
+                                {isReprintingShift
+                                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    : <Printer className="mr-2 h-4 w-4" />}
+                                {isReprintingShift ? "Preparando cierre..." : "Reimprimir cierre"}
+                            </Button>
+                            <div className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-5 py-2.5 shadow-sm sm:justify-start">
+                                <span className="text-xs font-bold uppercase tracking-wider text-blue-600/70 dark:text-blue-400/70">Total filtrado:</span>
+                                <span className="text-2xl font-black tabular-nums tracking-tighter text-blue-600 dark:text-blue-500">
+                                    ${totalSales.toLocaleString()}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>

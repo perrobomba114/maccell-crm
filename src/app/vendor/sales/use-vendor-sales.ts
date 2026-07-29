@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { getSales, requestPaymentMethodChange } from "@/actions/sales-actions";
+import { getLatestVendorCashShiftForReprint } from "@/actions/cash-shifts/vendor-reprint";
 import { printSaleTicket } from "@/lib/print-utils";
+import { printCashShiftClosureTicket } from "@/lib/printing/cash-tickets";
 import type { BranchSummary, EditablePaymentMethod, PaymentMethodLike, SaleWithDetails } from "@/types/sales";
 
 type PaymentFilter = PaymentMethodLike | "ALL";
@@ -20,6 +23,7 @@ export function useVendorSales(branchData: BranchSummary) {
     const [editingSale, setEditingSale] = useState<SaleWithDetails | null>(null);
     const [newPaymentMethod, setNewPaymentMethod] = useState<EditablePaymentMethod | "">("");
     const [isUpdating, setIsUpdating] = useState(false);
+    const [isReprintingShift, setIsReprintingShift] = useState(false);
 
     // Debounce search term
     const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
@@ -88,6 +92,28 @@ export function useVendorSales(branchData: BranchSummary) {
         }
     }, [editingSale, newPaymentMethod]);
 
+    const handleReprintCashShift = useCallback(async () => {
+        if (!date) {
+            toast.error("Seleccioná una fecha para buscar el cierre");
+            return;
+        }
+
+        setIsReprintingShift(true);
+        try {
+            const result = await getLatestVendorCashShiftForReprint(format(date, "yyyy-MM-dd"));
+            if (!result.success) {
+                toast.error(result.error);
+                return;
+            }
+
+            printCashShiftClosureTicket(result.data);
+        } catch {
+            toast.error("No se pudo reimprimir el cierre de caja");
+        } finally {
+            setIsReprintingShift(false);
+        }
+    }, [date]);
+
     const clearFilters = () => {
         setSearchTerm("");
         setPaymentFilter("ALL");
@@ -114,10 +140,12 @@ export function useVendorSales(branchData: BranchSummary) {
         newPaymentMethod,
         setNewPaymentMethod,
         isUpdating,
+        isReprintingShift,
         totalSales,
         fetchSales,
         handlePrint,
         handleUpdatePayment,
+        handleReprintCashShift,
         clearFilters
     };
 }

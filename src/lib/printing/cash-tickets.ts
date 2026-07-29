@@ -26,8 +26,9 @@ export const printCashShiftClosureTicket = (data: {
     billCounts: Record<number, number>;
     finalCount: number;
     employeeCount: number;
+    closedAt?: Date;
 }) => {
-    const { branch, user, shift, summary, billCounts, finalCount, employeeCount } = data;
+    const { branch, user, shift, summary, billCounts, finalCount, employeeCount, closedAt } = data;
     const logoUrl = branch?.imageUrl || "/logo.jpg";
     // Prefer the server-calculated bonus to ensure consistency. Fallback to local calc rounding UP to 1000.
     const bonusPerEmp = summary?.calculatedBonus ?? (summary ? Math.ceil((summary.totalSales * (summary.totalSales >= 1200000 ? 0.02 : 0.01)) / 1000) * 1000 : 0);
@@ -44,7 +45,7 @@ export const printCashShiftClosureTicket = (data: {
             <div style="font-size: 20px; font-weight: 900; margin: 5px 0; text-transform: uppercase;">CIERRE DE CAJA</div>
             <div>${branch?.name || "SUCURSAL"}</div>
             <div>${branch?.address || ""}</div>
-            <div>${format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })}</div>
+            <div>${format(closedAt ?? new Date(), "dd/MM/yyyy HH:mm", { locale: es })}</div>
             <div style="margin-top:5px;">Cajero: ${user?.name || "N/A"}</div>
         </div>
 

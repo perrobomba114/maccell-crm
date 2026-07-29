@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { CalendarIcon, Check, ClipboardCheck, PackageMinus, RefreshCw, Search } from "lucide-react";
@@ -8,14 +8,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
-import { toggleHistoryChecked, syncRepairHistoryAction } from "@/actions/spare-parts";
-import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
     Table,
     TableBody,
@@ -32,8 +26,8 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
-import { useRouter, useSearchParams } from "next/navigation";
 import type { SparePartHistoryListItem } from "@/actions/spare-parts/history";
+import { useSparePartsHistory } from "./use-spare-parts-history";
 
 interface HistoryClientProps {
     data: SparePartHistoryListItem[];
@@ -43,83 +37,20 @@ interface HistoryClientProps {
 }
 
 export function HistoryClient({ data, totalPages, currentPage, total }: HistoryClientProps) {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const urlDate = searchParams.get("date");
-    const [date, setDate] = useState<Date | undefined>(
-        urlDate ? new Date(`${urlDate}T12:00:00`) : new Date()
-    );
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-
-    const pendingCount = data.filter((item) => !item.isChecked).length;
-    const checkedCount = data.length - pendingCount;
-    const visibleData = useMemo(() => {
-        const query = searchTerm.trim().toLowerCase();
-        if (!query) return data;
-
-        return data.filter((item) => {
-            const searchableValues = [
-                item.sparePart.name,
-                item.sparePart.sku,
-                item.user.name,
-                item.user.email,
-                item.branch.name,
-                item.branch.code,
-                item.reason || "",
-            ];
-            return searchableValues.some((value) => value.toLowerCase().includes(query));
-        });
-    }, [data, searchTerm]);
-
-    const handleDateSelect = (newDate: Date | undefined) => {
-        setDate(newDate);
-        const params = new URLSearchParams(searchParams.toString());
-        if (newDate) {
-            params.set("date", format(newDate, "yyyy-MM-dd"));
-        } else {
-            params.delete("date");
-        }
-        params.set("page", "1");
-        router.push(`?${params.toString()}`);
-    };
-
-    const handlePageChange = (page: number) => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set("page", page.toString());
-        router.push(`?${params.toString()}`);
-    };
-
-    const handleSync = async () => {
-        try {
-            setIsSyncing(true);
-            const res = await syncRepairHistoryAction();
-            if (res.success) {
-                toast.success(`Sincronización completada. Se añadieron ${res.count} registros.`);
-                router.refresh();
-            } else {
-                toast.error(res.error || "Error al sincronizar");
-            }
-        } catch {
-            toast.error("Error de conexión");
-        } finally {
-            setIsSyncing(false);
-        }
-    };
-
-    const handleToggleCheck = async (id: string, currentStatus: boolean) => {
-        try {
-            const res = await toggleHistoryChecked(id);
-            if (res.success) {
-                toast.success(currentStatus ? "Marcado como pendiente" : "Controlado correctamente");
-                router.refresh();
-            } else {
-                toast.error(res.error);
-            }
-        } catch {
-            toast.error("Error al actualizar");
-        }
-    };
+    const {
+        checkedCount,
+        checkingIds,
+        date,
+        handleDateSelect,
+        handlePageChange,
+        handleSync,
+        handleToggleCheck,
+        isSyncing,
+        pendingCount,
+        searchTerm,
+        setSearchTerm,
+        visibleData,
+    } = useSparePartsHistory(data);
 
     return (
         <Card className="w-full overflow-hidden">
@@ -173,7 +104,6 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
             </CardHeader>
             <CardContent className="p-0">
                 <div className="overflow-hidden">
-                    {/* Mobile View */}
                     <div className="sm:hidden flex flex-col divide-y divide-border/60">
                         {visibleData.length === 0 ? (
                             <div className="h-24 flex items-center justify-center text-muted-foreground p-4">
@@ -207,7 +137,8 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
                                             <Button
                                                 variant={item.isChecked ? "default" : "outline"}
                                                 size="sm"
-                                                onClick={() => handleToggleCheck(item.id, item.isChecked)}
+                                                onClick={() => void handleToggleCheck(item.id)}
+                                                disabled={checkingIds.has(item.id)}
                                                 className={cn("h-7 w-7 p-0 rounded-full", item.isChecked && "bg-emerald-600 hover:bg-emerald-700")}
                                             >
                                                 {item.isChecked ? <Check className="h-3 w-3" /> : <ClipboardCheck className="h-3 w-3 opacity-50" />}
@@ -239,7 +170,6 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
                         )}
                     </div>
 
-                    {/* Desktop View */}
                     <div className="hidden sm:block overflow-x-auto">
                         <Table>
                             <TableHeader>
@@ -298,7 +228,8 @@ export function HistoryClient({ data, totalPages, currentPage, total }: HistoryC
                                                 <Button
                                                     variant={item.isChecked ? "default" : "outline"}
                                                     size="sm"
-                                                    onClick={() => handleToggleCheck(item.id, item.isChecked)}
+                                                    onClick={() => void handleToggleCheck(item.id)}
+                                                    disabled={checkingIds.has(item.id)}
                                                     className={cn("h-8 w-8 p-0", item.isChecked && "bg-emerald-600 hover:bg-emerald-700")}
                                                     aria-label={item.isChecked ? "Marcar como pendiente" : "Marcar como controlado"}
                                                 >
