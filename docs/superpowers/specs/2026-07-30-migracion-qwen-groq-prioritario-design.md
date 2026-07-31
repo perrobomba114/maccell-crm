@@ -114,14 +114,14 @@ Las pruebas cubrirán:
 
 ## Verificación en producción
 
-Después del despliegue se realizarán solicitudes autenticadas y sin escritura para verificar:
+Después del despliegue se realizarán verificaciones sin escritura:
 
 1. Mejora de informe con “se pegó módulo / marco doblado”.
-2. Chat textual de Cerebro, confirmando en metadata que respondió Qwen Groq.
-3. Análisis visual con una imagen técnica de prueba, confirmando Qwen Groq.
+2. Generación textual directa con Qwen Groq desde la configuración del contenedor productivo.
+3. Análisis visual directo con Qwen Groq y una imagen técnica de prueba.
 4. Ausencia de razonamiento interno o etiquetas `<think>` en las respuestas.
 
-No se alterarán reparaciones existentes durante estas pruebas.
+Los tests automatizados demostrarán el orden de routing y las pruebas directas demostrarán que el modelo productivo acepta texto y visión. No se llamará al endpoint del chat porque persiste mensajes; no se alterarán sesiones, reparaciones ni diagnósticos existentes.
 
 ## Fuera de alcance
 
@@ -139,4 +139,4 @@ No se alterarán reparaciones existentes durante estas pruebas.
 - El razonamiento de Qwen no aparece en la interfaz ni se guarda en diagnósticos.
 - Los controles de coherencia y grounding continúan activos.
 - Tests, TypeScript, lint, whitespace y build pasan.
-- Las tres pruebas funcionales en producción producen respuestas válidas y registran Qwen Groq como proveedor seleccionado.
+- Las tres pruebas funcionales en producción producen respuestas válidas con Qwen Groq y no escriben datos de negocio.
