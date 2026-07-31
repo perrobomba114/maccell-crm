@@ -1,9 +1,12 @@
-import { generateText } from "ai";
+import { generateText, type LanguageModel } from "ai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/actions/auth-actions";
-import { runWithGroqFallback } from "@/lib/groq";
+import { createFallbackModel, type FallbackModelConfig } from "@/lib/cerebro/models";
+import { createLocalCerebroModel } from "@/lib/cerebro-v2/local-provider";
+import { buildGroqModelConfigurations } from "@/lib/cerebro-v2/model-routing";
+import { getGroqKeys } from "@/lib/groq";
 import {
     buildRepairDiagnosisPrompt,
     REPAIR_DIAGNOSIS_ENHANCEMENT_SYSTEM_PROMPT,
@@ -36,13 +39,31 @@ export async function POST(req: NextRequest) {
 
         const { diagnosis } = parsed.data;
         const prompt = buildRepairDiagnosisPrompt(parsed.data);
-        const { text } = await runWithGroqFallback((groq) => generateText({
-            model: groq("llama-3.3-70b-versatile"),
+        const configurations: FallbackModelConfig[] = buildGroqModelConfigurations(getGroqKeys(), "diagnosis");
+        const localModel = createLocalCerebroModel(false);
+        if (localModel) {
+            configurations.push({
+                instance: localModel,
+                label: "Qwen local",
+                keyId: "local",
+                modelId: process.env.CEREBRO_LOCAL_AI_MODEL ?? "Qwen local",
+            });
+        }
+        if (configurations.length === 0) {
+            return NextResponse.json({
+                error: "No se pudo profesionalizar el diagnóstico en este momento.",
+                modelUnavailable: true,
+            }, { status: 503 });
+        }
+        const selection: { current: FallbackModelConfig | null } = { current: null };
+        const { text } = await generateText({
+            model: createFallbackModel(configurations, (selected) => { selection.current = selected; }) as unknown as LanguageModel,
             system: REPAIR_DIAGNOSIS_ENHANCEMENT_SYSTEM_PROMPT,
             prompt,
             temperature: 0,
             maxOutputTokens: 500,
-        }));
+            maxRetries: 0,
+        });
 
         if (text) {
             const improved = text.trim();
@@ -56,8 +77,8 @@ export async function POST(req: NextRequest) {
 
             return NextResponse.json({
                 improved,
-                source: "groq",
-                model: "llama-3.3-70b",
+                source: selection.current?.keyId.startsWith("groq-") ? "groq" : "local",
+                model: selection.current?.modelId ?? selection.current?.label ?? "Qwen",
             });
         }
 

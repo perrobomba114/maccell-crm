@@ -27,3 +27,14 @@ test("uses the technical report as the only authority for completed work", () =>
     assert.match(source, /validateEnhancedDiagnosis\(diagnosis, improved\)/);
     assert.doesNotMatch(source, /validateEnhancedDiagnosis\(problemDescription/);
 });
+
+test("routes diagnosis enhancement through Qwen Groq and then local Qwen", () => {
+    const source = readFileSync(routeUrl, "utf8");
+
+    assert.match(source, /buildGroqModelConfigurations\(getGroqKeys\(\), "diagnosis"\)/);
+    assert.match(source, /createLocalCerebroModel\(false\)/);
+    assert.match(source, /createFallbackModel/);
+    assert.match(source, /maxRetries: 0/);
+    assert.doesNotMatch(source, /llama-3\.3-70b-versatile/);
+    assert.doesNotMatch(source, /runWithGroqFallback/);
+});

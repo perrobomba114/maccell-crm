@@ -26,7 +26,7 @@ export function parseLocalModelConfig(environment: LocalModelEnvironment): Local
 }
 
 export function providerOrder(input: { baseUrl?: string; hasGroq: boolean }): string[] {
-    return [...(input.baseUrl ? ["local"] : []), ...(input.hasGroq ? ["groq"] : [])];
+    return [...(input.hasGroq ? ["groq"] : []), ...(input.baseUrl ? ["local"] : [])];
 }
 
 export function createLocalCerebroModel(vision = false, environment: LocalModelEnvironment = {

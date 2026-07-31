@@ -1,20 +1,22 @@
 import { createGroq } from "@ai-sdk/groq";
 
-export function getGroqKeys(): string[] {
-    const keys: string[] = [];
+type GroqKeyEnvironment = Record<string, string | undefined>;
 
-    // Buscar GROQ_API_KEY, GROQ_API_KEY_2, GROQ_API_KEY_3, ...
-    const mainKey = process.env.GROQ_API_KEY;
-    if (mainKey && mainKey.length > 10) keys.push(mainKey);
+export function getGroqKeys(environment: GroqKeyEnvironment = process.env): string[] {
+    const keys = new Set<string>();
 
-    for (let i = 2; i <= 50; i++) {
-        const key = process.env[`GROQ_API_KEY_${i}`];
+    // Acepta el nombre histórico y el pool numerado GROQ_API_KEY_1..N.
+    const mainKey = environment.GROQ_API_KEY;
+    if (mainKey && mainKey.length > 10) keys.add(mainKey);
+
+    for (let i = 1; i <= 50; i++) {
+        const key = environment[`GROQ_API_KEY_${i}`];
         if (key && key.length > 10) {
-            keys.push(key);
+            keys.add(key);
         }
     }
 
-    return keys;
+    return [...keys];
 }
 
 export async function runWithGroqFallback<T>(task: (groq: ReturnType<typeof createGroq>) => Promise<T>): Promise<T> {

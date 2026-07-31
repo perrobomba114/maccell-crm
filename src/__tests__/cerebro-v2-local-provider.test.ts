@@ -7,8 +7,8 @@ import {
     providerOrder,
 } from "@/lib/cerebro-v2/local-provider";
 
-test("uses the configured local endpoint before Groq", () => {
-    assert.deepEqual(providerOrder({ baseUrl: "http://100.71.184.125:8000/v1", hasGroq: true }), ["local", "groq"]);
+test("uses Groq before the configured local endpoint", () => {
+    assert.deepEqual(providerOrder({ baseUrl: "http://100.71.184.125:8000/v1", hasGroq: true }), ["groq", "local"]);
 });
 
 test("rejects a public local model endpoint", () => {

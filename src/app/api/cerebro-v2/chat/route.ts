@@ -1,9 +1,8 @@
 import { getCurrentUser } from "@/actions/auth-actions";
-import { createGroq } from "@ai-sdk/groq";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createUIMessageStream, createUIMessageStreamResponse, generateText, type LanguageModel, type ModelMessage, type UIMessage } from "ai";
 
-import { TEXT_MODELS, VISION_MODEL, createFallbackModel } from "@/lib/cerebro/models";
+import { createFallbackModel, type FallbackModelConfig } from "@/lib/cerebro/models";
 import { canUseCerebroV2 } from "@/lib/cerebro-v2/access";
 import { parseCerebroChatRequest, type CerebroChatRequest } from "@/lib/cerebro-v2/chat-contract";
 import { cerebroChatRepository } from "@/lib/cerebro-v2/chat-repository";
@@ -16,6 +15,7 @@ import { formatExternalResearch, needsExternalResearch, searchExternalTechnicalS
 import { buildCerebroSystemPrompt, CEREBRO_PROMPT_VERSION } from "@/lib/cerebro-v2/prompt";
 import { getAuthorizedCerebroRepair } from "@/lib/cerebro-v2/repair-context";
 import { createLocalCerebroModel } from "@/lib/cerebro-v2/local-provider";
+import { buildGroqModelConfigurations } from "@/lib/cerebro-v2/model-routing";
 import { retrieveCerebroSources } from "@/lib/cerebro-v2/retrieval";
 import type { CerebroMessageMetadata } from "@/lib/cerebro-v2/types";
 import { shouldLoadVisualEvidence } from "@/lib/cerebro-v2/visual-evidence";
@@ -33,20 +33,13 @@ function componentCodes(value: string): string[] {
 }
 
 function buildModel(onSelect: (provider: ProviderSelection) => void, vision: boolean): LanguageModel {
-    const configurations: Array<{ instance: unknown; label: string; keyId: string }> = [];
+    const configurations: FallbackModelConfig[] = buildGroqModelConfigurations(
+        getGroqKeys(),
+        vision ? "vision" : "text",
+    );
     const localModel = createLocalCerebroModel(vision);
     if (localModel) {
         configurations.push({ instance: localModel, label: vision ? "Qwen local vision" : "Qwen local", keyId: "local" });
-    }
-    for (const key of getGroqKeys()) {
-        const models = vision ? [VISION_MODEL] : TEXT_MODELS;
-        for (const model of models) {
-            configurations.push({
-                instance: createGroq({ apiKey: key })(model.id),
-                label: model.label,
-                keyId: "groq",
-            });
-        }
     }
     const openRouterKey = process.env.OPENROUTER_API_KEY;
     if (openRouterKey) {
@@ -76,6 +69,7 @@ function toModelMessages(messages: CerebroChatRequest["messages"], includeImages
 
 async function extractVisualFacts(images: Array<string | Uint8Array>): Promise<string | null> {
     if (images.length === 0) return null;
+    const boundedImages = images.slice(0, 3);
     const result = await generateText({
         model: buildModel(() => undefined, true),
         system: VISION_FACTS_SYSTEM_PROMPT,
@@ -83,7 +77,7 @@ async function extractVisualFacts(images: Array<string | Uint8Array>): Promise<s
             role: "user",
             content: [
                 { type: "text", text: "Extraé los hechos visibles de estas imágenes técnicas." },
-                ...images.map((image) => ({ type: "image" as const, image })),
+                ...boundedImages.map((image) => ({ type: "image" as const, image })),
             ],
         }],
         temperature: 0,

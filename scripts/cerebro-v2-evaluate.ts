@@ -1,12 +1,13 @@
-import { createGroq } from "@ai-sdk/groq";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText, type LanguageModel, type ModelMessage } from "ai";
 
 import { db as prisma } from "@/lib/db";
-import { TEXT_MODELS, VISION_MODEL, createFallbackModel } from "@/lib/cerebro/models";
+import { createFallbackModel, type FallbackModelConfig } from "@/lib/cerebro/models";
 import { buildTechnicalSearchQuery, diagnosticSubsystemTerms } from "@/lib/cerebro-v2/diagnostic-planner";
 import { ensureObservedFacts, suppressUnsupportedMeasurements } from "@/lib/cerebro-v2/grounding";
 import { buildGuidedQuestion } from "@/lib/cerebro-v2/guided-diagnosis";
+import { createLocalCerebroModel } from "@/lib/cerebro-v2/local-provider";
+import { buildGroqModelConfigurations } from "@/lib/cerebro-v2/model-routing";
 import { deviceModelAliases, normalizeDeviceIdentity } from "@/lib/cerebro-v2/normalization";
 import { buildCerebroSystemPrompt } from "@/lib/cerebro-v2/prompt";
 import { retrieveCerebroSources } from "@/lib/cerebro-v2/retrieval";
@@ -39,15 +40,17 @@ function componentCodes(value: string): string[] {
 }
 
 function buildModel(onSelect: (provider: ProviderSelection) => void, vision: boolean): LanguageModel {
-    const configurations: Array<{ instance: unknown; label: string; keyId: string }> = [];
-    for (const key of getGroqKeys()) {
-        for (const model of vision ? [VISION_MODEL] : TEXT_MODELS) {
-            configurations.push({
-                instance: createGroq({ apiKey: key })(model.id),
-                label: model.label,
-                keyId: "groq",
-            });
-        }
+    const configurations: FallbackModelConfig[] = buildGroqModelConfigurations(
+        getGroqKeys(),
+        vision ? "vision" : "text",
+    );
+    const localModel = createLocalCerebroModel(vision);
+    if (localModel) {
+        configurations.push({
+            instance: localModel,
+            label: vision ? "Qwen local vision" : "Qwen local",
+            keyId: "local",
+        });
     }
     if (process.env.OPENROUTER_API_KEY) {
         const openRouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
