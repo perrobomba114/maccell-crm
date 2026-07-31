@@ -56,6 +56,8 @@ Los límites de salida seguirán adaptados al producto:
 - chat técnico: 900 tokens como máximo;
 - extracción visual: 700 tokens como máximo.
 
+Qwen 3.6 Groq acepta como máximo tres imágenes por solicitud. La extracción visual limitará cada llamada a las primeras tres evidencias ya priorizadas para evitar que una carga válida salte innecesariamente al fallback.
+
 La mejora de informe continuará sin streaming porque el modal espera una respuesta breve y completa. El chat mantendrá su transporte actual hacia la interfaz.
 
 Kimi, Llama Scout, Qwen local y OpenRouter no recibirán opciones exclusivas de Qwen Groq que sus APIs puedan rechazar. La configuración específica se aplicará al modelo Qwen mediante un adaptador o middleware acotado.
@@ -109,6 +111,7 @@ Las pruebas cubrirán:
 - OpenRouter queda al final cuando está configurado;
 - la mejora de informe intenta Groq Qwen antes del local;
 - las opciones de razonamiento pertenecen solo a Qwen Groq;
+- cada solicitud visual enviada a Qwen contiene como máximo tres imágenes;
 - no quedan usos activos de `llama-3.3-70b-versatile`;
 - el caso de coherencia “se pegó módulo / marco doblado” sigue pasando.
 
