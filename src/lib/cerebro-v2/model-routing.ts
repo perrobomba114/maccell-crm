@@ -26,6 +26,8 @@ export const GROQ_VISION_FALLBACK_MODEL = {
     label: "Llama 4 Scout Vision",
 } satisfies GroqModelDefinition;
 
+export const QWEN_GROQ_MIN_OUTPUT_TOKENS = 2048;
+
 export type GroqModelPlanEntry = GroqModelDefinition & {
     apiKey: string;
     keyId: string;
@@ -52,6 +54,7 @@ export function buildGroqModelPlan(keys: string[], purpose: CerebroModelPurpose)
 export function applyQwenGroqSettings(params: LanguageModelV3CallOptions): LanguageModelV3CallOptions {
     return {
         ...params,
+        maxOutputTokens: Math.max(params.maxOutputTokens ?? 0, QWEN_GROQ_MIN_OUTPUT_TOKENS),
         temperature: 0.6,
         topP: 0.95,
         providerOptions: {

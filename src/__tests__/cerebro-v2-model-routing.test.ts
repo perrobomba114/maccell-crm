@@ -40,6 +40,7 @@ test("diagnosis enhancement uses only Qwen across the Groq key pool", () => {
 test("forces the approved Qwen sampling and hidden reasoning settings", () => {
     const transformed = applyQwenGroqSettings({
         prompt: [],
+        maxOutputTokens: 500,
         temperature: 0,
         topP: 0.2,
         providerOptions: { groq: { serviceTier: "on_demand" } },
@@ -47,6 +48,7 @@ test("forces the approved Qwen sampling and hidden reasoning settings", () => {
 
     assert.equal(transformed.temperature, 0.6);
     assert.equal(transformed.topP, 0.95);
+    assert.equal(transformed.maxOutputTokens, 2048);
     assert.deepEqual(transformed.providerOptions?.groq, {
         serviceTier: "on_demand",
         reasoningEffort: "default",
