@@ -4,8 +4,11 @@ export const REPAIR_STATUS = {
     IN_PROGRESS: 3,
     PAUSED: 4,
     OK: 5,
-    DELIVERED: 6,
-    NO_REPAIR: 7,
+    NO_REPAIR: 6,
+    DIAGNOSED: 7,
+    WAITING_CONFIRMATION: 8,
+    WAITING_PARTS: 9,
+    DELIVERED: 10,
     INVOICED: 10,
 } as const;
 
@@ -14,7 +17,6 @@ export const POS_DELIVERY_BLOCKED_STATUS_IDS = [
     REPAIR_STATUS.CLAIMED,
     REPAIR_STATUS.IN_PROGRESS,
     REPAIR_STATUS.PAUSED,
-    REPAIR_STATUS.OK,
 ] as const;
 
 export type PosDeliveryBlockedStatusId = typeof POS_DELIVERY_BLOCKED_STATUS_IDS[number];
