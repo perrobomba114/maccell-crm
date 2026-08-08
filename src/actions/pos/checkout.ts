@@ -6,6 +6,9 @@ import { generateAfipInvoiceForSale } from "./checkout-afip";
 import { saveSaleTransaction } from "./checkout-db";
 import { sendPostSaleNotifications } from "./checkout-notifications";
 import { normalizeFiscalEntityFromBranch } from "../invoice-summary-helpers";
+import { db } from "@/lib/db";
+import { isPosDeliveryBlockedStatus } from "@/lib/repairs/status";
+import { notifyBlockedRepairDeliveryAttempt } from "./repair-delivery-policy";
 
 export async function processPosSale(data: {
     vendorId: string;
@@ -49,6 +52,22 @@ export async function processPosSale(data: {
 
     if (!data.items || data.items.length === 0) {
         return { success: false, error: "El carrito está vacío." };
+    }
+
+    const repairIds = data.items.filter((item) => item.type === "REPAIR").map((item) => item.id);
+    if (repairIds.length > 0) {
+        const repairs = await db.repair.findMany({
+            where: { id: { in: repairIds }, branchId: safeBranchId },
+            select: { id: true, ticketNumber: true, statusId: true, status: { select: { name: true } } },
+        });
+        const blockedRepair = repairs.find((repair) => isPosDeliveryBlockedStatus(repair.statusId));
+        if (blockedRepair) {
+            await notifyBlockedRepairDeliveryAttempt(repairIds, safeBranchId, caller.name || "Un vendedor");
+            return {
+                success: false,
+                error: `No se puede entregar el ticket #${blockedRepair.ticketNumber} porque está en estado ${blockedRepair.status.name}. Avisá al técnico para que cambie el estado del teléfono; la entrega queda bloqueada hasta que lo haga.`,
+            };
+        }
     }
 
     if (data.invoiceData?.generate) {

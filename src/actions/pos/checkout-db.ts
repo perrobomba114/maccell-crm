@@ -1,13 +1,44 @@
 import { db } from "@/lib/db";
 import { PaymentMethod } from "@prisma/client";
+import { isPosDeliveryBlockedStatus } from "@/lib/repairs/status";
 
 const DELIVERED_REPAIR_STATUS_IDS = [10] as const;
 
+type PosSaleItem = {
+    type: "PRODUCT" | "REPAIR";
+    id: string;
+    quantity: number;
+    price: number;
+    name: string;
+    originalPrice?: number;
+    priceChangeReason?: string;
+};
+
+type PosSaleData = {
+    total: number;
+    paymentMethod?: "CASH" | "CARD" | "MERCADOPAGO" | "SPLIT";
+    payments?: Array<{ method: "CASH" | "CARD" | "MERCADOPAGO" | "SPLIT"; amount: number }>;
+    invoiceData?: {
+        invoiceType: "A" | "B";
+        docType: "CUIT" | "DNI" | "FINAL";
+        docNumber: string;
+        customerName: string;
+        customerAddress?: string;
+    };
+    items: PosSaleItem[];
+};
+
+type AfipSaleResult = {
+    voucherNumber: string;
+    cae: string;
+    caeExpiresAt?: Date | null;
+};
+
 export async function saveSaleTransaction(
-    data: any,
+    data: PosSaleData,
     vendorId: string,
     branchId: string,
-    afipResult: any,
+    afipResult: AfipSaleResult | null,
     totalNet: number,
     totalVat: number
 ) {
@@ -35,7 +66,7 @@ export async function saveSaleTransaction(
                 data: {
                     saleId: sale.id,
                     invoiceType: data.invoiceData.invoiceType,
-                    invoiceNumber: afipResult.voucherNumber,
+                    invoiceNumber: String(afipResult.voucherNumber),
                     cae: afipResult.cae,
                     caeExpiresAt: afipResult.caeExpiresAt || new Date(),
                     customerDocType: data.invoiceData.docType,
@@ -46,21 +77,20 @@ export async function saveSaleTransaction(
                     vatAmount: totalVat,
                     totalAmount: data.total,
                     billingEntity: billingEntity
-                } as any
+                }
             });
         }
 
-        const txAny = tx as any;
         if (data.payments && data.payments.length > 0) {
-            await txAny.salePayment.createMany({
-                data: data.payments.map((p: any) => ({
+            await tx.salePayment.createMany({
+                data: data.payments.map((p) => ({
                     saleId: sale.id,
                     method: p.method as PaymentMethod,
                     amount: p.amount
                 }))
             });
         } else {
-            await txAny.salePayment.create({
+            await tx.salePayment.create({
                 data: {
                     saleId: sale.id,
                     method: (data.paymentMethod as PaymentMethod) || PaymentMethod.CASH,
@@ -117,6 +147,9 @@ export async function saveSaleTransaction(
                 }
                 if (DELIVERED_REPAIR_STATUS_IDS.includes(oldRepair.statusId as typeof DELIVERED_REPAIR_STATUS_IDS[number])) {
                     throw new Error("La reparación ya fue cobrada y no puede volver a cargar.");
+                }
+                if (isPosDeliveryBlockedStatus(oldRepair.statusId)) {
+                    throw new Error("La reparación no puede entregarse hasta que el técnico cambie su estado.");
                 }
 
                 await tx.repair.update({

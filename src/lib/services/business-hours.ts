@@ -1,23 +1,21 @@
 
-// Removed date-fns-tz dependency due to environment issues
-// import { toZonedTime, fromZonedTime } from "date-fns-tz";
-// const ARG_TZ = "America/Argentina/Buenos_Aires";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+
+import { TIMEZONE } from "@/lib/date-utils";
 
 export class BusinessHoursService {
-    // Hardcoded offset for Argentina (UTC-3)
-    // We treat "Face Value" as a UTC date shifted by -3 hours.
-    // e.g. Real UTC 12:00 -> Arg Face Value 09:00 (represented as 09:00 UTC date object)
+    // The workday is represented as a UTC proxy date so UTC getters/setters can
+    // do calendar arithmetic without depending on the server's local timezone.
+    // Conversion into and out of the proxy always uses the IANA Argentina timezone.
 
     private toArgFaceValue(date: Date): Date {
-        // Shift REAL UTC to "Face Value" UTC
-        // allowed -3 hours = -180 minutes
-        return new Date(date.getTime() - (3 * 60 * 60 * 1000));
+        const argentinaDateTime = formatInTimeZone(date, TIMEZONE, "yyyy-MM-dd HH:mm:ss.SSS");
+        return new Date(`${argentinaDateTime.replace(" ", "T")}Z`);
     }
 
     private fromArgFaceValue(faceValueDate: Date): Date {
-        // Shift "Face Value" UTC back to REAL UTC
-        // +3 hours
-        return new Date(faceValueDate.getTime() + (3 * 60 * 60 * 1000));
+        const argentinaDateTime = formatInTimeZone(faceValueDate, "UTC", "yyyy-MM-dd HH:mm:ss.SSS");
+        return fromZonedTime(argentinaDateTime, TIMEZONE);
     }
 
     // Schedule: Mon(1)-Sat(6): 09:00-13:00, 17:00-21:00
