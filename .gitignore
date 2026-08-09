@@ -49,6 +49,7 @@ upload/
 !src/components/admin/backups/
 !src/components/admin/backups/**
 *.sql
+!scripts/docker-init.sql
 !prisma/migrations/**/*.sql
 !services/cerebro-rag-worker/src/cerebro_rag/schema.sql
 *.zip
