@@ -2,6 +2,7 @@
 
 import { db as prisma } from "@/lib/db";
 import { getMonthlyRange, getArgentinaDate } from "@/lib/date-utils";
+import { buildRepairStockWhere } from "@/actions/statistics/repair-stock-policy";
 
 export async function getBranchStats(branchId?: string, date?: Date) {
     try {
@@ -32,7 +33,7 @@ export async function getBranchStats(branchId?: string, date?: Date) {
             }),
             prisma.repair.groupBy({
                 by: ['branchId', 'statusId'],
-                where: { statusId: { not: 10 } },
+                where: buildRepairStockWhere(),
                 _count: { _all: true }
             }),
             prisma.repairStatus.findMany()
@@ -66,7 +67,7 @@ export async function getBranchStats(branchId?: string, date?: Date) {
 
         const undeliveredChartData = branches.map(b => {
             const branchRepairs = undeliveredStats.filter(u => u.branchId === b.id);
-            const dataPoint: any = { name: b.name };
+            const dataPoint: { name: string } & Record<string, string | number> = { name: b.name };
 
             branchRepairs.forEach(r => {
                 const sName = allStatuses.find(s => s.id === r.statusId)?.name || `Status ${r.statusId}`;
