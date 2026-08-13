@@ -183,8 +183,8 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                     if (!selectedCartItem) return;
                     const price = parseFloat(overridePrice);
                     if (isNaN(price) || price < 0) return toast.error("Precio inválido");
-                    if (price !== (selectedCartItem.originalPrice || selectedCartItem.price) && !overrideReason) return toast.error("Indique motivo");
-                    setCart(prev => prev.map(i => i.uniqueId === selectedCartItem.uniqueId ? { ...i, price, originalPrice: i.originalPrice || i.price, priceChangeReason: overrideReason } : i));
+                    if (price !== (selectedCartItem.originalPrice ?? selectedCartItem.price) && !overrideReason) return toast.error("Indique motivo");
+                    setCart(prev => prev.map(i => i.uniqueId === selectedCartItem.uniqueId ? { ...i, price, originalPrice: i.originalPrice ?? i.price, priceChangeReason: overrideReason } : i));
                     setIsPriceOverrideModalOpen(false);
                 }}
             />

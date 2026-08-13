@@ -1,6 +1,11 @@
 import { db } from "@/lib/db";
-import { PaymentMethod } from "@prisma/client";
+import { PaymentMethod, Role } from "@prisma/client";
 import { isPosDeliveryBlockedStatus } from "@/lib/repairs/status";
+import {
+    buildPriceChangeNotificationMessage,
+    getPriceChangeItems,
+    type PosPriceChangeItem,
+} from "./price-change-notification";
 
 const DELIVERED_REPAIR_STATUS_IDS = [10] as const;
 
@@ -46,6 +51,7 @@ export async function saveSaleTransaction(
 
     const transactionResult = await db.$transaction(async (tx) => {
         const saleNumber = `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const normalizedPriceItems: PosPriceChangeItem[] = [];
 
         const sale = await tx.sale.create({
             data: {
@@ -101,6 +107,11 @@ export async function saveSaleTransaction(
 
         for (const item of data.items) {
             if (item.type === "PRODUCT") {
+                const product = await tx.product.findUniqueOrThrow({
+                    where: { id: item.id },
+                    select: { price: true },
+                });
+                const authoritativeOriginalPrice = product.price;
                 const stock = await tx.productStock.findUnique({
                     where: {
                         productId_branchId: {
@@ -132,15 +143,21 @@ export async function saveSaleTransaction(
                         quantity: item.quantity,
                         price: item.price,
                         productId: item.id,
-                        originalPrice: item.originalPrice,
+                        originalPrice: authoritativeOriginalPrice,
                         priceChangeReason: item.priceChangeReason
                     }
+                });
+                normalizedPriceItems.push({
+                    name: item.name,
+                    price: item.price,
+                    originalPrice: authoritativeOriginalPrice,
+                    priceChangeReason: item.priceChangeReason,
                 });
 
             } else if (item.type === "REPAIR") {
                 const oldRepair = await tx.repair.findUnique({
                     where: { id: item.id },
-                    select: { statusId: true }
+                    select: { statusId: true, estimatedPrice: true }
                 });
                 if (!oldRepair) {
                     throw new Error("No se encontró la reparación para cobrar.");
@@ -151,6 +168,7 @@ export async function saveSaleTransaction(
                 if (isPosDeliveryBlockedStatus(oldRepair.statusId)) {
                     throw new Error("La reparación no puede entregarse hasta que el técnico cambie su estado.");
                 }
+                const authoritativeOriginalPrice = oldRepair.estimatedPrice ?? item.originalPrice ?? item.price;
 
                 await tx.repair.update({
                     where: { id: item.id },
@@ -181,9 +199,40 @@ export async function saveSaleTransaction(
                         quantity: item.quantity,
                         price: item.price,
                         repairId: item.id,
-                        originalPrice: item.originalPrice,
+                        originalPrice: authoritativeOriginalPrice,
                         priceChangeReason: item.priceChangeReason
                     }
+                });
+                normalizedPriceItems.push({
+                    name: item.name,
+                    price: item.price,
+                    originalPrice: authoritativeOriginalPrice,
+                    priceChangeReason: item.priceChangeReason,
+                });
+            }
+        }
+
+        const priceChangeItems = getPriceChangeItems(normalizedPriceItems);
+        if (priceChangeItems.length > 0) {
+            const [vendor, admins] = await Promise.all([
+                tx.user.findUniqueOrThrow({ where: { id: vendorId }, select: { name: true } }),
+                tx.user.findMany({ where: { role: Role.ADMIN }, select: { id: true } }),
+            ]);
+
+            if (admins.length > 0) {
+                const message = buildPriceChangeNotificationMessage(
+                    vendor.name || "Un vendedor",
+                    saleNumber,
+                    priceChangeItems,
+                );
+                await tx.notification.createMany({
+                    data: admins.map((admin) => ({
+                        userId: admin.id,
+                        title: "⚠️ Cambio de Precio Detectado",
+                        message,
+                        type: "WARNING",
+                        link: `/admin/sales?search=${saleNumber}`,
+                    })),
                 });
             }
         }

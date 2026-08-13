@@ -126,7 +126,6 @@ export async function processPosSale(data: {
         revalidatePath("/vendor/dashboard");
 
         await sendPostSaleNotifications(
-            data,
             transactionResult,
             safeVendorId,
             safeBranchId,
