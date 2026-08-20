@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     Loader2,
     CheckCircle,
+    CheckCircle2,
     X,
     Clock,
     Search,
@@ -16,16 +17,18 @@ import {
     Droplets,
     Camera,
     MessageSquare,
-    ChevronRight,
     Wrench,
     FileText,
-    History,
-    Sparkles
+    Sparkles,
+    Smartphone,
+    User,
+    ShieldCheck,
+    RotateCcw
 } from "lucide-react";
 import { toast } from "sonner";
 import { finishRepairAction } from "@/lib/actions/repairs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { isValidImg } from "@/lib/utils";
+import { isValidImg, cn } from "@/lib/utils";
 import { FinishRepairIntakeCheck } from "./finish-repair-intake-check";
 import { FinishRepairEvidence } from "./finish-repair-evidence";
 import type { RepairAccessType } from "@/lib/repairs/intake";
@@ -63,12 +66,12 @@ interface FinishRepairModalProps {
 }
 
 const finishStatuses = [
-    { id: 4, name: "PAUSADO", icon: Clock, color: "bg-orange-600", border: "border-orange-500", glow: "shadow-orange-500/20" },
-    { id: 5, name: "FINALIZADO OK", icon: CheckCircle, color: "bg-emerald-600", border: "border-emerald-500", glow: "shadow-emerald-500/20" },
-    { id: 6, name: "NO REPARADO", icon: X, color: "bg-red-600", border: "border-red-500", glow: "shadow-red-500/20" },
-    { id: 7, name: "DIAGNOSTICADO", icon: Search, color: "bg-blue-600", border: "border-blue-500", glow: "shadow-blue-500/20" },
-    { id: 8, name: "ESPERANDO CONF.", icon: AlertTriangle, color: "bg-amber-500", border: "border-amber-400", glow: "shadow-amber-500/20" },
-    { id: 9, name: "ESPERANDO REP.", icon: PackageSearch, color: "bg-violet-600", border: "border-violet-500", glow: "shadow-violet-500/20" },
+    { id: 4, name: "PAUSADO", icon: Clock, bg: "bg-orange-500/15", border: "border-orange-500/40", text: "text-orange-400", activeBg: "bg-orange-600", glow: "shadow-[0_0_15px_rgba(249,115,22,0.3)]" },
+    { id: 5, name: "FINALIZADO OK", icon: CheckCircle2, bg: "bg-emerald-500/15", border: "border-emerald-500/40", text: "text-emerald-400", activeBg: "bg-emerald-600", glow: "shadow-[0_0_15px_rgba(16,185,129,0.3)]" },
+    { id: 6, name: "NO REPARADO", icon: X, bg: "bg-red-500/15", border: "border-red-500/40", text: "text-red-400", activeBg: "bg-red-600", glow: "shadow-[0_0_15px_rgba(239,68,68,0.3)]" },
+    { id: 7, name: "DIAGNOSTICADO", icon: Search, bg: "bg-blue-500/15", border: "border-blue-500/40", text: "text-blue-400", activeBg: "bg-blue-600", glow: "shadow-[0_0_15px_rgba(59,130,246,0.3)]" },
+    { id: 8, name: "ESPERANDO CONF.", icon: AlertTriangle, bg: "bg-amber-500/15", border: "border-amber-500/40", text: "text-amber-400", activeBg: "bg-amber-600", glow: "shadow-[0_0_15px_rgba(245,158,11,0.3)]" },
+    { id: 9, name: "ESPERANDO REP.", icon: PackageSearch, bg: "bg-violet-500/15", border: "border-violet-500/40", text: "text-violet-400", activeBg: "bg-violet-600", glow: "shadow-[0_0_15px_rgba(139,92,246,0.3)]" },
 ];
 
 export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: FinishRepairModalProps) {
@@ -109,8 +112,8 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
 
     const enhanceDiagnosis = async () => {
         const trimmed = diagnosis.trim();
-        if (!trimmed) return toast.error("Escribí el diagnóstico antes de mejorarlo.");
-        if (trimmed.length < 5) return toast.error("El diagnóstico es demasiado corto para mejorar.");
+        if (!trimmed) return toast.error("Escribí el informe técnico antes de mejorarlo.");
+        if (trimmed.length < 5) return toast.error("El informe es demasiado corto para mejorar.");
 
         setIsEnhancing(true);
         setEnhanceError(null);
@@ -136,7 +139,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             }
             setDiagnosis(data.improved);
             setWasEnhanced(true);
-            toast.success("Diagnóstico mejorado. Revisalo antes de guardar.");
+            toast.success("Informe mejorado con Cerebro IA.");
         } catch (e) {
             toast.error("Error de conexión al mejorar el diagnóstico.");
         } finally {
@@ -145,7 +148,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     };
 
     const submitRepair = async (forceNoAi: boolean = false) => {
-        if (!statusId) return toast.error("Selecciona un estado.");
+        if (!statusId) return toast.error("Selecciona un estado de cierre.");
         if (!diagnosis.trim()) return toast.error("El informe técnico es obligatorio.");
 
         // 🧠 ADVERTENCIA: ¿Confirmar sin IA? (Se activa para cualquier estado excepto PAUSADO)
@@ -185,77 +188,106 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
 
     return (
         <>
-            <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="max-h-[calc(100dvh-1rem)] p-0 overflow-hidden border-2 border-slate-800 bg-slate-950 shadow-2xl sm:max-w-[min(1100px,calc(100vw-2rem))]">
+            <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+                <DialogContent className="max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-0 border border-slate-800/90 bg-slate-950 shadow-2xl rounded-2xl sm:max-w-[min(1080px,calc(100vw-2rem))] custom-scrollbar">
 
-                    {/* Header consistent with Start/Assign modals */}
-                    <DialogHeader className={`p-4 border-b-2 transition-colors duration-500 relative overflow-hidden ${activeStatus ? activeStatus.color : "bg-slate-900 border-slate-800"}`}>
-                        <div className="absolute inset-0 bg-grid-white/[0.05] pointer-events-none" />
-                        <div className="relative z-10 flex flex-col items-center text-center">
-                            <DialogTitle className="text-2xl sm:text-3xl font-black italic tracking-tighter text-white uppercase leading-none">
-                                #{repair.ticketNumber}
-                            </DialogTitle>
+                    {/* Header: Dark Glassmorphic with dynamic status glow */}
+                    <DialogHeader className={cn(
+                        "p-5 sm:p-6 border-b border-slate-800 relative overflow-hidden transition-all duration-300",
+                        activeStatus
+                            ? "bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950"
+                            : "bg-gradient-to-b from-slate-900/90 via-slate-900/60 to-slate-950"
+                    )}>
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.02] rounded-full blur-3xl pointer-events-none" />
+                        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 transition-all",
+                                    activeStatus
+                                        ? `${activeStatus.bg} ${activeStatus.border} ${activeStatus.text} ${activeStatus.glow}`
+                                        : "bg-slate-800 border-slate-700 text-slate-300"
+                                )}>
+                                    {activeStatus ? (
+                                        <activeStatus.icon className="w-5 h-5" />
+                                    ) : (
+                                        <Wrench className="w-5 h-5" />
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-800 text-slate-300 border border-slate-700">
+                                            Cierre de Trabajo
+                                        </span>
+                                        {activeStatus && (
+                                            <span className={cn(
+                                                "inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border animate-in fade-in",
+                                                activeStatus.bg, activeStatus.border, activeStatus.text
+                                            )}>
+                                                {activeStatus.name}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <DialogTitle className="text-xl sm:text-2xl font-black italic tracking-tight text-white uppercase mt-0.5">
+                                        Ticket #{repair.ticketNumber}
+                                    </DialogTitle>
+                                    <DialogDescription className="sr-only">
+                                        Formulario de finalización técnica y diagnóstico de reparación.
+                                    </DialogDescription>
+                                </div>
+                            </div>
+
+                            {/* Device & Client Pills in Header */}
+                            <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+                                <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-xs">
+                                    <Smartphone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                    <span className="font-bold text-white uppercase italic truncate max-w-[160px]">
+                                        {repair.deviceBrand} {repair.deviceModel}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-xs">
+                                    <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    <span className="font-bold text-emerald-300 uppercase truncate max-w-[140px]">
+                                        {repair.customer?.name || "Cliente S/N"}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </DialogHeader>
 
-                    {/* Content Body */}
-                    <div className="grid flex-1 grid-cols-12 gap-4 overflow-y-auto p-4 custom-scrollbar lg:overflow-hidden">
-
-                        {/* 1. Device Context - Small & Focused */}
-                        <div className="col-span-12 flex items-center justify-between rounded-xl border-2 border-slate-800 bg-slate-900 px-4 py-3">
-                            <div className="space-y-1">
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Dispositivo</span>
-                                <p className="text-sm font-black text-white italic truncate max-w-[200px] uppercase">
-                                    {repair.deviceBrand} {repair.deviceModel}
-                                </p>
-                            </div>
-                            <div className="h-10 w-px bg-slate-800" />
-                            <div className="space-y-1 text-right">
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Cliente</span>
-                                <p className="text-sm font-black text-emerald-400 italic uppercase">
-                                    {repair.customer?.name || 'Cliente S/N'}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="col-span-12 lg:col-span-5">
-                            <FinishRepairIntakeCheck
-                                accessType={repair.accessType}
-                                accessCredential={repair.accessCredential}
-                                hasSimCard={hasSimCard}
-                                hasMemoryCard={hasMemoryCard}
-                                onSimCardChange={setHasSimCard}
-                                onMemoryCardChange={setHasMemoryCard}
-                            />
-                        </div>
-
-                        {/* 2. Status Picker - Compact Solid Grid */}
-                        <div className="col-span-12 h-full lg:col-span-7">
-                            <div className="grid h-full grid-cols-2 grid-rows-2 gap-2 sm:grid-cols-3">
+                    {/* Content Grid */}
+                    <div className="p-4 sm:p-6 space-y-4">
+                        
+                        {/* 1. Status Selection Buttons (Grid of 6) */}
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 pl-1">
+                                1. Selecciona el Estado de la Reparación
+                            </Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                                 {finishStatuses.map((s) => {
                                     const isSelected = statusId === s.id.toString();
                                     const Icon = s.icon;
                                     return (
                                         <button
                                             key={s.id}
+                                            type="button"
                                             onClick={() => setStatusId(s.id.toString())}
-                                            className={`
-                                                group relative flex min-h-14 items-center gap-3 rounded-xl border-2 p-3 transition-all ${s.color}
-                                                ${isSelected
-                                                    ? `border-white shadow-lg ${s.glow} scale-105 z-10 brightness-110`
-                                                    : "border-transparent opacity-80 hover:opacity-100 hover:scale-[1.02] grayscale-[0.2] hover:grayscale-0 shadow-sm"
-                                                }
-                                            `}
+                                            className={cn(
+                                                "relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-center gap-1.5 select-none",
+                                                isSelected
+                                                    ? `${s.activeBg} text-white border-white/80 ${s.glow} scale-[1.03] z-10 font-black shadow-lg`
+                                                    : `${s.bg} ${s.border} ${s.text} hover:scale-[1.01] hover:border-slate-600 bg-slate-900/60`
+                                            )}
                                         >
-                                            <div className="p-1.5 rounded-lg bg-white/20 transition-colors">
-                                                <Icon size={16} className="text-white" />
-                                            </div>
-                                            <span className="text-[9px] font-black uppercase tracking-wider text-left leading-tight text-white drop-shadow-sm">
+                                            <Icon className={cn("w-4 h-4", isSelected ? "text-white" : s.text)} />
+                                            <span className={cn(
+                                                "text-[9px] font-black uppercase tracking-wider leading-tight",
+                                                isSelected ? "text-white drop-shadow-sm" : "text-slate-300"
+                                            )}>
                                                 {s.name}
                                             </span>
                                             {isSelected && (
-                                                <div className="absolute -top-1 -right-1 bg-white rounded-full p-0.5 shadow-lg">
-                                                    <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                                <div className="absolute top-1.5 right-1.5 bg-white text-slate-950 rounded-full p-0.5 shadow-sm">
+                                                    <CheckCircle2 className="w-2.5 h-2.5" />
                                                 </div>
                                             )}
                                         </button>
@@ -264,71 +296,117 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                             </div>
                         </div>
 
-                        {/* 3. Reports & final controls */}
-                        <div className="col-span-12 grid grid-cols-1 items-start gap-3 lg:grid-cols-3">
-                            {/* Problem Reference */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 pl-1">
-                                    <MessageSquare size={12} className="text-slate-600" />
-                                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Reporte Entrada</Label>
-                                </div>
-                                <div className="h-[120px] overflow-y-auto rounded-xl border-2 border-slate-800 bg-slate-900/50 p-4 custom-scrollbar">
-                                    <p className="text-xs font-bold text-slate-400 italic leading-relaxed">
-                                        {repair.problemDescription || "Sin descripción."}
+                        {/* 2. Dual Column Layout: Left (Intake + Seller Report) / Right (Technical Report + Controls) */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                            
+                            {/* Left Column (5 cols): Intake Reception & Seller Diagnosis */}
+                            <div className="lg:col-span-5 space-y-3">
+                                
+                                {/* Seller Diagnosis / Problem Description */}
+                                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5 shadow-inner">
+                                    <div className="flex items-center gap-2 text-slate-400">
+                                        <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                            Diagnóstico del Vendedor / Falla
+                                        </span>
+                                    </div>
+                                    <p className="text-xs font-semibold text-slate-300 italic leading-relaxed pl-3 border-l-2 border-amber-500/40">
+                                        {repair.problemDescription || "Sin descripción de falla registrada."}
                                     </p>
                                 </div>
-                            </div>
 
-                            {/* New Report Area */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 pl-1">
-                                    <FileText size={12} className="text-slate-600" />
-                                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Informe Técnico</Label>
-                                </div>
-                                <Textarea
-                                    value={diagnosis}
-                                    onChange={(e) => {
-                                        setDiagnosis(e.target.value);
-                                        setWasEnhanced(false);
-                                    }}
-                                    placeholder="Detalla la reparación realizada..."
-                                    className="h-[120px] min-h-[120px] resize-none rounded-xl border-2 border-slate-800 bg-slate-900 p-4 text-xs font-bold text-white transition-all placeholder:text-slate-700 focus:border-emerald-500"
+                                {/* Verified Reception (PIN, Pattern, SIM, Memory) */}
+                                <FinishRepairIntakeCheck
+                                    accessType={repair.accessType}
+                                    accessCredential={repair.accessCredential}
+                                    hasSimCard={hasSimCard}
+                                    hasMemoryCard={hasMemoryCard}
+                                    onSimCardChange={setHasSimCard}
+                                    onMemoryCardChange={setHasMemoryCard}
                                 />
-                                {enhanceError && (
-                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-950/40 border border-amber-700/50 text-amber-300 text-[10px] font-bold leading-relaxed">
-                                        <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-                                        <span>{enhanceError}</span>
-                                    </div>
-                                )}
                             </div>
 
-                            {/* Final verification */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 pl-1">
-                                    <Droplets size={12} className="text-slate-600" />
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Control final</Label>
+                            {/* Right Column (7 cols): Technical Report & Final Controls */}
+                            <div className="lg:col-span-7 space-y-3">
+                                
+                                {/* Technical Diagnosis Textarea */}
+                                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2 shadow-inner">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-slate-300">
+                                            <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                                            <Label htmlFor="diagnosis" className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">
+                                                Informe Técnico / Trabajo Realizado
+                                            </Label>
+                                        </div>
+                                        {wasEnhanced && (
+                                            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full border border-violet-500/30">
+                                                <Sparkles className="w-2.5 h-2.5" /> IA Optimizada
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <Textarea
+                                        id="diagnosis"
+                                        value={diagnosis}
+                                        onChange={(e) => {
+                                            setDiagnosis(e.target.value);
+                                            setWasEnhanced(false);
+                                        }}
+                                        placeholder="Detalla el trabajo realizado, cambios de componentes, pruebas de funcionamiento..."
+                                        className="h-28 min-h-[110px] resize-none rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs font-bold text-white transition-all placeholder:text-slate-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30"
+                                    />
+
+                                    {enhanceError && (
+                                        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-950/40 border border-amber-700/50 text-amber-300 text-[10px] font-bold leading-relaxed">
+                                            <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                                            <span>{enhanceError}</span>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex h-[120px] flex-col gap-2 rounded-xl border-2 border-slate-800 bg-slate-900/50 p-2.5">
+
+                                {/* Control Final: Humidity Check & Photo Evidence Row */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    
+                                    {/* Water Damage Check */}
                                     <div
-                                        className={`flex min-h-11 cursor-pointer items-center justify-between rounded-lg border px-3 transition-all ${isWet ? "border-blue-400 bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.3)]" : "border-slate-700 bg-slate-950 hover:border-slate-600"}`}
+                                        className={cn(
+                                            "flex min-h-12 cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition-all",
+                                            isWet
+                                                ? "border-blue-400 bg-blue-600/20 text-blue-100 shadow-[0_0_15px_rgba(37,99,235,0.2)]"
+                                                : "border-slate-800 bg-slate-900/80 hover:border-slate-700 text-slate-300"
+                                        )}
                                         onClick={() => setIsWet(!isWet)}
                                     >
-                                        <div className="flex items-center gap-2.5">
-                                            <div className={`rounded-md p-1.5 ${isWet ? "bg-white/20" : "bg-slate-800"}`}>
-                                                <Droplets size={14} className={isWet ? "text-white" : "text-blue-500"} />
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className={cn(
+                                                "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                                                isWet ? "bg-blue-500 text-white" : "bg-slate-800 text-blue-400"
+                                            )}>
+                                                <Droplets size={14} />
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className={`text-[9px] font-black uppercase tracking-widest ${isWet ? "text-white" : "text-slate-300"}`}>Humedad</span>
-                                                <span className={`text-[8px] font-bold ${isWet ? "text-blue-100" : "text-slate-600"}`}>Rastros de líquido</span>
+                                            <div className="min-w-0">
+                                                <span className="text-[10px] font-black uppercase tracking-wider block">
+                                                    Humedad
+                                                </span>
+                                                <span className="text-[9px] font-bold text-slate-500 block truncate">
+                                                    Rastros de líquido
+                                                </span>
                                             </div>
                                         </div>
-                                        <Checkbox checked={isWet} onCheckedChange={(checked) => setIsWet(!!checked)} className={isWet ? "border-white bg-white text-blue-600" : "border-slate-700"} />
+                                        <Checkbox
+                                            checked={isWet}
+                                            onCheckedChange={(checked) => setIsWet(!!checked)}
+                                            className={cn("h-4 w-4 rounded", isWet ? "border-blue-400 bg-blue-500" : "border-slate-700")}
+                                        />
                                     </div>
 
-                                    <div className="flex min-h-11 items-center gap-2 overflow-hidden rounded-lg border border-slate-700 bg-slate-950 px-3">
-                                        <div className="flex min-w-[76px] items-center gap-2">
-                                            <Camera size={14} className="text-cyan-500" />
-                                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-400">Evidencia</span>
+                                    {/* Evidence Photos */}
+                                    <div className="flex min-h-12 items-center justify-between gap-2 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2">
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <Camera size={14} className="text-cyan-400" />
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                Evidencia
+                                            </span>
                                         </div>
                                         <FinishRepairEvidence
                                             images={images}
@@ -338,36 +416,53 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                         />
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Spare parts checklist when assigned */}
-                            {repair.parts && repair.parts.length > 0 && (
-                                <div className="lg:col-span-3 rounded-xl border border-slate-800 bg-slate-900/70 p-2.5">
-                                    <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar">
-                                        <span className="shrink-0 pl-1 text-[9px] font-black uppercase tracking-widest text-slate-500">Devolución repuestos</span>
-                                        {repair.parts.map((part) => {
-                                            const isReturned = partsToReturn.has(part.id) || statusId === "6";
-                                            return (
-                                                <label key={part.id} className="flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2">
-                                                    <span className="max-w-40 truncate text-[9px] font-black uppercase text-slate-400">{part.sparePart?.name}</span>
-                                                    <Checkbox checked={isReturned} onCheckedChange={() => togglePartReturn(part.id)} disabled={statusId === "6"} />
-                                                </label>
-                                            );
-                                        })}
+                                {/* Spare Parts Return Checklist (if parts are assigned) */}
+                                {repair.parts && repair.parts.length > 0 && (
+                                    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 space-y-1.5">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 block">
+                                            Devolución de Repuestos
+                                        </span>
+                                        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
+                                            {repair.parts.map((part) => {
+                                                const isReturned = partsToReturn.has(part.id) || statusId === "6";
+                                                return (
+                                                    <label
+                                                        key={part.id}
+                                                        className={cn(
+                                                            "flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors",
+                                                            isReturned
+                                                                ? "border-amber-500/50 bg-amber-500/10 text-amber-300"
+                                                                : "border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700"
+                                                        )}
+                                                    >
+                                                        <Checkbox
+                                                            checked={isReturned}
+                                                            onCheckedChange={() => togglePartReturn(part.id)}
+                                                            disabled={statusId === "6"}
+                                                            className="h-3.5 w-3.5"
+                                                        />
+                                                        <span className="max-w-36 truncate text-[10px] font-bold uppercase">
+                                                            {part.sparePart?.name || "Repuesto"}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
-
                     </div>
 
-                    {/* Footer consistent with Start/Assign modals */}
-                    <DialogFooter className="m-0 flex flex-col gap-3 border-t-2 border-slate-900 bg-slate-950 p-4 sm:flex-row">
+                    {/* Footer */}
+                    <DialogFooter className="p-4 sm:p-5 bg-slate-950 border-t border-slate-800/80 flex flex-col sm:flex-row gap-2.5">
                         <Button
+                            type="button"
                             variant="outline"
                             onClick={onClose}
                             disabled={isLoading}
-                            className="h-12 border-2 border-slate-800 hover:bg-slate-900 text-slate-400 font-black uppercase tracking-widest rounded-2xl text-[10px] transition-all"
+                            className="h-11 border-2 border-slate-800 hover:bg-slate-900 text-slate-400 hover:text-white font-black uppercase tracking-wider rounded-xl text-xs transition-all"
                         >
                             Descartar
                         </Button>
@@ -377,71 +472,82 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                 type="button"
                                 onClick={enhanceDiagnosis}
                                 disabled={isEnhancing || !diagnosis.trim()}
-                                className="flex-1 h-12 border-2 border-violet-700/50 bg-violet-950/30 text-violet-300 font-black uppercase tracking-widest rounded-2xl text-[10px] hover:bg-violet-900/40 hover:border-violet-400 transition-all disabled:opacity-40"
+                                className="flex-1 h-11 border border-violet-500/40 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 font-black uppercase tracking-wider rounded-xl text-xs transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                             >
                                 {isEnhancing ? (
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
-                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    <Sparkles className="h-4 w-4 text-violet-400" />
                                 )}
-                                Mejorar con IA (Groq)
+                                <span>Mejorar con IA</span>
                             </Button>
 
                             <Button
+                                type="button"
                                 onClick={() => submitRepair()}
-                                disabled={isLoading || isEnhancing}
-                                className={`flex-1 h-12 text-white font-black uppercase tracking-widest rounded-2xl text-[10px] shadow-lg transition-all active:scale-95 flex items-center justify-center
-                                    ${activeStatus ? `${activeStatus.color} hover:brightness-110 shadow-${activeStatus.color}/20` : "bg-slate-800 text-slate-500 cursor-not-allowed"}
-                                `}
+                                disabled={isLoading || isEnhancing || !statusId}
+                                className={cn(
+                                    "flex-1 h-11 font-black uppercase tracking-wider rounded-xl text-xs transition-all active:scale-95 flex items-center justify-center gap-2",
+                                    activeStatus
+                                        ? `${activeStatus.activeBg} text-white hover:brightness-110 ${activeStatus.glow}`
+                                        : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                                )}
                             >
                                 {isLoading ? (
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
-                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    <>
+                                        <CheckCircle className="h-4 w-4" />
+                                        <span>Confirmar Cierre</span>
+                                    </>
                                 )}
-                                Confirmar Cierre
                             </Button>
                         </div>
                     </DialogFooter>
 
                     {/* 🧠 AI Warning Overlay */}
                     {showAiWarning && (
-                        <div className="absolute inset-0 z-[120] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-200">
-                            <div className="w-full max-w-sm bg-slate-900 border-2 border-violet-500/50 shadow-[0_0_30px_rgba(139,92,246,0.2)] rounded-3xl p-8 flex flex-col items-center text-center space-y-6">
-                                <div className="p-4 rounded-full bg-violet-500/10 border-2 border-violet-500/20">
-                                    <Sparkles size={32} className="text-violet-400" />
+                        <div className="absolute inset-0 z-[120] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+                            <div className="w-full max-w-sm bg-slate-900 border-2 border-violet-500/50 shadow-[0_0_30px_rgba(139,92,246,0.2)] rounded-2xl p-6 flex flex-col items-center text-center space-y-4">
+                                <div className="p-3.5 rounded-full bg-violet-500/10 border border-violet-500/30">
+                                    <Sparkles size={28} className="text-violet-400" />
                                 </div>
-                                <div className="space-y-2">
-                                    <h3 className="text-lg font-black text-white uppercase tracking-tight italic">¿Informe sin mejorar?</h3>
-                                    <p className="text-xs font-bold text-slate-400 leading-relaxed">
-                                        ¿Estás seguro que no quieres mejorar el diagnóstico con IA antes de cerrar?
+                                <div className="space-y-1.5">
+                                    <h3 className="text-base font-black text-white uppercase tracking-tight italic">
+                                        ¿Informe sin mejorar?
+                                    </h3>
+                                    <p className="text-xs font-medium text-slate-400 leading-relaxed">
+                                        ¿Estás seguro de que no querés mejorar el informe con IA antes de guardar?
                                     </p>
                                 </div>
-                                <div className="grid grid-cols-1 gap-3 w-full pt-2">
+                                <div className="grid grid-cols-1 gap-2.5 w-full pt-1">
                                     <Button
+                                        type="button"
                                         onClick={() => {
                                             setShowAiWarning(false);
                                             enhanceDiagnosis();
                                         }}
-                                        className="h-12 bg-violet-600 hover:bg-violet-500 text-white font-black uppercase tracking-widest rounded-2xl text-[10px] shadow-lg transition-all"
+                                        className="h-11 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black uppercase tracking-wider rounded-xl text-xs shadow-lg transition-all"
                                     >
-                                        <Sparkles size={14} className="mr-2" /> Mejorar con Cerebro
+                                        <Sparkles size={14} className="mr-1.5" /> Mejorar con Cerebro IA
                                     </Button>
                                     <div className="flex gap-2">
                                         <Button
+                                            type="button"
                                             variant="ghost"
                                             onClick={() => setShowAiWarning(false)}
-                                            className="flex-1 h-12 text-slate-500 hover:text-white font-black uppercase tracking-widest rounded-2xl text-[9px]"
+                                            className="flex-1 h-10 text-slate-400 hover:text-white font-black uppercase tracking-wider rounded-xl text-[10px]"
                                         >
                                             Cancelar
                                         </Button>
                                         <Button
+                                            type="button"
                                             variant="outline"
                                             onClick={() => {
                                                 setShowAiWarning(false);
-                                                submitRepair(true); // Proceed without AI
+                                                submitRepair(true);
                                             }}
-                                            className="flex-1 h-12 border-2 border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white font-black uppercase tracking-widest rounded-2xl text-[9px]"
+                                            className="flex-1 h-10 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white font-black uppercase tracking-wider rounded-xl text-[10px]"
                                         >
                                             Confirmar igual
                                         </Button>
@@ -457,16 +563,17 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             <style jsx global>{`
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 6px;
+                    height: 6px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-track {
                     background: transparent;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.05);
+                    background: rgba(255, 255, 255, 0.08);
                     border-radius: 10px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255, 255, 255, 0.1);
+                    background: rgba(255, 255, 255, 0.15);
                 }
             `}</style>
         </>

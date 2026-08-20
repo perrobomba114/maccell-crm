@@ -1,10 +1,29 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Smartphone, User, Calendar, DollarSign, Clock, ImageOff, Plus, RotateCcw } from "lucide-react";
+import {
+    Smartphone,
+    User,
+    Calendar,
+    DollarSign,
+    Clock,
+    ImageOff,
+    Plus,
+    RotateCcw,
+    MessageSquare,
+    Wrench,
+    MapPin,
+    AlertTriangle,
+    CheckCircle2,
+    Phone,
+    FileText,
+    Shield,
+    Camera,
+    Sparkles
+} from "lucide-react";
 import { useState } from "react";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { cn, getImgUrl, isValidImg } from "@/lib/utils";
@@ -98,17 +117,17 @@ interface RepairDetailsDialogProps {
     onOpenRepair?: (repairId: string) => void;
 }
 
-const statusColorMap: Record<string, string> = {
-    blue: "bg-blue-600 text-white border-blue-700",
-    indigo: "bg-indigo-600 text-white border-indigo-700",
-    yellow: "bg-amber-500 text-white border-amber-600",
-    gray: "bg-slate-600 text-white border-slate-700",
-    green: "bg-green-600 text-white border-green-700",
-    red: "bg-red-600 text-white border-red-700",
-    purple: "bg-purple-600 text-white border-purple-700",
-    orange: "bg-orange-600 text-white border-orange-700",
-    amber: "bg-amber-600 text-white border-amber-700",
-    slate: "bg-slate-800 text-white border-slate-900",
+const statusColorMap: Record<string, { bg: string; border: string; text: string }> = {
+    blue: { bg: "bg-blue-500/15", border: "border-blue-500/40", text: "text-blue-400" },
+    indigo: { bg: "bg-indigo-500/15", border: "border-indigo-500/40", text: "text-indigo-400" },
+    yellow: { bg: "bg-amber-500/15", border: "border-amber-500/40", text: "text-amber-400" },
+    gray: { bg: "bg-slate-500/15", border: "border-slate-500/40", text: "text-slate-400" },
+    green: { bg: "bg-emerald-500/15", border: "border-emerald-500/40", text: "text-emerald-400" },
+    red: { bg: "bg-red-500/15", border: "border-red-500/40", text: "text-red-400" },
+    purple: { bg: "bg-purple-500/15", border: "border-purple-500/40", text: "text-purple-400" },
+    orange: { bg: "bg-orange-500/15", border: "border-orange-500/40", text: "text-orange-400" },
+    amber: { bg: "bg-amber-500/15", border: "border-amber-500/40", text: "text-amber-400" },
+    slate: { bg: "bg-slate-500/15", border: "border-slate-500/40", text: "text-slate-400" },
 };
 
 function RepairImage({ url, index, onClick }: { url: string; index: number; onClick: () => void }) {
@@ -116,9 +135,9 @@ function RepairImage({ url, index, onClick }: { url: string; index: number; onCl
 
     if (error) {
         return (
-            <div className="aspect-square rounded-xl border bg-muted/30 flex flex-col items-center justify-center p-2 text-center group relative overflow-hidden" title="Imagen no disponible">
-                <ImageOff className="w-6 h-6 text-muted-foreground/50 mb-1" />
-                <span className="text-[10px] text-muted-foreground/50 font-medium">No disponible</span>
+            <div className="aspect-square rounded-xl border border-slate-800 bg-slate-900 flex flex-col items-center justify-center p-2 text-center" title="Imagen no disponible">
+                <ImageOff className="w-5 h-5 text-slate-600 mb-1" />
+                <span className="text-[9px] text-slate-500 font-bold">No disponible</span>
             </div>
         );
     }
@@ -128,18 +147,18 @@ function RepairImage({ url, index, onClick }: { url: string; index: number; onCl
 
     return (
         <div
-            className="group relative aspect-square cursor-pointer rounded-xl overflow-hidden border bg-background hover:ring-2 hover:ring-primary hover:ring-offset-2 transition-all shadow-sm"
+            className="group relative aspect-square cursor-pointer rounded-xl overflow-hidden border border-slate-800 bg-slate-950 hover:border-blue-500 transition-all shadow-md"
             onClick={onClick}
         >
             <img
                 src={imgUrl}
                 alt={`Foto ${index + 1}`}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={() => setError(true)}
             />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
-            <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded z-20">
-                {index + 1}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors z-10" />
+            <div className="absolute bottom-1.5 right-1.5 bg-slate-950/80 backdrop-blur-sm border border-slate-700 text-slate-200 text-[10px] font-black px-1.5 py-0.5 rounded-md z-20">
+                #{index + 1}
             </div>
         </div>
     );
@@ -157,14 +176,17 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
         (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
     );
 
+    const promisedDate = repair.promisedAt ? new Date(repair.promisedAt) : null;
+    const isOverdue = promisedDate ? promisedDate < new Date() : false;
+
     const handleImageClick = (index: number) => {
         setViewerIndex(index);
         setViewerOpen(true);
     };
+
     const handleReturnPart = async (partId: string) => {
         if (!currentUserId) return;
 
-        // Simple confirmation via browser native or just toast action (native is safer for destructive)
         if (!confirm("¿Seguro que quieres devolver este repuesto? Se creará una solicitud de devolución y se eliminará de esta reparación.")) {
             return;
         }
@@ -176,7 +198,6 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
             if (result.success) {
                 toast.success("Repuesto devuelto y solicitud creada.", { id: toastId });
                 router.refresh();
-                // We keep dialog open, but data refreshes
             } else {
                 toast.error(result.error || "Error al devolver.", { id: toastId });
             }
@@ -185,344 +206,349 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
         }
     };
 
-    const colorClass = statusColorMap[repair.status.color ?? ""] || "bg-gray-100 text-gray-800";
+    const statusStyle = statusColorMap[repair.status.color ?? ""] || { bg: "bg-slate-500/15", border: "border-slate-500/40", text: "text-slate-300" };
 
     return (
         <>
-            <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="flex h-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] min-w-0 flex-col overflow-hidden p-0 sm:max-w-[calc(100vw-2rem)] xl:max-w-7xl">
-                    {/* Header with Solid Color Background */}
-                    <DialogHeader className={`relative shrink-0 overflow-hidden border-b px-5 py-4 sm:px-6 sm:py-5 ${repair.isWet ? "bg-blue-600" : "bg-slate-900"}`}>
-                        <div className="absolute inset-0 bg-grid-white/[0.05] pointer-events-none" />
-                        <div className="flex items-center justify-between gap-4 w-full relative z-10">
+            <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+                <DialogContent className="max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-0 border border-slate-800/90 bg-slate-950 shadow-2xl rounded-2xl sm:max-w-[min(1100px,calc(100vw-2rem))] custom-scrollbar">
+                    
+                    {/* Header: Dark Glassmorphic with Ticket, Status & Branch */}
+                    <DialogHeader className={cn(
+                        "relative shrink-0 overflow-hidden border-b border-slate-800 p-5 sm:p-6 text-left",
+                        repair.isWet 
+                            ? "bg-gradient-to-b from-blue-950/40 via-slate-900 to-slate-950" 
+                            : "bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950"
+                    )}>
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.02] rounded-full blur-3xl pointer-events-none" />
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full relative z-10">
+                            
                             <div className="space-y-1.5 min-w-0">
-                                <div className="flex items-center gap-3 flex-wrap">
-                                    <DialogTitle className="text-xl font-black uppercase italic tracking-tighter text-white sm:text-2xl">
+                                <div className="flex items-center gap-2.5 flex-wrap">
+                                    <DialogTitle className="text-xl sm:text-2xl font-black uppercase italic tracking-tight text-white">
                                         Ticket #{repair.ticketNumber}
                                     </DialogTitle>
-                                    <Badge className={`font-black border-2 rounded-md px-3 py-1 shadow-lg uppercase text-[10px] sm:text-xs ${colorClass}`}>
+
+                                    <Badge className={cn("font-black border rounded-lg px-2.5 py-0.5 text-[10px] uppercase shadow-sm", statusStyle.bg, statusStyle.border, statusStyle.text)}>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-pulse" />
                                         {repair.status.name}
                                     </Badge>
-                                    {repair.statusHistory && repair.statusHistory[0] && (
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/10 border border-white/10 backdrop-blur-sm">
-                                            <span className="text-[9px] font-black text-white/50 uppercase tracking-tighter">Previo:</span>
-                                            <span className="text-[10px] font-black text-white uppercase italic">{repair.statusHistory[0].fromStatus?.name || 'Registro inicial'}</span>
-                                        </div>
+
+                                    {repair.isWet && (
+                                        <Badge className="bg-blue-600/20 border border-blue-400/50 text-blue-300 font-black text-[9px] uppercase">
+                                            💧 Mojado
+                                        </Badge>
+                                    )}
+
+                                    {repair.isWarranty && (
+                                        <Badge className="bg-amber-500/20 border border-amber-400/50 text-amber-300 font-black text-[9px] uppercase">
+                                            🛡️ Garantía
+                                        </Badge>
                                     )}
                                 </div>
+
                                 {repair.branch && (
-                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-white/70 font-bold uppercase tracking-widest">
-                                        <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse shadow-[0_0_8px_rgba(96,165,250,0.8)]" />
-                                        <span className="truncate">{repair.branch.name}</span>
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-400 font-bold uppercase tracking-wider">
+                                        <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                                        <span>{repair.branch.name}</span>
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Device & Client quick tags */}
+                            <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+                                <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-xs shadow-inner">
+                                    <Smartphone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                    <span className="font-bold text-white uppercase italic truncate max-w-[170px]">
+                                        {repair.deviceBrand} {repair.deviceModel}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-xs shadow-inner">
+                                    <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    <span className="font-bold text-emerald-300 uppercase truncate max-w-[150px]">
+                                        {repair.customer.name}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </DialogHeader>
 
                     {/* Scrollable Content */}
-                    <div className={cn(
-                        "custom-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-muted/5 dark:bg-muted/10",
-                        images.length === 0 && "lg:overflow-y-hidden",
-                    )}>
-                        <div className="min-w-0 space-y-3 p-4">
+                    <div className="p-4 sm:p-6 space-y-4">
 
-                            {/* Top Stats Row - Vibrant Centered Cards */}
-                            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                                <div className="group flex min-h-20 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-center shadow-lg transition-all hover:border-blue-500">
-                                    <div className="mb-1.5 flex items-center gap-2 text-blue-400">
-                                        <Calendar className="w-4 h-4" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Ingreso</span>
-                                    </div>
-                                    <p className="text-lg font-black text-white">{format(new Date(repair.createdAt), "dd/MM/yy", { locale: es })}</p>
-                                    <p className="text-[11px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{format(new Date(repair.createdAt), "HH:mm", { locale: es })} hs</p>
+                        {/* 1. Top 4 KPI Cards */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                            
+                            {/* Ingreso */}
+                            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-center shadow-inner space-y-1">
+                                <div className="flex items-center justify-center gap-1.5 text-blue-400">
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Ingreso</span>
                                 </div>
-
-                                <div className="group flex min-h-20 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-center shadow-lg transition-all hover:border-amber-500">
-                                    <div className="mb-1.5 flex items-center gap-2 text-amber-400">
-                                        <Clock className="w-4 h-4" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Prometido</span>
-                                    </div>
-                                    <p className="text-lg font-black text-white">{format(new Date(repair.promisedAt), "dd/MM/yy", { locale: es })}</p>
-                                    <p className="text-[11px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{format(new Date(repair.promisedAt), "HH:mm", { locale: es })} hs</p>
-                                </div>
-
-                                <div className="group flex min-h-20 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-center shadow-lg transition-all hover:border-purple-500">
-                                    <div className="mb-1.5 flex items-center gap-2 text-purple-400">
-                                        <User className="w-4 h-4" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Técnico</span>
-                                    </div>
-                                    <p className="text-sm font-black text-white uppercase italic leading-tight px-1">
-                                        {(() => {
-                                            const lastTech = repair.statusHistory?.find((h) => h.user?.role === "TECHNICIAN")?.user;
-                                            if (lastTech?.name) return lastTech.name;
-                                            
-                                            const lastUser = repair.statusHistory?.[0]?.user;
-                                            if (lastUser?.name) return lastUser.name;
-
-                                            return repair.assignedTo ? repair.assignedTo.name : "SIN ASIGNAR";
-                                        })()}
-                                    </p>
-                                </div>
-
-                                <div className="group relative flex min-h-20 flex-col items-center justify-center overflow-hidden rounded-xl border border-blue-400 bg-blue-600 p-2.5 text-center shadow-[0_0_18px_rgba(37,99,235,0.32)]">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50" />
-                                    <div className="relative z-10 mb-1.5 flex items-center gap-2 text-blue-100">
-                                        <DollarSign className="w-5 h-5" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Presupuesto</span>
-                                    </div>
-                                    <p className="relative z-10 text-xl font-black italic tracking-tighter text-white">
-                                        {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice?.toLocaleString()}` : "A COTIZAR"}
-                                    </p>
-                                </div>
+                                <p className="text-sm sm:text-base font-black text-white">{format(new Date(repair.createdAt), "dd/MM/yy", { locale: es })}</p>
+                                <p className="text-[10px] font-bold text-slate-500 font-mono">{format(new Date(repair.createdAt), "HH:mm", { locale: es })} hs</p>
                             </div>
 
-                            {/* Main Content Grid */}
-                            <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 lg:grid-cols-12">
-
-                                <section className="rounded-xl border border-blue-500/25 bg-slate-950 p-3 lg:col-span-6">
-                                    <div className="mb-3 flex items-center gap-2 text-blue-300">
-                                        <Smartphone className="size-4" />
-                                        <h3 className="text-[10px] font-black uppercase tracking-[0.18em]">Equipo ingresado</h3>
-                                    </div>
-                                    <div className="grid h-[calc(100%-1.75rem)] grid-cols-1 gap-3 sm:grid-cols-2">
-                                    <div className="group flex min-h-32 flex-col items-center justify-center rounded-lg border border-slate-800 bg-slate-900 p-3 text-center transition-colors hover:bg-slate-800/80">
-                                        <div className="mb-2 flex size-10 items-center justify-center rounded-full border border-blue-500/20 bg-blue-500/10 shadow-inner">
-                                            <User className="size-5 text-blue-400" />
-                                        </div>
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1">Cliente</span>
-                                        <p className="mb-2 text-xl font-black uppercase leading-tight tracking-tight text-white">
-                                            {repair.customer.name}
-                                        </p>
-                                        <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-full border border-slate-700 shadow-sm">
-                                            <Smartphone className="w-4 h-4 text-blue-400" />
-                                            <span className="text-sm font-bold text-slate-300 tabular-nums">{repair.customer.phone || "Sin teléfono"}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Device Section - Modern Centered */}
-                                    <div className="group flex min-h-32 flex-col items-center justify-center rounded-lg border border-slate-800 bg-slate-900 p-3 text-center transition-colors hover:bg-slate-800/80">
-                                        <div className="mb-2 flex size-10 items-center justify-center rounded-full border border-purple-500/20 bg-purple-500/10 shadow-inner">
-                                            <Smartphone className="size-5 text-purple-400" />
-                                        </div>
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1">Dispositivo</span>
-                                        <p className="text-xl font-black uppercase italic leading-tight tracking-tighter text-white">
-                                            {repair.deviceBrand}
-                                        </p>
-                                        <p className="mt-1 text-xl font-black uppercase italic leading-tight tracking-tighter text-white">
-                                            {repair.deviceModel}
-                                        </p>
-                                    </div>
-                                    </div>
-                                </section>
-
-                                {/* RIGHT COLUMN: Core Info (Problem -> Diagnosis -> Images) */}
-                                <div className="min-w-0 space-y-3 lg:contents">
-
-                                    {/* Status of Work */}
-                                    <div className="grid min-w-0 grid-cols-1 gap-3 lg:contents">
-
-                                        <div className="self-stretch lg:col-span-6">
-                                            <RepairDetailsReception
-                                                accessType={repair.accessType}
-                                                accessCredential={repair.accessCredential}
-                                                hasSimCard={repair.hasSimCard}
-                                                hasMemoryCard={repair.hasMemoryCard}
-                                                isWarranty={repair.isWarranty}
-                                                originalRepair={repair.originalRepair}
-                                                warrantyRepairs={repair.warrantyRepairs}
-                                                onOpenRepair={onOpenRepair}
-                                                fillHeight
-                                            />
-                                        </div>
-
-                                        {/* Problem */}
-                                        <div className="space-y-2 lg:col-span-6">
-                                            <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] pl-1">PROBLEMA REPORTADO</h3>
-                                            <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4 shadow-inner">
-                                                <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap text-white/90 italic">
-                                                    &ldquo;{repair.problemDescription}&rdquo;
-                                                </p>
-                                            </div>
-                                        </div>
-
-
-                                        {/* Diagnosis (Vibrant Container) */}
-                                        <div className="space-y-2 lg:col-span-6">
-                                            <h3 className="text-[11px] font-black text-blue-400 uppercase tracking-[0.3em] pl-1 flex items-center gap-2">
-                                                DIAGNÓSTICO TÉCNICO
-                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                                            </h3>
-                                            <div className={`
-                                                relative overflow-hidden rounded-xl border-2 p-4 shadow-xl
-                                                ${repair.diagnosis
-                                                    ? "bg-blue-600/10 border-blue-500/50"
-                                                    : "bg-slate-900/50 border-dashed border-slate-800"
-                                                }
-                                            `}>
-                                                {repair.diagnosis ? (
-                                                    <p className="text-base font-black leading-relaxed whitespace-pre-wrap text-white">
-                                                        {repair.diagnosis}
-                                                    </p>
-                                                ) : (
-                                                    <div className="flex flex-col items-center justify-center py-4 text-center">
-                                                        <Clock className="w-8 h-8 text-slate-700 mb-3" />
-                                                        <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Esperando reporte...</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Assigned Parts Section */}
-                                        <div className="space-y-2 lg:col-span-12">
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-semibold text-muted-foreground pl-1 flex items-center gap-2">
-                                                    REPUESTOS ASIGNADOS
-                                                </h3>
-                                                {/* Add Part Button (If active and owned) */}
-                                                {onAddPart && repair.assignedUserId === currentUserId && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-7 text-xs gap-1 border-dashed border-primary/50 text-primary hover:bg-primary/5 hover:text-primary hover:border-primary"
-                                                        onClick={onAddPart}
-                                                    >
-                                                        <Plus className="w-3.5 h-3.5" />
-                                                        Agregar Repuesto
-                                                    </Button>
-                                                )}
-                                            </div>
-
-                                            {(!repair.parts || repair.parts.length === 0) && (
-                                                <div className="p-4 border border-dashed rounded-xl bg-muted/20 text-center">
-                                                    <p className="text-xs text-muted-foreground italic">No hay repuestos asignados a esta reparación.</p>
-                                                </div>
-                                            )}
-
-                                            {repair.parts && repair.parts.length > 0 && (
-                                                <div className="bg-card rounded-xl border shadow-sm divide-y">
-                                                    {repair.parts.map((p, idx) => (
-                                                        <div key={idx} className="p-3 flex items-center justify-between text-sm group">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
-                                                                    <span className="font-bold text-xs">R</span>
-                                                                </div>
-                                                                <div className="min-w-0">
-                                                                    <p className="font-medium text-foreground truncate">{p.sparePart.name}</p>
-                                                                    <p className="text-xs text-muted-foreground font-mono">SKU: {p.sparePart.sku}</p>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="flex items-center gap-2">
-                                                                <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700 dark:bg-orange-900/10 dark:text-orange-400 whitespace-nowrap">
-                                                                    Asignado
-                                                                </Badge>
-
-                                                                {/* Return Button */}
-                                                                {currentUserId && repair.assignedUserId === currentUserId && (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="destructive"
-                                                                        className="h-7 px-2 text-[10px] gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 border-0 shadow-none"
-                                                                        onClick={() => handleReturnPart(p.id)}
-                                                                        title="Devolver al inventario (Falla/Error)"
-                                                                    >
-                                                                        <RotateCcw className="w-3 h-3" />
-                                                                        Devolver
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-
-
-                                        {/* Images */}
-                                        {repair.deviceImages && repair.deviceImages.filter(isValidImg).length > 0 && (
-                                            <div className="space-y-2 pt-2 lg:col-span-12">
-                                                <h3 className="text-sm font-semibold text-muted-foreground pl-1">EVIDENCIA FOTOGRÁFICA</h3>
-                                                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                                                    {repair.deviceImages
-                                                        .filter(isValidImg)
-                                                        .map((url, idx) => (
-                                                            <RepairImage
-                                                                key={idx}
-                                                                url={url}
-                                                                index={idx}
-                                                                onClick={() => handleImageClick(idx)}
-                                                            />
-                                                        ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                    </div>
-                                </div>
-                            </div>
-
+                            {/* Prometido */}
                             <div className={cn(
-                                repair.observations && repair.observations.length > 0 && chronologicalHistory.length > 0
-                                    ? "grid items-start gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,2.2fr)]"
-                                    : "space-y-3",
+                                "border rounded-xl p-3 text-center shadow-inner space-y-1",
+                                isOverdue ? "bg-red-950/20 border-red-500/30" : "bg-slate-900/80 border-slate-800"
                             )}>
-                            {/* Activity blocks */}
-                            {repair.observations && repair.observations.length > 0 && (
-                                <div className="min-w-0 space-y-3 border-t border-slate-800 pt-3">
-                                    <h3 className="pl-1 text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">NOTAS / OBSERVACIONES</h3>
-                                    <div className="grid gap-2">
-                                        {repair.observations.map((obs, idx) => (
-                                            <div key={idx} className="relative rounded-xl border border-white/[0.06] bg-slate-900 p-3">
-                                                <div className="mb-2 flex items-start justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="flex size-6 items-center justify-center rounded-full border border-slate-700 bg-slate-800">
-                                                            <User className="size-3 text-slate-400" />
-                                                        </div>
-                                                        <span className="text-xs font-bold text-white/90">{obs.user?.name || "Sistema"}</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-end text-right">
-                                                        <span className="text-[10px] font-black italic tracking-tighter text-slate-500">{format(new Date(obs.createdAt), "dd/MM/yy")}</span>
-                                                        <span className="text-[9px] font-bold text-slate-600">{format(new Date(obs.createdAt), "HH:mm")} hs</span>
-                                                    </div>
-                                                </div>
-                                                <p className="whitespace-pre-wrap text-sm font-medium leading-relaxed text-white/80">{obs.content}</p>
-                                            </div>
-                                        ))}
-                                    </div>
+                                <div className="flex items-center justify-center gap-1.5">
+                                    <Clock className={cn("w-3.5 h-3.5", isOverdue ? "text-red-400" : "text-amber-400")} />
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Prometido</span>
+                                    {isOverdue && (
+                                        <span className="text-[8px] font-black text-red-400 uppercase tracking-wider bg-red-500/20 px-1.5 py-0.2 rounded border border-red-500/40">
+                                            Vencida
+                                        </span>
+                                    )}
                                 </div>
-                            )}
+                                <p className={cn("text-sm sm:text-base font-black", isOverdue ? "text-red-300 line-through" : "text-white")}>
+                                    {format(new Date(repair.promisedAt), "dd/MM/yy", { locale: es })}
+                                </p>
+                                <p className="text-[10px] font-bold text-slate-500 font-mono">{format(new Date(repair.promisedAt), "HH:mm", { locale: es })} hs</p>
+                            </div>
 
-                            {chronologicalHistory.length > 0 && (
-                                <div className="min-w-0 space-y-3 border-t border-slate-800 pt-3">
-                                    <div className="flex items-center justify-between gap-3 px-1">
-                                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">HISTORIAL DE ESTADOS</h3>
-                                        <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400">Ingreso → cierre</span>
-                                    </div>
-                                    <div className="relative grid gap-1.5 overflow-hidden rounded-xl border border-white/[0.06] bg-slate-950/70 p-2 sm:flex sm:flex-nowrap sm:px-2 sm:py-3">
-                                        <div className="absolute left-[8%] right-[8%] top-[54px] hidden h-px bg-gradient-to-r from-blue-500/20 via-blue-400/60 to-emerald-400/30 xl:block" />
-                                        {chronologicalHistory.map((history, idx) => (
-                                            <div key={idx} className="relative z-10 flex min-w-0 items-center gap-2 rounded-lg bg-slate-900/70 px-2 py-1.5 text-left sm:flex-1 sm:basis-0 sm:flex-col sm:gap-0 sm:bg-transparent sm:py-1 sm:text-center">
-                                                <div className="flex w-16 shrink-0 items-baseline gap-1.5 tabular-nums sm:w-auto">
-                                                    <span className="text-[10px] font-black text-white">{format(new Date(history.createdAt), "dd/MM")}</span>
-                                                    <span className="text-[9px] font-bold text-slate-500">{format(new Date(history.createdAt), "HH:mm")}</span>
-                                                </div>
-                                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-blue-400 bg-slate-950 text-[10px] font-black text-blue-300 shadow-[0_0_14px_rgba(96,165,250,0.3)] sm:my-2">
-                                                    {idx + 1}
-                                                </div>
-                                                <Badge variant="outline" className={cn("max-w-full truncate rounded-md border px-2 py-0.5 text-[8px] font-black uppercase", statusColorMap[history.toStatus.color ?? ""] || "bg-slate-800 text-white border-slate-700")}>
-                                                    {history.toStatus.name}
-                                                </Badge>
-                                                <span className="ml-auto max-w-20 truncate text-[8px] font-bold uppercase tracking-wider text-slate-500 sm:ml-0 sm:mt-1.5 sm:max-w-full">
-                                                    {history.user?.name.split(" ")[0] || (history.userId ? history.userId.slice(-4) : "Sistema")}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
+                            {/* Técnico */}
+                            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-center shadow-inner space-y-1">
+                                <div className="flex items-center justify-center gap-1.5 text-purple-400">
+                                    <User className="w-3.5 h-3.5" />
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Técnico</span>
                                 </div>
-                            )}
+                                <p className="text-xs sm:text-sm font-black text-white uppercase italic truncate">
+                                    {(() => {
+                                        const lastTech = repair.statusHistory?.find((h) => h.user?.role === "TECHNICIAN")?.user;
+                                        if (lastTech?.name) return lastTech.name;
+                                        const lastUser = repair.statusHistory?.[0]?.user;
+                                        if (lastUser?.name) return lastUser.name;
+                                        return repair.assignedTo ? repair.assignedTo.name : "Sin Asignar";
+                                    })()}
+                                </p>
+                                <p className="text-[9px] font-bold text-purple-400/80 uppercase">Mesa Técnica</p>
+                            </div>
+
+                            {/* Presupuesto */}
+                            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 border border-blue-400/40 rounded-xl p-3 text-center shadow-[0_0_18px_rgba(37,99,235,0.2)] space-y-1 text-white">
+                                <div className="flex items-center justify-center gap-1.5 text-blue-100">
+                                    <DollarSign className="w-3.5 h-3.5" />
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em]">Presupuesto</span>
+                                </div>
+                                <p className="text-base sm:text-lg font-black italic tracking-tight">
+                                    {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice?.toLocaleString()}` : "A COTIZAR"}
+                                </p>
+                                <p className="text-[9px] font-bold text-blue-200/80 uppercase">Estimado</p>
                             </div>
                         </div>
+
+                        {/* 2. Main Content 2-Column Bento Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                            
+                            {/* Left Column (5 cols): Cliente, Contacto & Recepción */}
+                            <div className="lg:col-span-5 space-y-3">
+                                
+                                {/* Customer & Contact Card */}
+                                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2 shadow-inner">
+                                    <div className="flex items-center gap-2 text-slate-400">
+                                        <User className="w-3.5 h-3.5 text-emerald-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                            Cliente y Contacto
+                                        </span>
+                                    </div>
+                                    <div className="space-y-1 pl-5.5">
+                                        <p className="text-sm font-black text-white uppercase truncate">
+                                            {repair.customer.name}
+                                        </p>
+                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                                            <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                                            <span>{repair.customer.phone || "Sin teléfono registrado"}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Reception Summary (Access PIN/Pattern, SIM, Memory, Warranty) */}
+                                <RepairDetailsReception
+                                    accessType={repair.accessType}
+                                    accessCredential={repair.accessCredential}
+                                    hasSimCard={repair.hasSimCard}
+                                    hasMemoryCard={repair.hasMemoryCard}
+                                    isWarranty={repair.isWarranty}
+                                    originalRepair={repair.originalRepair}
+                                    warrantyRepairs={repair.warrantyRepairs}
+                                    onOpenRepair={onOpenRepair}
+                                />
+                            </div>
+
+                            {/* Right Column (7 cols): Problema, Diagnóstico Técnico, Repuestos & Fotos */}
+                            <div className="lg:col-span-7 space-y-3">
+                                
+                                {/* Problem Description (Seller / Intake) */}
+                                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5 shadow-inner">
+                                    <div className="flex items-center gap-2 text-slate-400">
+                                        <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                            Diagnóstico del Vendedor / Falla Reportada
+                                        </span>
+                                    </div>
+                                    <p className="text-xs sm:text-sm font-semibold text-slate-200 italic leading-relaxed pl-3 border-l-2 border-amber-500/40">
+                                        {repair.problemDescription || "Sin descripción de falla registrada."}
+                                    </p>
+                                </div>
+
+                                {/* Technical Diagnosis */}
+                                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5 shadow-inner">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-slate-300">
+                                            <Wrench className="w-3.5 h-3.5 text-emerald-400" />
+                                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">
+                                                Informe Técnico Realizado
+                                            </span>
+                                        </div>
+                                        {repair.diagnosis && (
+                                            <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                                                Registrado
+                                            </span>
+                                        )}
+                                    </div>
+                                    {repair.diagnosis ? (
+                                        <p className="text-xs sm:text-sm font-bold text-white leading-relaxed pl-3 border-l-2 border-emerald-500/40 whitespace-pre-wrap">
+                                            {repair.diagnosis}
+                                        </p>
+                                    ) : (
+                                        <div className="py-2.5 text-center text-xs font-bold text-slate-500 italic">
+                                            Esperando informe técnico de cierre...
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Assigned Spare Parts */}
+                                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2 shadow-inner">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                            Repuestos Asignados
+                                        </span>
+                                        {onAddPart && repair.assignedUserId === currentUserId && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 text-xs gap-1 border-dashed border-primary/50 text-primary hover:bg-primary/5 rounded-lg"
+                                                onClick={onAddPart}
+                                            >
+                                                <Plus className="w-3 h-3" />
+                                                Agregar
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {(!repair.parts || repair.parts.length === 0) ? (
+                                        <p className="text-xs text-slate-500 italic py-1">No hay repuestos asignados a este ticket.</p>
+                                    ) : (
+                                        <div className="space-y-1.5">
+                                            {repair.parts.map((p, idx) => (
+                                                <div key={idx} className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs">
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-white truncate">{p.sparePart.name}</p>
+                                                        <p className="text-[10px] text-slate-500 font-mono">SKU: {p.sparePart.sku}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-300 text-[9px] font-bold uppercase">
+                                                            Asignado
+                                                        </Badge>
+                                                        {currentUserId && repair.assignedUserId === currentUserId && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                className="h-6 px-2 text-[9px] gap-1 bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800/50 rounded"
+                                                                onClick={() => handleReturnPart(p.id)}
+                                                                title="Devolver al inventario"
+                                                            >
+                                                                <RotateCcw className="w-2.5 h-2.5" />
+                                                                Devolver
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Photographic Evidence */}
+                                {images.length > 0 && (
+                                    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2 shadow-inner">
+                                        <div className="flex items-center gap-2 text-slate-400">
+                                            <Camera className="w-3.5 h-3.5 text-cyan-400" />
+                                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                                Evidencia Fotográfica ({images.length})
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                                            {images.map((url, idx) => (
+                                                <RepairImage
+                                                    key={idx}
+                                                    url={url}
+                                                    index={idx}
+                                                    onClick={() => handleImageClick(idx)}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 3. Timeline / Status History & Observations */}
+                        {chronologicalHistory.length > 0 && (
+                            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-3 shadow-inner">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                        Historial de Estados
+                                    </span>
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400">
+                                        Ingreso → Cierre
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                                    {chronologicalHistory.map((history, idx) => {
+                                        const hStyle = statusColorMap[history.toStatus.color ?? ""] || { bg: "bg-slate-800", border: "border-slate-700", text: "text-white" };
+                                        return (
+                                            <div key={idx} className="bg-slate-950 border border-slate-800/80 rounded-xl p-2.5 text-center space-y-1">
+                                                <div className="flex items-center justify-center gap-1 text-[9px] font-mono text-slate-500">
+                                                    <span>{format(new Date(history.createdAt), "dd/MM")}</span>
+                                                    <span>{format(new Date(history.createdAt), "HH:mm")}</span>
+                                                </div>
+                                                <Badge variant="outline" className={cn("text-[9px] font-black uppercase py-0.5 px-1.5 truncate max-w-full", hStyle.bg, hStyle.border, hStyle.text)}>
+                                                    {history.toStatus.name}
+                                                </Badge>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase truncate">
+                                                    {history.user?.name.split(" ")[0] || (history.userId ? history.userId.slice(-4) : "Sistema")}
+                                                </p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 4. Notes / Observations */}
+                        {repair.observations && repair.observations.length > 0 && (
+                            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2 shadow-inner">
+                                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 block">
+                                    Notas y Observaciones
+                                </span>
+                                <div className="grid gap-2">
+                                    {repair.observations.map((obs, idx) => (
+                                        <div key={idx} className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1">
+                                            <div className="flex items-center justify-between text-xs text-slate-400">
+                                                <span className="font-bold text-slate-300">{obs.user?.name || "Sistema"}</span>
+                                                <span className="text-[10px] font-mono text-slate-500">{format(new Date(obs.createdAt), "dd/MM/yy HH:mm")} hs</span>
+                                            </div>
+                                            <p className="text-xs font-medium text-slate-200 whitespace-pre-wrap">{obs.content}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                     </div>
                 </DialogContent>
             </Dialog>

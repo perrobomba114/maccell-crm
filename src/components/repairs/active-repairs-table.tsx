@@ -185,11 +185,17 @@ export function ActiveRepairsTable({
                 <Table>
                     <TableHeader className="border-b-2 border-border bg-muted/70 backdrop-blur-sm">
                         <TableRow className="hover:bg-transparent border-none">
-                            {["Pos.", "Ticket", "Entrega", "Est.", "Cliente", "Dispositivo", "Técnico", "Precio", "Estado"].map(h => (
-                                <TableHead key={h} className="text-center px-1 text-xs font-extrabold uppercase tracking-[0.08em] text-foreground h-12">{h}</TableHead>
-                            ))}
+                            <TableHead className="w-10 text-center px-1 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Pos.</TableHead>
+                            <TableHead className="text-center px-1.5 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Ticket</TableHead>
+                            <TableHead className="text-center px-1.5 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Entrega</TableHead>
+                            <TableHead className="text-center px-1 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Est.</TableHead>
+                            <TableHead className="text-left px-2 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Cliente</TableHead>
+                            <TableHead className="text-left px-2 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Dispositivo</TableHead>
+                            <TableHead className="text-center px-1 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Técnico</TableHead>
+                            <TableHead className="text-center px-1.5 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Precio</TableHead>
+                            <TableHead className="text-center px-1.5 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Estado</TableHead>
                             {showActionColumn && (
-                                <TableHead className="h-12 w-[250px] px-1 text-center text-xs font-extrabold uppercase tracking-[0.08em] text-foreground">Acciones</TableHead>
+                                <TableHead className="h-11 min-w-[170px] px-2 text-center text-[11px] font-black uppercase tracking-wider text-foreground">Acciones</TableHead>
                             )}
                         </TableRow>
                     </TableHeader>

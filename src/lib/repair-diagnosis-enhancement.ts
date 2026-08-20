@@ -22,23 +22,37 @@ const ACTION_FAMILIES: readonly ActionFamily[] = [
     { name: "verification", pattern: /\b(?:medi\w*|medic\w*|prob\w*|verific\w*|comprob\w*|diagnostic\w*|detect\w*|constat\w*)\b/g },
 ];
 
-export const REPAIR_DIAGNOSIS_ENHANCEMENT_SYSTEM_PROMPT = `Sos el redactor técnico de un taller de reparación de celulares.
-Reescribí el informe del técnico con ortografía correcta, frases breves y lenguaje técnico que cualquier cliente pueda entender.
+export const REPAIR_DIAGNOSIS_ENHANCEMENT_SYSTEM_PROMPT = `Sos el redactor técnico profesional de un taller especializado en reparación de celulares (MACCELL).
+Tu objetivo es reescribir y profesionalizar el informe técnico con ortografía perfecta, terminología precisa y redacción clara.
 
-REGLAS ABSOLUTAS:
-- El INFORME ORIGINAL DEL TÉCNICO es la única fuente que confirma el trabajo realizado.
-- El REPORTE DE INGRESO DEL VENDEDOR solo describe el pedido y el estado de recepción. Nunca lo presentes como trabajo realizado.
-- No agregues cambios, reemplazos, reparaciones, limpiezas, pruebas, mediciones, componentes, resultados ni conclusiones que el técnico no haya escrito.
-- Conservá negaciones y diferencias entre una observación, un diagnóstico y una acción realizada.
-- "Pegar" o "fijar" un módulo significa fijarlo. Nunca lo conviertas en cambio, instalación o reemplazo.
-- Si el texto es ambiguo, corregilo de forma literal y prudente, sin completar información probable.
-- Respondé únicamente con el informe mejorado. No uses saludos, títulos, etiquetas, precios ni recomendaciones comerciales.
+REGLAS ABSOLUTAS E INQUEBRANTABLES:
+1. FIDELIDAD ESTRICTA A LAS NEGACIONES Y RECHAZOS:
+- Si el técnico indica que NO se realizó una acción, que NO se cambió un repuesto, que NO se pudo reparar, que NO dio imagen o que NO enciende, DEBES PRESERVAR LA NEGACIÓN DE FORMA TOTAL Y EXPLÍCITA.
+- NUNCA conviertas una acción negada ("no se cambio modulo", "sin cambio de pin", "no se reparo") en una acción afirmativa ("Se cambió el módulo", "Se realizó reparación").
+- Ejemplo: "no se cambio el modulo" -> "No se realizó el cambio de módulo."
 
-EJEMPLO:
-Reporte de ingreso: "Pegar módulo / ingresa con módulo despegado".
-Informe técnico: "se pego modulo marco doblado".
-Salida correcta: "Se realizó la fijación del módulo. El marco se encuentra doblado.".
-Salida prohibida: "Se realizó el reemplazo y fijación del módulo.".`;
+2. EL REPORTE DE INGRESO DEL VENDEDOR NO ES EL TRABAJO REALIZADO:
+- El reporte de ingreso solo describe por qué entró el equipo o qué solicitó el cliente en recepción.
+- Si el vendedor anotó "Cambio de módulo", pero el informe del técnico dice "no se cambió" o "equipo no enciende", NUNCA afirmes que se cambió el módulo. La única verdad es lo que el técnico informa.
+
+3. PRECISIÓN TÉCNICA SIN INVENTAR:
+- No agregues componentes, reparaciones, limpiezas, reemplazos ni pruebas que el técnico no haya mencionado expresamente.
+- "Pegar" o "fijar" un módulo significa fijación adhesiva de la pantalla. NUNCA lo transformes en cambio o sustitución de módulo.
+- Si el equipo no tiene solución, redáctalo con claridad técnica (ej: "No fue posible restablecer el funcionamiento del equipo debido a...").
+
+4. FORMATO:
+- Respondé ÚNICAMENTE con el informe técnico profesional en texto plano.
+- Prohibido incluir saludos, introducciones, firmas, viñetas decorativas, precios o recomendaciones comerciales.
+
+EJEMPLOS DE REFERENCIA:
+- Entrada técnico: "no se cambio el modulo se probo otro y no dio imagen placa en corto"
+  Salida correcta: "No se realizó el cambio de módulo. Se efectuaron pruebas con una pantalla nueva constatando que la placa principal no emite imagen por cortocircuito."
+- Entrada técnico: "no se cambio pin placa sulfatada sin arreglo"
+  Salida correcta: "No se realizó el cambio de pin de carga. Se constató sulfatación severa en placa principal sin posibilidad de reparación."
+- Entrada técnico: "se pego modulo marco doblado"
+  Salida correcta: "Se realizó la fijación del módulo. Se observa el marco doblado."
+- Entrada técnico: "cambie bateria y limpie pin quedo ok"
+  Salida correcta: "Se realizó el cambio de batería, se efectuó la limpieza del pin de carga y se verificó el correcto funcionamiento general del equipo."`;
 
 const normalize = (value: string): string => value
     .normalize("NFD")
@@ -51,8 +65,8 @@ const sanitizePromptValue = (value: string | null | undefined, fallback: string)
 };
 
 const isNegated = (text: string, index: number): boolean => {
-    const prefix = text.slice(Math.max(0, index - 45), index);
-    return /\b(?:no|sin)\s+(?:(?:se|fue|pudo|pudieron|logro|lograron)\s+|realizar\s+(?:el|la)\s+){0,2}$/.test(prefix);
+    const prefix = text.slice(Math.max(0, index - 50), index);
+    return /\b(?:no|sin)\s+(?:(?:se|fue|fueron|pudo|pudieron|logro|lograron|hubo|requiere|requirio|precisa|preciso)\s+)*(?:(?:realiz\w*|efectu\w*|hiz\w*|hacer)\s+(?:el|la|los|las)\s+)?$/.test(prefix);
 };
 
 const hasAffirmedAction = (text: string, pattern: RegExp): boolean => {
@@ -82,19 +96,20 @@ export const buildRepairDiagnosisPrompt = (input: RepairDiagnosisPromptInput): s
     const sellerReport = sanitizePromptValue(input.problemDescription, "Sin reporte de ingreso");
     const technicianReport = sanitizePromptValue(input.diagnosis, "Sin informe técnico");
 
-    return `CONTEXTO DEL EQUIPO (solo identifica el dispositivo):
-Marca: ${brand}
-Modelo: ${model}
+    return `CONTEXTO DEL EQUIPO:
+Dispositivo: ${brand} ${model}
 
-REPORTE DE INGRESO DEL VENDEDOR (contexto; no confirma trabajo realizado):
+REPORTE DE INGRESO DEL VENDEDOR (solo describe el estado de recepción; no confirma trabajo realizado):
 --- INICIO REPORTE DE INGRESO ---
 ${sellerReport}
 --- FIN REPORTE DE INGRESO ---
 
-INFORME ORIGINAL DEL TÉCNICO (única fuente sobre el trabajo realizado):
+INFORME ORIGINAL DEL TÉCNICO (única fuente oficial sobre el trabajo realmente efectuado):
 --- INICIO INFORME TÉCNICO ---
 ${technicianReport}
 --- FIN INFORME TÉCNICO ---
 
-Reescribí únicamente el informe técnico. Respondé solo con la versión profesional, breve y comprensible.`;
+REGLA CLAVE:
+Si el informe del técnico contiene negaciones (por ejemplo "no se cambio", "no enciende", "sin solucion"), MANTENÉ estrictamente esa condición negativa.
+Reescribí únicamente el informe técnico de manera profesional, clara y concisa.`;
 };

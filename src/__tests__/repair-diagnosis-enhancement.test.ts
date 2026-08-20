@@ -88,3 +88,22 @@ test("delimits and sanitizes seller and technician text as untrusted data", () =
     assert.match(prompt, /se fijó el módulo/);
     assert.match(prompt, /módulo despegado/);
 });
+
+test("rejects affirmative replacement when technician says no se cambio el modulo", () => {
+    const result = validateEnhancedDiagnosis(
+        "no se cambio el modulo",
+        "Se realizó el cambio de módulo de pantalla.",
+    );
+
+    assert.deepEqual(result, { ok: false, unsupportedActions: ["replacement"] });
+});
+
+test("allows negated replacement when technician says no se cambio el modulo", () => {
+    const result = validateEnhancedDiagnosis(
+        "no se cambio el modulo",
+        "No se realizó el cambio de módulo.",
+    );
+
+    assert.deepEqual(result, { ok: true, unsupportedActions: [] });
+});
+
