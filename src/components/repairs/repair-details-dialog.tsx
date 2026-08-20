@@ -22,14 +22,16 @@ import {
     FileText,
     Shield,
     Camera,
-    Sparkles
+    Sparkles,
+    ArrowLeft,
+    ShieldAlert
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { cn, getImgUrl, isValidImg } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { createSinglePartReturnAction } from "@/lib/actions/repairs";
+import { createSinglePartReturnAction, getRepairByIdAction } from "@/lib/actions/repairs";
 import { useRouter } from "next/navigation";
 import type { RepairAccessType } from "@/lib/repairs/intake";
 import { RepairDetailsReception } from "./repair-details-reception";
@@ -164,24 +166,61 @@ function RepairImage({ url, index, onClick }: { url: string; index: number; onCl
     );
 }
 
-export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, onAddPart, onOpenRepair }: RepairDetailsDialogProps) {
+export function RepairDetailsDialog({ repair: initialRepair, isOpen, onClose, currentUserId, onAddPart, onOpenRepair }: RepairDetailsDialogProps) {
     const router = useRouter();
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
 
-    if (!repair) return null;
+    const [activeRepair, setActiveRepair] = useState<RepairDetails | null>(initialRepair);
+    const [historyStack, setHistoryStack] = useState<RepairDetails[]>([]);
 
-    const images = (repair.deviceImages ?? []).filter(isValidImg);
-    const chronologicalHistory = [...(repair.statusHistory ?? [])].sort(
+    useEffect(() => {
+        setActiveRepair(initialRepair);
+        setHistoryStack([]);
+    }, [initialRepair]);
+
+    if (!activeRepair) return null;
+
+    const images = (activeRepair.deviceImages ?? []).filter(isValidImg);
+    const chronologicalHistory = [...(activeRepair.statusHistory ?? [])].sort(
         (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
     );
 
-    const promisedDate = repair.promisedAt ? new Date(repair.promisedAt) : null;
+    const promisedDate = activeRepair.promisedAt ? new Date(activeRepair.promisedAt) : null;
     const isOverdue = promisedDate ? promisedDate < new Date() : false;
 
     const handleImageClick = (index: number) => {
         setViewerIndex(index);
         setViewerOpen(true);
+    };
+
+    const handleOpenLinkedRepair = async (repairId: string) => {
+        if (!repairId) return;
+        if (activeRepair.id === repairId) return;
+
+        const toastId = toast.loading("Cargando ticket original...");
+        try {
+            const fetched = await getRepairByIdAction(repairId);
+            if (!fetched) {
+                toast.error("No se encontró la reparación vinculada.", { id: toastId });
+                return;
+            }
+            toast.dismiss(toastId);
+            setHistoryStack((prev) => [...prev, activeRepair]);
+            setActiveRepair(fetched as unknown as RepairDetails);
+        } catch {
+            toast.error("Error al cargar la reparación vinculada.", { id: toastId });
+        }
+    };
+
+    const handleBack = () => {
+        if (historyStack.length > 0) {
+            const previous = historyStack[historyStack.length - 1];
+            setHistoryStack((prev) => prev.slice(0, -1));
+            setActiveRepair(previous);
+        } else {
+            onClose();
+        }
     };
 
     const handleReturnPart = async (partId: string) => {
@@ -201,22 +240,45 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
             } else {
                 toast.error(result.error || "Error al devolver.", { id: toastId });
             }
-        } catch (error) {
+        } catch {
             toast.error("Error de conexión.", { id: toastId });
         }
     };
 
-    const statusStyle = statusColorMap[repair.status.color ?? ""] || { bg: "bg-slate-500/15", border: "border-slate-500/40", text: "text-slate-300" };
+    const statusStyle = statusColorMap[activeRepair.status.color ?? ""] || { bg: "bg-slate-500/15", border: "border-slate-500/40", text: "text-slate-300" };
+    const isViewingLinked = historyStack.length > 0;
+    const parentTicketNumber = isViewingLinked ? historyStack[historyStack.length - 1].ticketNumber : null;
 
     return (
         <>
-            <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+            <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleBack(); }}>
                 <DialogContent className="max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-0 border border-slate-800/90 bg-slate-950 shadow-2xl rounded-2xl sm:max-w-[min(1100px,calc(100vw-2rem))] custom-scrollbar">
                     
+                    {/* Top banner when viewing linked warranty ticket */}
+                    {isViewingLinked && parentTicketNumber && (
+                        <div className="flex items-center justify-between bg-amber-500/15 border-b border-amber-500/30 px-5 py-2.5 text-amber-200">
+                            <div className="flex items-center gap-2">
+                                <ShieldAlert className="w-4 h-4 text-amber-400" />
+                                <span className="text-xs font-black uppercase tracking-wider">
+                                    Viendo Ticket Original de Garantía #{activeRepair.ticketNumber}
+                                </span>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleBack}
+                                className="h-7 px-3 text-xs gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 border-amber-400/50 rounded-lg font-bold shadow-sm cursor-pointer"
+                            >
+                                <ArrowLeft className="w-3.5 h-3.5" />
+                                <span>Volver a Ticket #{parentTicketNumber}</span>
+                            </Button>
+                        </div>
+                    )}
+
                     {/* Header: Dark Glassmorphic with Ticket, Status & Branch */}
                     <DialogHeader className={cn(
                         "relative shrink-0 overflow-hidden border-b border-slate-800 p-5 sm:p-6 text-left",
-                        repair.isWet 
+                        activeRepair.isWet 
                             ? "bg-gradient-to-b from-blue-950/40 via-slate-900 to-slate-950" 
                             : "bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950"
                     )}>
@@ -226,31 +288,37 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                             <div className="space-y-1.5 min-w-0">
                                 <div className="flex items-center gap-2.5 flex-wrap">
                                     <DialogTitle className="text-xl sm:text-2xl font-black uppercase italic tracking-tight text-white">
-                                        Ticket #{repair.ticketNumber}
+                                        Ticket #{activeRepair.ticketNumber}
                                     </DialogTitle>
 
                                     <Badge className={cn("font-black border rounded-lg px-2.5 py-0.5 text-[10px] uppercase shadow-sm", statusStyle.bg, statusStyle.border, statusStyle.text)}>
                                         <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-pulse" />
-                                        {repair.status.name}
+                                        {activeRepair.status.name}
                                     </Badge>
 
-                                    {repair.isWet && (
+                                    {activeRepair.isWet && (
                                         <Badge className="bg-blue-600/20 border border-blue-400/50 text-blue-300 font-black text-[9px] uppercase">
                                             💧 Mojado
                                         </Badge>
                                     )}
 
-                                    {repair.isWarranty && (
+                                    {activeRepair.isWarranty && (
                                         <Badge className="bg-amber-500/20 border border-amber-400/50 text-amber-300 font-black text-[9px] uppercase">
                                             🛡️ Garantía
                                         </Badge>
                                     )}
+
+                                    {isViewingLinked && (
+                                        <Badge className="bg-purple-500/20 border border-purple-400/50 text-purple-300 font-black text-[9px] uppercase">
+                                            Ticket Previo
+                                        </Badge>
+                                    )}
                                 </div>
 
-                                {repair.branch && (
+                                {activeRepair.branch && (
                                     <div className="flex items-center gap-1.5 text-xs text-slate-400 font-bold uppercase tracking-wider">
                                         <MapPin className="w-3.5 h-3.5 text-blue-400" />
-                                        <span>{repair.branch.name}</span>
+                                        <span>{activeRepair.branch.name}</span>
                                     </div>
                                 )}
                             </div>
@@ -260,13 +328,13 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                 <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-xs shadow-inner">
                                     <Smartphone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                                     <span className="font-bold text-white uppercase italic truncate max-w-[170px]">
-                                        {repair.deviceBrand} {repair.deviceModel}
+                                        {activeRepair.deviceBrand} {activeRepair.deviceModel}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-xs shadow-inner">
                                     <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                                     <span className="font-bold text-emerald-300 uppercase truncate max-w-[150px]">
-                                        {repair.customer.name}
+                                        {activeRepair.customer.name}
                                     </span>
                                 </div>
                             </div>
@@ -285,8 +353,8 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     <Calendar className="w-3.5 h-3.5" />
                                     <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Ingreso</span>
                                 </div>
-                                <p className="text-sm sm:text-base font-black text-white">{format(new Date(repair.createdAt), "dd/MM/yy", { locale: es })}</p>
-                                <p className="text-[10px] font-bold text-slate-500 font-mono">{format(new Date(repair.createdAt), "HH:mm", { locale: es })} hs</p>
+                                <p className="text-sm sm:text-base font-black text-white">{format(new Date(activeRepair.createdAt), "dd/MM/yy", { locale: es })}</p>
+                                <p className="text-[10px] font-bold text-slate-500 font-mono">{format(new Date(activeRepair.createdAt), "HH:mm", { locale: es })} hs</p>
                             </div>
 
                             {/* Prometido */}
@@ -304,9 +372,9 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     )}
                                 </div>
                                 <p className={cn("text-sm sm:text-base font-black", isOverdue ? "text-red-300 line-through" : "text-white")}>
-                                    {format(new Date(repair.promisedAt), "dd/MM/yy", { locale: es })}
+                                    {format(new Date(activeRepair.promisedAt), "dd/MM/yy", { locale: es })}
                                 </p>
-                                <p className="text-[10px] font-bold text-slate-500 font-mono">{format(new Date(repair.promisedAt), "HH:mm", { locale: es })} hs</p>
+                                <p className="text-[10px] font-bold text-slate-500 font-mono">{format(new Date(activeRepair.promisedAt), "HH:mm", { locale: es })} hs</p>
                             </div>
 
                             {/* Técnico */}
@@ -317,11 +385,11 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                 </div>
                                 <p className="text-xs sm:text-sm font-black text-white uppercase italic truncate">
                                     {(() => {
-                                        const lastTech = repair.statusHistory?.find((h) => h.user?.role === "TECHNICIAN")?.user;
+                                        const lastTech = activeRepair.statusHistory?.find((h) => h.user?.role === "TECHNICIAN")?.user;
                                         if (lastTech?.name) return lastTech.name;
-                                        const lastUser = repair.statusHistory?.[0]?.user;
+                                        const lastUser = activeRepair.statusHistory?.[0]?.user;
                                         if (lastUser?.name) return lastUser.name;
-                                        return repair.assignedTo ? repair.assignedTo.name : "Sin Asignar";
+                                        return activeRepair.assignedTo ? activeRepair.assignedTo.name : "Sin Asignar";
                                     })()}
                                 </p>
                                 <p className="text-[9px] font-bold text-purple-400/80 uppercase">Mesa Técnica</p>
@@ -334,7 +402,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     <span className="text-[9px] font-black uppercase tracking-[0.2em]">Presupuesto</span>
                                 </div>
                                 <p className="text-base sm:text-lg font-black italic tracking-tight">
-                                    {(repair.estimatedPrice ?? 0) > 0 ? `$${repair.estimatedPrice?.toLocaleString()}` : "A COTIZAR"}
+                                    {(activeRepair.estimatedPrice ?? 0) > 0 ? `$${activeRepair.estimatedPrice?.toLocaleString()}` : "A COTIZAR"}
                                 </p>
                                 <p className="text-[9px] font-bold text-blue-200/80 uppercase">Estimado</p>
                             </div>
@@ -356,25 +424,25 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                     </div>
                                     <div className="space-y-1 pl-5.5">
                                         <p className="text-sm font-black text-white uppercase truncate">
-                                            {repair.customer.name}
+                                            {activeRepair.customer.name}
                                         </p>
                                         <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
                                             <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                                            <span>{repair.customer.phone || "Sin teléfono registrado"}</span>
+                                            <span>{activeRepair.customer.phone || "Sin teléfono registrado"}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Reception Summary (Access PIN/Pattern, SIM, Memory, Warranty) */}
                                 <RepairDetailsReception
-                                    accessType={repair.accessType}
-                                    accessCredential={repair.accessCredential}
-                                    hasSimCard={repair.hasSimCard}
-                                    hasMemoryCard={repair.hasMemoryCard}
-                                    isWarranty={repair.isWarranty}
-                                    originalRepair={repair.originalRepair}
-                                    warrantyRepairs={repair.warrantyRepairs}
-                                    onOpenRepair={onOpenRepair}
+                                    accessType={activeRepair.accessType}
+                                    accessCredential={activeRepair.accessCredential}
+                                    hasSimCard={activeRepair.hasSimCard}
+                                    hasMemoryCard={activeRepair.hasMemoryCard}
+                                    isWarranty={activeRepair.isWarranty}
+                                    originalRepair={activeRepair.originalRepair}
+                                    warrantyRepairs={activeRepair.warrantyRepairs}
+                                    onOpenRepair={handleOpenLinkedRepair}
                                 />
                             </div>
 
@@ -390,7 +458,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                         </span>
                                     </div>
                                     <p className="text-xs sm:text-sm font-semibold text-slate-200 italic leading-relaxed pl-3 border-l-2 border-amber-500/40">
-                                        {repair.problemDescription || "Sin descripción de falla registrada."}
+                                        {activeRepair.problemDescription || "Sin descripción de falla registrada."}
                                     </p>
                                 </div>
 
@@ -403,15 +471,15 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                                 Informe Técnico Realizado
                                             </span>
                                         </div>
-                                        {repair.diagnosis && (
+                                        {activeRepair.diagnosis && (
                                             <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
                                                 Registrado
                                             </span>
                                         )}
                                     </div>
-                                    {repair.diagnosis ? (
+                                    {activeRepair.diagnosis ? (
                                         <p className="text-xs sm:text-sm font-bold text-white leading-relaxed pl-3 border-l-2 border-emerald-500/40 whitespace-pre-wrap">
-                                            {repair.diagnosis}
+                                            {activeRepair.diagnosis}
                                         </p>
                                     ) : (
                                         <div className="py-2.5 text-center text-xs font-bold text-slate-500 italic">
@@ -426,7 +494,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                         <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                                             Repuestos Asignados
                                         </span>
-                                        {onAddPart && repair.assignedUserId === currentUserId && (
+                                        {onAddPart && activeRepair.assignedUserId === currentUserId && (
                                             <Button
                                                 size="sm"
                                                 variant="outline"
@@ -439,11 +507,11 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                         )}
                                     </div>
 
-                                    {(!repair.parts || repair.parts.length === 0) ? (
+                                    {(!activeRepair.parts || activeRepair.parts.length === 0) ? (
                                         <p className="text-xs text-slate-500 italic py-1">No hay repuestos asignados a este ticket.</p>
                                     ) : (
                                         <div className="space-y-1.5">
-                                            {repair.parts.map((p, idx) => (
+                                            {activeRepair.parts.map((p, idx) => (
                                                 <div key={idx} className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs">
                                                     <div className="min-w-0">
                                                         <p className="font-bold text-white truncate">{p.sparePart.name}</p>
@@ -453,7 +521,7 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                                                         <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-300 text-[9px] font-bold uppercase">
                                                             Asignado
                                                         </Badge>
-                                                        {currentUserId && repair.assignedUserId === currentUserId && (
+                                                        {currentUserId && activeRepair.assignedUserId === currentUserId && (
                                                             <Button
                                                                 size="sm"
                                                                 variant="destructive"
@@ -530,13 +598,13 @@ export function RepairDetailsDialog({ repair, isOpen, onClose, currentUserId, on
                         )}
 
                         {/* 4. Notes / Observations */}
-                        {repair.observations && repair.observations.length > 0 && (
+                        {activeRepair.observations && activeRepair.observations.length > 0 && (
                             <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2 shadow-inner">
                                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 block">
                                     Notas y Observaciones
                                 </span>
                                 <div className="grid gap-2">
-                                    {repair.observations.map((obs, idx) => (
+                                    {activeRepair.observations.map((obs, idx) => (
                                         <div key={idx} className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1">
                                             <div className="flex items-center justify-between text-xs text-slate-400">
                                                 <span className="font-bold text-slate-300">{obs.user?.name || "Sistema"}</span>
