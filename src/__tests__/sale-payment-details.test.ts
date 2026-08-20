@@ -38,3 +38,32 @@ test("groups repeated mixed payment methods before displaying details", () => {
         { method: "CARD", label: "Tarjeta", amount: 40000, formattedAmount: "$40.000" },
     ]);
 });
+
+test("correctly identifies single MercadoPago payment even if paymentMethod was SPLIT", () => {
+    const details = buildSalePaymentDetails({
+        total: 10000,
+        paymentMethod: "SPLIT",
+        payments: [
+            { method: "MERCADOPAGO", amount: 10000 },
+        ],
+    });
+
+    assert.equal(details.label, "MercadoPago");
+    assert.equal(details.isMixed, false);
+    assert.deepEqual(details.rows, [
+        { method: "MERCADOPAGO", label: "MercadoPago", amount: 10000, formattedAmount: "$10.000" },
+    ]);
+    assert.equal(details.formattedTotal, "$10.000");
+});
+
+test("correctly handles MercadoPago sale without explicit payments array", () => {
+    const details = buildSalePaymentDetails({
+        total: 25000,
+        paymentMethod: "MERCADOPAGO",
+    });
+
+    assert.equal(details.label, "MercadoPago");
+    assert.equal(details.isMixed, false);
+    assert.deepEqual(details.rows, []);
+    assert.equal(details.formattedTotal, "$25.000");
+});

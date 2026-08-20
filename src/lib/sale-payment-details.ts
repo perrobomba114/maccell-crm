@@ -57,8 +57,19 @@ export function buildSalePaymentDetails(input: SalePaymentDetailsInput): SalePay
         formattedAmount: formatSalePaymentAmount(amount),
     }));
 
-    const isMixed = input.paymentMethod === "SPLIT" || input.paymentMethod === "MIXTO" || rows.length > 1;
-    const label = isMixed ? "Mixto" : rows[0]?.label ?? getSalePaymentMethodLabel(input.paymentMethod);
+    let isMixed = false;
+    let label = "";
+
+    if (rows.length > 1) {
+        isMixed = true;
+        label = "Mixto";
+    } else if (rows.length === 1) {
+        isMixed = false;
+        label = rows[0].label;
+    } else {
+        isMixed = input.paymentMethod === "SPLIT" || input.paymentMethod === "MIXTO";
+        label = isMixed ? "Mixto" : getSalePaymentMethodLabel(input.paymentMethod);
+    }
 
     return {
         label,

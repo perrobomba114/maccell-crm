@@ -28,6 +28,22 @@ export type BranchSummary = {
     phone?: string | null;
 };
 
+export type SaleInvoiceSummary = {
+    id?: string;
+    invoiceType: string;
+    invoiceNumber: string;
+    cae: string;
+    caeExpiresAt?: Date | null;
+    customerDocType?: string;
+    customerDoc?: string;
+    customerName?: string;
+    customerAddress?: string | null;
+    netAmount?: number;
+    vatAmount?: number;
+    totalAmount?: number;
+    billingEntity?: string | null;
+};
+
 export type SaleWithDetails = {
     id: string;
     saleNumber: string;
@@ -40,6 +56,7 @@ export type SaleWithDetails = {
     branch?: BranchSummary | null;
     items: SaleItemSummary[];
     payments?: SalePaymentSummary[];
+    invoice?: SaleInvoiceSummary | null;
 };
 
 export type AdminSalesPage = {

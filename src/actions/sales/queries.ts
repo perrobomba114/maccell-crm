@@ -22,6 +22,7 @@ const adminSaleInclude = {
     branch: { select: { name: true } },
     items: true,
     payments: true,
+    invoice: true,
 } satisfies Prisma.SaleInclude;
 
 type AdminSaleRecord = Prisma.SaleGetPayload<{ include: typeof adminSaleInclude }>;
@@ -82,11 +83,14 @@ function mapAdminSale(sale: AdminSaleRecord): SaleWithDetails {
         saleNumber: sale.saleNumber,
         total: sale.total,
         paymentMethod: sale.paymentMethod,
+        originalPaymentMethod: sale.originalPaymentMethod,
+        wasPaymentModified: sale.wasPaymentModified,
         createdAt: sale.createdAt,
         vendor: sale.vendor,
         branch: sale.branch,
         items: sale.items,
-        payments: sale.payments
+        payments: sale.payments,
+        invoice: sale.invoice,
     };
 }
 

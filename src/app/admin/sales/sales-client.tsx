@@ -341,7 +341,11 @@ export default function AdminSalesClient() {
                 </CardContent>
             </Card>
 
-            <SaleDetailDialog sale={viewingSale} onClose={() => setViewingSale(null)} />
+            <SaleDetailDialog 
+                sale={viewingSale} 
+                onClose={() => setViewingSale(null)} 
+                onPrint={handlePrint}
+            />
 
             <EditPaymentDialog
                 sale={editingSale}

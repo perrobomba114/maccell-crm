@@ -34,43 +34,49 @@ type PaymentBadge = {
 
 function resolvePaymentBadge(sale: SaleWithDetails): PaymentBadge {
     const payments: SalePaymentSummary[] = sale.payments || [];
+    const uniqueMethods = Array.from(new Set(payments.map((p) => p.method).filter(Boolean)));
     let method = sale.paymentMethod;
 
-    if (payments.length > 1) {
+    if (uniqueMethods.length > 1) {
         return {
             label: "Mixto",
-            color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+            color: "bg-amber-500/15 border-amber-500/30 text-amber-400 dark:bg-amber-500/15 dark:text-amber-300",
         };
     }
-    if (payments.length === 1) {
-        method = payments[0].method;
+    if (uniqueMethods.length === 1) {
+        method = uniqueMethods[0];
+    } else if (method === "SPLIT" || method === "MIXTO") {
+        return {
+            label: "Mixto",
+            color: "bg-amber-500/15 border-amber-500/30 text-amber-400 dark:bg-amber-500/15 dark:text-amber-300",
+        };
     }
 
     switch (method) {
         case "CASH":
             return {
                 label: "Efectivo",
-                color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                color: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-300",
             };
         case "CARD":
             return {
                 label: "Tarjeta",
-                color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                color: "bg-blue-500/15 border-blue-500/30 text-blue-400 dark:bg-blue-500/15 dark:text-blue-300",
             };
         case "TRANSFER":
             return {
                 label: "Transferencia",
-                color: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+                color: "bg-violet-500/15 border-violet-500/30 text-violet-400 dark:bg-violet-500/15 dark:text-violet-300",
             };
         case "MERCADOPAGO":
             return {
                 label: "MercadoPago",
-                color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+                color: "bg-sky-500/15 border-sky-500/30 text-sky-400 dark:bg-sky-500/15 dark:text-sky-300",
             };
         default:
             return {
                 label: "MercadoPago",
-                color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+                color: "bg-sky-500/15 border-sky-500/30 text-sky-400 dark:bg-sky-500/15 dark:text-sky-300",
             };
     }
 }

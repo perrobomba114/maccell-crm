@@ -195,10 +195,18 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
         try {
             const totalToPay = parseFloat(editableTotal);
             const paidSoFar = partialPayments.reduce((acc, p) => acc + p.amount, 0);
-            if (Math.abs(paidSoFar - totalToPay) > 1) throw new Error("Monto no cubierto");
+            const effectiveMethod = partialPayments.length === 1 
+                ? (partialPayments[0].method as "CASH" | "CARD" | "MERCADOPAGO") 
+                : "SPLIT";
+
             const result = await processPosSale({
-                vendorId, branchId, payments: partialPayments as { method: "CASH" | "CARD" | "MERCADOPAGO", amount: number }[], total: totalToPay, paymentMethod: "SPLIT",
-                invoiceData, items: cart.map(i => ({ id: i.id, type: i.type, quantity: i.quantity, price: i.price, name: i.name, originalPrice: i.originalPrice, priceChangeReason: i.priceChangeReason }))
+                vendorId, 
+                branchId, 
+                payments: partialPayments as { method: "CASH" | "CARD" | "MERCADOPAGO", amount: number }[], 
+                total: totalToPay, 
+                paymentMethod: effectiveMethod,
+                invoiceData, 
+                items: cart.map(i => ({ id: i.id, type: i.type, quantity: i.quantity, price: i.price, name: i.name, originalPrice: i.originalPrice, priceChangeReason: i.priceChangeReason }))
             });
             if (result.success) {
                 toast.success("¡Venta completada!", { icon: <CheckCircle2 className="h-4 w-4 text-green-500" /> });
