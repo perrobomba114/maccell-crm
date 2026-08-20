@@ -94,7 +94,7 @@ export function BranchFilter({ branches, currentBranchId, className }: FilterPro
             </div>
 
             {/* DESKTOP: Pill Buttons (>= md) */}
-            <div className="hidden md:flex flex-wrap gap-2">
+            <div className="hidden md:flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar py-0.5">
                 {items.map((item, index) => {
                     const isAll = item.id === undefined;
                     const isActive = isAll ? !currentBranchId : currentBranchId === item.id;
@@ -106,10 +106,10 @@ export function BranchFilter({ branches, currentBranchId, className }: FilterPro
                             onClick={() => handleSelect(item.id)}
                             disabled={isPending}
                             className={cn(
-                                "relative flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all duration-200 border",
+                                "relative flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all duration-200 border shrink-0",
                                 isActive
-                                    ? "bg-white text-black border-white shadow-lg shadow-white/10"
-                                    : "bg-[#18181b] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-white", // Hover only available on desktop effectively
+                                    ? "bg-white text-slate-950 border-white shadow-md shadow-white/10 font-black"
+                                    : "bg-slate-900/80 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-white hover:bg-slate-850",
                                 isPending && "opacity-50 cursor-not-allowed"
                             )}
                         >

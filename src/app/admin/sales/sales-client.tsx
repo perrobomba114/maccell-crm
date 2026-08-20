@@ -305,20 +305,31 @@ export default function AdminSalesClient() {
             />
 
             {/* Tabla */}
-            <Card className="border bg-card shadow-sm">
-                <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <CardTitle className="flex items-center gap-2 text-xl">
-                            <History className="h-5 w-5 text-emerald-600" />
-                            Historial de ventas
-                        </CardTitle>
-                        <CardDescription>
-                            Movimientos del más reciente al más antiguo
-                            {selectedBranch !== "ALL" ? ` en ${selectedBranchName}` : ""}.
-                        </CardDescription>
+            <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70 shadow-2xl backdrop-blur-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 border-b border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900/80 to-slate-950">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                            <History className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight text-white">
+                                Historial de Ventas
+                            </h3>
+                            <p className="text-xs text-slate-400 font-medium">
+                                Movimientos del más reciente al más antiguo
+                                {selectedBranch !== "ALL" ? ` en ${selectedBranchName}` : ""}.
+                            </p>
+                        </div>
                     </div>
-                </CardHeader>
-                <CardContent>
+
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="bg-slate-900 border-slate-800 text-slate-300 font-mono font-bold text-xs px-3 py-1 rounded-xl">
+                            {totalSalesCount.toLocaleString("es-AR")} registros
+                        </Badge>
+                    </div>
+                </div>
+
+                <div className="p-4 sm:p-6 space-y-4">
                     <SalesTable
                         sales={sales}
                         loading={loading}
@@ -338,8 +349,8 @@ export default function AdminSalesClient() {
                         visibleItems={sales.length}
                         onPageChange={setPage}
                     />
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             <SaleDetailDialog 
                 sale={viewingSale} 
