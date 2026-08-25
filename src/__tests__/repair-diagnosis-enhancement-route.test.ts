@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { buildDiagnosisProviderOrder } from "@/lib/cerebro/diagnosis-models";
+
 const routeUrl = new URL("../app/api/cerebro/enhance-diagnosis/route.ts", import.meta.url);
 
 test("authenticates before reading diagnosis enhancement request data", () => {
@@ -37,4 +39,22 @@ test("routes diagnosis enhancement through Qwen Groq and then local Qwen", () =>
     assert.match(source, /maxRetries: 0/);
     assert.doesNotMatch(source, /llama-3\.3-70b-versatile/);
     assert.doesNotMatch(source, /runWithGroqFallback/);
+});
+
+test("continues through every configured diagnosis fallback", () => {
+    assert.deepEqual(buildDiagnosisProviderOrder({
+        hasGroq: true,
+        hasLocal: true,
+        hasOpenRouter: true,
+        hasEmpero: true,
+    }), ["groq", "local", "openrouter", "empero"]);
+});
+
+test("does not include unconfigured diagnosis providers", () => {
+    assert.deepEqual(buildDiagnosisProviderOrder({
+        hasGroq: true,
+        hasLocal: false,
+        hasOpenRouter: false,
+        hasEmpero: false,
+    }), ["groq"]);
 });

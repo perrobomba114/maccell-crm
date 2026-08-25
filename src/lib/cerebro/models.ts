@@ -58,6 +58,8 @@ export function createFallbackModel(configs: FallbackModelConfig[], onSelect: (i
                     return result;
                 } catch (e) {
                     lastErr = e;
+                    const message = e instanceof Error ? e.message : String(e);
+                    console.warn(`[CEREBRO] Provider ${config.keyId} failed: ${message.slice(0, 160)}`);
                     continue;
                 }
             }
@@ -94,6 +96,8 @@ export function createFallbackModel(configs: FallbackModelConfig[], onSelect: (i
                     return { ...result, stream: transformedStream };
                 } catch (e) {
                     lastErr = e;
+                    const message = e instanceof Error ? e.message : String(e);
+                    console.warn(`[CEREBRO] Provider ${config.keyId} failed: ${message.slice(0, 160)}`);
                     continue;
                 }
             }

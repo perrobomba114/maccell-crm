@@ -1,3 +1,5 @@
+import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText, type LanguageModel } from "ai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -49,6 +51,28 @@ export async function POST(req: NextRequest) {
                 modelId: process.env.CEREBRO_LOCAL_AI_MODEL ?? "Qwen local",
             });
         }
+        const openRouterKey = process.env.OPENROUTER_API_KEY;
+        if (openRouterKey) {
+            const openRouter = createOpenRouter({ apiKey: openRouterKey });
+            configurations.push({
+                instance: openRouter(process.env.OPENROUTER_MODEL ?? "google/gemini-2.5-flash"),
+                label: "OpenRouter",
+                keyId: "openrouter",
+                modelId: process.env.OPENROUTER_MODEL ?? "google/gemini-2.5-flash",
+            });
+        }
+        const emperoBaseUrl = process.env.CEREBRO_EMPERO_BASE_URL;
+        const emperoKey = process.env.CEREBRO_EMPERO_API_KEY;
+        const emperoModel = process.env.CEREBRO_EMPERO_MODEL ?? "Qwen/Qwen3.8-27B-FP8";
+        if (emperoBaseUrl && emperoKey) {
+            const empero = createOpenAI({ baseURL: emperoBaseUrl, apiKey: emperoKey });
+            configurations.push({
+                instance: empero.chat(emperoModel),
+                label: "Empero Qwen",
+                keyId: "empero",
+                modelId: emperoModel,
+            });
+        }
         if (configurations.length === 0) {
             return NextResponse.json({
                 error: "No se pudo profesionalizar el diagnóstico en este momento.",
@@ -77,7 +101,9 @@ export async function POST(req: NextRequest) {
 
             return NextResponse.json({
                 improved,
-                source: selection.current?.keyId.startsWith("groq-") ? "groq" : "local",
+                source: selection.current?.keyId.startsWith("groq-")
+                    ? "groq"
+                    : selection.current?.keyId ?? "unknown",
                 model: selection.current?.modelId ?? selection.current?.label ?? "Qwen",
             });
         }
