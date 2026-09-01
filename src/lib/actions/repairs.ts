@@ -8,11 +8,13 @@ import * as createMod from "@/actions/repairs/create";
 import * as updateMod from "@/actions/repairs/update";
 import * as takeMod from "@/actions/repairs/take";
 import * as deleteMod from "@/actions/repairs/delete";
-import * as techStatusMod from "@/actions/repairs/tech-status";
+import * as techLifecycleMod from "@/actions/repairs/tech-lifecycle";
+import * as finishMod from "@/actions/repairs/finish";
 import * as techAssignMod from "@/actions/repairs/tech-assign";
 import * as techPartsMod from "@/actions/repairs/tech-parts";
 import * as imagesMod from "@/actions/repairs/images";
 import * as utilsMod from "@/actions/repairs/utils";
+import * as reactivateMod from "@/actions/repairs/reactivate";
 
 export async function searchWarrantyRepairs(...args: Parameters<typeof searchMod.searchWarrantyRepairs>) {
     return searchMod.searchWarrantyRepairs(...args);
@@ -53,14 +55,14 @@ export async function takeRepairAction(...args: Parameters<typeof takeMod.takeRe
 export async function deleteRepairAction(...args: Parameters<typeof deleteMod.deleteRepairAction>) {
     return deleteMod.deleteRepairAction(...args);
 }
-export async function startRepairAction(...args: Parameters<typeof techStatusMod.startRepairAction>) {
-    return techStatusMod.startRepairAction(...args);
+export async function startRepairAction(...args: Parameters<typeof techLifecycleMod.startRepairAction>) {
+    return techLifecycleMod.startRepairAction(...args);
 }
-export async function pauseRepairAction(...args: Parameters<typeof techStatusMod.pauseRepairAction>) {
-    return techStatusMod.pauseRepairAction(...args);
+export async function pauseRepairAction(...args: Parameters<typeof techLifecycleMod.pauseRepairAction>) {
+    return techLifecycleMod.pauseRepairAction(...args);
 }
-export async function finishRepairAction(...args: Parameters<typeof techStatusMod.finishRepairAction>) {
-    return techStatusMod.finishRepairAction(...args);
+export async function finishRepairAction(...args: Parameters<typeof finishMod.finishRepairAction>) {
+    return finishMod.finishRepairAction(...args);
 }
 export async function techTakeRepairAction(...args: Parameters<typeof techAssignMod.techTakeRepairAction>) {
     return techAssignMod.techTakeRepairAction(...args);
@@ -70,6 +72,9 @@ export async function assignTimeAction(...args: Parameters<typeof techAssignMod.
 }
 export async function transferRepairAction(...args: Parameters<typeof techAssignMod.transferRepairAction>) {
     return techAssignMod.transferRepairAction(...args);
+}
+export async function reactivateRepairAction(...args: Parameters<typeof reactivateMod.reactivateRepairAction>) {
+    return reactivateMod.reactivateRepairAction(...args);
 }
 export async function createSinglePartReturnAction(...args: Parameters<typeof techPartsMod.createSinglePartReturnAction>) {
     return techPartsMod.createSinglePartReturnAction(...args);
