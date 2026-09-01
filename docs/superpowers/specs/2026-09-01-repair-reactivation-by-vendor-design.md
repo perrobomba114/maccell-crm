@@ -36,7 +36,7 @@ Se usarán las constantes semánticas existentes:
 ### Portal del técnico
 
 - `/technician/tickets` continúa siendo la cola para reparaciones en estado `1` sin técnico asignado.
-- `/technician/repairs` solo carga estados `2`, `3` y `4`, y solo muestra reparaciones asignadas al técnico autenticado.
+- `/technician/repairs` solo carga estados `2`, `3` y `4`, y muestra reparaciones asignadas al técnico autenticado más las reparaciones `Tomado por Técnico` sin asignar que ya forman parte del flujo de retiro/asignación existente.
 - Los estados `7`, `8` y `9` no se envían al navegador del técnico ni aparecen como acciones de “Reactivar”.
 
 ### Portal del vendedor

@@ -5,6 +5,9 @@ import { db } from "@/lib/db";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
 import { saveRepairImages } from "@/lib/actions/upload";
+import { isReactivatableRepair } from "@/lib/repairs/reactivation-policy";
+import { REPAIR_STATUS } from "@/lib/repairs/status";
+import { VENDOR_REACTIVATABLE_STATUS_IDS } from "@/lib/repairs/status-sets";
 
 export async function finishRepairAction(formData: FormData) {
     try {
@@ -50,7 +53,14 @@ export async function finishRepairAction(formData: FormData) {
             return { success: false, error: "No tienes asignada esta reparación" };
         }
 
-        if (![4, 5, 6, 7, 8, 9, 10].includes(statusId)) {
+        const allowedFinalStatuses = [
+            REPAIR_STATUS.PAUSED,
+            REPAIR_STATUS.OK,
+            REPAIR_STATUS.NO_REPAIR,
+            ...VENDOR_REACTIVATABLE_STATUS_IDS,
+            REPAIR_STATUS.DELIVERED,
+        ];
+        if (!allowedFinalStatuses.includes(statusId as (typeof allowedFinalStatuses)[number])) {
             return { success: false, error: "Estado final inválido" };
         }
 
@@ -76,7 +86,7 @@ export async function finishRepairAction(formData: FormData) {
             }
         };
 
-        if (statusId === 4) {
+        if (statusId === REPAIR_STATUS.PAUSED) {
             let remainingMinutes = repair.estimatedTime || 0;
             if (repair.startedAt) {
                 const elapsedMs = new Date().getTime() - new Date(repair.startedAt).getTime();
@@ -107,7 +117,7 @@ export async function finishRepairAction(formData: FormData) {
             ]);
 
             if (technician && newStatus && repair.userId) {
-                const isVendorFollowUpStatus = [7, 8, 9].includes(statusId);
+                const isVendorFollowUpStatus = isReactivatableRepair(statusId);
                 await createNotificationAction({
                     userId: repair.userId,
                     title: isVendorFollowUpStatus ? "Reparación requiere gestión" : "Actualización de Reparación",
@@ -130,7 +140,7 @@ export async function finishRepairAction(formData: FormData) {
             console.error("Error parsing returnPartIds", e);
         }
 
-        if (statusId === 6 && repair.parts && repair.parts.length > 0) {
+        if (statusId === REPAIR_STATUS.NO_REPAIR && repair.parts && repair.parts.length > 0) {
             const allPartIds = repair.parts.map((part) => part.id);
             returnPartIds = Array.from(new Set([...returnPartIds, ...allPartIds]));
         }

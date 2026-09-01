@@ -194,7 +194,7 @@ Expected: FAIL because the technician page currently requests `[2, 3, 4, 7, 8, 9
 
 - [ ] **Step 3: Write minimal implementation**
 
-Usar `TECHNICIAN_REPAIR_STATUS_IDS` y filtrar por `assignedUserId === user.id`; usar `VENDOR_ACTIVE_REPAIR_STATUS_IDS` en activos; incluir `VENDOR_HISTORY_STATUS_IDS` en historial. En `src/actions/repairs/finish.ts`, elegir el enlace de historial para estados detenidos y mantener el enlace activo para estados operativos/finales.
+Usar `TECHNICIAN_REPAIR_STATUS_IDS` y filtrar por `assignedUserId === user.id`, conservando además el estado `REPAIR_STATUS.CLAIMED` sin asignar requerido por el flujo existente de retiro/asignación; usar `VENDOR_ACTIVE_REPAIR_STATUS_IDS` en activos; incluir `VENDOR_HISTORY_STATUS_IDS` en historial. En `src/actions/repairs/finish.ts`, elegir el enlace de historial para estados detenidos y mantener el enlace activo para estados operativos/finales.
 
 - [ ] **Step 4: Run test to verify it passes**
 

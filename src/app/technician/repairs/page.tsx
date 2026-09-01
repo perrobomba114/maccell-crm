@@ -4,6 +4,7 @@ import { getTechnicianStats } from "@/actions/dashboard-actions";
 import { ActiveRepairsTable } from "@/components/repairs/active-repairs-table";
 import { redirect } from "next/navigation";
 import { Wrench } from "lucide-react";
+import { REPAIR_STATUS } from "@/lib/repairs/status";
 import { TECHNICIAN_REPAIR_STATUS_IDS } from "@/lib/repairs/status-sets";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,8 @@ export default async function TechnicianRepairsPage() {
     ]);
 
     const repairs = allRepairs.filter((r: { assignedUserId?: string | null, statusId: number }) =>
-        r.assignedUserId === user.id
+        r.assignedUserId === user.id ||
+        (r.statusId === REPAIR_STATUS.CLAIMED && !r.assignedUserId)
     );
 
     return (

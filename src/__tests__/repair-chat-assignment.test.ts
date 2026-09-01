@@ -15,7 +15,7 @@ test("withdrawing a repair keeps it unassigned until a technician claims it", ()
     assert.match(assign, /assignTimeAction[\s\S]*?getCurrentUser\(\)[\s\S]*?currentUser\.id !== technicianId/);
     assert.match(assign, /assignTimeAction[\s\S]*?updateMany\([\s\S]*?assignedUserId:\s*repair\.assignedUserId/);
     assert.match(assign, /assignTimeAction[\s\S]*?if \(assigned\.count !== 1\)/);
-    assert.match(technicianPage, /r\.statusId === 2 && !r\.assignedUserId/);
+    assert.match(technicianPage, /r\.statusId === REPAIR_STATUS\.CLAIMED && !r\.assignedUserId/);
     assert.match(withdrawalDialog, /Reparación retirada correctamente\./);
     assert.doesNotMatch(withdrawalDialog, /Reparación asignada correctamente\./);
 });

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { businessHoursService } from "@/lib/services/business-hours";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
+import { REPAIR_STATUS } from "@/lib/repairs/status";
 
 export async function startRepairAction(repairId: string, technicianId: string, newEstimatedTime?: number) {
     try {
@@ -17,12 +18,12 @@ export async function startRepairAction(repairId: string, technicianId: string, 
 
         const now = new Date();
         const dataToUpdate: Prisma.RepairUpdateInput = {
-            status: { connect: { id: 3 } }, // En Proceso
+            status: { connect: { id: REPAIR_STATUS.IN_PROGRESS } },
             startedAt: now,
             statusHistory: {
                 create: {
                     fromStatusId: repair.statusId,
-                    toStatusId: 3,
+                    toStatusId: REPAIR_STATUS.IN_PROGRESS,
                     userId: technicianId
                 }
             }
@@ -96,13 +97,13 @@ export async function pauseRepairAction(repairId: string, technicianId: string) 
         await db.repair.update({
             where: { id: repairId },
             data: {
-                status: { connect: { id: 4 } }, // Pausado
+                status: { connect: { id: REPAIR_STATUS.PAUSED } },
                 startedAt: null,
                 estimatedTime: remainingMinutes,
                 statusHistory: {
                     create: {
                         fromStatusId: oldStatusId,
-                        toStatusId: 4,
+                        toStatusId: REPAIR_STATUS.PAUSED,
                         userId: technicianId
                     }
                 }
