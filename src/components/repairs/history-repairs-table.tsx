@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState, useTransition, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { RepairDetailsDialog } from "@/components/repairs/repair-details-dialog";
 import { RepairImagesDialog } from "@/components/repairs/repair-images-dialog";
-import { getRepairByIdAction } from "@/lib/actions/repairs";
+import { getRepairByIdAction, reactivateRepairAction } from "@/lib/actions/repairs";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { RepairDetails } from "./repair-details-dialog";
@@ -45,11 +45,35 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [loadingId, setLoadingId] = useState<string | null>(null);
+    const [reactivatingId, setReactivatingId] = useState<string | null>(null);
     const openedRepairIdRef = useRef<string | null>(null);
 
     const handlePrint = (repair: RepairData) => {
         printRepairTicketSequence(repair);
     };
+
+    const handleReactivate = useCallback(async (repair: RepairData) => {
+        const confirmed = window.confirm(
+            `¿Reactivar la reparación #${repair.ticketNumber} para que vuelva a Trabajo Disponible?`,
+        );
+        if (!confirmed) return;
+
+        setReactivatingId(repair.id);
+        try {
+            const result = await reactivateRepairAction(repair.id);
+            if (!result.success) {
+                toast.error(result.error);
+                return;
+            }
+
+            toast.success(`La reparación #${repair.ticketNumber} volvió a Trabajo Disponible.`);
+            router.refresh();
+        } catch {
+            toast.error("Error al reactivar la reparación.");
+        } finally {
+            setReactivatingId(null);
+        }
+    }, [router]);
 
     const handleViewDetails = useCallback((repairId: string) => {
         setLoadingId(repairId);
@@ -107,7 +131,15 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
         { delivered: 0, finished: 0, irreparable: 0, withImages: 0 }
     );
 
-    const sharedProps = { isPending, loadingId, onPrint: handlePrint, onViewDetails: handleViewDetails, onViewImages: setImageRepair };
+    const sharedProps = {
+        isPending,
+        loadingId,
+        onPrint: handlePrint,
+        onViewDetails: handleViewDetails,
+        onViewImages: setImageRepair,
+        onReactivate: handleReactivate,
+        reactivatingId,
+    };
 
     return (
         <div className="space-y-0">

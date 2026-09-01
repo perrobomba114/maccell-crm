@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Eye, Loader2, Printer } from "lucide-react";
+import { Eye, Loader2, Printer, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RepairImagesActionButton } from "./repair-images-action-button";
+import { isReactivatableRepair } from "@/lib/repairs/reactivation-policy";
 import { type RepairData, STATUS_COLOR_MAP, calcDuration, durationColorClass, formatRepairPrice } from "./repair-history-types";
 
 interface RepairHistoryRowProps {
@@ -20,13 +21,17 @@ interface RepairHistoryRowProps {
     onPrint: (repair: RepairData) => void;
     onViewDetails: (id: string) => void;
     onViewImages: (repair: RepairData) => void;
+    onReactivate: (repair: RepairData) => void;
+    reactivatingId: string | null;
 }
 
-export function RepairHistoryRow({ repair, isPending, loadingId, onPrint, onViewDetails, onViewImages }: RepairHistoryRowProps) {
+export function RepairHistoryRow({ repair, isPending, loadingId, onPrint, onViewDetails, onViewImages, onReactivate, reactivatingId }: RepairHistoryRowProps) {
     const colorClass = STATUS_COLOR_MAP[repair.status.color ?? ""] || "bg-gray-100 text-gray-800";
     const duration = calcDuration(repair.startedAt, repair.finishedAt);
     const dColor = durationColorClass(duration);
     const isLoading = isPending && loadingId === repair.id;
+    const isReactivating = reactivatingId === repair.id;
+    const canReactivate = isReactivatableRepair(repair.statusId ?? repair.status.id);
 
     return (
         <TableRow className="border-b border-border/60 transition-colors hover:bg-muted/40 group">
@@ -151,6 +156,22 @@ export function RepairHistoryRow({ repair, isPending, loadingId, onPrint, onView
                     >
                         <Printer className="h-4 w-4" />
                     </Button>
+
+                    {canReactivate && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onReactivate(repair)}
+                            disabled={isReactivating}
+                            className="h-9 gap-1.5 rounded-full border-orange-500/40 px-3 text-xs font-bold text-orange-600 hover:bg-orange-500/10 dark:text-orange-400"
+                            title="Reactivar para técnico"
+                            aria-label={`Reactivar reparación ${repair.ticketNumber} para técnico`}
+                        >
+                            {isReactivating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                            Reactivar para técnico
+                        </Button>
+                    )}
                 </div>
             </TableCell>
         </TableRow>

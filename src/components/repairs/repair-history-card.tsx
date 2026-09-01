@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Eye, Loader2, Printer, Droplets, ShieldCheck, Phone, Clock } from "lucide-react";
+import { Eye, Loader2, Printer, Droplets, ShieldCheck, Phone, Clock, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RepairImagesActionButton } from "./repair-images-action-button";
 import { RepairAccessIndicator } from "./repair-access-indicator";
+import { isReactivatableRepair } from "@/lib/repairs/reactivation-policy";
 import { type RepairData, STATUS_COLOR_MAP, calcDuration, durationColorClass, formatRepairPrice } from "./repair-history-types";
 
 interface RepairHistoryCardProps {
@@ -20,13 +21,17 @@ interface RepairHistoryCardProps {
     onPrint: (repair: RepairData) => void;
     onViewDetails: (id: string) => void;
     onViewImages: (repair: RepairData) => void;
+    onReactivate: (repair: RepairData) => void;
+    reactivatingId: string | null;
 }
 
-export function RepairHistoryCard({ repair, isPending, loadingId, onPrint, onViewDetails, onViewImages }: RepairHistoryCardProps) {
+export function RepairHistoryCard({ repair, isPending, loadingId, onPrint, onViewDetails, onViewImages, onReactivate, reactivatingId }: RepairHistoryCardProps) {
     const colorClass = STATUS_COLOR_MAP[repair.status.color ?? ""] || "bg-slate-600 text-white border-slate-400";
     const duration = calcDuration(repair.startedAt, repair.finishedAt);
     const dColor = durationColorClass(duration);
     const isLoading = isPending && loadingId === repair.id;
+    const isReactivating = reactivatingId === repair.id;
+    const canReactivate = isReactivatableRepair(repair.statusId ?? repair.status.id);
 
     return (
         <li className="p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors">
@@ -112,9 +117,26 @@ export function RepairHistoryCard({ repair, isPending, loadingId, onPrint, onVie
                 <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     {repair.assignedTo ? repair.assignedTo.name?.split(" ")[0] : "Sin técnico"}
                 </span>
-                <span className="text-sm font-black tabular-nums">
-                    {formatRepairPrice(repair.estimatedPrice)}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-black tabular-nums">
+                        {formatRepairPrice(repair.estimatedPrice)}
+                    </span>
+                    {canReactivate && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onReactivate(repair)}
+                            disabled={isReactivating}
+                            className="h-8 gap-1.5 rounded-lg border-orange-500/40 px-2.5 text-[10px] font-black text-orange-600 dark:text-orange-400"
+                            title="Reactivar para técnico"
+                            aria-label={`Reactivar reparación ${repair.ticketNumber} para técnico`}
+                        >
+                            {isReactivating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                            Reactivar para técnico
+                        </Button>
+                    )}
+                </div>
             </div>
         </li>
     );
