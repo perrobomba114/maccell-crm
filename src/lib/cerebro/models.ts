@@ -42,6 +42,20 @@ function getExecutor(instance: unknown): ModelExecutor {
     throw new Error("Invalid fallback model instance");
 }
 
+function isRateLimitError(error: unknown): boolean {
+    const record = error && typeof error === "object"
+        ? error as Record<string, unknown>
+        : null;
+    const response = record?.response && typeof record.response === "object"
+        ? record.response as Record<string, unknown>
+        : null;
+    const status = record?.statusCode ?? record?.status ?? response?.status;
+
+    return status === 429 || error instanceof Error && /\b429\b/.test(error.message);
+}
+
+const isGroqConfig = (config: FallbackModelConfig): boolean => config.keyId.startsWith("groq-");
+
 export function createFallbackModel(configs: FallbackModelConfig[], onSelect: (info: FallbackModelConfig) => void) {
     if (configs.length === 0) throw new Error("No model configs provided");
     return {
@@ -50,7 +64,9 @@ export function createFallbackModel(configs: FallbackModelConfig[], onSelect: (i
         modelId: 'fallback-logic',
         doGenerate: async (params: unknown) => {
             let lastErr: unknown;
+            let groqRateLimited = false;
             for (const config of configs) {
+                if (groqRateLimited && isGroqConfig(config)) continue;
                 try {
                     onSelect(config);
                     const result = await getExecutor(config.instance).doGenerate(params);
@@ -58,6 +74,7 @@ export function createFallbackModel(configs: FallbackModelConfig[], onSelect: (i
                     return result;
                 } catch (e) {
                     lastErr = e;
+                    if (isRateLimitError(e) && isGroqConfig(config)) groqRateLimited = true;
                     const message = e instanceof Error ? e.message : String(e);
                     console.warn(`[CEREBRO] Provider ${config.keyId} failed: ${message.slice(0, 160)}`);
                     continue;
@@ -67,7 +84,9 @@ export function createFallbackModel(configs: FallbackModelConfig[], onSelect: (i
         },
         doStream: async (params: unknown) => {
             let lastErr: unknown;
+            let groqRateLimited = false;
             for (const config of configs) {
+                if (groqRateLimited && isGroqConfig(config)) continue;
                 try {
                     onSelect(config);
                     const result = await getExecutor(config.instance).doStream(params);
@@ -96,6 +115,7 @@ export function createFallbackModel(configs: FallbackModelConfig[], onSelect: (i
                     return { ...result, stream: transformedStream };
                 } catch (e) {
                     lastErr = e;
+                    if (isRateLimitError(e) && isGroqConfig(config)) groqRateLimited = true;
                     const message = e instanceof Error ? e.message : String(e);
                     console.warn(`[CEREBRO] Provider ${config.keyId} failed: ${message.slice(0, 160)}`);
                     continue;

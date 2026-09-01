@@ -34,10 +34,11 @@ test("tries every Groq key with Qwen before Llama Scout for vision", () => {
 test("diagnosis enhancement uses only Qwen across the Groq key pool", () => {
     const plan = buildGroqModelPlan(["key-1", "key-2"], "diagnosis");
 
+    assert.equal(GROQ_QWEN_MODEL.id, "qwen/qwen3.8-27b");
     assert.deepEqual(plan.map(({ modelId }) => modelId), [GROQ_QWEN_MODEL.id, GROQ_QWEN_MODEL.id]);
 });
 
-test("forces the approved Qwen sampling and hidden reasoning settings", () => {
+test("caps Qwen output without inflating short diagnosis requests", () => {
     const transformed = applyQwenGroqSettings({
         prompt: [],
         maxOutputTokens: 500,
@@ -48,10 +49,16 @@ test("forces the approved Qwen sampling and hidden reasoning settings", () => {
 
     assert.equal(transformed.temperature, 0.6);
     assert.equal(transformed.topP, 0.95);
-    assert.equal(transformed.maxOutputTokens, 2048);
+    assert.equal(transformed.maxOutputTokens, 500);
     assert.deepEqual(transformed.providerOptions?.groq, {
         serviceTier: "on_demand",
         reasoningEffort: "default",
         reasoningFormat: "hidden",
     });
+});
+
+test("caps oversized Qwen requests at 2048 output tokens", () => {
+    const transformed = applyQwenGroqSettings({ prompt: [], maxOutputTokens: 4096 });
+
+    assert.equal(transformed.maxOutputTokens, 2048);
 });

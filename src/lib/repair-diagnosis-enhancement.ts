@@ -10,6 +10,10 @@ export type DiagnosisValidationResult = {
     unsupportedActions: string[];
 };
 
+export const MAX_TECHNICIAN_REPORT_CHARS = 4000;
+export const MAX_SELLER_REPORT_CHARS = 1500;
+const PROMPT_TRUNCATION_MARKER = "[texto recortado por limite de seguridad]";
+
 type ActionFamily = {
     name: string;
     pattern: RegExp;
@@ -64,6 +68,11 @@ const sanitizePromptValue = (value: string | null | undefined, fallback: string)
     return sanitized || fallback;
 };
 
+const boundPromptValue = (value: string, maxChars: number): string =>
+    value.length > maxChars
+        ? `${value.slice(0, maxChars)}\n${PROMPT_TRUNCATION_MARKER}`
+        : value;
+
 const isNegated = (text: string, index: number): boolean => {
     const prefix = text.slice(Math.max(0, index - 50), index);
     return /\b(?:no|sin)\s+(?:(?:se|fue|fueron|pudo|pudieron|logro|lograron|hubo|requiere|requirio|precisa|preciso)\s+)*(?:(?:realiz\w*|efectu\w*|hiz\w*|hacer)\s+(?:el|la|los|las)\s+)?$/.test(prefix);
@@ -93,8 +102,14 @@ export const validateEnhancedDiagnosis = (
 export const buildRepairDiagnosisPrompt = (input: RepairDiagnosisPromptInput): string => {
     const brand = sanitizePromptValue(input.deviceBrand, "Marca no especificada");
     const model = sanitizePromptValue(input.deviceModel, "Modelo no especificado");
-    const sellerReport = sanitizePromptValue(input.problemDescription, "Sin reporte de ingreso");
-    const technicianReport = sanitizePromptValue(input.diagnosis, "Sin informe técnico");
+    const sellerReport = boundPromptValue(
+        sanitizePromptValue(input.problemDescription, "Sin reporte de ingreso"),
+        MAX_SELLER_REPORT_CHARS,
+    );
+    const technicianReport = boundPromptValue(
+        sanitizePromptValue(input.diagnosis, "Sin informe técnico"),
+        MAX_TECHNICIAN_REPORT_CHARS,
+    );
 
     return `CONTEXTO DEL EQUIPO:
 Dispositivo: ${brand} ${model}

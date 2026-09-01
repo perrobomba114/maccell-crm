@@ -80,14 +80,24 @@ export async function POST(req: NextRequest) {
             }, { status: 503 });
         }
         const selection: { current: FallbackModelConfig | null } = { current: null };
-        const { text } = await generateText({
-            model: createFallbackModel(configurations, (selected) => { selection.current = selected; }) as unknown as LanguageModel,
-            system: REPAIR_DIAGNOSIS_ENHANCEMENT_SYSTEM_PROMPT,
-            prompt,
-            temperature: 0,
-            maxOutputTokens: 500,
-            maxRetries: 0,
-        });
+        let text: string;
+        try {
+            ({ text } = await generateText({
+                model: createFallbackModel(configurations, (selected) => { selection.current = selected; }) as unknown as LanguageModel,
+                system: REPAIR_DIAGNOSIS_ENHANCEMENT_SYSTEM_PROMPT,
+                prompt,
+                temperature: 0,
+                maxOutputTokens: 2048,
+                maxRetries: 0,
+            }));
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "unknown error";
+            console.error("[cerebro/enhance-diagnosis] Provider chain exhausted:", message.slice(0, 160));
+            return NextResponse.json({
+                error: "Los proveedores de IA están temporalmente saturados. Podés intentar nuevamente en unos segundos.",
+                modelUnavailable: true,
+            }, { status: 503 });
+        }
 
         if (text) {
             const improved = text.trim();

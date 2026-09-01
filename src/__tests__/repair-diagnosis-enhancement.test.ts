@@ -107,3 +107,13 @@ test("allows negated replacement when technician says no se cambio el modulo", (
     assert.deepEqual(result, { ok: true, unsupportedActions: [] });
 });
 
+test("bounds untrusted reports before sending them to Groq", () => {
+    const prompt = buildRepairDiagnosisPrompt({
+        diagnosis: "D".repeat(5000),
+        problemDescription: "V".repeat(2500),
+    });
+
+    assert.match(prompt, /\[texto recortado por limite de seguridad\]/);
+    assert.equal(prompt.includes("D".repeat(4001)), false);
+    assert.equal(prompt.includes("V".repeat(1501)), false);
+});

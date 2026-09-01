@@ -12,8 +12,8 @@ type GroqModelDefinition = {
 };
 
 export const GROQ_QWEN_MODEL = {
-    id: "qwen/qwen3.6-27b",
-    label: "Qwen 3.6 27B",
+    id: "qwen/qwen3.8-27b",
+    label: "Qwen 3.8 27B",
 } satisfies GroqModelDefinition;
 
 export const GROQ_KIMI_MODEL = {
@@ -26,7 +26,8 @@ export const GROQ_VISION_FALLBACK_MODEL = {
     label: "Llama 4 Scout Vision",
 } satisfies GroqModelDefinition;
 
-export const QWEN_GROQ_MIN_OUTPUT_TOKENS = 2048;
+export const QWEN_GROQ_MAX_OUTPUT_TOKENS = 2048;
+export const QWEN_GROQ_DEFAULT_OUTPUT_TOKENS = 1024;
 
 export type GroqModelPlanEntry = GroqModelDefinition & {
     apiKey: string;
@@ -54,7 +55,13 @@ export function buildGroqModelPlan(keys: string[], purpose: CerebroModelPurpose)
 export function applyQwenGroqSettings(params: LanguageModelV3CallOptions): LanguageModelV3CallOptions {
     return {
         ...params,
-        maxOutputTokens: Math.max(params.maxOutputTokens ?? 0, QWEN_GROQ_MIN_OUTPUT_TOKENS),
+        maxOutputTokens: Math.max(
+            1,
+            Math.min(
+                params.maxOutputTokens ?? QWEN_GROQ_DEFAULT_OUTPUT_TOKENS,
+                QWEN_GROQ_MAX_OUTPUT_TOKENS,
+            ),
+        ),
         temperature: 0.6,
         topP: 0.95,
         providerOptions: {

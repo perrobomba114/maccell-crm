@@ -34,11 +34,20 @@ test("routes diagnosis enhancement through Qwen Groq and then local Qwen", () =>
     const source = readFileSync(routeUrl, "utf8");
 
     assert.match(source, /buildGroqModelConfigurations\(getGroqKeys\(\), "diagnosis"\)/);
+    assert.match(source, /maxOutputTokens: 2048/);
     assert.match(source, /createLocalCerebroModel\(false\)/);
     assert.match(source, /createFallbackModel/);
     assert.match(source, /maxRetries: 0/);
-    assert.doesNotMatch(source, /llama-3\.3-70b-versatile/);
+    assert.doesNotMatch(source, /qwen\/qwen3\.6-27b/);
     assert.doesNotMatch(source, /runWithGroqFallback/);
+});
+
+test("returns a recoverable model-unavailable response when every provider fails", () => {
+    const source = readFileSync(routeUrl, "utf8");
+
+    assert.match(source, /modelUnavailable: true/);
+    assert.match(source, /status: 503/);
+    assert.match(source, /catch \(error: unknown\)[\s\S]*modelUnavailable: true/);
 });
 
 test("continues through every configured diagnosis fallback", () => {
