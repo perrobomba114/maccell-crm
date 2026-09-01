@@ -3,12 +3,13 @@
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { Prisma } from "@prisma/client";
+import { VENDOR_ACTIVE_REPAIR_STATUS_IDS, VENDOR_HISTORY_STATUS_IDS } from "@/lib/repairs/status-sets";
 
 export async function getActiveRepairsAction(branchId: string, statusIds?: number[]) {
     const caller = await getCurrentUser();
     if (!caller) return [];
 
-    const defaultStatuses = [1, 2, 3, 4, 8, 9];
+    const defaultStatuses = [...VENDOR_ACTIVE_REPAIR_STATUS_IDS];
     const filterStatuses = statusIds && statusIds.length > 0 ? statusIds : defaultStatuses;
 
     try {
@@ -67,9 +68,7 @@ export async function getRepairHistoryAction(
     try {
         const whereClause: Prisma.RepairWhereInput = {
             branchId,
-            statusId: {
-                in: [5, 6, 7, 10]
-            }
+            statusId: { in: [...VENDOR_HISTORY_STATUS_IDS] }
         };
 
         if (query) {

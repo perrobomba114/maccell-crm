@@ -4,6 +4,7 @@ import { getTechnicianStats } from "@/actions/dashboard-actions";
 import { ActiveRepairsTable } from "@/components/repairs/active-repairs-table";
 import { redirect } from "next/navigation";
 import { Wrench } from "lucide-react";
+import { TECHNICIAN_REPAIR_STATUS_IDS } from "@/lib/repairs/status-sets";
 
 export const dynamic = "force-dynamic";
 
@@ -11,16 +12,13 @@ export default async function TechnicianRepairsPage() {
     const user = await getUserData();
     if (!user || user.role !== "TECHNICIAN") redirect("/");
 
-    // Filter by statuses: 2, 3, 4, 7, 8, 9
-    // And ensure assigned to current user!
     const [allRepairs, stats] = await Promise.all([
-        getActiveRepairsAction(user.branch?.id || "", [2, 3, 4, 7, 8, 9]),
+        getActiveRepairsAction(user.branch?.id || "", [...TECHNICIAN_REPAIR_STATUS_IDS]),
         getTechnicianStats(user.id)
     ]);
 
     const repairs = allRepairs.filter((r: { assignedUserId?: string | null, statusId: number }) =>
-        r.assignedUserId === user.id ||
-        (r.statusId === 2 && !r.assignedUserId)
+        r.assignedUserId === user.id
     );
 
     return (

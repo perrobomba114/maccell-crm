@@ -4,6 +4,7 @@ import { getUserData } from "@/actions/get-user";
 import { ActiveRepairsTable } from "@/components/repairs/active-repairs-table";
 import { redirect } from "next/navigation";
 import { Wrench } from "lucide-react";
+import { VENDOR_ACTIVE_REPAIR_STATUS_IDS } from "@/lib/repairs/status-sets";
 
 export default async function ActiveRepairsPage() {
     const user = await getUserData();
@@ -16,7 +17,7 @@ export default async function ActiveRepairsPage() {
         return <div>Error: Usuario sin sucursal asignada.</div>;
     }
 
-    const repairs = await getActiveRepairsAction(user.branch.id);
+    const repairs = await getActiveRepairsAction(user.branch.id, [...VENDOR_ACTIVE_REPAIR_STATUS_IDS]);
 
     return (
         <div className="space-y-6 pb-24">
