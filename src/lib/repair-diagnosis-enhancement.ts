@@ -99,6 +99,29 @@ export const validateEnhancedDiagnosis = (
     return { ok: unsupportedActions.length === 0, unsupportedActions };
 };
 
+export type SafeEnhancedDiagnosis = {
+    improved: string;
+    preservedOriginal: boolean;
+    unsupportedActions: string[];
+};
+
+export const resolveEnhancedDiagnosis = (
+    originalDiagnosis: string,
+    improvedDiagnosis: string,
+): SafeEnhancedDiagnosis => {
+    const original = originalDiagnosis.trim();
+    const improved = improvedDiagnosis.trim();
+    const validation = validateEnhancedDiagnosis(original, improved);
+
+    return validation.ok
+        ? { improved, preservedOriginal: false, unsupportedActions: [] }
+        : {
+            improved: original,
+            preservedOriginal: true,
+            unsupportedActions: validation.unsupportedActions,
+        };
+};
+
 export const buildRepairDiagnosisPrompt = (input: RepairDiagnosisPromptInput): string => {
     const brand = sanitizePromptValue(input.deviceBrand, "Marca no especificada");
     const model = sanitizePromptValue(input.deviceModel, "Modelo no especificado");

@@ -14,19 +14,19 @@ test("authenticates before reading diagnosis enhancement request data", () => {
     assert.ok(source.indexOf("getCurrentUser()") < source.indexOf("req.json()"));
 });
 
-test("validates Groq output before returning an improved diagnosis", () => {
+test("keeps invalid AI output out of the saved diagnosis without returning a blocking error", () => {
     const source = readFileSync(routeUrl, "utf8");
 
     assert.match(source, /buildRepairDiagnosisPrompt/);
-    assert.match(source, /validateEnhancedDiagnosis/);
-    assert.match(source, /coherenceViolation/);
-    assert.match(source, /status: 422/);
+    assert.match(source, /resolveEnhancedDiagnosis/);
+    assert.match(source, /preservedOriginal/);
+    assert.doesNotMatch(source, /status: 422/);
 });
 
 test("uses the technical report as the only authority for completed work", () => {
     const source = readFileSync(routeUrl, "utf8");
 
-    assert.match(source, /validateEnhancedDiagnosis\(diagnosis, improved\)/);
+    assert.match(source, /resolveEnhancedDiagnosis\(diagnosis, text\)/);
     assert.doesNotMatch(source, /validateEnhancedDiagnosis\(problemDescription/);
 });
 

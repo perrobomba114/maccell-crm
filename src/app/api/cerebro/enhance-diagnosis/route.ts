@@ -12,7 +12,7 @@ import { getGroqKeys } from "@/lib/groq";
 import {
     buildRepairDiagnosisPrompt,
     REPAIR_DIAGNOSIS_ENHANCEMENT_SYSTEM_PROMPT,
-    validateEnhancedDiagnosis,
+    resolveEnhancedDiagnosis,
 } from "@/lib/repair-diagnosis-enhancement";
 
 export const dynamic = "force-dynamic";
@@ -100,17 +100,11 @@ export async function POST(req: NextRequest) {
         }
 
         if (text) {
-            const improved = text.trim();
-            const validation = validateEnhancedDiagnosis(diagnosis, improved);
-            if (!validation.ok) {
-                return NextResponse.json({
-                    error: "La IA intentó agregar un trabajo que no figura en tu informe. Conservamos el texto original para que lo revises.",
-                    coherenceViolation: true,
-                }, { status: 422 });
-            }
+            const resolved = resolveEnhancedDiagnosis(diagnosis, text);
 
             return NextResponse.json({
-                improved,
+                improved: resolved.improved,
+                preservedOriginal: resolved.preservedOriginal,
                 source: selection.current?.keyId.startsWith("groq-")
                     ? "groq"
                     : selection.current?.keyId ?? "unknown",

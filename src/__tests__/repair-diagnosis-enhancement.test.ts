@@ -3,8 +3,22 @@ import test from "node:test";
 
 import {
     buildRepairDiagnosisPrompt,
+    resolveEnhancedDiagnosis,
     validateEnhancedDiagnosis,
 } from "../lib/repair-diagnosis-enhancement";
+
+test("preserves the original report instead of blocking when AI adds an unsupported action", () => {
+    const result = resolveEnhancedDiagnosis(
+        "se pego modulo marco doblado",
+        "Se realizó el reemplazo y fijación del módulo. El marco se encuentra doblado.",
+    );
+
+    assert.deepEqual(result, {
+        improved: "se pego modulo marco doblado",
+        preservedOriginal: true,
+        unsupportedActions: ["replacement"],
+    });
+});
 
 test("rejects a module replacement when the technician only reported fixation", () => {
     const result = validateEnhancedDiagnosis(
