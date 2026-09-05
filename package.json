@@ -11,7 +11,7 @@
     "dev:clean": "rm -rf .next && next dev -p 3000",
     "build": "echo \"$(date +%s)\" > public/version.txt && next build",
     "start": "node .next/standalone/server.js",
-    "test": "tsx --test src/__tests__/**/*.test.ts",
+    "test": "node scripts/run-tests.mjs",
     "lint": "eslint",
     "uploads:migrate": "tsx scripts/migrate-public-uploads-to-upload.ts",
     "postinstall": "node scripts/patch-sdk.js"
@@ -52,6 +52,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "crypto-js": "^4.2.0",
     "date-fns": "^3.6.0",
     "date-fns-tz": "^3.2.0",
     "firebase": "^12.9.0",
@@ -64,6 +65,7 @@
     "next": "15.5.15",
     "next-themes": "^0.4.6",
     "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^6.3.289",
     "pg": "^8.16.3",
     "react": "19.2.1",
     "react-day-picker": "^8.10.1",
@@ -86,6 +88,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
+    "@types/crypto-js": "^4.2.2",
     "@types/node": "^20",
     "@types/pdf-parse": "^1.1.5",
     "@types/pg": "^8.16.0",

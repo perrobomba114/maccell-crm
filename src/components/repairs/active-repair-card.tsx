@@ -5,9 +5,10 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Eye, Camera, Printer, Share2, Clock, CalendarCheck, Banknote, User, UserX, AlertTriangle } from "lucide-react";
+import { Eye, Camera, Printer, Share2, Clock, CalendarCheck, Banknote, User, UserX, AlertTriangle, CircuitBoard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RepairTimer } from "./repair-timer";
 import { RepairImagesActionButton, getRepairImageCount } from "./repair-images-action-button";
@@ -89,6 +90,11 @@ export function ActiveRepairCard({
                 </div>
                 {/* Quick actions */}
                 <div className="flex items-center gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" asChild className="h-8 w-8 text-muted-foreground hover:text-cyan-500" title="Abrir esquemáticos de esta reparación">
+                        <Link href={`/technician/schematics?repair=${encodeURIComponent(repair.id)}`} aria-label={`Abrir cuaderno técnico de reparación ${repair.ticketNumber}`}>
+                            <CircuitBoard className="h-4 w-4" />
+                        </Link>
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => onViewDetails(repair)} className="h-8 w-8 text-muted-foreground hover:text-blue-500" title="Ver detalles">
                         <Eye className="h-4 w-4" />
                     </Button>

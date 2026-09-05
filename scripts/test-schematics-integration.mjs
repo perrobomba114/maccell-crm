@@ -1,0 +1,31 @@
+import dotenv from 'dotenv';
+import pg from 'pg';
+import {randomUUID} from 'node:crypto';
+import assert from 'node:assert/strict';
+if (process.env.SCHEMATICS_QA_LOCAL !== '1') throw new Error('Prueba opt-in: SCHEMATICS_QA_LOCAL=1 node scripts/test-schematics-integration.mjs');
+dotenv.config({quiet:true});
+const url=new URL(process.env.DATABASE_URL);assert.equal(url.hostname,'localhost');assert.equal(url.port,'5434');
+const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,max:1});
+const tag='schematics-qa-'+randomUUID();const repairId=tag+'-repair';const userId=tag+'-tech';const outsiderId=tag+'-other';
+const base='http://localhost:3000';let asset;
+const api=async(path,body,user=userId)=>{const response=await fetch(base+path,{method:body?'POST':'GET',headers:{Cookie:`session_user_id=${user}; session_role=TECHNICIAN`,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return {status:response.status,data:await response.json()};};
+try {
+ const sample=(await pool.query('SELECT "branchId", "customerId", "statusId" FROM repairs LIMIT 1')).rows[0]; assert.ok(sample);
+ for(const id of [userId,outsiderId])await pool.query('INSERT INTO users(id,email,password,name,role,"branchId","updatedAt") VALUES($1,$2,$3,$4,\'TECHNICIAN\',$5,now())',[id,id+'@example.invalid','invalid-hash','QA esquemáticos',sample.branchId]);
+ await pool.query('INSERT INTO repairs(id,"ticketNumber","branchId","customerId","userId","assignedUserId","statusId","deviceBrand","deviceModel","problemDescription","deviceImages","promisedAt","updatedAt") VALUES($1,$2,$3,$4,$5,$5,$6,\'QA\',\'Fixture\',\'Prueba temporal automatizada\',ARRAY[]::text[],now(),now())',[repairId,tag,sample.branchId,sample.customerId,userId,sample.statusId]);
+ const catalog=await api('/api/schematics/catalog?kind=pdf&pageSize=3');assert.equal(catalog.status,200);asset=catalog.data.assets.find(a=>a.status==='ready');assert.ok(asset);
+ const endpoint=`/api/schematics/repairs/${repairId}`;
+ assert.equal((await api(endpoint)).status,200);
+ assert.equal((await api(endpoint,undefined,outsiderId)).status,403);
+ const entry={kind:'measurement',evidence:'measured',assetId:asset.id,component:'QA1',pad:'1',unit:'V',value:'3,3',note:'QA temporal',page:1,pdfAssetId:asset.id,documentUrl:`/technician/schematics?repair=${repairId}&pdf=${asset.id}&page=1`};
+ const saved=await api(endpoint+'/entries',entry);assert.equal(saved.status,201,JSON.stringify(saved.data));
+ const entries=await api(endpoint+'/entries');assert.equal(entries.data.entries[0].value,3.3);assert.equal(entries.data.entries[0].author.id,userId);
+ assert.equal((await api(endpoint+'/entries',{...entry,value:true})).status,400);
+ assert.equal((await api(endpoint+'/entries',{...entry,evidence:'documented',pdfAssetId:null})).status,400);
+ for(let i=0;i<2;i++)assert.ok([200,201].includes((await api(endpoint+'/consultations',{assetId:asset.id})).status));
+ const history=await api(endpoint+'/entries');assert.equal(history.data.consultations.length,1);
+ assert.equal((await api(endpoint+'/entries',{...entry,evidence:'documented',page:99999,documentUrl:entry.documentUrl.replace('page=1','page=99999')})).status,400);
+ const refs=await api(`/api/schematics/${asset.id}/references?q=U4000`);assert.equal(refs.status,200,JSON.stringify(refs.data));
+ const exact=await api(`/api/schematics/search?asset=${asset.id}&q=U4000`);assert.equal(exact.status,200,JSON.stringify(exact.data));
+ process.stdout.write('PASS: local HTTP catalog, repair authorization, measurement 3,3 V roundtrip, invalid inputs, consultation dedup, references and search\n');
+}finally{await pool.query('DELETE FROM repairs WHERE id=$1',[repairId]);await pool.query('DELETE FROM users WHERE id=ANY($1::text[])',[[userId,outsiderId]]);await pool.end();}

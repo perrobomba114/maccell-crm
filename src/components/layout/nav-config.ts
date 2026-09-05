@@ -47,6 +47,7 @@ export const technicianGroups = [
     {
         label: "Taller",
         items: [
+            { href: "/technician/schematics", label: "Esquemáticos", icon: "FileText" },
             { href: "/technician/tickets", label: "Trabajo Disponible", icon: "ClipboardList" },
             { href: "/technician/repairs", label: "Reparaciones", icon: "Wrench" },
             { href: "/technician/history", label: "Historial", icon: "History" },

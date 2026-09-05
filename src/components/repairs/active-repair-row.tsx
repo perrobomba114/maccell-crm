@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Camera, Eye, Printer, Share2 } from "lucide-react";
+import { Camera, CircuitBoard, Eye, Printer, Share2 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { RepairTimer } from "./repair-timer";
 import { RepairImagesActionButton, getRepairImageCount } from "./repair-images-action-button";
@@ -181,6 +182,12 @@ export function ActiveRepairRow({
                         {enableManagement ? (
                             <TechnicianActionButton repair={repair} currentUserId={currentUserId} />
                         ) : null}
+                        {enableManagement && <Link
+                            href={`/technician/schematics?repair=${encodeURIComponent(repair.id)}`}
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary"
+                            title="Esquemáticos y cuaderno"
+                            aria-label={`Abrir esquemáticos de reparación ${repair.ticketNumber}`}
+                        ><CircuitBoard className="h-4 w-4" /></Link>}
 
                         {/* 2. Ver Detalle (Ojito) */}
                         <Button
