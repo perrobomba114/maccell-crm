@@ -30,6 +30,7 @@ type Ui = { search: string; reference: string; library: boolean; inspector: bool
 export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { initial: CatalogPage; userId: string; canEditIdentity: boolean }) {
   const expandedView = useExpandedWorkbench();
   const preferences = useWorkspacePreferences(userId);
+  const { ready: preferencesReady, saveLocation } = preferences;
   const [ui, updateUi] = useReducer((state: Ui, patch: Partial<Ui>) => ({ ...state, ...patch }), { search: "", reference: "", library: true, inspector: false, mode: "board", message: "", referenceToken: 0 });
   const [boardAsset, setBoardAsset] = useState<SchematicAsset | null>(null);
   const [pdf, setPdf] = useState<SchematicAsset | null>(null);
@@ -132,9 +133,9 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     return () => controller.abort();
   }, [repairId]);
   useEffect(() => {
-    if (!preferences.ready || pendingLocation.current || (!boardAsset && !pdf)) return;
-    preferences.saveLocation(readWorkspaceLink(new URL(currentLink, window.location.origin).searchParams));
-  }, [currentLink, preferences.ready, preferences.saveLocation, boardAsset, pdf]);
+    if (!preferencesReady || pendingLocation.current || (!boardAsset && !pdf)) return;
+    saveLocation(readWorkspaceLink(new URL(currentLink, window.location.origin).searchParams));
+  }, [currentLink, preferencesReady, saveLocation, boardAsset, pdf]);
   function select(component: string | null, net: number | null, focus = false) {
     setReferenceChoices([]);
     if (linked && (component !== null || net !== null)) updateUi({ mode: "split" });

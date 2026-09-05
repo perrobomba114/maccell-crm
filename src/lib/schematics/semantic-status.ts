@@ -1,69 +1,74 @@
-export const SEMANTIC_REQUIRED_KEYS = ['DATABASE_URL', 'RAG_DATABASE_URL', 'RAG_INTERNAL_API_SECRET', 'SCHEMATICS_EMBEDDING_VERSION'] as const;
+import type { SchematicAsset } from './catalog-types';
+import type { RagCoverage } from './rag-library';
+
+export const SEMANTIC_REQUIRED_KEYS = ['DATABASE_URL', 'RAG_DATABASE_URL', 'RAG_INTERNAL_API_SECRET'] as const;
 export type CurrentSemanticPage = { assetId: string; assetSha256: string; page: number; contentSha256: string };
-export type SemanticPageChunks = CurrentSemanticPage & { chunks: number };
-export type SemanticWorkerRow = { status: string; counters: unknown; updatedAt?: Date | string };
 export type SemanticStatusDependencies = {
-  pages(): Promise<CurrentSemanticPage[]>;
-  vectors(model: string): Promise<{ tableExists: boolean; chunks: SemanticPageChunks[]; worker: SemanticWorkerRow | null }>;
+  source(): Promise<{ assets: SchematicAsset[]; pages: CurrentSemanticPage[] }>;
+  vectors(assets: SchematicAsset[], explicitModel?: string): Promise<RagCoverage>;
 };
 export type SemanticIndexStatus = {
-  status: 'not_configured' | 'unavailable' | 'not_indexed' | 'empty' | 'processing' | 'partial' | 'pending' | 'idle' | 'stopped';
+  status: 'not_configured' | 'unavailable' | 'not_indexed' | 'empty' | 'processing' | 'partial' | 'pending' | 'idle';
+  source: 'cerebro_rag';
   missingKeys: string[];
   indexablePages: number | null;
   pagesWithVectors: number | null;
   pagesWithoutVectors: number | null;
   currentChunks: number | null;
-  workerStatus: 'processing' | 'partial' | 'idle' | 'failed' | 'stopped' | null;
+  totalPdfDocuments: number | null;
+  matchedDocuments: number | null;
+  readyDocuments: number | null;
+  failedDocuments: number | null;
   workerFailedPages: number | null;
-  workerUpdatedAt: string | null;
+  activeModel: string | null;
+  dimensions: number | null;
 };
+const pageKey = (page: { assetId: string; assetSha256: string; page: number }) => JSON.stringify([page.assetId, page.assetSha256, page.page]);
 
-const pageKey = (page: CurrentSemanticPage) => JSON.stringify([page.assetId, page.assetSha256, page.page, page.contentSha256]);
-
-/** Observability only: never returns environment values, page text or provider errors. */
+/** Read-only diagnostics. Configuration values, page content and backend errors never leave this boundary. */
 export async function readSemanticStatus(environment: Record<string, string | undefined>, dependencies: SemanticStatusDependencies): Promise<SemanticIndexStatus> {
   const missingKeys = SEMANTIC_REQUIRED_KEYS.filter(key => !environment[key]?.trim());
   const result: SemanticIndexStatus = {
-    status: missingKeys.length ? 'not_configured' : 'unavailable', missingKeys,
+    status: missingKeys.length ? 'not_configured' : 'unavailable', source: 'cerebro_rag', missingKeys,
     indexablePages: null, pagesWithVectors: null, pagesWithoutVectors: null, currentChunks: null,
-    workerStatus: null, workerFailedPages: null, workerUpdatedAt: null,
+    totalPdfDocuments: null, matchedDocuments: null, readyDocuments: null, failedDocuments: null,
+    workerFailedPages: null, activeModel: null, dimensions: null,
   };
-  const [source, target] = await Promise.allSettled([
-    Promise.resolve().then(() => dependencies.pages()),
-    missingKeys.length ? Promise.resolve(null) : Promise.resolve().then(() => dependencies.vectors(environment.SCHEMATICS_EMBEDDING_VERSION!)),
-  ]);
-  if (source.status === 'fulfilled') result.indexablePages = source.value.length;
-  if (missingKeys.length) return result;
-  if (source.status !== 'fulfilled' || target.status !== 'fulfilled' || !target.value) return result;
-  const vectors = target.value;
-  const currentPages = new Set(source.value.map(pageKey));
-  const covered = new Set<string>();
-  let currentChunks = 0;
-  for (const chunk of vectors.chunks) {
-    const key = pageKey(chunk);
-    if (currentPages.has(key) && Number.isSafeInteger(chunk.chunks) && chunk.chunks > 0) {
-      covered.add(key); currentChunks += chunk.chunks;
+  try {
+    const source = await dependencies.source();
+    const assets = source.assets.filter(asset => asset.kind === 'pdf' && asset.status === 'ready');
+    const hashes = new Map(assets.map(asset => [asset.id, asset.sha256]));
+    const current = new Set(source.pages.filter(page => hashes.get(page.assetId) === page.assetSha256).map(pageKey));
+    result.indexablePages = current.size;
+    result.totalPdfDocuments = assets.length;
+    if (!environment.RAG_DATABASE_URL?.trim()) return result;
+    const vectors = await dependencies.vectors(assets, environment.SCHEMATICS_EMBEDDING_VERSION);
+    const covered = new Set<string>();
+    let failedPages = 0;
+    let chunks = 0;
+    for (const page of vectors.pages) {
+      if (hashes.get(page.assetId) !== page.assetSha256 || !Number.isSafeInteger(page.page) || page.page < 1) continue;
+      const key = pageKey(page);
+      current.add(key);
+      if (page.status === 'FAILED' || page.status === 'PARTIAL') failedPages++;
+      if (vectors.model && page.status === 'READY' && page.documentStatus === 'READY' && Number.isSafeInteger(page.chunks) && page.chunks > 0 && !covered.has(key)) {
+        covered.add(key); chunks += page.chunks;
+      }
     }
+    Object.assign(result, {
+      indexablePages: current.size, pagesWithVectors: covered.size, pagesWithoutVectors: current.size - covered.size,
+      currentChunks: chunks, workerFailedPages: failedPages,
+      matchedDocuments: vectors.matchedDocuments, readyDocuments: vectors.readyDocuments, failedDocuments: vectors.failedDocuments,
+      activeModel: vectors.model?.model_name ?? null, dimensions: vectors.model?.dimensions ?? null,
+    });
+    result.status = missingKeys.length ? 'not_configured' : !vectors.model ? 'not_indexed'
+      : vectors.processingDocuments > 0 ? 'processing'
+        : failedPages > 0 || vectors.failedDocuments > 0 ? 'partial'
+          : !assets.length ? 'empty'
+            : result.pagesWithoutVectors || vectors.readyDocuments < assets.length || !covered.size ? 'pending' : 'idle';
+  } catch {
+    // Preserve the technical count if the independent RAG database is unavailable.
+    result.status = missingKeys.length ? 'not_configured' : 'unavailable';
   }
-  result.pagesWithVectors = covered.size;
-  result.pagesWithoutVectors = currentPages.size - covered.size;
-  result.currentChunks = currentChunks;
-  const worker = vectors.worker;
-  const counters = worker?.counters;
-  if (worker && counters && typeof counters === 'object' && 'model' in counters && counters.model === environment.SCHEMATICS_EMBEDDING_VERSION) {
-    const allowed = ['processing', 'partial', 'idle', 'failed', 'stopped'] as const;
-    result.workerStatus = allowed.find(status => status === worker.status) ?? null;
-    if ('failed' in counters && typeof counters.failed === 'number' && Number.isSafeInteger(counters.failed) && counters.failed >= 0) result.workerFailedPages = counters.failed;
-    if (worker.updatedAt) {
-      const date = new Date(worker.updatedAt);
-      if (Number.isFinite(date.getTime())) result.workerUpdatedAt = date.toISOString();
-    }
-  }
-  result.status = !vectors.tableExists ? 'not_indexed'
-    : result.workerStatus === 'processing' ? 'processing'
-      : result.workerStatus === 'failed' || result.workerStatus === 'partial' || (result.workerFailedPages ?? 0) > 0 ? 'partial'
-        : result.workerStatus === 'stopped' ? 'stopped'
-          : !currentPages.size ? 'empty'
-            : result.pagesWithoutVectors ? 'pending' : 'idle';
   return result;
 }

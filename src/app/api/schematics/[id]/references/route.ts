@@ -6,6 +6,8 @@ import { databasePages } from "@/lib/schematics/database";
 import { readTechnicalIndex, hasPreviousTechnicalIndex } from "@/lib/schematics/index-store";
 import { indexReferenceMatches } from "@/lib/schematics/unified-index";
 import { findReferencePages } from "@/lib/schematics/references";
+import { queryRag } from "@/lib/cerebro-v2/rag-db";
+import { currentReferenceFile, mergeReferenceMatches, readRagReferenceMatches } from "@/lib/schematics/rag-reference-pages";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +24,27 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (!asset) return Response.json({ error: "PDF no encontrado" }, { status: 404 });
     if (asset.status !== "ready") return Response.json({ matches: [], status: asset.status });
     const technical = await readTechnicalIndex(asset);
-    if (technical) return Response.json({matches:indexReferenceMatches(technical.pages,term),status:technical.pages.some(page=>page.text.trim())?"indexed":"no_text",sources:[...new Set(technical.pages.map(page=>page.source))]});
-    if (await hasPreviousTechnicalIndex(asset.id)) return Response.json({matches:[],status:"stale"});
-    let pages: { page: number; text: string; source?: "text" | "ocr"; sha256?: string }[];
-    try { pages = await databasePages(id, asset.sha256) ?? JSON.parse(await readFile(path.join(libraryRoot(), ".index", `${id}.json`), "utf8")); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return Response.json({ matches: [], status: "not_indexed" }); throw error; }
+    if (technical && technical.complete !== false) return Response.json({matches:indexReferenceMatches(technical.pages,term),status:technical.pages.some(page=>page.text.trim())?"indexed":"no_text",sources:[...new Set(technical.pages.map(page=>page.source))]});
+    const stale = !technical && await hasPreviousTechnicalIndex(asset.id);
+    let pages: { page: number; text: string; source?: "text" | "ocr"; sha256?: string }[] = technical?.pages ?? [];
+    if (!technical && !stale) {
+      try { pages = await databasePages(id, asset.sha256) ?? JSON.parse(await readFile(path.join(libraryRoot(), ".index", `${id}.json`), "utf8")); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    }
     pages = pages.filter((page) => !("sha256" in page) || page.sha256 === asset.sha256);
-    const matches = findReferencePages(pages, term);
-    return Response.json({ matches, status: pages.some((p) => p.text.trim()) ? "indexed" : "no_text", sources: [...new Set(pages.map((page) => page.source ?? "text"))] });
+    const matches = technical ? indexReferenceMatches(technical.pages, term) : findReferencePages(pages, term);
+    const sources = [...new Set(pages.map(page => page.source ?? "text"))];
+    if (process.env.RAG_DATABASE_URL) {
+      if (!await currentReferenceFile(asset, libraryRoot())) return Response.json({ matches: [], status: "stale" });
+      try {
+        const rag = await readRagReferenceMatches(queryRag, asset, term);
+        if (rag) return Response.json({ matches: mergeReferenceMatches(matches, rag.matches), status: "indexed", sources: [...new Set([...sources, ...rag.sources])], textIndex: "existing_rag" });
+      } catch {
+        // A separate RAG outage must not discard available local references.
+        console.error("[ESQUEMATICOS] Texto RAG no disponible para referencias; se conserva el índice local");
+      }
+    }
+    return Response.json({ matches, status: technical ? "partial" : stale ? "stale" : !pages.length ? "not_indexed" : pages.some(p => p.text.trim()) ? "indexed" : "no_text", sources });
   } catch (error) {
     console.error("[ESQUEMATICOS] Búsqueda de referencias falló", error instanceof Error ? error.message : "Error desconocido");
     return Response.json({ error: "No se pudo buscar la referencia" }, { status: 500 });

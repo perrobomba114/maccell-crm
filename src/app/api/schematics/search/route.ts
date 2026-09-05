@@ -4,7 +4,9 @@ import { requestQueryEmbedding } from "@/lib/cerebro-v2/worker-client";
 import { readCatalog, readSearchablePages } from "@/lib/schematics/catalog";
 import { pairIsVerified } from "@/lib/schematics/pairing";
 import {resolvePairings} from '@/lib/schematics/pairing-server';
-import { lexicalPageMatches, validatedSemanticMatches, type SemanticRow } from "@/lib/schematics/search";
+import { lexicalPageMatches, validatedSemanticMatches } from "@/lib/schematics/search";
+
+import { readRagModel, searchRagLibrary } from '@/lib/schematics/rag-library';
 
 export const dynamic = "force-dynamic";
 const MIN_SEMANTIC_SCORE = 0.5;
@@ -24,32 +26,20 @@ export async function GET(request: Request) {
     const indexedPages = await readSearchablePages(id);
     const verifiedIds=new Set((await resolvePairings(selected,catalog.assets)).verifiedIds);
     const lexical = lexicalPageMatches(selected, indexedPages, query,verifiedIds);
-    const version = process.env.SCHEMATICS_EMBEDDING_VERSION;
-    if (!process.env.RAG_DATABASE_URL || !process.env.RAG_INTERNAL_API_SECRET || !version) return Response.json({ matches: lexical, status: lexical.length ? "exact" : "insufficient",semantic:"not_configured" });
-    if(lexical.length&&/^[A-Za-z]+\d+[A-Za-z0-9_]*$|^PP[A-Za-z0-9_]+$/.test(query))return Response.json({matches:lexical,status:"exact",semantic:"not_needed"});
+    if (!process.env.RAG_DATABASE_URL || !process.env.RAG_INTERNAL_API_SECRET) return Response.json({ matches: lexical, status: lexical.length ? "exact" : "insufficient", semantic: "not_configured" });
+    if (lexical.length && /^[A-Za-z]+\d+[A-Za-z0-9_]*$|^PP[A-Za-z0-9_]+$/.test(query)) return Response.json({ matches: lexical, status: "exact", semantic: "not_needed" });
     const candidates = catalog.assets.filter((asset) => asset.kind === "pdf" && asset.status === "ready" && (asset.id === selected.id || pairIsVerified(selected, asset) || verifiedIds.has(asset.id)));
-    const candidateIds = new Set(candidates.map(asset => asset.id));
-    const currentPages = indexedPages.flatMap((page) => page.contentSha256 && candidateIds.has(page.asset.id) ? [{ asset_id: page.asset.id, asset_sha256: page.asset.sha256, page_number: page.page, content_sha256: page.contentSha256 }] : []);
-    let rows: SemanticRow[];
+    let semantic;
     try {
-      const table = await queryRag<{ name: string | null }>("SELECT to_regclass('schematics.chunks')::text AS name", []);
-      if (!table[0]?.name) return Response.json({ matches: lexical, status: lexical.length ? "exact" : "not_indexed",semantic:"not_indexed" });
+      const model = await readRagModel(queryRag, process.env.SCHEMATICS_EMBEDDING_VERSION);
+      if (!model || !candidates.length) return Response.json({ matches: lexical, status: lexical.length ? "exact" : "not_indexed", semantic: "not_indexed" });
       const embedding = await requestQueryEmbedding(query);
-      rows = await queryRag<SemanticRow>(
-        `SELECT asset_id,asset_sha256,content_sha256,page_number,content,source,1-(embedding <=> $1::vector) AS score
-         FROM schematics.chunks AS chunk
-         JOIN jsonb_to_recordset($4::jsonb) AS current(asset_id text,asset_sha256 text,page_number integer,content_sha256 text)
-           ON current.asset_id=chunk.asset_id AND current.asset_sha256=chunk.asset_sha256
-          AND current.page_number=chunk.page_number AND current.content_sha256=chunk.content_sha256
-         WHERE chunk.embedding_model=$2 AND 1-(chunk.embedding <=> $1::vector) >= $3
-         ORDER BY chunk.embedding <=> $1::vector LIMIT 20`,
-        [`[${embedding.join(",")}]`, version, MIN_SEMANTIC_SCORE, JSON.stringify(currentPages)],
-      );
-    } catch (error) {
-      console.error("[ESQUEMATICOS] Índice semántico no disponible", error instanceof Error ? error.message : "Error desconocido");
+      const rag = await searchRagLibrary(queryRag, candidates, embedding, model, MIN_SEMANTIC_SCORE);
+      semantic = validatedSemanticMatches(selected, candidates, rag.pages, rag.rows, lexical, MIN_SEMANTIC_SCORE, verifiedIds);
+    } catch {
+      console.error("[ESQUEMATICOS] Índice RAG compartido no disponible");
       return Response.json({ matches: lexical, status: lexical.length ? "exact" : "insufficient", semantic: "unavailable" });
     }
-    const semantic = validatedSemanticMatches(selected, candidates, indexedPages, rows, lexical, MIN_SEMANTIC_SCORE,verifiedIds);
     const matches = [...lexical, ...semantic].slice(0, 20);
     return Response.json({ matches, status: semantic.length ? "semantic" : lexical.length ? "exact" : "insufficient" });
   } catch (error) {

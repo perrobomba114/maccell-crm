@@ -49,7 +49,7 @@ export function LibrarySidebar(props: Props) {
     {busy && <p className="sch-library-status" role="status"><Loader2 size={14} className="animate-spin" /> Buscando…</p>}
     {error && <p className="sch-notice" role="alert">{error} <button onClick={() => setRetry(value => value + 1)}>Reintentar</button></p>}
     <div className="sch-tree" aria-busy={busy}>
-      {scope === "all" && !query && props.recent.length > 0 && <details open className="sch-folder"><summary><History size={15} />Recientes</summary>{props.recent.map(item => <button key={item.id} className="sch-asset" onClick={() => props.onOpenId(item.id)}>{item.name}</button>)}</details>}
+      {scope === "all" && kind === "all" && !query && props.recent.length > 0 && <details open className="sch-folder"><summary><History size={15} />Recientes</summary>{props.recent.map(item => <button key={item.id} className="sch-asset" onClick={() => props.onOpenId(item.id)}>{item.name}</button>)}</details>}
       {!busy && !error && result.total === 0 && <div className="sch-library-empty"><Search size={24} /><strong>{scope === "favorites" ? "Sin favoritos para mostrar" : "No encontramos ese equipo"}</strong><p>{scope === "favorites" ? "Marcá la estrella de un documento abierto para guardarlo acá, o revisá los filtros." : "Probá con otro modelo o código de placa y revisá el tipo de archivo."}</p></div>}
       {!busy && !error && result.assets.length > 0 && loadedQuery === props.search && <AssetTree assets={result.assets} boardId={props.boardId} pdfId={props.pdfId} onOpen={props.onOpen} expanded={!!query || scope === "favorites"} />}
     </div>
