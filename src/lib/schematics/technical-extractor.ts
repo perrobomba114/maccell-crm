@@ -9,7 +9,8 @@ import { imagePagesForOcr, indexFileIsCurrent, mergeOcrPage, indexBoard, parseBb
 import type { SchematicAsset } from './catalog-types';
 const run = promisify(execFile);
 
-export async function extractTechnicalIndex(asset: SchematicAsset, file: string, forceOcrPages: number[] = []): Promise<TechnicalIndex> {
+export async function extractTechnicalIndex(asset: SchematicAsset, file: string, forceOcrPages: number[] = [], signal?: AbortSignal): Promise<TechnicalIndex> {
+  signal?.throwIfAborted();
   const before = await stat(file);
   const fingerprint = { fileMtimeMs: before.mtimeMs, fileSize: before.size };
   const bytes = await readFile(file);
@@ -23,17 +24,18 @@ export async function extractTechnicalIndex(asset: SchematicAsset, file: string,
     const source = path.join(temporary, 'source.pdf');
     await writeFile(source, bytes);
     const output = path.join(temporary, 'pages.xml');
-    await run('pdftotext', ['-bbox', '-enc', 'UTF-8', source, output], { timeout: 120_000, maxBuffer: 1024 * 1024 });
+    await run('pdftotext', ['-bbox', '-enc', 'UTF-8', source, output], { signal, timeout: 120_000, maxBuffer: 1024 * 1024 });
     const pages = parseBboxXml(await readFile(output, 'utf8'));
     if (!pages.length) throw new Error('No se extrajeron páginas del PDF');
-    const images = await run('pdfimages', ['-list', source], { timeout: 30_000, maxBuffer: 4 * 1024 * 1024 });
+    const images = await run('pdfimages', ['-list', source], { signal, timeout: 30_000, maxBuffer: 4 * 1024 * 1024 });
     const imagePages = new Set(imagePagesForOcr(images.stdout));
     for (const page of pages) {
+      signal?.throwIfAborted();
       if (page.text.trim().length >= 15 && !forceOcrPages.includes(page.page) && !imagePages.has(page.page)) continue;
       const raster = path.join(temporary, `page-${page.page}`);
       // Bound raster pixels: large schematic sheets must not exhaust server memory.
-      await run('pdftoppm', ['-f', String(page.page), '-l', String(page.page), '-singlefile', '-scale-to', '4000', '-png', source, raster], { timeout: 60_000, maxBuffer: 1024 * 1024 });
-      const recognized = await run('tesseract', [`${raster}.png`, 'stdout', '-l', process.env.SCHEMATICS_OCR_LANGUAGES ?? 'eng', 'tsv'], { timeout: 90_000, maxBuffer: 16 * 1024 * 1024 });
+      await run('pdftoppm', ['-f', String(page.page), '-l', String(page.page), '-singlefile', '-scale-to', '4000', '-png', source, raster], { signal, timeout: 60_000, maxBuffer: 1024 * 1024 });
+      const recognized = await run('tesseract', [`${raster}.png`, 'stdout', '-l', process.env.SCHEMATICS_OCR_LANGUAGES ?? 'eng', 'tsv'], { signal, timeout: 90_000, maxBuffer: 16 * 1024 * 1024 });
       const ocr = parseOcrTsv(recognized.stdout, page.page);
       Object.assign(page, mergeOcrPage(page, ocr));
       await rm(`${raster}.png`, { force: true });

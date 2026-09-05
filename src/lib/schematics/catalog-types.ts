@@ -11,6 +11,7 @@ export type SchematicAsset = {
   identityVerified?: boolean;
   identityVerifiedBy?: string;
   identityVerifiedAt?: string;
+  documentLinks?: Array<{ assetId: string; sha256: string; sourceSha256: string; confirmedBy: string; confirmedAt: string }>;
   identityVerificationHistory?: Array<{ verifiedBy: string; verifiedAt: string; brand: string; model: string; boardCode: string; revision: string; aliases: string[] }>;
   relativePath: string;
   size: number;

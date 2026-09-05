@@ -1,5 +1,6 @@
 import type { SchematicAsset } from "./catalog-types";
-import { identityKey, verifiedSameDevice } from "./catalog-types";
+import { identityKey } from "./catalog-types";
+import { assetPriority, catalogQuery, declaredModel, pairIsVerified } from './pairing';
 
 export type CatalogKind = "all" | SchematicAsset["kind"];
 export type CatalogQuery = { q?: string; kind: CatalogKind; page: number; pageSize: number };
@@ -13,8 +14,12 @@ function assetSearchText(asset: SchematicAsset): string {
 }
 
 export function paginateCatalog(assets: SchematicAsset[], query: CatalogQuery) {
-  const terms = (query.q ?? "").split(/\s+/).map(identityKey).filter(Boolean);
-  const filtered = assets.filter((asset) => (query.kind === "all" || asset.kind === query.kind) && terms.every(term => assetSearchText(asset).includes(term)));
+  const normalized = catalogQuery(query.q ?? '');
+  const terms = normalized.split(/\s+/).map(identityKey).filter(Boolean);
+  const exact = identityKey(normalized);
+  const exactModel = declaredModel(normalized) === exact && assets.some(asset => identityKey(asset.model) === exact);
+  const filtered = assets.filter((asset) => (query.kind === "all" || asset.kind === query.kind) && (!exactModel || identityKey(asset.model) === exact) && terms.every(term => assetSearchText(asset).includes(term)));
+  if (terms.length) filtered.sort((a,b)=>Number(identityKey(b.model)===exact)-Number(identityKey(a.model)===exact) || assetPriority(a)-assetPriority(b) || a.name.localeCompare(b.name,'es',{numeric:true}));
   const counts = {
     pcbe: filtered.filter((asset) => asset.kind === "pcbe").length,
     pdf: filtered.filter((asset) => asset.kind === "pdf").length,
@@ -27,12 +32,12 @@ function excerpt(text: string, index: number, length: number): string {
   return text.slice(Math.max(0, index - 120), Math.min(text.length, index + length + 260)).trim();
 }
 
-export function lexicalPageMatches(selected: SchematicAsset, pages: SearchablePage[], query: string): SearchMatch[] {
+export function lexicalPageMatches(selected: SchematicAsset, pages: SearchablePage[], query: string, verifiedIds:ReadonlySet<string>=new Set()): SearchMatch[] {
   const terms = query.normalize("NFKC").trim().toLowerCase().split(/\s+/).filter((term) => term.length >= 2);
   if (!terms.length) return [];
   const seen = new Set<string>();
   return pages.flatMap(({ asset, page, text, source }) => {
-    if (asset.status !== "ready" || (asset.id !== selected.id && !verifiedSameDevice(selected, asset))) return [];
+    if (asset.status !== "ready" || (asset.id !== selected.id && !pairIsVerified(selected, asset) && !verifiedIds.has(asset.id))) return [];
     const normalized = text.normalize("NFKC").toLowerCase();
     const positions = terms.map((term) => normalized.indexOf(term));
     if (positions.some((position) => position < 0)) return [];
@@ -43,11 +48,11 @@ export function lexicalPageMatches(selected: SchematicAsset, pages: SearchablePa
   }).slice(0, 50);
 }
 
-export function validatedSemanticMatches(selected: SchematicAsset, assets: SchematicAsset[], pages: SearchablePage[], rows: SemanticRow[], existing: SearchMatch[], minimumScore: number): SearchMatch[] {
+export function validatedSemanticMatches(selected: SchematicAsset, assets: SchematicAsset[], pages: SearchablePage[], rows: SemanticRow[], existing: SearchMatch[], minimumScore: number,verifiedIds:ReadonlySet<string>=new Set()): SearchMatch[] {
   const seen = new Set(existing.map((match) => `${match.assetId}:${match.page}`));
   const currentDigests = new Map(pages.map((page) => [`${page.asset.id}:${page.page}`, page.contentSha256]));
   return rows.flatMap((row) => {
-    const asset = assets.find((candidate) => candidate.kind === "pdf" && candidate.id === row.asset_id && candidate.sha256 === row.asset_sha256 && candidate.status === "ready" && (candidate.id === selected.id || verifiedSameDevice(selected, candidate)));
+    const asset = assets.find((candidate) => candidate.kind === "pdf" && candidate.id === row.asset_id && candidate.sha256 === row.asset_sha256 && candidate.status === "ready" && (candidate.id === selected.id || pairIsVerified(selected, candidate) || verifiedIds.has(candidate.id)));
     const key = `${row.asset_id}:${row.page_number}`;
     if (!asset || !row.content_sha256 || row.content_sha256 !== currentDigests.get(key) || row.score < minimumScore || seen.has(key)) return [];
     seen.add(key);

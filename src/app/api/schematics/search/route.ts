@@ -2,7 +2,8 @@ import { getCurrentUser } from "@/actions/auth-actions";
 import { queryRag } from "@/lib/cerebro-v2/rag-db";
 import { requestQueryEmbedding } from "@/lib/cerebro-v2/worker-client";
 import { readCatalog, readSearchablePages } from "@/lib/schematics/catalog";
-import { verifiedSameDevice } from "@/lib/schematics/catalog-types";
+import { pairIsVerified } from "@/lib/schematics/pairing";
+import {resolvePairings} from '@/lib/schematics/pairing-server';
 import { lexicalPageMatches, validatedSemanticMatches, type SemanticRow } from "@/lib/schematics/search";
 
 export const dynamic = "force-dynamic";
@@ -21,15 +22,18 @@ export async function GET(request: Request) {
     const selected = catalog.assets.find((asset) => asset.id === id);
     if (!selected) return Response.json({ error: "Seleccioná un equipo" }, { status: 400 });
     const indexedPages = await readSearchablePages(id);
-    const lexical = lexicalPageMatches(selected, indexedPages, query);
+    const verifiedIds=new Set((await resolvePairings(selected,catalog.assets)).verifiedIds);
+    const lexical = lexicalPageMatches(selected, indexedPages, query,verifiedIds);
     const version = process.env.SCHEMATICS_EMBEDDING_VERSION;
-    if (!process.env.RAG_DATABASE_URL || !process.env.RAG_INTERNAL_API_SECRET || !version) return Response.json({ matches: lexical, status: lexical.length ? "exact" : "insufficient" });
-    const candidates = catalog.assets.filter((asset) => asset.kind === "pdf" && asset.status === "ready" && (asset.id === selected.id || verifiedSameDevice(selected, asset)));
-    const currentPages = indexedPages.flatMap((page) => page.contentSha256 ? [{ asset_id: page.asset.id, asset_sha256: page.asset.sha256, page_number: page.page, content_sha256: page.contentSha256 }] : []);
+    if (!process.env.RAG_DATABASE_URL || !process.env.RAG_INTERNAL_API_SECRET || !version) return Response.json({ matches: lexical, status: lexical.length ? "exact" : "insufficient",semantic:"not_configured" });
+    if(lexical.length&&/^[A-Za-z]+\d+[A-Za-z0-9_]*$|^PP[A-Za-z0-9_]+$/.test(query))return Response.json({matches:lexical,status:"exact",semantic:"not_needed"});
+    const candidates = catalog.assets.filter((asset) => asset.kind === "pdf" && asset.status === "ready" && (asset.id === selected.id || pairIsVerified(selected, asset) || verifiedIds.has(asset.id)));
+    const candidateIds = new Set(candidates.map(asset => asset.id));
+    const currentPages = indexedPages.flatMap((page) => page.contentSha256 && candidateIds.has(page.asset.id) ? [{ asset_id: page.asset.id, asset_sha256: page.asset.sha256, page_number: page.page, content_sha256: page.contentSha256 }] : []);
     let rows: SemanticRow[];
     try {
       const table = await queryRag<{ name: string | null }>("SELECT to_regclass('schematics.chunks')::text AS name", []);
-      if (!table[0]?.name) return Response.json({ matches: lexical, status: lexical.length ? "exact" : "not_indexed" });
+      if (!table[0]?.name) return Response.json({ matches: lexical, status: lexical.length ? "exact" : "not_indexed",semantic:"not_indexed" });
       const embedding = await requestQueryEmbedding(query);
       rows = await queryRag<SemanticRow>(
         `SELECT asset_id,asset_sha256,content_sha256,page_number,content,source,1-(embedding <=> $1::vector) AS score
@@ -45,7 +49,7 @@ export async function GET(request: Request) {
       console.error("[ESQUEMATICOS] Índice semántico no disponible", error instanceof Error ? error.message : "Error desconocido");
       return Response.json({ matches: lexical, status: lexical.length ? "exact" : "insufficient", semantic: "unavailable" });
     }
-    const semantic = validatedSemanticMatches(selected, candidates, indexedPages, rows, lexical, MIN_SEMANTIC_SCORE);
+    const semantic = validatedSemanticMatches(selected, candidates, indexedPages, rows, lexical, MIN_SEMANTIC_SCORE,verifiedIds);
     const matches = [...lexical, ...semantic].slice(0, 20);
     return Response.json({ matches, status: semantic.length ? "semantic" : lexical.length ? "exact" : "insufficient" });
   } catch (error) {

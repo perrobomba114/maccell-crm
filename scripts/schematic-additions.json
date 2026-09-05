@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "importId": "iphone13promax-2026-09-05",
+  "asset": {
+    "id": "21b135823617fc160f1bda3cc39d5bcdf942a80813cc03d4be4f0c9a1c5836de",
+    "name": "iPhone13ProMax Schematics.pdf",
+    "kind": "pdf",
+    "brand": "Apple",
+    "model": "iPhone13ProMAX",
+    "modelKey": "iphone13promax",
+    "relativePath": "sources/iPhone/iPhone 13 Pro Max/iPhone13ProMax Schematics.pdf",
+    "size": 8664884,
+    "sha256": "4861baf1f741cb90f312fb51b1d30f81d2371d3ee6a7f37df6c8c5a706c41ee3",
+    "status": "ready"
+  },
+  "localRelativePath": "pdf/iPhone(VIP)/iPhone13ProMAX/Schematic and boardview/iPhone13ProMax Schematics.pdf",
+  "pairedBoards": [
+    {
+      "id": "11f693ae19154fbe45c74226ae4f396aae069cecc7b2dd892b6159b520cfbe52",
+      "sha256": "a2e297f91bf08359140df930fd05824c4dfd998472b0629b7e1985d4061e6156",
+      "name": "iPhone13ProMax AP Boardview 820-02400-06.pcbe",
+      "sharedDesignators": 1589,
+      "sharedNamedNets": 807,
+      "verifiedPinNets": 12
+    },
+    {
+      "id": "b9b28a75d7837b1b0419f91c2edc7f9520b5c100db5d5d7348e59710f7c508e0",
+      "sha256": "c55b90e7c78d04cb0fa410f7ef2ada7069179a7a3968d879eaa4cfd5ac3d398a",
+      "name": "iPhone13ProMax BB Boardview 820-02401-09.pcbe",
+      "sharedDesignators": 826,
+      "sharedNamedNets": 481,
+      "verifiedPinNets": 21
+    },
+    {
+      "id": "489edcab05612db2b0cebc11bc2ac06201004a7a75ce55e66072674173492a5d",
+      "sha256": "d676e3d67edba12b7f3443ff702b8392dd6f0aa1f6db50873fa53b3cd98c7cd4",
+      "name": "iPhone13ProMax Boardview.pcbe",
+      "sharedDesignators": 2411,
+      "sharedNamedNets": 1314,
+      "verifiedPinNets": 33
+    },
+    {
+      "id": "d5e65c9f3e4ea609a9dd6fb58715c49928f3fbb4450e926fe48d95ea84699b8e",
+      "sha256": "224f8dc892932a1cccc55b434f360a3bca633c9e0bcb4c3c3677dd75adf7ccf9",
+      "name": "iPhone13ProMax_AP 820-02400-06 PCB layer.pcbe",
+      "sharedDesignators": 1589,
+      "sharedNamedNets": 475,
+      "verifiedPinNets": 12
+    },
+    {
+      "id": "b37a001d2c6c658fb0235322d4615aa0551bbab19366b9199e7d356690494e92",
+      "sha256": "5a504123de2b001eb943262b5d64f4e2f400f62e467831860eb90b391ae69144",
+      "name": "iPhone13ProMax_BB 820-02401-09 PCB layer.pcbe",
+      "sharedDesignators": 826,
+      "sharedNamedNets": 338,
+      "verifiedPinNets": 21
+    }
+  ],
+  "evidence": {
+    "method": "Authenticated source plus independent PDF/PCBE comparison of named pin-to-net connections",
+    "sourceNode": "00029185",
+    "pdfPages": 132,
+    "sampleComponents": [
+      "U4400 page 2",
+      "J10700 page 103"
+    ],
+    "limitations": [
+      "No explicit iPhone model or 820 board-code literal in PDF text.",
+      "Missing token is not a proven electrical mismatch; PDF hidden CAD labels and text order can split or merge names.",
+      "PCBE parser reports invalid trailing net entries on main-board files; synthetic Net N labels cannot confirm a named net.",
+      "Only two circuits were checked at pin-to-net level; global intersections are not global circuit verification.",
+      "PDF page numbering differs from printed sheet numbering from at least page 103.",
+      "Do not propagate main-board association to flex cables without their own pin-level evidence."
+    ],
+    "reviewedAt": "2026-09-05T05:56:07.665571+00:00"
+  }
+}

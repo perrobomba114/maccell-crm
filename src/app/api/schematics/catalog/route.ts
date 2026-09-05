@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/actions/auth-actions";
-import { readCatalog, readCatalogPage } from "@/lib/schematics/catalog";
+import { readCatalog } from "@/lib/schematics/catalog";
 import { sameDevice } from "@/lib/schematics/catalog-types";
 import { paginateCatalog, type CatalogKind } from "@/lib/schematics/search";
 
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       const assets = catalog.assets.filter((asset) => asset.id !== selected.id && asset.kind !== selected.kind && sameDevice(selected, asset));
       return Response.json(paginateCatalog(assets, { q, kind: rawKind as CatalogKind, page, pageSize }));
     }
-    return Response.json(await readCatalogPage({ q, kind: rawKind as CatalogKind, page, pageSize }));
+    return Response.json(paginateCatalog(catalog.assets,{ q, kind: rawKind as CatalogKind, page, pageSize }));
   } catch (error) {
     console.error("[ESQUEMATICOS] No se pudo listar el catálogo", error instanceof Error ? error.message : "Error desconocido");
     return Response.json({ error: "No se pudo cargar el catálogo" }, { status: 500 });

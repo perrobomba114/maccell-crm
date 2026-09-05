@@ -2,8 +2,10 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { CircuitBoard, Search, FileText, Loader2, Link2, Star, Copy, X } from "lucide-react";
-import { sameDevice, verifiedSameDevice, type SchematicAsset } from "@/lib/schematics/catalog-types";
+import { sameDevice, type SchematicAsset } from "@/lib/schematics/catalog-types";
 import { readWorkspaceLink, workspaceLink, type WorkspaceLocation } from "@/lib/schematics/workspace";
+import {pairIsVerified} from '@/lib/schematics/pairing';
+import {PairingStatus} from './pairing-status';
 import { ConnectionInspector } from "./connection-inspector";
 import { PdfPanel } from "./pdf-panel";
 import { DocumentSearch } from "./document-search";
@@ -30,6 +32,8 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
   const [boardAsset, setBoardAsset] = useState<SchematicAsset | null>(null);
   const [pdf, setPdf] = useState<SchematicAsset | null>(null);
   const [pdfPage, setPdfPage] = useState(1);
+  const currentPdfId = useRef<string | undefined>(undefined);
+  useEffect(() => { currentPdfId.current = pdf?.id; }, [pdf?.id]);
   const { board, loading, error } = useBoardDocument(boardAsset);
   const [selection, setSelection] = useState<{ component: string | null; net: number | null }>({ component: null, net: null });
   const [focusToken, setFocusToken] = useState(0);
@@ -43,7 +47,6 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
   const pdfReferences = useMemo(() => new Set([...(board?.components.map(item => item.name.toUpperCase()) ?? []), ...(board?.netCatalog.map(item => item.name.toUpperCase()) ?? [])]), [board]);
   const selectedComponent = board?.components.find(item => item.id === selection.component);
   const selectedNet = board?.netCatalog.find(item => item.id === selection.net);
-  const linked = !!(pdf && boardAsset && verifiedSameDevice(pdf, boardAsset));
   const candidate = !!(pdf && boardAsset && sameDevice(pdf, boardAsset));
   const activeAsset = ui.mode === "pdf" ? pdf : boardAsset ?? pdf;
   const locationState: WorkspaceLocation = { board: boardAsset?.id, pdf: pdf?.id, page: pdfPage, component: selectedComponent?.name, net: selectedNet?.name, repair: repairId };
@@ -62,21 +65,28 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
   }, []);
   const openCounterpart = useCallback((asset: SchematicAsset) => {
     catalogCache.current.set(asset.id, asset);
-    if (asset.kind === "pdf") { setPdf(asset); setPdfPage(1); }
+    if (asset.kind === "pdf") { setPdf(asset); if (currentPdfId.current !== asset.id) setPdfPage(1); }
     else { setBoardAsset(asset); setSelection({ component: null, net: null }); updateUi({ reference: "" }); }
     updateUi({ mode: "split" });
   }, []);
-  const { candidates: related, error: relatedError } = useLinkedAssets(anchor, openCounterpart);
+  const { candidates: related, error: relatedError, verifiedIds, loading: linking } = useLinkedAssets(anchor, openCounterpart);
+  const linked = !!(pdf && boardAsset && (pairIsVerified(pdf,boardAsset) || (anchor?.id===boardAsset.id && verifiedIds.includes(pdf.id)) || (anchor?.id===pdf.id && verifiedIds.includes(boardAsset.id))));
   function openAsset(asset: SchematicAsset) {
     setAnchor(asset); setReferenceChoices([]);
     catalogCache.current.set(asset.id, asset);
     preferences.remember(asset.id, asset.name);
     updateUi({ library: false, message: "" });
-    if (asset.kind === "pdf") { setPdfPage(1); setPdf(asset); updateUi({ mode: boardAsset ? "split" : "pdf" }); return; }
+    if (asset.kind === "pdf") {
+      const keepBoard=boardAsset&&sameDevice(asset,boardAsset);
+      if(!keepBoard){setBoardAsset(null);setSelection({component:null,net:null});}
+      setPdfPage(1); setPdf(asset); updateUi({reference:'',mode:keepBoard?'split':'pdf'}); return;
+    }
+    const keepPdf=pdf&&sameDevice(asset,pdf);
+    if(!keepPdf){setPdf(null);setPdfPage(1);}
     if (asset.id !== boardAsset?.id) {
       setBoardAsset(asset); setSelection({ component: null, net: null }); updateUi({ reference: "" });
     }
-    updateUi({ mode: pdf ? "split" : "board" });
+    updateUi({ mode: keepPdf ? "split" : "board" });
   }
   async function openId(id: string, page?: number) {
     try { const asset = await assetById(id); openAsset(asset); if (page && asset.kind === "pdf") { setPdfPage(page); updateUi({ reference: "" }); } }
@@ -92,9 +102,10 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     if (!saved.board && !saved.pdf) { pendingLocation.current = null; return; }
     Promise.all([saved.board ? assetById(saved.board) : null, saved.pdf ? assetById(saved.pdf) : null]).then(([plate, document]) => {
       if (plate?.kind === "pcbe") setBoardAsset(plate);
-      if (!plate || !document) setAnchor(plate ?? document);
-      if (document?.kind === "pdf") { setPdf(document); setPdfPage(saved.page); }
-      updateUi({ library: false, mode: plate && document ? "split" : document ? "pdf" : "board" });
+      const compatibleDocument=document&&(!plate||sameDevice(plate,document))?document:null;
+      setAnchor(plate??compatibleDocument);
+      if (compatibleDocument?.kind === "pdf") { setPdf(compatibleDocument); setPdfPage(saved.page); }
+      updateUi({ library: false, mode: plate && compatibleDocument ? "split" : compatibleDocument ? "pdf" : "board" });
       if (!plate) pendingLocation.current = null;
     }).catch((cause: unknown) => { pendingLocation.current = null; updateUi({ message: cause instanceof Error ? cause.message : "No se pudo restaurar la sesión" }); });
   }, [preferences.ready, preferences.location, assetById]);
@@ -147,12 +158,14 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     <div className={`sch-layout ${ui.library ? "" : "sch-no-library"}`}>
       {ui.library && <LibrarySidebar canReindex={canEditIdentity} initial={initial} search={ui.search} onSearch={search => updateUi({ search })} boardId={boardAsset?.id} pdfId={pdf?.id} onOpen={openAsset} onOpenId={id => void openId(id)} favorites={preferences.favorites} recent={preferences.recent} />}
       <div className="sch-workarea">
-        <div className="sch-document-tab"><CircuitBoard size={14} /><span>{activeAsset?.name ?? "Mesa de trabajo"}</span>{pdf && boardAsset && <small><Link2 size={12} />{linked ? "Identidad validada" : candidate ? "Catálogo sin verificar" : "Equipos distintos"}</small>}
+        <div className="sch-document-tab"><CircuitBoard size={14} /><span>{activeAsset?.name ?? "Mesa de trabajo"}</span>{pdf && boardAsset && <small><Link2 size={12} />{linked ? "Placa y PDF vinculados" : candidate ? "Catálogo sin verificar" : "Equipos distintos"}</small>}
           {activeAsset && <button aria-label="Guardar o quitar favorito" aria-pressed={preferences.favorites.includes(activeAsset.id)} onClick={() => preferences.toggleFavorite(activeAsset.id)}><Star size={16} fill={preferences.favorites.includes(activeAsset.id) ? "currentColor" : "none"} /></button>}
           {(boardAsset || pdf) && <button aria-label="Copiar enlace a esta vista" onClick={() => { void navigator.clipboard.writeText(new URL(currentLink, window.location.origin).href).then(() => updateUi({ message: "Enlace copiado con componente y página actuales." })).catch(() => updateUi({ message: "No se pudo copiar el enlace. Usá el enlace Abrir esta vista." })); }}><Copy size={16} /></button>}
           {(boardAsset || pdf) && <a className="sch-view-link" href={currentLink}>Abrir esta vista</a>}
         </div>
-        {anchor && related.length > 0 && <details className="sch-linked-choices" open={related.length > 1 || !linked}><summary>Archivos del equipo · {related.length}</summary><div className="sch-related">{related.map(asset => <button key={asset.id} aria-pressed={asset.id === pdf?.id || asset.id === boardAsset?.id} onClick={() => openCounterpart(asset)}>{asset.name}<small>{verifiedSameDevice(anchor, asset) ? "Identidad validada" : "Sin verificar · abrir para revisar"}</small></button>)}</div></details>}
+        {linking && <div className="sch-notice" role="status">Buscando documentos compatibles del equipo…</div>}
+        {anchor && !linking && !relatedError && !related.length && <div className="sch-notice" role="status">{anchor.kind==='pcbe' ? 'No hay un PDF asociado a este modelo en la biblioteca.' : 'No hay una placa asociada a este modelo en la biblioteca.'}</div>}
+        {anchor && related.length > 0 && <details key={anchor.id} className="sch-linked-choices"><summary>Archivos del equipo · {related.length}{linked ? ' · sincronizados' : ' · elegir documento'}</summary><div className="sch-related">{related.map(asset => <button key={asset.id} aria-pressed={asset.id === pdf?.id || asset.id === boardAsset?.id} onClick={() => openCounterpart(asset)}>{asset.name}<small>{(pairIsVerified(anchor,asset)||verifiedIds.includes(asset.id)) ? "Compatible" : "Sin verificar · abrir para revisar"}</small></button>)}</div></details>}
         {referenceChoices.length > 1 && <div className="sch-pdf-label-choices"><span>Hay varias ubicaciones con esa referencia:</span>{referenceChoices.map(item => <button key={item.label} onClick={() => { select(item.component, item.net, true); updateUi({ mode: "split" }); }}>{item.label}</button>)}<button onClick={() => setReferenceChoices([])}>Cerrar</button></div>}
         <div className={`sch-viewers sch-view-${ui.mode}`}>
           <div className="sch-board-slot" hidden={ui.mode === "pdf"}>
@@ -162,7 +175,7 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
             {pdf ? <PdfPanel key={pdf.id} page={pdfPage} onPage={setPdfPage} navigationToken={ui.referenceToken} canReindex={canEditIdentity} asset={pdf} reference={linked ? ui.reference : ""} references={linked ? pdfReferences : emptyReferences} onReference={selectPdfReference} /> : <div className="sch-empty"><FileText size={32} /><h3>Documentación del equipo</h3><p>Elegí un PDF. La sincronización requiere identidad técnica compatible.</p><div className="sch-related">{related.map(asset => <button key={asset.id} onClick={() => openAsset(asset)}>{asset.name}</button>)}</div><button onClick={() => updateUi({ library: true })}>Abrir biblioteca</button></div>}
           </div>
         </div>
-        {pdf && boardAsset && <div className="sch-notice sch-identity-notice">{linked ? "Referencias vinculadas por identidad validada. Comprobá que la revisión de tu equipo coincide." : "Referencias sin sincronizar: un administrador debe validar marca, modelo, código de placa y revisión de ambos archivos en el Inspector."}</div>}
+        {pdf && boardAsset && <PairingStatus key={`${boardAsset.id}:${pdf.id}`} board={boardAsset} pdf={pdf} linked={linked} canEdit={canEditIdentity} onUpdated={asset=>{catalogCache.current.set(asset.id,asset);setBoardAsset(asset);setAnchor(asset);}} />}
       </div>
       <aside className="sch-inspector" aria-label="Inspector de circuito"><div className="sch-section-heading">EXPLORAR CIRCUITO<button aria-label="Cerrar inspector" onClick={() => updateUi({ inspector: false })}><X size={16} /></button></div><label className="sch-search"><Search size={15} /><input aria-label="Buscar componente o red" placeholder="U4000, PP_VDD_MAIN…" value={ui.reference} onChange={event => updateUi({ reference: event.target.value })} /></label>
         {selectedComponent && <div className="sch-selection"><span>COMPONENTE</span><strong>{selectedComponent.name}</strong><small>{selectedComponent.kind} · {selectedComponent.pads.length} pads</small></div>}

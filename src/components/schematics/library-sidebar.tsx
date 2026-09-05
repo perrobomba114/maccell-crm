@@ -16,6 +16,7 @@ export function LibrarySidebar(props: Props) {
   const [page, setPage] = useState(1);
   const [scope, setScope] = useState("all");
   const [result, setResult] = useState(props.initial);
+  const [loadedQuery, setLoadedQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const query = useDeferredValue(props.search);
@@ -29,7 +30,7 @@ export function LibrarySidebar(props: Props) {
     fetch(`/api/schematics/catalog?${params}`, { signal: controller.signal }).then(async response => {
       if (!response.ok) throw new Error("No se pudo cargar la biblioteca. Reintentá la búsqueda.");
       const data = await response.json() as CatalogPage;
-      if (!controller.signal.aborted) setResult(data);
+      if (!controller.signal.aborted) { setResult(data); setLoadedQuery(query); }
     }).catch((cause: unknown) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Error al buscar"); }).finally(() => { if (!controller.signal.aborted) setBusy(false); });
     return () => controller.abort();
   }, [query, kind, page, ids, scope, props.initial]);
@@ -44,7 +45,7 @@ export function LibrarySidebar(props: Props) {
     {error && <p className="sch-notice" role="alert">{error}</p>}
     <div className="sch-tree" aria-busy={busy}>
       {scope === "all" && !query && props.recent.length > 0 && <details className="sch-folder"><summary><History size={15} />Recientes</summary>{props.recent.map(item => <button key={item.id} className="sch-asset" onClick={() => props.onOpenId(item.id)}>{item.name}</button>)}</details>}
-      <AssetTree assets={result.assets} boardId={props.boardId} pdfId={props.pdfId} onOpen={props.onOpen} expanded={!!query || scope === "favorites"} />
+      {!busy && loadedQuery === props.search && <AssetTree assets={result.assets} boardId={props.boardId} pdfId={props.pdfId} onOpen={props.onOpen} expanded={!!query || scope === "favorites"} />}
     </div>
     <div className="sch-library-pagination"><button disabled={page <= 1 || busy} onClick={() => setPage(value => value - 1)}>Anterior</button><span>{page} / {Math.max(1, Math.ceil(result.total / result.pageSize))}</span><button disabled={page * result.pageSize >= result.total || busy} onClick={() => setPage(value => value + 1)}>Siguiente</button></div>
     <LibraryIndexStatus canReindex={props.canReindex} />

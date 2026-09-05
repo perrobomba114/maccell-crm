@@ -1,5 +1,6 @@
 import {getCurrentUser} from '@/actions/auth-actions';
 import {db} from '@/lib/db';
+import {readLibrarySemanticStatus} from '@/lib/schematics/semantic-status-server';
 export const dynamic='force-dynamic';
 export async function GET() {
   try {
@@ -14,7 +15,8 @@ export async function GET() {
       count(*) FILTER(WHERE a.metadata->>'status'<>'ready')::integer AS unsupported,
       count(*) FILTER(WHERE a.metadata->>'identityVerified'='true')::integer AS verified
       FROM schematics.assets a LEFT JOIN schematics.technical_indexes i ON i.asset_id=a.id LEFT JOIN schematics.index_jobs j ON j.asset_id=a.id`;
-    return Response.json(rows[0]);
+    const semantic=await readLibrarySemanticStatus();
+    return Response.json({...rows[0],semantic});
   }catch(error){
     console.error('[ESQUEMATICOS] Estado global del índice no disponible',error instanceof Error?error.message:'Error');
     return Response.json({error:'El estado de indexación no está disponible'},{status:503});

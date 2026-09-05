@@ -14,6 +14,11 @@ export async function GET(request: Request, context: Context) {
     const [index,job] = await Promise.all([readTechnicalIndex(asset),indexJob(asset)]);
     const stale = !index && await hasPreviousTechnicalIndex(asset.id);
     const requestedPage = Number(new URL(request.url).searchParams.get('page'));
+    if(new URL(request.url).searchParams.get('references')==='all'){
+      const referencePages=index?.pages.map(({page,text,boxes})=>({page,text,boxes}));
+      const bounded=referencePages&&JSON.stringify(referencePages).length<=12_000_000;
+      return Response.json({status:index?(index.complete===false?'partial':'indexed'):'not_indexed',referencePages:bounded?referencePages:undefined});
+    }
     return Response.json({status:index?(index.complete===false?'partial':'indexed'):job?.status === 'failed'?'failed':stale?'stale':job?.status ?? 'not_indexed',jobStatus:job?.status,error:job?.error ? 'No se pudo indexar este archivo. Reintentá desde el índice.' : undefined,pages:index?.pages.length??0,components:index?.components.length??0,nets:index?.nets.length??0,page:index?.pages.find(page=>page.page===requestedPage),identityVerified:!!asset.identityVerified});
   } catch (error) {
     console.error('[ESQUEMATICOS] No se pudo consultar el índice',error instanceof Error?error.message:'Error');

@@ -1,7 +1,8 @@
 import { getCurrentUser } from "@/actions/auth-actions";
 import { readPdfPageCount } from "@/lib/schematics/ocr";
 import { readCatalog, resolveAsset } from "@/lib/schematics/catalog";
-import { verifiedSameDevice } from "@/lib/schematics/catalog-types";
+import { pairIsVerified } from "@/lib/schematics/pairing";
+import { resolvePairings } from "@/lib/schematics/pairing-server";
 import { canAccessRepairNotebook, parseRepairNotebookEntry } from "@/lib/schematics/repair-notebook";
 import { createRepairNotebookEntry, findRepairNotebookContext, listRepairConsultations, listRepairNotebookEntries } from "@/lib/schematics/repair-notebook-db";
 
@@ -48,7 +49,7 @@ export async function POST(request: Request, context: { params: Promise<{ repair
     if (input.pdfAssetId && !pdf) {
       return Response.json({ error: "La fuente documentada debe ser un PDF disponible" }, { status: 400 });
     }
-    if (input.evidence === "documented" && pdf && !verifiedSameDevice(asset, pdf)) return Response.json({ error: "La fuente documental corresponde a otro equipo" }, { status: 400 });
+    if (input.evidence === "documented" && pdf && asset.id !== pdf.id && !pairIsVerified(asset, pdf) && !(await resolvePairings(asset, catalog.assets)).verifiedIds.includes(pdf.id)) return Response.json({ error: "La fuente documental corresponde a otro equipo" }, { status: 400 });
     if (input.evidence === "documented" && pdf) {
       const source = await resolveAsset(pdf.id);
       if (!source || !input.page || input.page > await readPdfPageCount(source.file)) return Response.json({ error: "La página fuente no existe en el PDF" }, { status: 400 });
