@@ -1,6 +1,7 @@
 import {getCurrentUser} from '@/actions/auth-actions';
 import {db} from '@/lib/db';
 import {readLibrarySemanticStatus} from '@/lib/schematics/semantic-status-server';
+import {libraryIndexIssues,type LibraryIndexIssueRow} from '@/lib/schematics/library-index-issues';
 export const dynamic='force-dynamic';
 export async function GET() {
   try {
@@ -15,8 +16,15 @@ export async function GET() {
       count(*) FILTER(WHERE a.metadata->>'status'<>'ready')::integer AS unsupported,
       count(*) FILTER(WHERE a.metadata->>'identityVerified'='true')::integer AS verified
       FROM schematics.assets a LEFT JOIN schematics.technical_indexes i ON i.asset_id=a.id LEFT JOIN schematics.index_jobs j ON j.asset_id=a.id`;
-    const semantic=await readLibrarySemanticStatus();
-    return Response.json({...rows[0],semantic});
+    const [issueRows,semantic]=await Promise.all([
+      db.$queryRaw<LibraryIndexIssueRow[]>`SELECT a.id,a.kind,a.metadata->>'name' AS name,
+        a.metadata->>'status' AS "catalogStatus",a.metadata->>'detail' AS "catalogDetail",j.status AS "jobStatus"
+        FROM schematics.assets a LEFT JOIN schematics.index_jobs j ON j.asset_id=a.id
+        WHERE j.status='failed' OR a.metadata->>'status'<>'ready'
+        ORDER BY CASE WHEN a.metadata->>'status'<>'ready' THEN 0 ELSE 1 END,a.id LIMIT 20`,
+      readLibrarySemanticStatus(),
+    ]);
+    return Response.json({...rows[0],semantic,issues:libraryIndexIssues(issueRows)});
   }catch(error){
     console.error('[ESQUEMATICOS] Estado global del índice no disponible',error instanceof Error?error.message:'Error');
     return Response.json({error:'El estado de indexación no está disponible'},{status:503});

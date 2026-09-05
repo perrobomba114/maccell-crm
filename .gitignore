@@ -10,6 +10,8 @@ coverage/
 
 # Next.js
 .next/
+.next-design/
+.next-design-build/
 .next-schematics-check/
 out/
 build/

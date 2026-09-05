@@ -1,0 +1,74 @@
+/* Technician workspace: a quiet shell around the technical documents. */
+.sch-app { box-shadow:0 2px 12px #00000008; }
+.sch-page-heading p { margin-top:3px; }
+.sch-topbar { background:var(--card); }
+.sch-section-heading { letter-spacing:0; font-size:13px; padding:16px 14px 12px; }
+.sch-section-heading span { color:var(--muted-foreground); font-size:11px; font-weight:500; }
+.sch-library .sch-search { margin-bottom:10px; border-width:1px; min-height:42px; }
+.sch-search button { display:grid; place-items:center; padding:3px; }
+.sch-kind-tabs { display:flex; gap:3px; margin:0 10px; padding:3px; border-radius:9px; background:var(--muted); }
+.sch-kind-tabs button { display:flex; flex:1; align-items:center; justify-content:center; gap:5px; min-height:34px; border-radius:6px; color:var(--muted-foreground); font-weight:600; }
+.sch-kind-tabs button[aria-pressed=true] { background:var(--card); color:var(--foreground); box-shadow:0 1px 3px #0002; }
+.sch-library-filters { justify-content:space-between; padding-block:10px; }
+.sch-library-filters button { font-size:11px; min-height:32px; }
+.sch-library-filters button span { color:var(--muted-foreground); }
+.sch-folder { margin-bottom:5px; }
+.sch-folder summary { min-height:40px; padding:8px; border-radius:7px; font-weight:600; }
+.sch-folder summary:hover { background:var(--muted); }
+.sch-asset { padding:10px 8px; gap:9px; align-items:flex-start; }
+.sch-asset-description { display:flex; flex:1; flex-direction:column; gap:3px; }
+.sch-asset-description strong { font-weight:500; color:var(--foreground); line-height:1.45; }
+.sch-asset-description small { font-size:10px; color:var(--muted-foreground); }
+.sch-asset:hover { background:var(--muted); color:var(--foreground); }
+.sch-asset.is-active .sch-asset-description strong { color:var(--primary); }
+.sch-asset svg { margin-top:2px; color:var(--muted-foreground); }
+.sch-library-empty { display:flex; flex-direction:column; align-items:center; gap:10px; padding:28px 14px; text-align:center; color:var(--muted-foreground); }
+.sch-library-empty strong { color:var(--foreground); }
+.sch-library-empty p { line-height:1.6; }
+.sch-library-pagination button { min-height:36px; }
+.sch-library-index { color:var(--muted-foreground); border-color:var(--border); }
+.sch-library-index summary,.sch-library-index button { color:var(--foreground); border-color:var(--border); }
+.sch-document-tab { min-height:46px; }
+.sch-file-kind { flex:0 0 auto !important; color:var(--primary); }
+.sch-related button { background:var(--muted); color:var(--foreground); border-color:var(--border); }
+.sch-start { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:36px clamp(20px,4vw,64px); overflow:auto; background:var(--background); text-align:center; }
+.sch-start-icon { display:grid; place-items:center; width:58px; height:58px; border:1px solid var(--border); border-radius:16px; color:var(--primary); background:var(--card); }
+.sch-start-eyebrow { margin-top:3px; font-size:10px; font-weight:600; letter-spacing:.16em; color:var(--muted-foreground); }
+.sch-start h2 { font-size:clamp(21px,2vw,29px); font-weight:650; letter-spacing:-.035em; line-height:1.2; }
+.sch-start>p { font-size:13px; color:var(--muted-foreground); max-width:390px; line-height:1.7; }
+.sch-start-search { display:flex; align-items:center; gap:10px; width:100%; max-width:520px; margin-block:8px; padding:6px 6px 6px 14px; background:var(--card); border:1px solid var(--border); border-radius:10px; box-shadow:0 2px 6px #00000008; color:var(--muted-foreground); }
+.sch-start-search:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 15%,transparent); }
+.sch-start-search input { flex:1; width:100%; background:transparent; color:var(--foreground); font-size:13px; min-height:36px; }
+.sch-start-search button { padding:10px 16px; background:var(--primary); color:var(--primary-foreground); font-weight:600; border-radius:7px; }
+.sch-start-guide { display:grid; grid-template-columns:1fr 1fr; gap:20px; width:100%; max-width:520px; text-align:left; }
+.sch-start-guide>div { display:grid; grid-template-columns:20px 1fr; column-gap:9px; row-gap:5px; padding:14px 0; }
+.sch-start-guide svg { color:var(--muted-foreground); }
+.sch-start-guide strong { font-size:12px; font-weight:600; }
+.sch-start-guide span { grid-column:2; font-size:12px; color:var(--muted-foreground); line-height:1.6; }
+.sch-start-recent { width:100%; max-width:520px; border-top:1px solid var(--border); padding-top:16px; text-align:left; }
+.sch-start-recent h3 { display:flex; align-items:center; gap:7px; color:var(--muted-foreground); font-size:11px; margin-bottom:8px; }
+.sch-start-recent button { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 8px; border-radius:6px; text-align:left; }
+.sch-start-recent button span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sch-start-recent button:hover { background:var(--muted); }
+.sch-app select:focus-visible,.sch-app textarea:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+@media(min-width:1201px) {
+ .sch-layout { grid-template-columns:290px minmax(0,1fr) 300px; }
+ .sch-hide-inspector .sch-layout { grid-template-columns:290px minmax(0,1fr); }
+ .sch-no-library { grid-template-columns:minmax(0,1fr) 300px; }
+ .sch-hide-inspector .sch-no-library { grid-template-columns:minmax(0,1fr); }
+}
+@media(max-width:700px) {
+ .sch-page-heading>div:last-child { justify-content:flex-start; }
+ .sch-topbar>span { display:none; }
+ .sch-topbar { gap:6px; }
+ .sch-topbar [aria-label="Vista del documento"] { order:5; width:100%; }
+ .sch-topbar [aria-label="Vista del documento"] button { flex:1; }
+ .sch-library { max-height:460px; }
+ .sch-start { padding:28px 18px; }
+ .sch-start-guide { gap:12px; }
+ .sch-start-search { gap:6px; padding-left:9px; }
+ .sch-start-search button { padding-inline:12px; }
+ .sch-start-search input { font-size:16px; }
+ .sch-document-tab>span.sch-file-kind { flex-basis:auto; }
+ .sch-expanded .sch-topbar [aria-label="Vista del documento"] { order:initial; width:auto; }
+}

@@ -2,8 +2,9 @@
 import {useEffect,useState} from 'react';
 import {usePolling} from '@/hooks/use-polling';
 import type {SemanticIndexStatus} from '@/lib/schematics/semantic-status';
+import type {LibraryIndexIssue} from '@/lib/schematics/library-index-issues';
 import {SemanticIndexStatusView} from './semantic-index-status';
-type Summary={total:number;indexed:number;pending:number;failed:number;unsupported:number;verified:number;semantic?:SemanticIndexStatus};
+type Summary={total:number;indexed:number;pending:number;failed:number;unsupported:number;verified:number;issues?:LibraryIndexIssue[];semantic?:SemanticIndexStatus};
 export function LibraryIndexStatus({canReindex}:{canReindex:boolean}){
  const [summary,setSummary]=useState<Summary|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  async function refresh(signal?:AbortSignal){
@@ -16,6 +17,13 @@ export function LibraryIndexStatus({canReindex}:{canReindex:boolean}){
  async function enqueue(){setBusy(true);try{const response=await fetch('/api/schematics/index',{method:'POST'});if(!response.ok)throw new Error('No se pudieron encolar los pendientes');await refresh();}catch(cause){setError(cause instanceof Error?cause.message:'Error de índice');}finally{setBusy(false);}}
  return <details className="sch-library-index"><summary>Índice técnico {summary?`${summary.indexed}/${summary.total}`:''}</summary>
  {error&&<p role="alert">{error}</p>}{summary&&<p role="status">{summary.pending} pendientes · {summary.failed} errores · {summary.unsupported} no compatibles. {summary.verified} identidades validadas.</p>}
+ {!!summary?.issues?.length&&<div aria-label="Archivos que requieren revisión">
+ <p>Archivos para revisar (hasta 20; primero los no compatibles):</p>
+ <ul className="space-y-2">{summary.issues.map(issue=><li key={issue.id}>
+ <a href={issue.href} className="block break-words text-zinc-100 underline underline-offset-2" aria-label={`Revisar ${issue.name}`}>{issue.name}</a>
+ <span>{issue.status==='failed'?'Error de indexación':'No compatible'} · {issue.reason}</span>
+ </li>)}</ul>
+ </div>}
  {summary?.semantic&&<SemanticIndexStatusView status={summary.semantic} showConfiguration={canReindex}/>}
  <button onClick={()=>void refresh()}>Actualizar progreso</button>{canReindex&&<button disabled={busy} onClick={()=>void enqueue()}>{busy?'Encolando…':'Indexar pendientes / reintentar'}</button>}
  </details>;

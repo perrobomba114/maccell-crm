@@ -18,8 +18,8 @@ export function AssetTree({ assets, boardId, pdfId, onOpen, expanded }: Props) {
     {!models.length && <p className="p-3 text-sm text-muted-foreground">No hay archivos para esta búsqueda.</p>}
     {models.map(([key, group]) => <details key={`${key}:${expanded}`} open={expanded || group.files.some(a => a.id === boardId || a.id === pdfId)} className="sch-folder">
       <summary><Smartphone size={16} /><span>{group.name}</span><small className="ml-auto text-muted-foreground">{group.files.length}</small></summary>
-      <div className="pl-3">{group.files.map(asset => <button key={asset.id} className={`sch-asset ${asset.id === boardId || asset.id === pdfId ? "is-active" : ""}`} title={asset.relativePath} onClick={() => onOpen(asset)}>
-        {asset.kind === "pcbe" ? <CircuitBoard size={16} /> : <FileText size={16} />}<span>{asset.name.replace(/\.(pcbe|pdf)$/i, "")}</span><small>{roleLabels[documentRole(asset)]}</small>{asset.status !== "ready" && <i title={asset.detail}>!</i>}
+      <div className="pl-3">{group.files.map(asset => <button key={asset.id} aria-pressed={asset.id === boardId || asset.id === pdfId} className={`sch-asset ${asset.id === boardId || asset.id === pdfId ? "is-active" : ""}`} title={asset.relativePath} onClick={() => onOpen(asset)}>
+        {asset.kind === "pcbe" ? <CircuitBoard size={16} /> : <FileText size={16} />}<span className="sch-asset-description"><strong>{asset.name.replace(/\.(pcbe|pdf)$/i, "")}</strong><small>{roleLabels[documentRole(asset)]}</small></span>{asset.status !== "ready" && <i title={asset.detail}>!</i>}
       </button>)}</div>
     </details>)}
   </>;
