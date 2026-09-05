@@ -31,12 +31,21 @@ test('coverage queries match source path AND sha and exclude retired documents a
   });
   const result=await readRagCoverage(query,[asset]);assert.equal(result.matchedDocuments,1);assert.equal(result.readyDocuments,1);
   assert.match(calls[2],/c.model_version_id=\$2::uuid/);assert.match(calls[2],/m.active=true/);assert.match(calls[2],/d.status='READY' AND p.status='READY'/);
+  assert.match(calls[2],/chunk_counts AS MATERIALIZED/);
+  assert.match(calls[2],/GROUP BY c.document_id,c.page_id/);
+  assert.match(calls[2],/WHERE CASE WHEN COALESCE\(c.chunks,0\)>0[\s\S]*THEN true ELSE length\(trim\(p.extracted_text\)\)>30 END/);
 });
 test('search validates RAG page text independently of local extraction and retains exact file and pairing guard',async()=>{
   const pageText='U4400\nPP_VDD_MAIN is a power rail with enough context.';
   const row={asset_id:asset.id,asset_sha256:asset.sha256,page_number:2,page_text:pageText,content:'U4400 PP_VDD_MAIN',score:.9,source:'text'};
   const query=mockQuery((sql,params)=>{
     assert.match(sql,/d.status='READY' AND p.status='READY'/);assert.match(sql,/m.id=\$3::uuid/);assert.equal(params[2],model.id);
+    const eligible=sql.slice(sql.indexOf('eligible_chunks AS MATERIALIZED'),sql.indexOf('), ranked AS MATERIALIZED'));
+    assert.match(eligible,/d.status='READY' AND p.status='READY'/);
+    assert.doesNotMatch(eligible,/<=>|extracted_text|c.content/);
+    assert.match(sql,/FROM eligible_chunks ORDER BY distance LIMIT 40/);
+    assert.ok(sql.indexOf('p.extracted_text AS page_text')>sql.indexOf('LIMIT 40'));
+    assert.match(sql,/WHERE 1-r.distance>=\$4 ORDER BY r.distance/);
     return[row,{...row,asset_sha256:'old'},{...row,page_number:3,content:'invented rail'},{...row,page_number:4,score:NaN}];
   });
   const result=await searchRagLibrary(query,[asset],Array(1024).fill(.1),model,.5);

@@ -39,16 +39,20 @@ export async function readRagCoverage(query: RagQuery, assets: SchematicAsset[],
   const manifest = JSON.stringify(ragAssetManifest(assets));
   const [documents, pages] = await Promise.all([
     query<{ status: string; count: number }>(`${CURRENT_RAG_DOCUMENTS_SQL} SELECT status,count(*)::integer AS count FROM documents GROUP BY status`, [manifest]),
-    query<RagCoveragePage>(`${CURRENT_RAG_DOCUMENTS_SQL}
+    query<RagCoveragePage>(`${CURRENT_RAG_DOCUMENTS_SQL}, chunk_counts AS MATERIALIZED (
+      SELECT c.document_id,c.page_id,count(*)::integer AS chunks
+      FROM rag_chunks c JOIN (SELECT DISTINCT id FROM documents WHERE status='READY') d ON d.id=c.document_id
+      JOIN rag_model_versions m ON m.id=c.model_version_id AND m.active=true
+      WHERE c.model_version_id=$2::uuid AND c.embedding IS NOT NULL
+      GROUP BY c.document_id,c.page_id
+    )
       SELECT d.asset_id AS "assetId",d.asset_sha256 AS "assetSha256",p.page_number AS page,
         p.status::text AS status,d.status::text AS "documentStatus",
-        count(c.id) FILTER (WHERE d.status='READY' AND p.status='READY')::integer AS chunks
+        CASE WHEN d.status='READY' AND p.status='READY' THEN COALESCE(c.chunks,0) ELSE 0 END AS chunks
       FROM documents d JOIN rag_pages p ON p.document_id=d.id
-      LEFT JOIN rag_chunks c ON c.page_id=p.id AND c.document_id=d.id
-        AND c.model_version_id=$2::uuid AND c.embedding IS NOT NULL
-        AND EXISTS (SELECT 1 FROM rag_model_versions m WHERE m.id=c.model_version_id AND m.active=true)
-      WHERE length(trim(p.extracted_text))>30 OR p.status IN ('FAILED','PARTIAL','RUNNING','PENDING','RETRYING')
-      GROUP BY d.asset_id,d.asset_sha256,p.page_number,p.status,d.status`, [manifest, model?.id ?? null]),
+      LEFT JOIN chunk_counts c ON c.page_id=p.id AND c.document_id=d.id
+      WHERE CASE WHEN COALESCE(c.chunks,0)>0 OR p.status IN ('FAILED','PARTIAL','RUNNING','PENDING','RETRYING')
+        THEN true ELSE length(trim(p.extracted_text))>30 END`, [manifest, model?.id ?? null]),
   ]);
   const count = (statuses: string[]) => documents.reduce((sum, row) => sum + (statuses.includes(row.status) ? row.count : 0), 0);
   return { model, pages, matchedDocuments: count(['READY','FAILED','PARTIAL','RUNNING','PENDING','RETRYING']), readyDocuments: count(['READY']), failedDocuments: count(['FAILED','PARTIAL']), processingDocuments: count(['RUNNING','RETRYING']) };
@@ -58,16 +62,24 @@ type RagSearchRow = SemanticRow & { page_text: string };
 /** Uses existing RAG page text as the digest authority; CRM's extractor can differ. */
 export async function searchRagLibrary(query: RagQuery, assets: SchematicAsset[], embedding: number[], model: RagModel, minimumScore: number) {
   if (embedding.length !== model.dimensions || embedding.some(value => !Number.isFinite(value))) throw new Error('Invalid RAG embedding');
-  const rows = await query<RagSearchRow>(`${CURRENT_RAG_DOCUMENTS_SQL}
-    SELECT d.asset_id,d.asset_sha256,p.page_number,p.extracted_text AS page_text,c.content,
-      CASE WHEN p.extraction_method='OCR' THEN 'ocr' ELSE 'text' END AS source,
-      1-(c.embedding <=> $2::vector) AS score
+  // Materialize the authorized subset before distance ordering so a global HNSW
+  // scan cannot search other devices first. Retrieve large text only for the top hits.
+  const rows = await query<RagSearchRow>(`${CURRENT_RAG_DOCUMENTS_SQL}, eligible_chunks AS MATERIALIZED (
+    SELECT d.asset_id,d.asset_sha256,p.id AS page_id,c.id AS chunk_id,c.embedding
     FROM documents d JOIN rag_pages p ON p.document_id=d.id
     JOIN rag_chunks c ON c.page_id=p.id AND c.document_id=d.id
     JOIN rag_model_versions m ON m.id=c.model_version_id AND m.active=true
     WHERE d.status='READY' AND p.status='READY' AND m.id=$3::uuid AND m.dimensions=1024
-      AND c.embedding IS NOT NULL AND 1-(c.embedding <=> $2::vector)>=$4
-    ORDER BY c.embedding <=> $2::vector LIMIT 40`,
+      AND c.embedding IS NOT NULL
+  ), ranked AS MATERIALIZED (
+    SELECT asset_id,asset_sha256,page_id,chunk_id,embedding <=> $2::vector AS distance
+    FROM eligible_chunks ORDER BY distance LIMIT 40
+  )
+    SELECT r.asset_id,r.asset_sha256,p.page_number,p.extracted_text AS page_text,c.content,
+      CASE WHEN p.extraction_method='OCR' THEN 'ocr' ELSE 'text' END AS source,
+      1-r.distance AS score
+    FROM ranked r JOIN rag_chunks c ON c.id=r.chunk_id JOIN rag_pages p ON p.id=r.page_id
+    WHERE 1-r.distance>=$4 ORDER BY r.distance`,
   [JSON.stringify(ragAssetManifest(assets)), `[${embedding.join(',')}]`, model.id, minimumScore]);
   const pages: SearchablePage[] = [];
   const matches: SemanticRow[] = [];
