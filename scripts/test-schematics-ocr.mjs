@@ -47,7 +47,9 @@ try {
   assert.equal(response.status, 200, JSON.stringify(result));
   assert.equal(result.source, 'ocr'); assert.ok(result.pages[0].characters > 10);
   const search = await fetch(`http://localhost:3000/api/schematics/${id}/references?q=U4000`, { headers });
-  const reference = await search.json(); assert.equal(search.status, 200, JSON.stringify(reference)); assert.equal(reference.matches[0].page, 1); assert.ok(reference.sources.includes('ocr'));
+  const reference = await search.json(); assert.equal(search.status, 200, JSON.stringify(reference)); assert.equal(reference.matches[0].page, 1); assert.ok(reference.sources.includes('ocr')); assert.ok(reference.matches[0].boxes.length > 0, "OCR coordinates must be immediately navigable");
+  const indexedPage = await fetch(`http://localhost:3000/api/schematics/${id}/index?page=1`, {headers});
+  const pageState = await indexedPage.json(); assert.ok(["partial","indexed"].includes(pageState.status)); assert.ok(pageState.page.boxes.some(box => box.text.includes("U4000")));
   const stored = (await pool.query('SELECT content,asset_sha256,content_sha256 FROM schematics.pages WHERE asset_id=$1', [id])).rows[0];
   assert.ok(stored.content.includes('U4000')); assert.equal(stored.asset_sha256, sha256); assert.ok(stored.content_sha256);
   assert.equal(createHash('sha256').update(await readFile(path.join(root, relativePath))).digest('hex'), sha256);

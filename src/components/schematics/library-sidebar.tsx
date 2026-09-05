@@ -2,11 +2,12 @@
 import { useDeferredValue, useEffect, useState } from "react";
 import { Search, Star, History, Loader2 } from "lucide-react";
 import type { SchematicAsset } from "@/lib/schematics/catalog-types";
+import { LibraryIndexStatus } from "./library-index-status";
 import { AssetTree } from "./asset-tree";
 
 export type CatalogPage = { assets: SchematicAsset[]; total: number; page: number; pageSize: number; counts: { pcbe: number; pdf: number } };
 type Props = {
-  initial: CatalogPage; search: string; onSearch(value: string): void;
+  canReindex: boolean; initial: CatalogPage; search: string; onSearch(value: string): void;
   boardId?: string; pdfId?: string; onOpen(asset: SchematicAsset): void; onOpenId(id: string): void;
   favorites: string[]; recent: { id: string; name: string }[];
 };
@@ -46,6 +47,7 @@ export function LibrarySidebar(props: Props) {
       <AssetTree assets={result.assets} boardId={props.boardId} pdfId={props.pdfId} onOpen={props.onOpen} expanded={!!query || scope === "favorites"} />
     </div>
     <div className="sch-library-pagination"><button disabled={page <= 1 || busy} onClick={() => setPage(value => value - 1)}>Anterior</button><span>{page} / {Math.max(1, Math.ceil(result.total / result.pageSize))}</span><button disabled={page * result.pageSize >= result.total || busy} onClick={() => setPage(value => value + 1)}>Siguiente</button></div>
+    <LibraryIndexStatus canReindex={props.canReindex} />
     <div className="sch-library-foot">Favoritos y recientes se guardan para tu usuario en este navegador.</div>
   </aside>;
 }

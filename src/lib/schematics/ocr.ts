@@ -1,17 +1,19 @@
 import "server-only";
-import { execFile, spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { SchematicAsset } from "./catalog-types";
 import { libraryRoot } from "./catalog";
+import { createHash } from "node:crypto";
+import { parseOcrTsv, type TechnicalPage } from "./unified-index";
 import { saveDatabaseOcrPage } from "./database";
 
 const run = promisify(execFile);
 const assetWrites = new Map<string, Promise<void>>();
 let ocrQueue: Promise<void> = Promise.resolve();
-export type OcrPage = { page: number; text: string; source: "ocr"; sha256: string };
+export type OcrPage = TechnicalPage & { source: "ocr"; sha256: string };
 
 async function commandAvailable(command: string): Promise<boolean> {
   try { await run(command, [command === "pdftoppm" ? "-v" : "--version"], { timeout: 5_000 }); return true; }
@@ -28,24 +30,6 @@ export async function ocrLanguages(): Promise<{ requested: string[]; available: 
   return { requested, available, used };
 }
 
-async function recognizeImage(image: string, languages: string[]): Promise<string> {
-  const bytes = await readFile(image);
-  return new Promise<string>((resolve, reject) => {
-    const child = spawn("tesseract", ["stdin", "stdout", "-l", languages.join("+")], { stdio: ["pipe", "pipe", "pipe"] });
-    const output: Buffer[] = [];
-    const errors: Buffer[] = [];
-    const timeout = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("OCR excedió 45 segundos")); }, 45_000);
-    child.stdout.on("data", (chunk: Buffer) => output.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => errors.push(chunk));
-    child.once("error", reject);
-    child.once("close", (code) => {
-      clearTimeout(timeout);
-      if (code === 0) resolve(Buffer.concat(output).toString("utf8"));
-      else reject(new Error(Buffer.concat(errors).toString("utf8").slice(0, 500) || `Tesseract terminó con código ${code}`));
-    });
-    child.stdin.end(bytes);
-  });
-}
 
 export async function ocrAvailability(): Promise<{ available: boolean; missing: string[] }> {
   const checks = await Promise.all([commandAvailable("pdftoppm"), commandAvailable("tesseract")]);
@@ -81,6 +65,9 @@ async function saveLocalPage(asset: SchematicAsset, page: OcrPage): Promise<void
 
 export async function recognizePdfPages(asset: SchematicAsset, file: string, pages: number[]): Promise<OcrPage[]> {
   if (asset.kind !== "pdf" || asset.status !== "ready") throw new Error("El archivo no admite OCR");
+  const fingerprint = await stat(file);
+  const originalBytes = await readFile(file);
+  if (createHash("sha256").update(originalBytes).digest("hex") !== asset.sha256) throw new Error("El archivo cambió: actualizá el catálogo");
   const availability = await ocrAvailability();
   if (!availability.available) throw new Error(`OCR_RUNTIME_MISSING:${availability.missing.join(",")}`);
   const pageCount = await readPdfPageCount(file);
@@ -94,13 +81,18 @@ export async function recognizePdfPages(asset: SchematicAsset, file: string, pag
   let temporary: string | null = null;
   try {
     temporary = await mkdtemp(path.join(tmpdir(), "maccell-ocr-"));
+    const snapshot = path.join(temporary,"source.pdf");
+    await writeFile(snapshot,originalBytes);
     for (const page of pages) {
       const image = path.join(temporary, `page-${page}`);
-      await run("pdftoppm", ["-f", String(page), "-l", String(page), "-singlefile", "-png", "-r", "200", file, image], { timeout: 30_000, maxBuffer: 1024 * 1024 });
-      const text = await recognizeImage(`${image}.png`, languages);
-      const recognized: OcrPage = { page, text: text.replace(/\0/g, "").trim(), source: "ocr", sha256: asset.sha256 };
-      await saveLocalPage(asset, recognized);
-      await saveDatabaseOcrPage(asset.id, asset.sha256, page, recognized.text);
+      await run("pdftoppm", ["-f", String(page), "-l", String(page), "-singlefile", "-png", "-scale-to", "4000", snapshot, image], { timeout: 30_000, maxBuffer: 1024 * 1024 });
+      const result = await run("tesseract", [`${image}.png`, "stdout", "-l", languages.join("+"), "tsv"], {timeout: 90_000, maxBuffer: 16 * 1024 * 1024});
+      const recognized: OcrPage = {...parseOcrTsv(result.stdout,page),source:"ocr",sha256:asset.sha256};
+      if (createHash("sha256").update(await readFile(file)).digest("hex") !== asset.sha256) throw new Error("El archivo cambió durante el reconocimiento; se conserva el índice anterior");
+      if (recognized.text.trim()) {
+        await saveDatabaseOcrPage(asset.id, asset.sha256, page, recognized.text, recognized.boxes, fingerprint);
+        await saveLocalPage(asset, recognized);
+      }
       output.push(recognized);
     }
     return output;

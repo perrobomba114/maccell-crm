@@ -84,9 +84,9 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
     pendingSearch.current = null;
     if (component) focusSelection();
   });
-  const lastFocus = useRef(focusToken);
+  const lastFocus = useRef(-1);
   useEffect(() => {
-    if (lastFocus.current === focusToken) return;
+    if (lastFocus.current === focusToken || (!component && net === null) || !canvas.current?.clientWidth || !canvas.current?.clientHeight) return;
     lastFocus.current = focusToken;
     focusSelection();
   });

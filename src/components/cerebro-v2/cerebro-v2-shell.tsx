@@ -29,6 +29,7 @@ function toUiMessages(messages: ChatMessage[]): CerebroUiMessage[] {
             promptVersion: message.promptVersion ?? "cerebro-tech-v2.1",
             provider: message.provider ?? "stored",
             sources: message.sources,
+            retrievalWarnings: message.metadata.retrievalWarnings,
             ...(message.metadata.guidedQuestion ? { guidedQuestion: message.metadata.guidedQuestion } : {}),
         } : undefined;
         return {

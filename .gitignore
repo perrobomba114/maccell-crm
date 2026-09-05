@@ -98,3 +98,6 @@ docs/agent-tooling.md
 docs/technical-debt-roadmap.md
 
 /AGENTS.md
+
+# Generated technical index worker bundle
+/scripts/technical-worker.cjs

@@ -7,7 +7,7 @@ function extractionLooksWeak(content: string): boolean {
 }
 
 export function shouldLoadVisualEvidence(source: CerebroSource): boolean {
-    if (source.sourceType !== "PDF" || source.pageNumber === null) return false;
+    if (source.workbenchUrl || source.sourceType !== "PDF" || source.pageNumber === null) return false;
     return extractionLooksWeak(source.content)
         || /SCHEMATIC|ESQUEMATICO|ESQUEMÁTICO|PLANO|PCB|LAYOUT/i.test(source.title);
 }

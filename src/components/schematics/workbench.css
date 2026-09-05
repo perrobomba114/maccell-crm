@@ -110,3 +110,5 @@
 .sch-restore-tools:hover,.sch-restore-tools:focus-visible{opacity:1}
 .sch-focus .sch-library,.sch-focus .sch-inspector{display:none}
 .sch-focus .sch-layout{grid-template-columns:minmax(0,1fr)}
+
+.sch-library-index{padding:10px 12px;border-top:1px solid #ffffff14;font-size:11px;color:#a1a1aa}.sch-library-index summary{cursor:pointer;color:#e4e4e7}.sch-library-index p{margin:8px 0;line-height:1.5}.sch-library-index button{padding:6px 8px;margin:3px 4px 0 0;border:1px solid #ffffff20;border-radius:6px;color:#e4e4e7}

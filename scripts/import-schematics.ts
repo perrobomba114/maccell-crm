@@ -17,7 +17,7 @@ async function walk(root: string): Promise<string[]> {
   for (const entry of entries) {
     const file = path.join(root, entry.name);
     if (entry.isDirectory()) result.push(...await walk(file));
-    else if (entry.isFile() && /\.(pcbe|pdf)$/i.test(entry.name)) result.push(file);
+    else if (entry.isFile() && /\.(pcb|pcbe|pdf)$/i.test(entry.name)) result.push(file);
   }
   return result.sort();
 }
@@ -39,7 +39,7 @@ async function main() {
     const bytes = await readFile(file);
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     const id = createHash("sha256").update(relativePath).digest("hex");
-    const kind = path.extname(file).toLowerCase() === ".pcbe" ? "pcbe" : "pdf";
+    const kind = path.extname(file).toLowerCase() === ".pdf" ? "pdf" : "pcbe";
     const segments = relativePath.split("/");
     const brand = segments.length >= 4 ? segments[1] : undefined;
     const model = segments.length >= 4 ? segments[2] : path.basename(file, path.extname(file));

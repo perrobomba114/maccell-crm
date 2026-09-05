@@ -1,4 +1,4 @@
-export const CEREBRO_SOURCE_TYPES = ["REPAIR", "WIKI", "PDF", "CHAT_ATTACHMENT"] as const;
+export const CEREBRO_SOURCE_TYPES = ["REPAIR", "WIKI", "PDF", "CHAT_ATTACHMENT", "BOARD"] as const;
 
 export type CerebroSourceType = (typeof CEREBRO_SOURCE_TYPES)[number];
 
@@ -21,18 +21,20 @@ export type CerebroSource = {
     model: string;
     title: string;
     pageNumber: number | null;
+    workbenchUrl?: string;
     content: string;
     score: number;
 };
 
 export type CerebroPublicSource = {
     documentId: string;
-    sourceType: Extract<CerebroSourceType, "REPAIR" | "PDF">;
+    sourceType: Extract<CerebroSourceType, "REPAIR" | "PDF" | "BOARD">;
     authority: CerebroAuthority;
     brand: string;
     model: string;
     title: string;
     pageNumber: number | null;
+    workbenchUrl?: string;
     excerpt: string;
 };
 
@@ -65,6 +67,7 @@ export type GuidedAnswer = {
 };
 
 export type CerebroStoredMessageMetadata = {
+    retrievalWarnings?: string[];
     guidedQuestion?: GuidedQuestion;
     guidedAnswer?: GuidedAnswer & { observation?: GuidedObservation };
 };
@@ -72,6 +75,7 @@ export type CerebroStoredMessageMetadata = {
 export type CerebroMessageMetadata = {
     promptVersion: string;
     provider: string;
+    retrievalWarnings?: string[];
     sources: CerebroPublicSource[];
     guidedQuestion?: GuidedQuestion;
 };

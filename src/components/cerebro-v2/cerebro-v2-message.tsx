@@ -41,6 +41,7 @@ export function CerebroV2Message({ message, disabled, onOpenSource, onGuidedAnsw
                         code: ({ children }) => <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-xs text-amber-200">{children}</code>,
                     }}>{text}</ReactMarkdown>
                 )}
+                {!user && Boolean(message.metadata?.retrievalWarnings?.length) ? <p role="status" className="mt-3 text-xs text-amber-300">Consulta parcial: {message.metadata?.retrievalWarnings?.join(" y ")} no disponible. La respuesta usa las fuentes recuperadas.</p> : null}
                 {!user ? <CerebroV2Sources sources={sources} onOpen={onOpenSource} /> : null}
                 {!user && question ? (
                     <div className="mt-4 border-t border-slate-700/70 pt-4">

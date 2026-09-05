@@ -1,3 +1,4 @@
+import { safeWorkbenchUrl } from "./source-links";
 import type { CerebroPublicSource, CerebroSource } from "./types";
 
 type MessageInput = {
@@ -34,7 +35,7 @@ export function extractMessageInput(message: MessageInput): ExtractedMessageInpu
 
 export function toPublicSources(sources: readonly CerebroSource[]): CerebroPublicSource[] {
     return sources.flatMap((source) => {
-        if (source.sourceType !== "REPAIR" && source.sourceType !== "PDF") return [];
+        if (source.sourceType !== "REPAIR" && source.sourceType !== "PDF" && source.sourceType !== "BOARD") return [];
         return [{
             documentId: source.documentId,
             sourceType: source.sourceType,
@@ -43,6 +44,7 @@ export function toPublicSources(sources: readonly CerebroSource[]): CerebroPubli
             model: source.model,
             title: source.title,
             pageNumber: source.pageNumber,
+            ...(safeWorkbenchUrl(source.workbenchUrl) ? { workbenchUrl: safeWorkbenchUrl(source.workbenchUrl) } : {}),
             excerpt: source.content.replace(/\s+/g, " ").trim().slice(0, 260),
         }];
     });

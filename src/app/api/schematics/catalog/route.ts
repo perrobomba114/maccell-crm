@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     if (relatedId) {
       const selected = catalog.assets.find((asset) => asset.id === relatedId);
       if (!selected) return Response.json({ error: "Archivo no encontrado" }, { status: 404 });
-      const assets = catalog.assets.filter((asset) => asset.id !== selected.id && asset.kind === "pdf" && sameDevice(selected, asset));
+      const assets = catalog.assets.filter((asset) => asset.id !== selected.id && asset.kind !== selected.kind && sameDevice(selected, asset));
       return Response.json(paginateCatalog(assets, { q, kind: rawKind as CatalogKind, page, pageSize }));
     }
     return Response.json(await readCatalogPage({ q, kind: rawKind as CatalogKind, page, pageSize }));

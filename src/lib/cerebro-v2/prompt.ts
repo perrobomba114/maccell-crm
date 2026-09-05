@@ -1,7 +1,7 @@
 import type { CerebroSource } from "./types";
 
 export type CerebroEvidence = CerebroSource;
-export const CEREBRO_PROMPT_VERSION = "cerebro-tech-v3.3-display-known-good-first";
+export const CEREBRO_PROMPT_VERSION = "cerebro-tech-v3.4-unified-technical-library";
 
 export type CerebroRepairPromptContext = {
     ticketNumber: string;
@@ -32,19 +32,19 @@ export function buildCerebroSystemPrompt(
 ): string {
     let usedCharacters = 0;
     const blocks: string[] = [];
-    const orderedEvidence = [...evidence].sort((left, right) => {
-        const priority = (source: CerebroEvidence): number => {
-            if (source.sourceType !== "PDF") return 2;
-            return /TROUBLESHOOT|SERVICE MANUAL|MANUAL DE SERVICIO/i.test(source.title) ? 0 : 1;
-        };
+    // Preserve manufacturer priority while retaining original public citation numbers.
+    const orderedEvidence = evidence.filter(source => source.brand === brand).sort((left, right) => {
+        const priority = (source: CerebroEvidence) => source.sourceType === "PDF"
+            ? /TROUBLESHOOT|SERVICE MANUAL|MANUAL DE SERVICIO/i.test(source.title) ? 0 : 1 : 2;
         return priority(left) - priority(right);
     });
+    const sourceBudget = Math.floor(MAX_CONTEXT_CHARACTERS / Math.max(1, orderedEvidence.length));
     for (const source of orderedEvidence) {
         if (source.brand !== brand || usedCharacters >= MAX_CONTEXT_CHARACTERS) continue;
         const remaining = MAX_CONTEXT_CHARACTERS - usedCharacters;
-        const content = sanitizeEvidence(source.content).slice(0, Math.min(MAX_SOURCE_CHARACTERS, remaining));
+        const content = sanitizeEvidence(source.content).slice(0, Math.min(MAX_SOURCE_CHARACTERS, remaining, sourceBudget));
         usedCharacters += content.length;
-        const evidenceNumber = blocks.length + 1;
+        const evidenceNumber = evidence.indexOf(source) + 1;
         blocks.push(
             `--- EVIDENCIA E${evidenceNumber} ---\n${JSON.stringify({
                 authority: source.authority,

@@ -13,3 +13,4 @@
 .sch-references{max-height:80px;overflow:auto;padding:5px 10px;flex-shrink:0}.sch-references>div{margin:0}
 .sch-ocr-tools{flex-shrink:0}.sch-ocr-tools summary{cursor:pointer}
 .sch-reader-page{margin-inline:auto}
+.sch-pdf-reference:disabled{cursor:default!important;opacity:1}.sch-pdf-label-choices,.sch-index-status{display:flex;flex-wrap:wrap;gap:7px;padding:9px;font-size:12px;border-bottom:1px solid var(--sch-line)}.sch-index-status{flex-direction:column}.sch-index-status>div{display:flex;gap:8px}.sch-index-status button,.sch-pdf-label-choices button,.sch-linked-choices button{padding:5px 8px;border:1px solid var(--sch-line);border-radius:5px}.sch-linked-choices{font-size:12px;padding:6px 10px;border-bottom:1px solid var(--sch-line);max-height:140px;overflow:auto}.sch-linked-choices summary{cursor:pointer}.sch-linked-choices button small{display:block;opacity:.75}.sch-linked-choices button[aria-pressed=true]{border-color:var(--primary)}

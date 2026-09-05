@@ -16,11 +16,12 @@ import { buildCerebroSystemPrompt, CEREBRO_PROMPT_VERSION } from "@/lib/cerebro-
 import { getAuthorizedCerebroRepair } from "@/lib/cerebro-v2/repair-context";
 import { createLocalCerebroModel } from "@/lib/cerebro-v2/local-provider";
 import { buildGroqModelConfigurations } from "@/lib/cerebro-v2/model-routing";
-import { retrieveCerebroSources } from "@/lib/cerebro-v2/retrieval";
+import { retrieveTechnicalEvidence } from "@/lib/cerebro-v2/resilient-retrieval";
+import type { CerebroSource } from "@/lib/cerebro-v2/types";
 import type { CerebroMessageMetadata } from "@/lib/cerebro-v2/types";
 import { shouldLoadVisualEvidence } from "@/lib/cerebro-v2/visual-evidence";
 import { formatVisibleSchematicFacts, parseVisibleSchematicFacts, VISION_FACTS_SYSTEM_PROMPT } from "@/lib/cerebro-v2/vision-analysis";
-import { requestQueryEmbedding, requestRagPageImage } from "@/lib/cerebro-v2/worker-client";
+import { requestRagPageImage } from "@/lib/cerebro-v2/worker-client";
 import { getGroqKeys } from "@/lib/groq";
 
 export const dynamic = "force-dynamic";
@@ -94,7 +95,7 @@ function diagnosticQuery(request: CerebroChatRequest): { text: string; images: s
     return extractMessageInput(lastUser);
 }
 
-async function loadVisualEvidence(evidence: Awaited<ReturnType<typeof retrieveCerebroSources>>): Promise<Uint8Array[]> {
+async function loadVisualEvidence(evidence: CerebroSource[]): Promise<Uint8Array[]> {
     const candidates = evidence.filter(shouldLoadVisualEvidence).slice(0, 2);
     const results = await Promise.allSettled(candidates.map((source) => (
         requestRagPageImage(source.documentId, source.pageNumber ?? 1)
@@ -159,14 +160,12 @@ export async function POST(request: Request): Promise<Response> {
                 ...(guidedOption ? [guidedOption.label] : []),
             ],
         });
-        const embedding = await requestQueryEmbedding(searchText);
-        const evidence = await retrieveCerebroSources({
+        const { sources: evidence, unavailable } = await retrieveTechnicalEvidence({
             brand,
             model,
             modelAliases: deviceModelAliases(identity),
             modelFamily: identity.modelFamily,
             text: searchText,
-            embedding,
             componentCodes: componentCodes(searchText),
             subsystemTerms: diagnosticSubsystemTerms(searchText),
             excludeRepairTicket: repair.ticketNumber,
@@ -251,11 +250,12 @@ export async function POST(request: Request): Promise<Response> {
             sources: publicSources,
             promptVersion: CEREBRO_PROMPT_VERSION,
             provider: `${selectedProvider.keyId}:${selectedProvider.label}`,
-            metadata: guidedQuestion ? { guidedQuestion } : {},
+            metadata: { retrievalWarnings: unavailable, ...(guidedQuestion ? { guidedQuestion } : {}) },
         });
         const responseMetadata: CerebroMessageMetadata = {
             promptVersion: CEREBRO_PROMPT_VERSION,
             provider: selectedProvider.keyId,
+            retrievalWarnings: unavailable,
             sources: publicSources,
             ...(guidedQuestion ? { guidedQuestion } : {}),
         };
