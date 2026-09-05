@@ -7,7 +7,7 @@ interface Props {
   onLayer: (id: number) => void; onDetail: (value: BoardDetail) => void; onVias: () => void; onOverlay: () => void;
 }
 export function LayerControls(p: Props) {
-  return <div className="space-y-2 border-t p-3">
+  return <div className="sch-layer-controls space-y-2 border-t p-3">
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs font-bold">VISTA</span>
       {([{ id: "clean", label: "Componentes" }, { id: "tracks", label: "Con pistas" }, { id: "all", label: "Detalle completo" }] as const).map(item => <Button key={item.id} size="sm" variant={p.detail === item.id ? "secondary" : "ghost"} aria-pressed={p.detail === item.id} onClick={() => p.onDetail(item.id)}>{item.label}</Button>)}

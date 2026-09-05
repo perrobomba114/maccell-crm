@@ -80,3 +80,33 @@
  .sch-page-heading p{font-size:12px;line-height:1.5}
 }
 @media(max-width:700px){.sch-board-tools>.relative{flex-basis:100%;max-width:none}.sch-board-tools{row-gap:8px}}
+/* Fullscreen dedicates the viewport to the document, with tools kept at hand. */
+.sch-expanded .sch-topbar{min-height:44px;padding:4px 10px;flex-shrink:0;gap:6px}
+.sch-expanded .sch-topbar button{height:30px;min-height:30px;padding:4px 9px;font-size:12px}
+.sch-expanded .sch-topbar [aria-label="Vista del documento"]{padding:2px}
+.sch-expanded .sch-document-tab{min-height:28px;padding:2px 10px;font-size:11px}
+.sch-expanded .sch-identity-notice{display:none}
+.sch-expanded .sch-canvas-wrap,.sch-expanded .sch-workarea,.sch-expanded .sch-viewers{min-height:0}
+.sch-expanded .sch-board-tools{min-height:36px;padding:3px 8px}
+.sch-expanded .sch-canvas-hint{bottom:6px;font-size:10px;padding:2px 6px}
+.sch-expanded .sch-layer-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:3px 8px;flex-shrink:0}
+.sch-expanded .sch-layer-controls>div{margin:0;gap:4px}.sch-expanded .sch-layer-controls>p{display:none}
+.sch-expanded .sch-layer-controls button,.sch-expanded .sch-layer-controls select{height:28px;min-height:28px;padding:3px 7px;font-size:11px}
+.sch-expanded .sch-ocr-tools{padding:3px 10px}.sch-expanded .sch-ocr-tools[open]{max-height:140px;overflow:auto}
+.sch-expanded .sch-references{max-height:60px}
+.sch-app:fullscreen{background:var(--background);width:100vw;height:100dvh}
+@media(min-width:901px){.sch-expanded .sch-view-split{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr);overflow:hidden}}
+@media(max-width:900px){.sch-expanded .sch-view-split{grid-template-columns:1fr;grid-template-rows:1fr 1fr;min-height:0}}
+@media(max-width:700px){
+ .sch-expanded .sch-layout{overflow:hidden;flex-direction:row}.sch-expanded .sch-workarea{min-height:0;width:100%}
+ .sch-expanded .sch-library{position:absolute;inset:0 auto 0 0;width:min(300px,85vw);max-height:none;z-index:30;box-shadow:8px 0 25px #0006}
+ .sch-expanded .sch-topbar>span{display:none}.sch-expanded .sch-topbar{gap:3px;padding:3px}
+ .sch-expanded .sch-topbar button{padding:3px 5px}.sch-expanded .sch-topbar button svg{width:14px}
+ .sch-expanded .sch-board-tools>.relative{flex-basis:auto;flex:1;min-width:140px}.sch-expanded .sch-board-tools{row-gap:3px}
+ .sch-expanded .sch-layer-controls{gap:3px}.sch-expanded .sch-layer-controls>div{gap:2px}
+}
+.sch-focus .sch-topbar,.sch-focus .sch-document-tab,.sch-focus .sch-reader-toolbar,.sch-focus .sch-layer-controls,.sch-focus .sch-ocr-tools,.sch-focus .sch-references,.sch-focus .sch-board-tools,.sch-focus .sch-canvas-hint,.sch-focus .sch-repair-context{display:none}
+.sch-restore-tools{position:absolute;right:12px;top:12px;z-index:60;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--foreground);opacity:.5}
+.sch-restore-tools:hover,.sch-restore-tools:focus-visible{opacity:1}
+.sch-focus .sch-library,.sch-focus .sch-inspector{display:none}
+.sch-focus .sch-layout{grid-template-columns:minmax(0,1fr)}

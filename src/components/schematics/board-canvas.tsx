@@ -14,6 +14,7 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
   const canvas = useRef<HTMLCanvasElement>(null);
   const [view, setView] = useState<View>({ zoom: 1, x: 0, y: 0 });
   const [size, setSize] = useState(0);
+  const previousSize = useRef({width:0,height:0});
   const [layers, setLayers] = useState(() => new Set([initialLayer(board.geometry)]));
   const [detail, setDetail] = useState<BoardDetail>("clean");
   const [vias, setVias] = useState(false);
@@ -23,9 +24,21 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
   const bounds = useMemo(() => boundsFor(board.geometry), [board]);
   useEffect(() => {
     if (!canvas.current) return;
-    const observer = new ResizeObserver(() => setSize((v) => v + 1));
+    const observer = new ResizeObserver(() => {
+      const el=canvas.current; if(!el || !el.clientWidth || !el.clientHeight)return;
+      const width=el.clientWidth,height=el.clientHeight,old=previousSize.current;
+      if(old.width && old.height) setView(current=>{
+        if(current.zoom===1 && current.x===0 && current.y===0)return current;
+        const before=transformFor(old.width,old.height,bounds,current),point=before.inverse(old.width/2,old.height/2);
+        const base=transformFor(width,height,bounds,{zoom:1,x:0,y:0});
+        const next={zoom:Math.max(.2,Math.min(100,before.scale/base.scale)),x:0,y:0};
+        const after=transformFor(width,height,bounds,next);
+        return {...next,x:width/2-after.x(point.x),y:height/2-after.y(point.y)};
+      });
+      previousSize.current={width,height};setSize(v=>v+1);
+    });
     observer.observe(canvas.current); return () => observer.disconnect();
-  }, []);
+  }, [bounds]);
   useEffect(() => { if (canvas.current) renderBoard(canvas.current, board, bounds, view, layers, component, net, detail, vias); }, [board, bounds, view, layers, component, net, size, detail, vias]);
   useEffect(() => {
     const element = canvas.current;
@@ -33,6 +46,7 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
     const wheel = (event: WheelEvent) => {
       event.preventDefault();
       const rect = element.getBoundingClientRect();
+      if (event.shiftKey) { setView(v => ({ ...v, x: v.x - (event.deltaX || event.deltaY), y: v.y })); return; }
       const px = event.clientX - rect.left, py = event.clientY - rect.top;
       setView((current) => {
         const t = transformFor(rect.width, rect.height, bounds, current);
@@ -44,6 +58,16 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
     };
     element.addEventListener("wheel", wheel, { passive: false }); return () => element.removeEventListener("wheel", wheel);
   }, [bounds]);
+  function zoomAtCenter(factor: number) {
+    const el = canvas.current; if (!el) return;
+    setView(current => {
+      const px=el.clientWidth/2, py=el.clientHeight/2;
+      const point=transformFor(el.clientWidth,el.clientHeight,bounds,current).inverse(px,py);
+      const next={...current,zoom:Math.max(.2,Math.min(100,current.zoom*factor))};
+      const t=transformFor(el.clientWidth,el.clientHeight,bounds,next);
+      return {...next,x:next.x+px-t.x(point.x),y:next.y+py-t.y(point.y)};
+    });
+  }
   function focusSelection() {
     const geometry = board.geometry.filter((p) => component ? "componentId" in p && p.componentId === component : net !== null && "netIndex" in p && p.netIndex === net);
     if (!geometry.length || !canvas.current) return;
@@ -77,19 +101,24 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
         if (id === component) focusSelection();
       }} />
       <div className="sch-spacer" />
-      <button title="Alejar" aria-label="Alejar" onClick={() => setView((v) => ({ ...v, zoom: Math.max(.2, v.zoom / 1.4) }))}><Minus size={15} /></button>
+      <button title="Alejar" aria-label="Alejar" onClick={() => zoomAtCenter(1 / 1.4)}><Minus size={15} /></button>
       <span className="sch-zoom">{Math.round(view.zoom * 100)}%</span>
-      <button title="Acercar" aria-label="Acercar" onClick={() => setView((v) => ({ ...v, zoom: Math.min(100, v.zoom * 1.4) }))}><Plus size={15} /></button>
+      <button title="Acercar" aria-label="Acercar" onClick={() => zoomAtCenter(1.4)}><Plus size={15} /></button>
       <button title="Ajustar placa" aria-label="Ajustar placa" onClick={() => setView({ zoom: 1, x: 0, y: 0 })}><Maximize size={15} /></button>
       <button title="Centrar selección" onClick={focusSelection} disabled={!component && net === null}>Centrar</button>
       <button title="Limpiar selección" aria-label="Limpiar selección" onClick={() => onSelect(null, null)}><RotateCcw size={15} /></button>
     </div>
     <div className="sch-canvas-wrap"><canvas ref={canvas} aria-label={`Placa ${board.name}`} tabIndex={0}
-      onKeyDown={(event) => { if (event.key === "Escape") onSelect(null, null); if (event.key.toLowerCase() === "f") focusSelection(); }}
-      onPointerDown={(event) => { drag.current = { x: event.clientX, y: event.clientY, view, moved: false }; event.currentTarget.setPointerCapture(event.pointerId); }}
+      onKeyDown={(event) => {
+        const shifts: Record<string,[number,number]>={ArrowLeft:[100,0],ArrowRight:[-100,0],ArrowUp:[0,100],ArrowDown:[0,-100]};
+        if(shifts[event.key]) { event.preventDefault(); const [x,y]=shifts[event.key]; setView(v=>({...v,x:v.x+x,y:v.y+y})); }
+        if(['+','=','-','0','f','F'].includes(event.key)) { event.preventDefault(); if(event.key==='0')setView({zoom:1,x:0,y:0}); else if(event.key.toLowerCase()==='f')focusSelection(); else zoomAtCenter(event.key==='-' ? 1/1.4 : 1.4); }
+        if(event.key==='Escape')onSelect(null,null);
+      }}
+      onPointerDown={(event) => { if(event.button!==0 && event.button!==1)return; event.preventDefault(); event.currentTarget.focus(); drag.current = { x: event.clientX, y: event.clientY, view, moved: false }; event.currentTarget.setPointerCapture(event.pointerId); }}
       onPointerMove={(event) => { const d = drag.current; if (!d) return; const dx = event.clientX - d.x, dy = event.clientY - d.y; if (Math.hypot(dx, dy) > 4) d.moved = true; if (d.moved) setView({ ...d.view, x: d.view.x + dx, y: d.view.y + dy }); }}
       onPointerUp={(event) => {
-        if (drag.current && !drag.current.moved) {
+        if (event.button === 0 && drag.current && !drag.current.moved) {
           const rect = event.currentTarget.getBoundingClientRect(), t = transformFor(rect.width, rect.height, bounds, view);
           const p = t.inverse(event.clientX - rect.left, event.clientY - rect.top);
           const hit = hitTestCandidates(visibleGeometry, p, { tolerance: 7 / t.scale, visibleLayerIds: new Set(visibleGeometry.map(item => item.layer)) })[0];
@@ -98,7 +127,7 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
         drag.current = null; event.currentTarget.releasePointerCapture(event.pointerId);
       }} onPointerCancel={() => { drag.current = null; }} />
       {!board.geometry.length && <div className="sch-overlay">Este PCBE todavía no tiene geometría compatible.</div>}
-      <div className="sch-canvas-hint">Arrastrar para mover · Rueda para acercar · F para centrar</div>
+      <div className="sch-canvas-hint">Arrastrar: mover · Rueda: zoom · + / − · 0: ajustar · Flechas: mover · F: centrar</div>
     </div>
     <LayerControls catalog={board.layerCatalog} layers={layers} detail={detail} vias={vias} overlay={overlay} onDetail={setDetail} onVias={() => setVias(value => !value)} onOverlay={() => { setOverlay(value => !value); setLayers(current => new Set([[...current][0] ?? initialLayer(board.geometry)])); }} onLayer={id => { setLayers(current => overlay ? new Set([...current, id]) : new Set([id])); }} />
   </div>;

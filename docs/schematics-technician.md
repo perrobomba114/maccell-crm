@@ -40,3 +40,9 @@ MACCELL_BUILD_DIR=.next-schematics-check npm run build
 ```
 
 Las migraciones son aditivas. No se publicaron cambios de producción desde esta implementación.
+
+## Pantalla completa y navegación
+- «Ampliar» ocupa el viewport y solicita pantalla completa al navegador cuando está disponible. Biblioteca e Inspector se cierran al entrar y pueden reabrirse.
+- «Ocultar controles» o **H** activa «Sólo documento». **H** o el botón flotante vuelve a mostrar las herramientas. **Esc** sale de la vista ampliada.
+- PCBE y PDF: arrastrar para mover, rueda para zoom, **Shift + rueda** para desplazamiento horizontal. Con el área de dibujo enfocada: **+ / −**, **0** para ajustar y flechas para mover. En PCBE, **F** centra la selección.
+- PDF: botones para ajustar al ancho o ver la página completa. El zoom conserva el punto bajo el cursor y la resolución de renderizado se limita para evitar canvases excesivos.

@@ -4,3 +4,12 @@
 .sch-pdf-reference{position:absolute;cursor:crosshair!important;border:1px solid #3b82f670;background:#3b82f610;min-width:8px;min-height:8px}.sch-pdf-reference:hover,.sch-pdf-reference.is-selected{background:#3b82f650;border-color:#2563eb;box-shadow:0 0 0 2px #3b82f650}.sch-pdf-password{padding:14px;display:flex;gap:8px;flex-wrap:wrap}.sch-pdf-password p{width:100%}.sch-pdf-password input{background:var(--background);border:1px solid #6f848a;padding:6px}.sch-pdf-password button{padding:6px 10px;background:var(--primary);color:var(--card);border-radius:8px}
 @media(max-width:700px){.sch-topbar{flex-wrap:wrap}.sch-modes{margin-left:auto}.sch-topbar .sch-spacer{display:none}.sch-reader-toolbar{font-size:12px}}
 .sch-document-search form{padding:10px;display:flex;flex-direction:column;gap:7px}.sch-document-search textarea{resize:vertical;min-height:60px;background:var(--background);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px}.sch-document-search form button{background:var(--primary);color:var(--primary-foreground);padding:7px;border-radius:8px;font-size:12px}.sch-document-search>p{padding:10px;font-size:12px;line-height:1.7;color:#cbb77f}.sch-semantic-result{display:flex;flex-direction:column;text-align:left;gap:7px;padding:10px;border-bottom:1px solid var(--border);width:100%}.sch-semantic-result strong{font-size:12px;color:var(--primary)}.sch-semantic-result span{font-size:12px;color:#9bafb6;max-height:90px;overflow:auto;line-height:1.6}
+.sch-reader-scroll{min-height:0;overscroll-behavior:contain;touch-action:none;cursor:grab;scrollbar-width:thin;outline-offset:-2px}
+.sch-reader-scroll:active{cursor:grabbing}.sch-reader-page{user-select:none}
+.sch-reader-toolbar{flex-shrink:0;min-height:40px;gap:6px;padding:4px 8px}
+.sch-reader-toolbar>.sch-pdf-search{padding:0;border:0;flex:1;max-width:360px;min-width:160px;gap:4px}
+.sch-reader-toolbar>.sch-pdf-search input{width:100%;text-align:left;border-radius:6px;padding:6px 8px}
+.sch-reader-toolbar button{min-width:28px;min-height:28px;align-items:center;justify-content:center}
+.sch-references{max-height:80px;overflow:auto;padding:5px 10px;flex-shrink:0}.sch-references>div{margin:0}
+.sch-ocr-tools{flex-shrink:0}.sch-ocr-tools summary{cursor:pointer}
+.sch-reader-page{margin-inline:auto}

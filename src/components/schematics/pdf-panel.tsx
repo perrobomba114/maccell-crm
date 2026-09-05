@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { FileText, ExternalLink, Link2, Search } from "lucide-react";
+import { ExternalLink, Link2, Search } from "lucide-react";
 import dynamic from "next/dynamic";
 import { shouldNavigateReference } from "@/lib/schematics/workspace";
 import type { SchematicAsset } from "@/lib/schematics/catalog-types";
@@ -48,11 +48,11 @@ export function PdfPanel({ asset, reference, references, onReference, page, onPa
   }
   const url = `/api/schematics/${asset.id}#page=${page}&search=${encodeURIComponent(term)}&view=FitH`;
   return <section className="sch-pdf">
-    <div className="sch-board-tools"><FileText size={14} /><span>ESQUEMA PDF</span><div className="sch-spacer" /><a href={url} target="_blank" rel="noreferrer" aria-label="Abrir PDF en otra pestaña"><ExternalLink size={15} /></a></div>
-    <div className="sch-pdf-title" title={asset.name}>{asset.name}</div>
-    <form className="sch-pdf-search" onSubmit={event => { event.preventDefault(); setManualSearch(query.trim()); setRevision(value => value + 1); }}><input aria-label="Buscar texto en este PDF" placeholder="Referencia o texto exacto…" value={query} minLength={2} maxLength={100} onChange={event => setQuery(event.target.value)} /><button aria-label="Buscar en PDF" disabled={query.trim().length < 2}><Search size={15} /></button></form>
-    <PdfReader id={asset.id} page={page} onPage={onPage} selected={term} references={references} onReference={onReference} onTextAvailable={setHasText} />
+    <PdfReader id={asset.id} page={page} onPage={onPage} selected={term} references={references} onReference={onReference} onTextAvailable={setHasText} toolbar={<>
+      <form className="sch-pdf-search" onSubmit={event => { event.preventDefault(); setManualSearch(query.trim()); setRevision(value => value + 1); }}><input aria-label="Buscar texto en este PDF" placeholder="Buscar referencia o texto…" value={query} minLength={2} maxLength={100} onChange={event => setQuery(event.target.value)} /><button aria-label="Buscar en PDF" disabled={query.trim().length < 2}><Search size={15} /></button></form>
+      <a href={url} target="_blank" rel="noreferrer" aria-label="Abrir PDF en otra pestaña"><ExternalLink size={15} /></a>
+    </>} />
     {term && <div className="sch-references"><div role="status"><Link2 size={13} />{status}</div>{matches.map(match => <button key={match.page} title={match.excerpt} aria-pressed={page === match.page} onClick={() => onPage(match.page)}>Pág. {match.page}</button>)}</div>}
-    <details className="sch-ocr-tools" open={hasText === false}><summary>{hasText === false ? "Página sin texto seleccionable" : "Reconocimiento de texto (OCR)"}</summary><p>Reconocé la página actual para buscar referencias. El PDF original se conserva.</p><button disabled={ocrBusy || asset.status !== "ready"} onClick={() => void recognizePage()}>{ocrBusy ? "Reconociendo página…" : `Reconocer página ${page}`}</button>{ocrMessage && <p role="status">{ocrMessage}</p>}</details>
+    <details className="sch-ocr-tools"><summary>{hasText === false ? "Página sin texto seleccionable" : "Reconocimiento de texto (OCR)"}</summary><p>Reconocé la página actual para buscar referencias. El PDF original se conserva.</p><button disabled={ocrBusy || asset.status !== "ready"} onClick={() => void recognizePage()}>{ocrBusy ? "Reconociendo página…" : `Reconocer página ${page}`}</button>{ocrMessage && <p role="status">{ocrMessage}</p>}</details>
   </section>;
 }
