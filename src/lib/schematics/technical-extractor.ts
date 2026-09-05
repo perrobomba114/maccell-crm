@@ -5,8 +5,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { parsePcbe } from './pcbe';
-import { imagePagesForOcr, indexFileIsCurrent, mergeOcrPage, indexBoard, parseBboxXml, parseOcrTsv, type TechnicalIndex } from './unified-index';
+import { imagePagesForOcr, indexFileIsCurrent, mergeOcrPage, indexBoard, parseBboxXml, type TechnicalIndex } from './unified-index';
 import type { SchematicAsset } from './catalog-types';
+import { recognizeTechnicalPage } from './technical-ocr';
 const run = promisify(execFile);
 
 export async function extractTechnicalIndex(asset: SchematicAsset, file: string, forceOcrPages: number[] = [], signal?: AbortSignal): Promise<TechnicalIndex> {
@@ -33,10 +34,7 @@ export async function extractTechnicalIndex(asset: SchematicAsset, file: string,
       signal?.throwIfAborted();
       if (page.text.trim().length >= 15 && !forceOcrPages.includes(page.page) && !imagePages.has(page.page)) continue;
       const raster = path.join(temporary, `page-${page.page}`);
-      // Bound raster pixels: large schematic sheets must not exhaust server memory.
-      await run('pdftoppm', ['-f', String(page.page), '-l', String(page.page), '-singlefile', '-scale-to', '4000', '-png', source, raster], { signal, timeout: 60_000, maxBuffer: 1024 * 1024 });
-      const recognized = await run('tesseract', [`${raster}.png`, 'stdout', '-l', process.env.SCHEMATICS_OCR_LANGUAGES ?? 'eng', 'tsv'], { signal, timeout: 90_000, maxBuffer: 16 * 1024 * 1024 });
-      const ocr = parseOcrTsv(recognized.stdout, page.page);
+      const ocr = await recognizeTechnicalPage(source, raster, page.page, process.env.SCHEMATICS_OCR_LANGUAGES ?? 'eng', signal);
       Object.assign(page, mergeOcrPage(page, ocr));
       await rm(`${raster}.png`, { force: true });
     }
