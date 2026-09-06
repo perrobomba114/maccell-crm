@@ -94,3 +94,49 @@ test('jargon query expansion maps tail plug to charging circuit and matches docu
  assert.match(sources[0].workbenchUrl!,/pdf=c{64}&page=1/);
 });
 
+test('retrieves Motorola G22 and XT2231 schematics with short model tokens', async () => {
+  const g22Pdf = {
+    assetId: 'd'.repeat(64),
+    metadata: { id: 'd'.repeat(64), brand: 'Motorola', model: 'Moto g22', kind: 'pdf', name: 'Esquematico completo xt2231-x (moto g22).pdf', sha256: 'g22', identityVerified: true, status: 'ready' },
+    payload: { version: 1, assetId: 'd'.repeat(64), sha256: 'g22', pages: [{ page: 2, text: 'backlight display power circuit' }], components: [], nets: [] }
+  };
+  const query = { brand: 'MOTOROLA', model: 'MOTO G22', modelAliases: ['G22', 'MOTO G22', 'XT2231'], text: 'backlight display', embedding: [] };
+  const sources = await retrieveLibrarySources(query, async () => [g22Pdf]);
+  assert.equal(sources.length, 1);
+  assert.equal(sources[0].sourceType, 'PDF');
+  assert.match(sources[0].title, /xt2231-x/);
+});
+
+test('retrieves Samsung A54 and A10 documents with short alphanumeric tokens', async () => {
+  const a54Pdf = {
+    assetId: 'e'.repeat(64),
+    metadata: { id: 'e'.repeat(64), brand: 'Samsung', model: 'Samsung A54 5G SM-A546B', kind: 'pdf', name: 'Sm-a546b_esquematico completo.pdf', sha256: 'a54', identityVerified: true, status: 'ready' },
+    payload: { version: 1, assetId: 'e'.repeat(64), sha256: 'a54', pages: [{ page: 5, text: 'sub board USB charging vbus circuit' }], components: [], nets: [] }
+  };
+  const query = { brand: 'SAMSUNG', model: 'A54', modelAliases: ['A54', 'GALAXY A54', 'SM-A546', 'SM-A546B'], text: 'USB charging vbus', embedding: [] };
+  const sources = await retrieveLibrarySources(query, async () => [a54Pdf]);
+  assert.equal(sources.length, 1);
+  assert.match(sources[0].title, /Sm-a546b/);
+});
+
+test('retrieves LG and Huawei documents across brand aliases', async () => {
+  const k40Pdf = {
+    assetId: 'f'.repeat(64),
+    metadata: { id: 'f'.repeat(64), brand: 'LG', model: 'K40s', aliases: ['LM-X430'], kind: 'pdf', name: 'Lg k40s schematics.pdf', sha256: 'k40', identityVerified: true, status: 'ready' },
+    payload: { version: 1, assetId: 'f'.repeat(64), sha256: 'k40', pages: [{ page: 1, text: 'audio codec speaker amplifier' }], components: [], nets: [] }
+  };
+  const lgQuery = { brand: 'LG', model: 'K40s', modelAliases: ['K40S', 'LG K40S', 'LM-X430'], text: 'audio codec speaker', embedding: [] };
+  const lgSources = await retrieveLibrarySources(lgQuery, async () => [k40Pdf]);
+  assert.equal(lgSources.length, 1);
+  assert.match(lgSources[0].title, /k40s/i);
+
+  const honorPdf = {
+    assetId: '1'.repeat(64),
+    metadata: { id: '1'.repeat(64), brand: 'HUAWEI', model: 'Honor 10 lite', kind: 'pdf', name: 'Honor 10 lite schematic.pdf', sha256: 'h10', identityVerified: true, status: 'ready' },
+    payload: { version: 1, assetId: '1'.repeat(64), sha256: 'h10', pages: [{ page: 1, text: 'camera sensor power lines' }], components: [], nets: [] }
+  };
+  const huaweiQuery = { brand: 'HONOR', model: 'Honor 10 lite', modelAliases: ['HONOR 10 LITE', 'HUAWEI HONOR 10 LITE'], text: 'camera sensor', embedding: [] };
+  const huaweiSources = await retrieveLibrarySources(huaweiQuery, async () => [honorPdf]);
+  assert.equal(huaweiSources.length, 1);
+  assert.match(huaweiSources[0].title, /Honor 10 lite/i);
+});

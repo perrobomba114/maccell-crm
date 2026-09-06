@@ -52,6 +52,36 @@ class DeviceAliasCatalogTest(unittest.TestCase):
         self.assertIn(("SM-G780F", "GALAXY S20 FE"), pairs)
         self.assertNotIn(("SM-G980F", "GALAXY S20 FE"), pairs)
 
+    def test_extracts_real_samsung_a54_and_a10_folder_aliases(self) -> None:
+        a54_aliases = aliases_from_pdf_path(
+            Path("Samsung/Samsung A54 5G SM-A546B/Pdf/Sm-a546b_esquematico completo.pdf")
+        )
+        a54_pairs = {(alias.canonical_model, alias.alias) for alias in a54_aliases}
+        self.assertIn(("SM-A546B", "A54 5G"), a54_pairs)
+        self.assertIn(("SM-A546B", "GALAXY A54 5G"), a54_pairs)
+
+        a10_aliases = aliases_from_pdf_path(
+            Path("Samsung/Samsung A10 SM-A105M/Pdf/Sm-a105m esquematico completo.pdf")
+        )
+        a10_pairs = {(alias.canonical_model, alias.alias) for alias in a10_aliases}
+        self.assertIn(("SM-A105M", "A10"), a10_pairs)
+
+    def test_extracts_real_motorola_g22_and_lg_g4_aliases(self) -> None:
+        g22_aliases = aliases_from_pdf_path(
+            Path("Motorola/Moto g22/Pdf/Esquematico completo xt2231-x (moto g22).pdf")
+        )
+        g22_pairs = {(alias.canonical_model, alias.alias) for alias in g22_aliases}
+        self.assertIn(("XT2231", "MOTO G22"), g22_pairs)
+        self.assertIn(("XT2231", "G22"), g22_pairs)
+
+        g4_aliases = aliases_from_pdf_path(
+            Path("Lg/H815.h818 (g4).pdf")
+        )
+        g4_pairs = {(alias.canonical_model, alias.alias) for alias in g4_aliases}
+        self.assertIn(("H815", "G4"), g4_pairs)
+        self.assertIn(("H818", "G4"), g4_pairs)
+
 
 if __name__ == "__main__":
     unittest.main()
+

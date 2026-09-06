@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 
-
 BRAND_ALIASES = {
     "apple": "APPLE",
     "iphone": "APPLE",
@@ -15,7 +14,10 @@ BRAND_ALIASES = {
     "moto": "MOTOROLA",
     "xiaomi": "XIAOMI",
     "redmi": "XIAOMI",
+    "poco": "XIAOMI",
+    "blackshark": "XIAOMI",
     "huawei": "HUAWEI",
+    "honor": "HUAWEI",
     "lg": "LG",
 }
 
@@ -63,6 +65,18 @@ MOTOROLA_XT_MAP = {
     "ONEACTION": ("MOTOROLA ONE ACTION", ("XT2013", "XT2013-1", "XT2013-2")),
 }
 
+LG_CHASSIS_MAP = {
+    "G2": ("LG G2", ("D802", "D805")),
+    "G4": ("LG G4", ("H815", "H818")),
+    "G5": ("LG G5", ("H850",)),
+    "Q6": ("LG Q6", ("M700", "M700TV")),
+    "K5": ("LG K5", ("X220", "X220DS")),
+    "K40S": ("LG K40S", ("LM-X430", "X430")),
+    "OPTIMUSG": ("LG OPTIMUS G", ("E970",)),
+    "OPTIMUSBLACK": ("LG OPTIMUS BLACK", ("P970", "P975")),
+    "SPIRIT": ("LG SPIRIT", ("H422",)),
+}
+
 IPHONE_PM_MAP = {
     "11PM": "IPHONE 11 PRO MAX",
     "12PM": "IPHONE 12 PRO MAX",
@@ -72,7 +86,6 @@ IPHONE_PM_MAP = {
     "16PM": "IPHONE 16 PRO MAX",
     "17PM": "IPHONE 17 PRO MAX",
 }
-
 
 def normalize_brand(value: str) -> str:
     key = value.strip().casefold()
@@ -84,14 +97,13 @@ def normalize_brand(value: str) -> str:
         return "SAMSUNG"
     if "motorola" in key or "moto" in key:
         return "MOTOROLA"
-    if "xiaomi" in key or "redmi" in key:
+    if "xiaomi" in key or "redmi" in key or "poco" in key or "blackshark" in key:
         return "XIAOMI"
-    if "huawei" in key:
+    if "huawei" in key or "honor" in key:
         return "HUAWEI"
     if "lg" in key:
         return "LG"
     return key.upper()
-
 
 def normalize_model(brand: str, value: str) -> str:
     normalized_brand = normalize_brand(brand)
@@ -103,16 +115,10 @@ def normalize_model(brand: str, value: str) -> str:
     if normalized_brand == "APPLE":
         if compact in IPHONE_PM_MAP:
             return IPHONE_PM_MAP[compact]
-        # Match compact patterns like IPHONE13PROMAX, IPHONE13PRO, IPHONE13MINI
         apple_match = re.match(r"^(?:IPHONE)?(\d{1,2}|SE(?:\d)?)(PROMAX|PRO_PROMAX|PRO|PLUS|MINI)?$", compact)
         if apple_match:
             num, suffix = apple_match.groups()
-            if suffix in ("PROMAX", "PRO_PROMAX"):
-                suffix_clean = " PRO MAX"
-            elif suffix:
-                suffix_clean = f" {suffix}"
-            else:
-                suffix_clean = ""
+            suffix_clean = " PRO MAX" if suffix in ("PROMAX", "PRO_PROMAX") else (f" {suffix}" if suffix else "")
             return f"IPHONE {num}{suffix_clean}".strip()
         clean = re.sub(r"\bPROMAX\b", "PRO MAX", clean)
         return clean if clean.startswith("IPHONE ") else f"IPHONE {clean}"
@@ -135,6 +141,12 @@ def normalize_model(brand: str, value: str) -> str:
             return f"MOTOROLA {core}" if core.startswith("ONE") else f"MOTO {core}"
         return clean
 
+    if normalized_brand == "LG":
+        for model_name, codes in LG_CHASSIS_MAP.values():
+            if any(compact.startswith(c) for c in codes):
+                return model_name
+        return clean if clean.startswith("LG ") else f"LG {clean}"
+
     samsung_code = re.search(r"(SM|GT)([A-Z]\d{3,5}[A-Z]{0,3})", compact) if normalized_brand == "SAMSUNG" else None
     if samsung_code:
         return f"{samsung_code.group(1)}-{samsung_code.group(2)}"
@@ -145,7 +157,6 @@ def normalize_model(brand: str, value: str) -> str:
     if normalized_brand == "SAMSUNG" and re.fullmatch(r"(?:SM)?A405FN", compact):
         return "SM-A405FN"
     return clean
-
 
 def model_aliases(brand: str, model: str) -> tuple[str, ...]:
     normalized_brand = normalize_brand(brand)
@@ -189,6 +200,29 @@ def model_aliases(brand: str, model: str) -> tuple[str, ...]:
                 aliases.extend(xt_list)
         return tuple(dict.fromkeys(aliases))
 
+    if normalized_brand == "LG":
+        aliases = [clean, compact, f"LG {clean}", f"LG {compact}"]
+        without_lg = re.sub(r"^LG\s+", "", clean)
+        aliases.extend([without_lg, without_lg.replace(" ", "")])
+        for model_name, codes in LG_CHASSIS_MAP.values():
+            m_compact = model_name.replace(" ", "")
+            if compact.startswith(m_compact) or compact.startswith(m_compact.replace("LG", "")):
+                aliases.append(model_name)
+                aliases.extend(codes)
+        return tuple(dict.fromkeys(aliases))
+
+    if normalized_brand == "HUAWEI":
+        aliases = [clean, compact, f"HUAWEI {clean}", f"HUAWEI {compact}"]
+        without_h = re.sub(r"^HUAWEI\s+", "", clean)
+        aliases.extend([without_h, without_h.replace(" ", "")])
+        return tuple(dict.fromkeys(aliases))
+
+    if normalized_brand == "XIAOMI":
+        aliases = [clean, compact, f"XIAOMI {clean}", f"XIAOMI {compact}"]
+        without_x = re.sub(r"^XIAOMI\s+", "", clean)
+        aliases.extend([without_x, without_x.replace(" ", "")])
+        return tuple(dict.fromkeys(aliases))
+
     if normalized_brand == "SAMSUNG":
         aliases = [clean, compact]
         a_match = re.fullmatch(r"(?:GALAXY|SAMSUNG)?A0?(\d{1,2})([SE]|CORE|5G)?", compact)
@@ -220,10 +254,40 @@ def model_aliases(brand: str, model: str) -> tuple[str, ...]:
                     f"SM-A{num_pad}6E",
                 ])
             aliases.append(f"SM-A{num_pad}")
+            return tuple(dict.fromkeys(aliases))
+
+        m_match = re.fullmatch(r"(?:GALAXY|SAMSUNG)?M0?(\d{1,2})([SE]|CORE|5G)?", compact)
+        if m_match:
+            num = m_match.group(1)
+            num_pad = f"0{num}" if len(num) == 1 else num
+            base_name = f"M{num}{m_match.group(2) or ''}"
+            aliases.extend([
+                base_name,
+                f"GALAXY {base_name}",
+                f"SAMSUNG {base_name}",
+                f"SM-M{num_pad}5",
+                f"SM-M{num_pad}5F",
+                f"SM-M{num_pad}",
+            ])
+            return tuple(dict.fromkeys(aliases))
+
+        s_match = re.fullmatch(r"(?:GALAXY|SAMSUNG)?S0?(\d{1,2})([A-Z0-9]*)", compact)
+        if s_match:
+            num, sfx = s_match.groups()
+            base_name = f"S{num} {sfx}".strip()
+            aliases.extend([base_name, f"GALAXY {base_name}", f"SAMSUNG {base_name}"])
+            return tuple(dict.fromkeys(aliases))
+
+        note_match = re.fullmatch(r"(?:GALAXY|SAMSUNG)?NOTE0?(\d{1,2})([A-Z0-9]*)", compact)
+        if note_match:
+            num, sfx = note_match.groups()
+            base_name = f"NOTE {num} {sfx}".strip()
+            aliases.extend([base_name, f"GALAXY {base_name}", f"SAMSUNG {base_name}"])
+            return tuple(dict.fromkeys(aliases))
+
         return tuple(dict.fromkeys(aliases))
 
     return (normalized_model,)
-
 
 def model_family(brand: str, model: str) -> str | None:
     aliases = model_aliases(brand, model)

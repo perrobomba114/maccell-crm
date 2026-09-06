@@ -99,6 +99,34 @@ class PdfInventoryTest(unittest.TestCase):
         self.assertEqual(image.model, "IPHONE 17 PRO MAX")
         self.assertEqual(image.document_type, "TECHNICAL_DOCUMENT")
 
+    def test_parses_moto_g13_without_xt_in_filename(self) -> None:
+        identity = parse_pdf_identity(
+            Path("Motorola/Moto g13/Pdf/Manual de servicio.pdf")
+        )
+        self.assertEqual(identity.brand, "MOTOROLA")
+        self.assertEqual(identity.model, "MOTO G13")
+
+    def test_parses_huawei_honor_10_lite(self) -> None:
+        identity = parse_pdf_identity(
+            Path("Huawei/Honor 10 lite/Pdf/Honor 10 lite schematic.pdf")
+        )
+        self.assertEqual(identity.brand, "HUAWEI")
+        self.assertEqual(identity.model, "HONOR 10 LITE")
+
+    def test_parses_lg_k40s_and_chassis_codes(self) -> None:
+        k40 = parse_pdf_identity(
+            Path("Lg/K40s/Pdf/K40s schematics.pdf")
+        )
+        self.assertEqual(k40.brand, "LG")
+        self.assertEqual(k40.model, "LG K40S")
+
+        g4 = parse_pdf_identity(
+            Path("Lg/H815.h818 (g4).pdf")
+        )
+        self.assertEqual(g4.brand, "LG")
+        self.assertEqual(g4.model, "LG G4")
+
+
     def test_hash_is_stable_for_identical_content(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             first = Path(directory) / "one.pdf"
