@@ -1,13 +1,26 @@
+import {
+    huaweiAliases,
+    lgAliases,
+    LG_CHASSIS_MAP,
+    motorolaAliases,
+    MOTOROLA_XT_MAP,
+    samsungSeriesAliases,
+    xiaomiAliases,
+} from "./device-aliases";
+
 const BRAND_ALIASES: Readonly<Record<string, string>> = {
     apple: "APPLE",
+    blackshark: "XIAOMI",
+    honor: "HUAWEI",
     huawei: "HUAWEI",
     iphone: "APPLE",
-    "iphone(vip)": "APPLE",
     "iphone(free)": "APPLE",
+    "iphone(vip)": "APPLE",
     lg: "LG",
     moto: "MOTOROLA",
     motorola: "MOTOROLA",
     "motorola(vip)": "MOTOROLA",
+    poco: "XIAOMI",
     redmi: "XIAOMI",
     samsung: "SAMSUNG",
     smsung: "SAMSUNG",
@@ -91,21 +104,52 @@ export function normalizeModel(brand: string, value: string): string {
     const alias = MODEL_ALIASES[normalizedBrand]?.[compact];
 
     if (alias) return alias;
-    const samsungCode = normalizedBrand === "SAMSUNG"
-        ? compact.match(/^(SM|GT)([A-Z]\d{3,5}[A-Z]{0,3})$/)
-        : null;
-    if (samsungCode) return `${samsungCode[1]}-${samsungCode[2]}`;
-    if (normalizedBrand === "SAMSUNG" && /^(?:(?:SM)?A037[A-Z]?|(?:GALAXY)?A03S)$/.test(compact)) {
-        return "SM-A037M";
-    }
-    if (normalizedBrand === "SAMSUNG" && /^(?:(?:SM)?A125M|(?:GALAXY)?A12)$/.test(compact)) {
-        return "SM-A125M";
-    }
-    if (normalizedBrand === "SAMSUNG" && /^(?:SM)?A405FN$/.test(compact)) {
-        return "SM-A405FN";
-    }
+
     if (normalizedBrand === "APPLE") {
+        const appleMatch = compact.match(/^(?:IPHONE)?(\d{1,2}|X|XR|XS|SE(?:\d)?)(PROMAX|PRO_PROMAX|PRO|PLUS|MINI|MAX)?$/);
+        if (appleMatch) {
+            const num = appleMatch[1];
+            let suffix = appleMatch[2] ?? "";
+            if (suffix === "PRO_PROMAX" || suffix === "PROMAX") suffix = "PRO MAX";
+            return `IPHONE ${num}${suffix ? ` ${suffix}` : ""}`.trim();
+        }
         return clean.startsWith("IPHONE ") ? clean : `IPHONE ${clean}`;
+    }
+
+    if (normalizedBrand === "MOTOROLA") {
+        const xtMatch = compact.match(/^XT(\d{4,5})(?:-\d+)?$/);
+        if (xtMatch) {
+            const xtBase = `XT${xtMatch[1]}`;
+            for (const [, entry] of Object.entries(MOTOROLA_XT_MAP)) {
+                if (entry.xtList.some(xt => xt.startsWith(xtBase))) {
+                    return entry.model;
+                }
+            }
+            return `XT${xtMatch[1]}`;
+        }
+        const seriesMatch = clean.match(/^(?:MOTO\s+)?([GEC]\s*\d{1,3}[A-Z]*(?:\s*(?:PLUS|PLAY|POWER|PRO|5G|S|I))?|EDGE\s*\d{1,2}(?:\s*(?:PRO|PLUS|FUSION|NEO))?|ONE\s*(?:FUSION|HYPER|ACTION|VISION)?)$/i);
+        if (seriesMatch) {
+            const modelCore = seriesMatch[1].toUpperCase().replace(/\s+/g, " ");
+            return modelCore.startsWith("ONE") ? `MOTOROLA ${modelCore}` : `MOTO ${modelCore}`;
+        }
+        return clean;
+    }
+
+    if (normalizedBrand === "LG") {
+        for (const entry of Object.values(LG_CHASSIS_MAP)) {
+            if (entry.codes.some(c => compact.startsWith(c))) {
+                return entry.model;
+            }
+        }
+        return clean.startsWith("LG ") ? clean : `LG ${clean}`;
+    }
+
+    if (normalizedBrand === "SAMSUNG") {
+        const samsungCode = compact.match(/^(SM|GT)-?([A-Z]\d{3,5}[A-Z]{0,3})$/);
+        if (samsungCode) return `${samsungCode[1]}-${samsungCode[2]}`;
+        if (/^(?:(?:SM)?A037[A-Z]?|(?:GALAXY)?A03S)$/.test(compact)) return "SM-A037M";
+        if (/^(?:(?:SM)?A125M|(?:GALAXY)?A12)$/.test(compact)) return "SM-A125M";
+        if (/^(?:SM)?A405FN$/.test(compact)) return "SM-A405FN";
     }
 
     return clean;
@@ -123,7 +167,19 @@ export function normalizeDeviceIdentity(brand: string, model: string): DeviceIde
         brand: resolvedBrand,
         model: declared?.model ?? normalizedModel,
     };
-    if (declared) identity.modelFamily = declared.modelFamily;
+    if (declared) {
+        identity.modelFamily = declared.modelFamily;
+    } else if (resolvedBrand === "MOTOROLA" && normalizedModel.startsWith("MOTO ")) {
+        identity.modelFamily = normalizedModel;
+    } else if (resolvedBrand === "SAMSUNG" && /^(?:GALAXY\s+)?A\d{1,2}/.test(normalizedModel)) {
+        identity.modelFamily = normalizedModel.startsWith("GALAXY ") ? normalizedModel : `GALAXY ${normalizedModel}`;
+    } else if (resolvedBrand === "LG" && normalizedModel.startsWith("LG ")) {
+        identity.modelFamily = normalizedModel;
+    } else if (resolvedBrand === "HUAWEI") {
+        identity.modelFamily = normalizedModel;
+    } else if (resolvedBrand === "XIAOMI") {
+        identity.modelFamily = normalizedModel;
+    }
     return identity;
 }
 
@@ -132,8 +188,41 @@ export function deviceModelAliases(identity: DeviceIdentity): string[] {
         candidate.brand === identity.brand && candidate.model === identity.model
     ));
     if (declared) return [...declared.aliases];
-    if (identity.brand === "APPLE" && identity.model.startsWith("IPHONE ")) {
-        return [identity.model, identity.model.slice("IPHONE ".length)];
+
+    // Preserve exact unregistered board variants without inferring cross-model aliases
+    if (identity.brand === "SAMSUNG" && /^(?:SM|GT)-[A-Z]\d{3,5}[A-Z]+$/.test(identity.model)) {
+        return [identity.model];
     }
+
+    const clean = identity.model.trim().toUpperCase().replace(/[_\s-]+/g, " ");
+    const compact = clean.replace(/\s+/g, "");
+
+    if (identity.brand === "APPLE") {
+        if (identity.model.startsWith("IPHONE ")) {
+            return [identity.model, identity.model.slice("IPHONE ".length)];
+        }
+        return [identity.model];
+    }
+
+    if (identity.brand === "MOTOROLA") {
+        return motorolaAliases(clean, compact);
+    }
+
+    if (identity.brand === "SAMSUNG") {
+        return samsungSeriesAliases(clean, compact);
+    }
+
+    if (identity.brand === "LG") {
+        return lgAliases(clean, compact);
+    }
+
+    if (identity.brand === "HUAWEI") {
+        return huaweiAliases(clean, compact);
+    }
+
+    if (identity.brand === "XIAOMI") {
+        return xiaomiAliases(clean, compact);
+    }
+
     return [identity.model];
 }

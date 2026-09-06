@@ -20,6 +20,9 @@ const normalizeBrandKey = (b: string) => {
     if (v.includes('iphone') || v.includes('apple')) return 'apple';
     if (v.includes('samsung')) return 'samsung';
     if (v.includes('motorola') || v.includes('moto')) return 'motorola';
+    if (v.includes('huawei') || v.includes('honor')) return 'huawei';
+    if (v.includes('lg')) return 'lg';
+    if (v.includes('xiaomi') || v.includes('redmi') || v.includes('poco') || v.includes('blackshark')) return 'xiaomi';
     return normalize(b);
 };
 const SQL = `SELECT a.id AS "assetId", a.metadata, i.payload
@@ -31,9 +34,18 @@ AND (
     OR ($1 = 'apple' AND (a.metadata->>'brand' ILIKE '%iphone%' OR a.relative_path ILIKE '%iphone%'))
     OR ($1 = 'samsung' AND (a.metadata->>'brand' ILIKE '%samsung%' OR a.relative_path ILIKE '%samsung%'))
     OR ($1 = 'motorola' AND (a.metadata->>'brand' ILIKE '%motorola%' OR a.metadata->>'brand' ILIKE '%moto%' OR a.relative_path ILIKE '%moto%'))
+    OR ($1 = 'huawei' AND (a.metadata->>'brand' ILIKE '%huawei%' OR a.metadata->>'brand' ILIKE '%honor%' OR a.relative_path ILIKE '%huawei%' OR a.relative_path ILIKE '%honor%'))
+    OR ($1 = 'lg' AND (a.metadata->>'brand' ILIKE '%lg%' OR a.relative_path ILIKE '%lg/%' OR a.relative_path ILIKE 'lg/%' OR a.relative_path ILIKE '%(g%)%' OR a.relative_path ILIKE '%(k%)%'))
+    OR ($1 = 'xiaomi' AND (a.metadata->>'brand' ILIKE '%xiaomi%' OR a.metadata->>'brand' ILIKE '%redmi%' OR a.metadata->>'brand' ILIKE '%poco%' OR a.relative_path ILIKE '%xiaomi%' OR a.relative_path ILIKE '%redmi%' OR a.relative_path ILIKE '%poco%'))
 )
-AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(jsonb_build_array(a.metadata->>'model') || COALESCE(a.metadata->'aliases','[]'::jsonb)) AS models(value)
- WHERE regexp_replace(lower(models.value), '[^a-z0-9]', '', 'g') = ANY($2::text[]))
+AND (
+    EXISTS (SELECT 1 FROM jsonb_array_elements_text(jsonb_build_array(a.metadata->>'model') || COALESCE(a.metadata->'aliases','[]'::jsonb)) AS models(value)
+     WHERE regexp_replace(lower(models.value), '[^a-z0-9]', '', 'g') = ANY($2::text[]))
+    OR EXISTS (SELECT 1 FROM unnest($2::text[]) m WHERE length(m) >= 2 AND (
+        regexp_replace(lower(a.relative_path), '[^a-z0-9]', '', 'g') LIKE '%' || m || '%'
+        OR regexp_replace(lower(a.name), '[^a-z0-9]', '', 'g') LIKE '%' || m || '%'
+    ))
+)
 AND NOT EXISTS (SELECT 1 FROM schematics.index_jobs job WHERE job.asset_id = a.id AND job.status = 'failed')
 AND i.asset_sha256 = a.sha256 AND i.asset_sha256 = a.metadata->>'sha256' AND i.index_version = 1
 AND (
@@ -66,8 +78,12 @@ export async function retrieveLibrarySources(input: RetrievalInput, search: Libr
     const sources: CerebroSource[] = [];
     for (const row of rows) {
         const {metadata: asset, payload} = row;
+        const candidateModels = [asset.model, ...(asset.aliases ?? [])].filter(Boolean).map(normalize);
+        const matchesModel = candidateModels.some(cm => models.includes(cm))
+            || (candidateModels.length > 0 && models.some(m => m.length >= 2 && candidateModels.some(cm => cm.includes(m))))
+            || (Boolean(asset.name) && models.some(m => m.length >= 2 && normalize(asset.name).includes(m)));
         if (asset.status !== 'ready' || asset.identityVerified === false || normalizeBrandKey(asset.brand ?? '') !== normalizeBrandKey(input.brand)
-            || ![asset.model, ...(asset.aliases ?? [])].some(model => models.includes(normalize(model)))
+            || !matchesModel
             || payload.version !== 1 || payload.sha256 !== asset.sha256 || payload.assetId !== row.assetId) continue;
         const initialCount = sources.length;
         const add = (content: string, suffix: string, pageNumber: number | null, component?: string, net?: string) => {
