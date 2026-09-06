@@ -12,6 +12,7 @@ Usar esta skill cuando haya nuevos archivos de esquemáticos, boardviews o PCBE 
 - La biblioteca física existente es `/mnt/data2` en el servidor MACCELL. No inventar otra carpeta ni cambiar el volumen.
 - El lugar lógico de publicación debe verificarse con Dokploy y `SCHEMATICS_ROOT` antes de importar. En la configuración actual, el volumen de `/mnt/data2` se monta en el contenedor como `/app/upload/schematics/sources`; el catálogo y sus índices pueden vivir fuera del volumen físico. No asumir rutas: comprobarlas.
 - FileBrowser expone el mismo almacenamiento. Si una carpeta no aparece, verificar montaje y permisos antes de copiar de nuevo.
+- Los archivos de `Iphone 17 pro max` ya quedaron invisibles una vez porque la transferencia los dejó como `root:root`; FileBrowser corre con otro UID y no podía listarlos. Toda tanda debe cerrar con una auditoría de propietario, grupo y permisos.
 - `.incoming-scraping` es staging, no biblioteca publicada. No borrarlo hasta cerrar la auditoría de la tanda.
 - Nunca se sobrescribe un archivo existente. La identidad física es `SHA-256 + tamaño`; el nombre no es identidad.
 - Un duplicado exacto se registra y no se vuelve a copiar. Un mismo nombre con distinto hash se conserva con sufijo de variante y se informa para revisión.
@@ -56,6 +57,33 @@ find /mnt/data2 -maxdepth 2 -type d -print | sort | head -200
 ```
 
 Antes de copiar, comprobar en Dokploy que el servicio `MACCELL CRM` conserve el volumen de `/mnt/data2` y obtener `SCHEMATICS_ROOT` del contenedor. Si el volumen o la variable cambiaron, detenerse y documentar el cambio; no crear un destino alternativo.
+
+### Permisos y visibilidad en FileBrowser
+
+Después de crear una tanda, identificar el UID/GID real con el que corre FileBrowser; en la corrección de `Iphone 17 pro max` fue `1000:1000`. No asumirlo si el contenedor cambió:
+
+```sh
+docker ps --format '{{.Names}}\t{{.Image}}' | grep -i filebrowser
+docker exec <contenedor-filebrowser> id
+```
+
+Auditar sólo las rutas nuevas o reorganizadas, no aplicar permisos indiscriminadamente a todo el servidor:
+
+```sh
+find /mnt/data2/Iphone/'Iphone 17 pro max' \( ! -user 1000 -o ! -group 1000 \) -print
+find /mnt/data2/Iphone/'Iphone 17 pro max' -type d -printf '%u:%g %m %p\n'
+find /mnt/data2/Iphone/'Iphone 17 pro max' -type f -printf '%u:%g %m %p\n'
+```
+
+Si la auditoría confirma que la tanda es propiedad incorrecta y el UID/GID verificado de FileBrowser es `1000:1000`, corregir sólo las rutas afectadas:
+
+```sh
+chown -R 1000:1000 /mnt/data2/Iphone/'Iphone 17 pro max'
+find /mnt/data2/Iphone/'Iphone 17 pro max' -type d -exec chmod 755 {} +
+find /mnt/data2/Iphone/'Iphone 17 pro max' -type f -exec chmod 644 {} +
+```
+
+No usar `chmod 777`, no cambiar permisos de `/mnt/data2` completo y no hacer `chown` sobre carpetas no pertenecientes a la tanda. Luego comprobar desde FileBrowser que aparecen `Pdf` y `Pcbe`, y comprobar desde el contenedor de la aplicación que puede leer un archivo de cada carpeta.
 
 ### 2. Copiar sólo a staging
 

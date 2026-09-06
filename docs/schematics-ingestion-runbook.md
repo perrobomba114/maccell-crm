@@ -24,6 +24,28 @@ Este runbook es la guía humana de la skill [`schematic-library-ingestion`](../.
 9. Verificar FileBrowser, búsqueda y navegación PDF/PCBE.
 10. Conservar el manifiesto y limpiar staging sólo con aprobación.
 
+## Incidente conocido: archivos invisibles por propietario `root`
+
+En la tanda de `Iphone 17 pro max`, los archivos sí estaban físicamente en `/mnt/data2`, pero habían sido creados como `root:root`. FileBrowser usa otro usuario —en la corrección realizada, UID/GID `1000:1000`— y por eso no podía listarlos aunque la ruta existiera. No se solucionó subiendo una segunda copia: se corrigió propietario y permisos sobre las carpetas afectadas.
+
+Antes de repetir una carga:
+
+```sh
+docker ps --format '{{.Names}}\t{{.Image}}' | grep -i filebrowser
+docker exec <contenedor-filebrowser> id
+find /mnt/data2/<marca>/<modelo> -printf '%u:%g %m %p\n' | head -100
+```
+
+Si el UID/GID real confirmado es `1000:1000`, corregir sólo la tanda o modelo afectado:
+
+```sh
+chown -R 1000:1000 /mnt/data2/<marca>/<modelo>
+find /mnt/data2/<marca>/<modelo> -type d -exec chmod 755 {} +
+find /mnt/data2/<marca>/<modelo> -type f -exec chmod 644 {} +
+```
+
+No usar `chmod 777`, no hacer `chown -R` sobre todo `/mnt/data2` y no tocar carpetas ajenas a la tanda. El cierre exige comprobar que FileBrowser muestra `Pdf` y `Pcbe`, que el contenedor del CRM lee un PDF y un PCBE, y que el catálogo/indexador sigue viendo las mismas rutas. Si la carpeta aparece en FileBrowser pero el CRM no la puede leer, revisar primero el mount del contenedor antes de volver a transferir archivos.
+
 ## Criterio de duplicado
 
 El hash SHA-256 del contenido es la regla principal. El nombre, tamaño, modelo o carpeta no sustituyen al hash. Un archivo idéntico se omite; un archivo con el mismo nombre y otro contenido no se elimina ni se sobrescribe.
