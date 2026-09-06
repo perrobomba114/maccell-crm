@@ -32,10 +32,10 @@ export function buildCerebroSystemPrompt(
 ): string {
     let usedCharacters = 0;
     const blocks: string[] = [];
-    // Preserve manufacturer priority while retaining original public citation numbers.
+    // Preserve manufacturer priority and repair cases while retaining original public citation numbers.
     const orderedEvidence = evidence.filter(source => source.brand === brand).sort((left, right) => {
         const priority = (source: CerebroEvidence) => source.sourceType === "PDF"
-            ? /TROUBLESHOOT|SERVICE MANUAL|MANUAL DE SERVICIO/i.test(source.title) ? 0 : 1 : 2;
+            ? /TROUBLESHOOT|SERVICE MANUAL|MANUAL DE SERVICIO|REPAIR CASE|FAULT|FALLA/i.test(source.title) ? 0 : 1 : 2;
         return priority(left) - priority(right);
     });
     const sourceBudget = Math.floor(MAX_CONTEXT_CHARACTERS / Math.max(1, orderedEvidence.length));
@@ -45,6 +45,7 @@ export function buildCerebroSystemPrompt(
         const content = sanitizeEvidence(source.content).slice(0, Math.min(MAX_SOURCE_CHARACTERS, remaining, sourceBudget));
         usedCharacters += content.length;
         const evidenceNumber = evidence.indexOf(source) + 1;
+        const workbenchHint = source.workbenchUrl ? `\n[Workbench: ${source.workbenchUrl}]` : "";
         blocks.push(
             `--- EVIDENCIA E${evidenceNumber} ---\n${JSON.stringify({
                 authority: source.authority,
@@ -52,7 +53,7 @@ export function buildCerebroSystemPrompt(
                 pageNumber: source.pageNumber,
                 title: sanitizeEvidence(source.title),
                 content,
-            })}\n--- FIN EVIDENCIA E${evidenceNumber} ---`,
+            })}${workbenchHint}\n--- FIN EVIDENCIA E${evidenceNumber} ---`,
         );
     }
     const hasNoPowerSymptom = !repair || /NO ENCIENDE|NO PRENDE|APAGADO|CONSUMO/i.test(repair.problem);
@@ -92,9 +93,12 @@ DISPOSITIVO: ${brand} ${model}
 REGLA ABSOLUTA: usá únicamente evidencia de la MISMA MARCA (${brand}).
 La evidencia MACCELL y documental tiene prioridad sobre conocimiento general.
 Si existe TROUBLESHOOTING o manual de servicio del modelo, seguí el procedimiento del fabricante como árbol principal y respetá su orden de comprobaciones.
+Si la evidencia contiene un REPAIR CASE o caso documentado de falla (ej. problemas conocidos de carga, fusible abierto, flex o display), analizalo como referencia de alta prioridad y contrastalo con las líneas del circuito. Al interpretar guías técnicas y esquemas traducidos (ej. tail plug, insurance resistance, middle layer, fly line, flower screen), contextualizá su significado técnico en microelectrónica (flex de carga, resistencia fusible, capa media/interposer de placa sándwich, puente/jumper con micro-hilo, pantalla con líneas/artefactos) relacionándolo con la ruta de señal de la evidencia.
+En fallas de backlight (ej. SM-A037 / Galaxy A03s), considerá la topología del circuito elevador (boost): línea de ánodo (VLED+ / LED_A) que sale del diodo/bobina de boost hacia el conector FPC, y líneas de cátodo de retorno (VLED- / LED_K). Si la falla es pantalla oscura pero con imagen perceptible con luz externa, guiá al técnico a medir caídas de tensión en escala de diodo en los pines de ánodo/cátodo del conector y comprobar fusibles o filtros EMI (ej. FL...).
 Las reparaciones históricas son evidencia secundaria: usalas sólo para contrastar patrones, nunca para desplazar una medición o decisión indicada por el fabricante.
 ${displayPriorityRule}
 El campo problem del contexto operativo es el diagnóstico inicial del vendedor. Debés conservar todos los hechos observados que contiene en DATOS OBSERVADOS, junto con lo informado por el técnico; no lo reduzcas al último mensaje.
+En fallas de carga (ej. sin rayo o sin detección en PC, como en iPhone 13 Pro tras caídas o intervención de placa), considerá la ruta de señal: flex de carga (tail plug) -> fusible/resistencia de protección de la capa media (interposer) -> chip USB / chip de carga rápida y PMIC. Guiá al técnico a medir continuidad o caída en diodo en el fusible y líneas de VBUS antes de intervenir o separar placas.
 En el lenguaje de ingreso de MACCELL, "no lee chip" significa que no reconoce la tarjeta SIM, salvo que se indique un designador electrónico concreto. Nunca propongas un lector de chips externo ni inventes un "módulo lector": buscá bandeja/conector SIM, detección, alimentación, líneas SIM y baseband según el schematic.
 Ante "no lee chip/SIM", no propongas retirar, reparar ni reemplazar baseband como primera acción. Primero separá: SIM conocida y bandeja, detección mecánica/conector, y recién después líneas SIM visibles en el schematic. Si la evidencia solo muestra el pinout de baseband pero no la ruta SIM, decilo y no inventes componentes intermedios.
 En iPhone, un reinicio repetido o temporizado se diagnostica primero leyendo el registro panic-full/panic-base o watchdog de iOS. Una observación como "carga 0.6" no demuestra una falla de carga ni autoriza recomendar batería; pedí el panic y separá missing sensor, watchdog y reinicio de software según el texto real del registro.

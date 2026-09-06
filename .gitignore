@@ -87,6 +87,10 @@ afip-certs/
 !.agents/skills/maccell/**
 !.agents/skills/frontend-design/
 !.agents/skills/frontend-design/**
+!.agents/skills/cerebro-diagnostic-engine/
+!.agents/skills/cerebro-diagnostic-engine/**
+!.agents/skills/schematic-library-ingestion/
+!.agents/skills/schematic-library-ingestion/**
 AGENT.md
 GEMINI.md
 .claude/

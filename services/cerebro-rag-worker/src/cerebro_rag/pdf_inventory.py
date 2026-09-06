@@ -34,29 +34,58 @@ def _searchable(value: str) -> str:
 def parse_pdf_identity(relative_path: Path) -> PdfIdentity:
     path_text = " ".join(relative_path.parts)
     searchable = _searchable(path_text)
-    first_directory = relative_path.parts[0].strip() if len(relative_path.parts) > 1 else ""
-    brand = normalize_brand(first_directory)
 
+    # Determine brand by path contents and keywords
     samsung_pattern = r"(?<![A-Z0-9])((?:SM|GT)[\s_-]*[A-Z]?\d{3,5}[A-Z]{0,3})(?![A-Z0-9])"
     filename_matches = re.findall(samsung_pattern, _searchable(relative_path.name))
     samsung_matches = filename_matches or re.findall(samsung_pattern, searchable)
     motorola = re.search(r"\bXT\d{4,5}\b", searchable)
+
+    if "IPHONE" in searchable or "APPLE" in searchable:
+        brand = "APPLE"
+    elif "SAMSUNG" in searchable or samsung_matches:
+        brand = "SAMSUNG"
+    elif "MOTOROLA" in searchable or "MOTO" in searchable or motorola:
+        brand = "MOTOROLA"
+    elif "XIAOMI" in searchable or "REDMI" in searchable:
+        brand = "XIAOMI"
+    elif "HUAWEI" in searchable or "HONOR" in searchable:
+        brand = "HUAWEI"
+    elif "LG" in searchable:
+        brand = "LG"
+    else:
+        first_directory = relative_path.parts[0].strip() if len(relative_path.parts) > 1 else ""
+        brand = normalize_brand(first_directory) if first_directory.lower() != "pdf" else "UNKNOWN"
+
     if samsung_matches:
-        # A parent directory often contains a family model (for example SM-A405F)
-        # while the PDF filename contains the exact variant (SM-A405FN). Prefer the
-        # most specific match so model-scoped pilots and retrieval do not miss it.
         model = re.sub(r"[\s_-]+", "-", max(samsung_matches, key=len))
     elif motorola:
         model = motorola.group(0)
     elif brand == "APPLE":
-        model_match = re.search(r"\bIPHONE\s+(?:SE\s+)?\d{1,2}(?:\s+PRO)?(?:\s+MAX)?\b", searchable)
-        model = model_match.group(0) if model_match else relative_path.stem
+        model_match = re.search(r"\bIPHONE\s*(?:SE\s*)?\d{1,2}(?:\s*(?:PRO\s*MAX|PRO|PLUS|MINI))?\b", searchable)
+        if model_match:
+            model = model_match.group(0)
+        else:
+            # Check parent folder names for iPhone model
+            parent_match = None
+            for part in reversed(relative_path.parts[:-1]):
+                m = re.search(r"\bIPHONE\s*(?:SE\s*)?\d{1,2}(?:\s*(?:PRO\s*MAX|PRO|PLUS|MINI))?\b", _searchable(part))
+                if m:
+                    parent_match = m.group(0)
+                    break
+            model = parent_match or relative_path.stem
     else:
-        model = relative_path.parent.name or relative_path.stem
+        generic_folders = {"pdf", "pcbe", "sources", "files", "schematics", "manuals", "documentos", brand.lower()}
+        meaningful_parts = [part for part in reversed(relative_path.parts[:-1]) if part.lower() not in generic_folders]
+        model = meaningful_parts[0] if meaningful_parts else relative_path.stem
 
-    if any(term in searchable for term in ("ESQUEMATIC", "SCHEMATIC", "SCHEMA")):
+    if any(term in searchable for term in ("REPAIR CASE", "FAULT", "FAILURE", "COMMON PROBLEMS", "FLYING WIRE", "FLY LINE")):
+        document_type = "REPAIR_CASE"
+    elif any(term in searchable for term in ("DIODE VALUE", "DIODE", "RESISTANCE DIAGRAM", "MIDDLE LEVEL DIODE")):
+        document_type = "DIODE_VALUE"
+    elif any(term in searchable for term in ("ESQUEMATIC", "SCHEMATIC", "SCHEMA", "BOARDVIEW", "PCB LAYER", "BLOCK DIAGRAM", "LINEAS DE", "LINEAS", "CIRCUITO", "BACKLIGHT", "TOUCH")):
         document_type = "SCHEMATIC"
-    elif any(term in searchable for term in ("MANUAL DE SERVICIO", "SERVICE MANUAL")):
+    elif any(term in searchable for term in ("MANUAL DE SERVICIO", "SERVICE MANUAL", "TROUBLESHOOTING")):
         document_type = "SERVICE_MANUAL"
     else:
         document_type = "TECHNICAL_DOCUMENT"

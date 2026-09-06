@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { CircuitBoard, Search, FileText, Loader2, Link2, Star, Copy, X } from "lucide-react";
 import { sameDevice, type SchematicAsset } from "@/lib/schematics/catalog-types";
 import { modeAfterClosing, readWorkspaceLink, sessionPairFor, workspaceLink, type WorkspaceLocation } from "@/lib/schematics/workspace";
-import {pairIsVerified} from '@/lib/schematics/pairing';
+import { documentRole, pairIsVerified } from '@/lib/schematics/pairing';
 import {PairingStatus} from './pairing-status';
 import { ConnectionInspector } from "./connection-inspector";
 import { PdfPanel } from "./pdf-panel";
@@ -96,18 +96,42 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     preferences.remember(asset.id, asset.name);
     updateUi({ library: false, message: "" });
     if (asset.kind === "pdf") {
-      const keepBoard=boardAsset&&sameDevice(asset,boardAsset);
-      if(!keepBoard){setBoardAsset(null);setSelection({component:null,net:null});setSessionPair(null);}
-      else if (boardAsset) setSessionPair({ boardId: boardAsset.id, pdfId: asset.id });
-      setPdfPage(1); setPdf(asset); updateUi({reference:'',mode:keepBoard?'split':'pdf'}); return;
+      const keepBoard = boardAsset && sameDevice(asset, boardAsset);
+      let targetBoard = keepBoard ? boardAsset : null;
+      if (!targetBoard) {
+        targetBoard = [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pcbe" && sameDevice(asset, item) && documentRole(item) === "board")
+          ?? [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pcbe" && sameDevice(asset, item))
+          ?? null;
+      }
+      if (targetBoard) {
+        catalogCache.current.set(targetBoard.id, targetBoard);
+        setBoardAsset(targetBoard);
+        setSelection({ component: null, net: null });
+        setSessionPair({ boardId: targetBoard.id, pdfId: asset.id });
+      } else {
+        setBoardAsset(null); setSelection({ component: null, net: null }); setSessionPair(null);
+      }
+      setPdfPage(1); setPdf(asset); updateUi({ reference: '', mode: targetBoard ? 'split' : 'pdf' }); return;
     }
-    const keepPdf=pdf&&sameDevice(asset,pdf);
-    if(!keepPdf){setPdf(null);setPdfPage(1);setSessionPair(null);}
-    else if (pdf) setSessionPair({ boardId: asset.id, pdfId: pdf.id });
+    const keepPdf = pdf && sameDevice(asset, pdf);
+    let targetPdf = keepPdf ? pdf : null;
+    if (!targetPdf) {
+      targetPdf = [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pdf" && sameDevice(asset, item) && documentRole(item) === "schematic")
+        ?? [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pdf" && sameDevice(asset, item))
+        ?? null;
+    }
+    if (targetPdf) {
+      catalogCache.current.set(targetPdf.id, targetPdf);
+      setPdf(targetPdf);
+      setPdfPage(1);
+      setSessionPair({ boardId: asset.id, pdfId: targetPdf.id });
+    } else {
+      setPdf(null); setPdfPage(1); setSessionPair(null);
+    }
     if (asset.id !== boardAsset?.id) {
       setBoardAsset(asset); setSelection({ component: null, net: null }); updateUi({ reference: "" });
     }
-    updateUi({ mode: keepPdf ? "split" : "board" });
+    updateUi({ mode: targetPdf ? "split" : "board" });
   }
   async function openId(id: string, page?: number) {
     try { const asset = await assetById(id); openAsset(asset); if (page && asset.kind === "pdf") { setPdfPage(page); updateUi({ reference: "" }); } }
@@ -162,8 +186,10 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     setReferenceChoices([]);
     if (linked && (component !== null || net !== null)) updateUi({ mode: "split" });
     setSelection({ component, net });
-    updateUi({ referenceToken: ui.referenceToken + 1 });
-    updateUi({ reference: (net !== null ? board?.netCatalog.find(item => item.id === net)?.name : board?.components.find(item => item.id === component)?.name) ?? "" });
+    const compName = component !== null ? board?.components.find(item => item.id === component)?.name : null;
+    const netName = net !== null ? board?.netCatalog.find(item => item.id === net)?.name : null;
+    const term = compName || netName || "";
+    updateUi({ referenceToken: ui.referenceToken + 1, reference: term });
     if (focus) setFocusToken(value => value + 1);
   }
   function selectPdfReference(term: string) {
@@ -223,7 +249,7 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
         {referenceChoices.length > 1 && <div className="sch-pdf-label-choices"><span>Hay varias ubicaciones con esa referencia:</span>{referenceChoices.map(item => <button key={item.label} onClick={() => { select(item.component, item.net, true); updateUi({ mode: "split" }); }}>{item.label}</button>)}<button onClick={() => setReferenceChoices([])}>Cerrar</button></div>}
         <div className={`sch-viewers sch-view-${ui.mode}`}>
           <div className="sch-board-slot" hidden={ui.mode === "pdf"}>
-            {loading ? <div className="sch-empty"><Loader2 className="animate-spin" /><h3>Abriendo placa…</h3><p>Procesando componentes y redes.</p></div> : error ? <div className="sch-empty" role="alert"><h3>No se pudo abrir</h3><p>{error}</p><button onClick={() => setBoardAsset(boardAsset ? { ...boardAsset } : null)}>Reintentar</button></div> : board ? <BoardCanvas key={boardAsset?.id} board={board} component={selection.component} net={selection.net} onSelect={select} focusToken={focusToken} /> : <WorkspaceWelcome search={ui.search} onSearch={search => updateUi({ search, library: true })} onBrowse={() => updateUi({ library: true })} recent={preferences.recent} onOpen={id => void openId(id)} />}
+            {loading ? <div className="sch-empty"><Loader2 className="animate-spin" /><h3>Abriendo placa…</h3><p>Procesando componentes y redes.</p></div> : error ? <div className="sch-empty" role="alert"><h3>No se pudo abrir</h3><p>{error}</p><button onClick={() => setBoardAsset(boardAsset ? { ...boardAsset } : null)}>Reintentar</button></div> : board ? <BoardCanvas key={boardAsset?.id} board={board} component={selection.component} net={selection.net} onSelect={select} focusToken={focusToken} /> : <WorkspaceWelcome isLibraryOpen={ui.library} onBrowse={() => updateUi({ library: true })} recent={preferences.recent} onOpen={id => void openId(id)} />}
           </div>
           <div className="sch-pdf-slot" hidden={ui.mode === "board"}>
             {pdf ? <PdfPanel key={pdf.id} page={pdfPage} onPage={setPdfPage} navigationToken={ui.referenceToken} canReindex={canEditIdentity} asset={pdf} reference={linked ? ui.reference : ""} references={linked ? pdfReferences : emptyReferences} onReference={selectPdfReference} /> : <div className="sch-empty"><FileText size={32} /><h3>Documentación del equipo</h3><p>Elegí un PDF. La sincronización requiere identidad técnica compatible.</p><div className="sch-related">{related.map(asset => <button key={asset.id} onClick={() => openAsset(asset)}>{asset.name}</button>)}</div><button onClick={() => updateUi({ library: true })}>Abrir biblioteca</button></div>}

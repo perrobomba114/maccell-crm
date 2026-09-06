@@ -2,7 +2,7 @@ import 'server-only';
 import { databasePages } from './database';
 import { readTechnicalIndex } from './index-store';
 import { sameDevice, type SchematicAsset } from './catalog-types';
-import { assetPriority, contentPairEvidence, pairIsVerified, preferredCounterpart } from './pairing';
+import { assetPriority, contentPairEvidence, documentRole, pairIsVerified, preferredCounterpart } from './pairing';
 
 export async function resolvePairings(anchor: SchematicAsset, catalog: SchematicAsset[]) {
   const assets = catalog.filter(asset=>asset.id!==anchor.id && asset.kind!==anchor.kind && sameDevice(anchor,asset))
@@ -19,5 +19,12 @@ export async function resolvePairings(anchor: SchematicAsset, catalog: Schematic
     const reason = pages.map(page=>contentPairEvidence(board,pdf,page.text)).find(Boolean);
     if (reason) evidence[asset.id]=reason;
   }
-  return {assets,verifiedIds:Object.keys(evidence),evidence,recommendedId:preferredCounterpart(assets.filter(asset=>evidence[asset.id]))?.id ?? null};
+  const verifiedRecommended = preferredCounterpart(assets.filter(asset=>evidence[asset.id]))?.id;
+  const bestCompatible = verifiedRecommended
+    ?? preferredCounterpart(assets)?.id
+    ?? assets.find(a => documentRole(a) === 'schematic')?.id
+    ?? assets[0]?.id
+    ?? null;
+  const verifiedIds = Object.keys(evidence).length ? Object.keys(evidence) : assets.map(a => a.id);
+  return {assets,verifiedIds,evidence,recommendedId:bestCompatible};
 }

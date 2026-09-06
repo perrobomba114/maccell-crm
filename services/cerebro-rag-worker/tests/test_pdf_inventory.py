@@ -53,6 +53,52 @@ class PdfInventoryTest(unittest.TestCase):
         self.assertEqual(identity.brand, "APPLE")
         self.assertEqual(identity.model, "IPHONE 11 PRO MAX")
 
+    def test_parses_iphone13_repair_cases(self) -> None:
+        charging = parse_pdf_identity(
+            Path("pdf/iPhone(VIP)/iPhone13Pro/Repair Case/IPhone 13 Pro not charging fault.pdf")
+        )
+        self.assertEqual(charging.brand, "APPLE")
+        self.assertEqual(charging.model, "IPHONE 13 PRO")
+        self.assertEqual(charging.document_type, "REPAIR_CASE")
+
+        screen = parse_pdf_identity(
+            Path("pdf/iPhone(VIP)/iPhone13ProMAX/Repair Case/IPhone 13 ProMax screen failure.pdf")
+        )
+        self.assertEqual(screen.brand, "APPLE")
+        self.assertEqual(screen.model, "IPHONE 13 PRO MAX")
+        self.assertEqual(screen.document_type, "REPAIR_CASE")
+
+    def test_parses_samsung_sources_path(self) -> None:
+        schematic = parse_pdf_identity(
+            Path("Samsung A06 SM-A065F/Pdf/SM-A065F_MTK_Common_Service_Schematic_240801.pdf")
+        )
+        self.assertEqual(schematic.brand, "SAMSUNG")
+        self.assertEqual(schematic.model, "SM-A065F")
+        self.assertEqual(schematic.document_type, "SCHEMATIC")
+
+    def test_parses_samsung_sm_a037m_backlight_path(self) -> None:
+        backlight = parse_pdf_identity(
+            Path("Samsung/Samsung A03s SM-A037M/Pdf/Sm-a037 lineas de backlight.pdf")
+        )
+        self.assertEqual(backlight.brand, "SAMSUNG")
+        self.assertEqual(backlight.model, "SM-A037")
+        self.assertEqual(backlight.document_type, "SCHEMATIC")
+
+        troubleshooting = parse_pdf_identity(
+            Path("Samsung/Samsung A03s SM-A037M/Pdf/Sm-a037m_troubleshooting.pdf")
+        )
+        self.assertEqual(troubleshooting.brand, "SAMSUNG")
+        self.assertEqual(troubleshooting.model, "SM-A037M")
+        self.assertEqual(troubleshooting.document_type, "SERVICE_MANUAL")
+
+    def test_parses_iphone17_promax_path(self) -> None:
+        image = parse_pdf_identity(
+            Path("Iphone/Iphone 17 pro max/Pdf/Iphone17promax image.pdf")
+        )
+        self.assertEqual(image.brand, "APPLE")
+        self.assertEqual(image.model, "IPHONE 17 PRO MAX")
+        self.assertEqual(image.document_type, "TECHNICAL_DOCUMENT")
+
     def test_hash_is_stable_for_identical_content(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             first = Path(directory) / "one.pdf"

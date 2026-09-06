@@ -64,7 +64,7 @@ LEFT JOIN LATERAL (
     FROM repair_learning_records AS record
     WHERE record."repairId" = repair.id
 ) AS learning ON true
-WHERE repair."statusId" IN (5, 6, 7, 8, 9, 10)
+WHERE repair."statusId" IN (5, 6, 10)
 """
 
 REPAIR_EXPORT_QUERY = REPAIR_EXPORT_BASE + "\nORDER BY effective_updated_at, repair.id"
@@ -84,7 +84,14 @@ EMAIL_PATTERN = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNO
 PHONE_PATTERN = re.compile(r"(?:\+?54\s*)?(?:9\s*)?(?:\(?\d{2,4}\)?[\s.-]*)?\d{4}[\s.-]*\d{4}")
 PRICE_PATTERN = re.compile(r"(?:US\$|USD|ARS|\$)\s*\d[\d.,]*", re.IGNORECASE)
 OPERATIONAL_OBSERVATION_PATTERN = re.compile(
-    r"^(?:reparaci[oó]n\s+)?(?:tomada por t[eé]cnico|cobrada en venta|asignada a|estado cambiado)",
+    r"^(?:reparaci[oó]n\s+)?(?:tomada por t[eé]cnico|cobrada en venta|asignada a|estado cambiado|"
+    r"cliente\s+(?:apura|avisa|retira|no\s+deja|pasa|consulta|espera)|"
+    r"esperando\s+(?:repuesto|confirmaci[oó]n|autorizaci[oó]n|presupuesto|respuesta)|"
+    r"se\s+(?:pasa|env[ií]a|avisa)\s+presupuesto|"
+    r"presupuesto\s+(?:aceptado|rechazado|pendiente)|"
+    r"sin\s+(?:se[ñn]a|clave|patr[oó]n|reparaci[oó]n)|"
+    r"deja\s+(?:clave|patr[oó]n|se[ñn]a)|"
+    r"aviso\s+al\s+cliente)",
     re.IGNORECASE,
 )
 

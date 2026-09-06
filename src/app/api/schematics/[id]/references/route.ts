@@ -24,16 +24,32 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (!asset) return Response.json({ error: "PDF no encontrado" }, { status: 404 });
     if (asset.status !== "ready") return Response.json({ matches: [], status: asset.status });
     const technical = await readTechnicalIndex(asset);
-    if (technical && technical.complete !== false) return Response.json({matches:indexReferenceMatches(technical.pages,term),status:technical.pages.some(page=>page.text.trim())?"indexed":"no_text",sources:[...new Set(technical.pages.map(page=>page.source))]});
-    const stale = !technical && await hasPreviousTechnicalIndex(asset.id);
+    type ReferenceMatchItem = { page: number; excerpt: string; boxes?: import("@/lib/schematics/unified-index").ReferenceBox[] };
+    let matches: ReferenceMatchItem[] = technical && technical.complete !== false ? indexReferenceMatches(technical.pages, term) : [];
+    if (matches.length) {
+      return Response.json({
+        matches,
+        status: "indexed",
+        sources: [...new Set(technical!.pages.map((page) => page.source))],
+      });
+    }
+    const stale = !technical && (await hasPreviousTechnicalIndex(asset.id));
     let pages: { page: number; text: string; source?: "text" | "ocr"; sha256?: string }[] = technical?.pages ?? [];
-    if (!technical && !stale) {
-      try { pages = await databasePages(id, asset.sha256) ?? JSON.parse(await readFile(path.join(libraryRoot(), ".index", `${id}.json`), "utf8")); }
-      catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    if (!matches.length && !stale) {
+      try {
+        const dbPages = await databasePages(id, asset.sha256);
+        if (dbPages?.length) {
+          pages = dbPages;
+        } else {
+          pages = JSON.parse(await readFile(path.join(libraryRoot(), ".index", `${id}.json`), "utf8"));
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
     }
     pages = pages.filter((page) => !("sha256" in page) || page.sha256 === asset.sha256);
-    const matches = technical ? indexReferenceMatches(technical.pages, term) : findReferencePages(pages, term);
-    const sources = [...new Set(pages.map(page => page.source ?? "text"))];
+    matches = matches.length ? matches : findReferencePages(pages, term);
+    const sources = [...new Set(pages.map((page) => page.source ?? "text"))];
     if (process.env.RAG_DATABASE_URL) {
       if (!await currentReferenceFile(asset, libraryRoot())) return Response.json({ matches: [], status: "stale" });
       try {

@@ -67,3 +67,30 @@ test('mixing many PDFs retains an existing repair',async()=>{
  const sources=await retrieveTechnicalEvidence({...input,limit:4},{embed:async()=>[],library:async()=>[board,board],rag:async()=>[{...board,sourceType:'PDF'}, {...board,sourceType:'PDF'},repair]});
  assert.ok(sources.sources.some(source=>source.documentId==='repair'));
 });
+test('schematic matches by title when page text is empty and produces workbench deep link',async()=>{
+ const unextractedPdf={
+  assetId:'b'.repeat(64),
+  metadata:{id:'b'.repeat(64),brand:'SAMSUNG',model:'SM-A037M',aliases:['SM-A037','A03S'],kind:'pdf',name:'Sm-a037 lineas de backlight.pdf',sha256:'def',identityVerified:true,status:'ready'},
+  payload:{version:1,assetId:'b'.repeat(64),sha256:'def',pages:[],components:[],nets:[]}
+ };
+ const query={brand:'Samsung',model:'SM-A037M',modelAliases:['SM-A037','A03S'],text:'lineas de backlight falla imagen',embedding:[]};
+ const sources=await retrieveLibrarySources(query,async()=>[unextractedPdf]);
+ assert.equal(sources.length,1);
+ assert.equal(sources[0].sourceType,'PDF');
+ assert.match(sources[0].title,/Sm-a037 lineas de backlight/);
+ assert.match(sources[0].workbenchUrl!,/pdf=b{64}&page=1/);
+ assert.match(sources[0].content,/Documento técnico/);
+});
+test('jargon query expansion maps tail plug to charging circuit and matches document',async()=>{
+ const chargingPdf={
+  assetId:'c'.repeat(64),
+  metadata:{id:'c'.repeat(64),brand:'Apple',model:'iPhone 13 Pro',aliases:['13P'],kind:'pdf',name:'Iphone 13 pro not charging fault.pdf',sha256:'13p',identityVerified:true,status:'ready'},
+  payload:{version:1,assetId:'c'.repeat(64),sha256:'13p',pages:[],components:[],nets:[]}
+ };
+ const query={brand:'Apple',model:'iPhone 13 Pro',modelAliases:['13P'],text:'tail plug dock flex no carga',embedding:[]};
+ const sources=await retrieveLibrarySources(query,async()=>[chargingPdf]);
+ assert.equal(sources.length,1);
+ assert.match(sources[0].title,/Iphone 13 pro not charging fault/);
+ assert.match(sources[0].workbenchUrl!,/pdf=c{64}&page=1/);
+});
+

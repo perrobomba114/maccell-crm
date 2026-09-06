@@ -122,3 +122,26 @@ test("does not prioritize a display swap without repeated confirmed same-model e
 
     assert.doesNotMatch(prompt, /pantalla conocida buena o nueva compatible/i);
 });
+
+test("prioritizes REPAIR CASE and includes charging circuit path guidance", () => {
+    const repairCase: CerebroSource = {
+        chunkId: "case-1",
+        documentId: "doc-case",
+        sourceType: "PDF",
+        authority: "TECHNICAL_DOCUMENT",
+        brand: "APPLE",
+        model: "IPHONE 13 PRO",
+        title: "IPhone 13 Pro not charging fault",
+        pageNumber: 1,
+        score: 0.95,
+        workbenchUrl: "/technician/schematics?pdf=doc-case&page=1",
+        content: "Fault: No lightning charging logo, no connection to PC. Solution: Interposer fuse resistor dragged off.",
+    };
+    const prompt = buildCerebroSystemPrompt("APPLE", "IPHONE 13 PRO", [repairCase]);
+
+    assert.match(prompt, /REPAIR CASE/);
+    assert.match(prompt, /IPhone 13 Pro not charging fault/);
+    assert.match(prompt, /tail plug.*fusible.*chip USB/i);
+    assert.match(prompt, /Workbench: \/technician\/schematics/);
+});
+

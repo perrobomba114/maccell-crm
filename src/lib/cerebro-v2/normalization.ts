@@ -2,9 +2,12 @@ const BRAND_ALIASES: Readonly<Record<string, string>> = {
     apple: "APPLE",
     huawei: "HUAWEI",
     iphone: "APPLE",
+    "iphone(vip)": "APPLE",
+    "iphone(free)": "APPLE",
     lg: "LG",
     moto: "MOTOROLA",
     motorola: "MOTOROLA",
+    "motorola(vip)": "MOTOROLA",
     redmi: "XIAOMI",
     samsung: "SAMSUNG",
     smsung: "SAMSUNG",
@@ -14,6 +17,18 @@ const BRAND_ALIASES: Readonly<Record<string, string>> = {
 const MODEL_ALIASES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     APPLE: {
         "11PM": "IPHONE 11 PRO MAX",
+        "12PM": "IPHONE 12 PRO MAX",
+        "13PM": "IPHONE 13 PRO MAX",
+        "13P": "IPHONE 13 PRO",
+        "13PRO": "IPHONE 13 PRO",
+        "IPHONE13PRO": "IPHONE 13 PRO",
+        "IPHONE13PROMAX": "IPHONE 13 PRO MAX",
+        "14PM": "IPHONE 14 PRO MAX",
+        "15PM": "IPHONE 15 PRO MAX",
+        "16PM": "IPHONE 16 PRO MAX",
+        "17PM": "IPHONE 17 PRO MAX",
+        "17PROMAX": "IPHONE 17 PRO MAX",
+        "IPHONE17PROMAX": "IPHONE 17 PRO MAX",
     },
 };
 
@@ -31,9 +46,33 @@ const DECLARED_IDENTITIES: ReadonlyArray<{
 }> = [
     {
         brand: "SAMSUNG",
+        model: "SM-A037M",
+        modelFamily: "GALAXY A03S",
+        aliases: ["SM-A037M", "SM-A037", "A037", "A03S", "GALAXY A03S", "SM-A037F"],
+    },
+    {
+        brand: "SAMSUNG",
         model: "SM-A125M",
         modelFamily: "GALAXY A12",
         aliases: ["SM-A125M", "GALAXY A12", "A12"],
+    },
+    {
+        brand: "APPLE",
+        model: "IPHONE 13 PRO MAX",
+        modelFamily: "IPHONE 13 SERIES",
+        aliases: ["IPHONE 13 PRO MAX", "13 PRO MAX", "13PM", "IPHONE13PROMAX"],
+    },
+    {
+        brand: "APPLE",
+        model: "IPHONE 13 PRO",
+        modelFamily: "IPHONE 13 SERIES",
+        aliases: ["IPHONE 13 PRO", "13 PRO", "13P", "13PRO", "IPHONE13PRO"],
+    },
+    {
+        brand: "APPLE",
+        model: "IPHONE 17 PRO MAX",
+        modelFamily: "IPHONE 17 SERIES",
+        aliases: ["IPHONE 17 PRO MAX", "17 PRO MAX", "17PM", "IPHONE17PROMAX", "17PROMAX"],
     },
 ];
 
@@ -56,6 +95,9 @@ export function normalizeModel(brand: string, value: string): string {
         ? compact.match(/^(SM|GT)([A-Z]\d{3,5}[A-Z]{0,3})$/)
         : null;
     if (samsungCode) return `${samsungCode[1]}-${samsungCode[2]}`;
+    if (normalizedBrand === "SAMSUNG" && /^(?:(?:SM)?A037[A-Z]?|(?:GALAXY)?A03S)$/.test(compact)) {
+        return "SM-A037M";
+    }
     if (normalizedBrand === "SAMSUNG" && /^(?:(?:SM)?A125M|(?:GALAXY)?A12)$/.test(compact)) {
         return "SM-A125M";
     }
