@@ -72,7 +72,7 @@ class PdfIndexer:
         self.cache_root = cache_root
         self.versions = DocumentVersionRepository(connection)
 
-    def index(self, entry: PdfInventoryEntry) -> tuple[UUID, int, int, bool]:
+    def index(self, entry: PdfInventoryEntry, force: bool = False) -> tuple[UUID, int, int, bool]:
         descriptor = DocumentDescriptor(
             source_type="PDF",
             source_id=entry.relative_path.as_posix(),
@@ -95,8 +95,9 @@ class PdfIndexer:
             """,
             (document_id,),
         ).fetchone()
-        if document_metadata_current(status, schema_version):
+        if not force and document_metadata_current(status, schema_version):
             return document_id, 0, 0, True
+
 
         pages = extract_pdf_pages(entry.absolute_path, entry.sha256, self.cache_root)
         chunks = build_document_chunks(str(document_id), pages)

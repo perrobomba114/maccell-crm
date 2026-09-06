@@ -22,6 +22,17 @@ class PdfExtractionTest(unittest.TestCase):
         self.assertEqual(choose_extraction_method("A" * 40), ExtractionMethod.OCR)
         self.assertEqual(choose_extraction_method(""), ExtractionMethod.OCR)
 
+    def test_uses_ocr_when_page_has_images(self) -> None:
+        self.assertEqual(choose_extraction_method("A" * 100, has_images=True), ExtractionMethod.OCR)
+
+    def test_merges_native_and_ocr_texts_without_duplicate_lines(self) -> None:
+        merge_fn = getattr(pdf_extract, "merge_page_texts")
+        merged = merge_fn("8-3-2. Charging\nPMU MT6357", "8-3-2. Charging\nC1521 = 5V\nC1514 = 3.8V")
+        self.assertIn("PMU MT6357", merged)
+        self.assertIn("C1521 = 5V", merged)
+        self.assertIn("C1514 = 3.8V", merged)
+
+
     def test_only_renders_pages_that_require_ocr_during_ingestion(self) -> None:
         should_render = getattr(pdf_extract, "render_during_ingestion", lambda _: True)
 

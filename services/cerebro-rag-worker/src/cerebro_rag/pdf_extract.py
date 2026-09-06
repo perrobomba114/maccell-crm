@@ -75,7 +75,9 @@ class ExtractedPage:
     rendered_path: Path | None
 
 
-def choose_extraction_method(native_text: str) -> ExtractionMethod:
+def choose_extraction_method(native_text: str, has_images: bool = False) -> ExtractionMethod:
+    if has_images:
+        return ExtractionMethod.OCR
     if len(native_text.strip()) > NATIVE_TEXT_THRESHOLD:
         return ExtractionMethod.NATIVE
     return ExtractionMethod.OCR
@@ -83,6 +85,23 @@ def choose_extraction_method(native_text: str) -> ExtractionMethod:
 
 def render_during_ingestion(method: ExtractionMethod) -> bool:
     return method is ExtractionMethod.OCR
+
+
+def merge_page_texts(native_text: str, ocr_text: str) -> str:
+    native = native_text.strip()
+    ocr = ocr_text.strip()
+    if not native:
+        return ocr
+    if not ocr:
+        return native
+    native_lines = {line.strip().lower() for line in native.splitlines() if line.strip()}
+    additional_lines = [
+        line.strip() for line in ocr.splitlines()
+        if line.strip() and line.strip().lower() not in native_lines
+    ]
+    if not additional_lines:
+        return native
+    return f"{native}\n\n[EVIDENCIA OCR]\n" + "\n".join(additional_lines)
 
 
 def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> tuple[ExtractedPage, ...]:
@@ -95,7 +114,11 @@ def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> t
 
     for index, page in enumerate(reader.pages, start=1):
         native_text = extract_native_page_text(page, pdf_path, index)
-        method = choose_extraction_method(native_text)
+        try:
+            has_images = len(page.images) > 0
+        except Exception:
+            has_images = False
+        method = choose_extraction_method(native_text, has_images=has_images)
         if not render_during_ingestion(method):
             extracted.append(ExtractedPage(index, native_text, method, None))
             continue
@@ -116,7 +139,9 @@ def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> t
             continue
         image = images[0]
         image.save(rendered_path, "PNG")
-        text = sanitize_extracted_text(pytesseract.image_to_string(image, lang="eng+spa"))
-        extracted.append(ExtractedPage(index, text.strip(), method, rendered_path))
+        ocr_text = sanitize_extracted_text(pytesseract.image_to_string(image, lang="eng+spa")).strip()
+        combined_text = merge_page_texts(native_text, ocr_text)
+        extracted.append(ExtractedPage(index, combined_text, method, rendered_path))
 
     return tuple(extracted)
+

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import TypedDict
 
-INDEX_SCHEMA_VERSION = "technical-flow-v2"
+INDEX_SCHEMA_VERSION = "technical-flow-v3-ocr"
 
 
 def document_metadata_current(status: str, schema_version: str | None) -> bool:
