@@ -8,6 +8,8 @@ Este README es la entrada rápida del proyecto. Las reglas obligatorias para age
 - [AGENT.md](./AGENT.md): contexto histórico y patrones del repo.
 - [.claude/claude.md](./.claude/claude.md): guía equivalente para Claude.
 - [.agents/skills/maccell/SKILL.md](./.agents/skills/maccell/SKILL.md): skill activa para agentes.
+- [.agents/skills/schematic-library-ingestion/SKILL.md](./.agents/skills/schematic-library-ingestion/SKILL.md): ingesta segura de PDF/PCBE, deduplicación, catálogo, índice técnico y RAG.
+- [docs/schematics-ingestion-runbook.md](./docs/schematics-ingestion-runbook.md): runbook para subir y acomodar nuevas tandas desde SCRAPING.
 - [docs/agent-tooling.md](./docs/agent-tooling.md): Codex, Claude, skills y MCP recomendados.
 - [docs/technical-debt-roadmap.md](./docs/technical-debt-roadmap.md): checklist vivo de deuda técnica.
 
