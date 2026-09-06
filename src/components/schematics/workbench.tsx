@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import dynamic from "next/dynamic";
 import { CircuitBoard, Search, FileText, Loader2, Link2, Star, Copy, X } from "lucide-react";
 import { sameDevice, type SchematicAsset } from "@/lib/schematics/catalog-types";
-import { readWorkspaceLink, workspaceLink, type WorkspaceLocation } from "@/lib/schematics/workspace";
+import { modeAfterClosing, readWorkspaceLink, sessionPairFor, workspaceLink, type WorkspaceLocation } from "@/lib/schematics/workspace";
 import {pairIsVerified} from '@/lib/schematics/pairing';
 import {PairingStatus} from './pairing-status';
 import { ConnectionInspector } from "./connection-inspector";
@@ -34,6 +34,11 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
   const [ui, updateUi] = useReducer((state: Ui, patch: Partial<Ui>) => ({ ...state, ...patch }), { search: "", reference: "", library: true, inspector: false, mode: "board", message: "", referenceToken: 0 });
   const [boardAsset, setBoardAsset] = useState<SchematicAsset | null>(null);
   const [pdf, setPdf] = useState<SchematicAsset | null>(null);
+  const [sessionPair, setSessionPair] = useState<{ boardId: string; pdfId: string } | null>(null);
+  const boardAssetRef = useRef<SchematicAsset | null>(null);
+  const pdfRef = useRef<SchematicAsset | null>(null);
+  boardAssetRef.current = boardAsset;
+  pdfRef.current = pdf;
   const [pdfPage, setPdfPage] = useState(1);
   const currentPdfId = useRef<string | undefined>(undefined);
   useEffect(() => { currentPdfId.current = pdf?.id; }, [pdf?.id]);
@@ -68,12 +73,23 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
   }, []);
   const openCounterpart = useCallback((asset: SchematicAsset) => {
     catalogCache.current.set(asset.id, asset);
-    if (asset.kind === "pdf") { setPdf(asset); if (currentPdfId.current !== asset.id) setPdfPage(1); }
-    else { setBoardAsset(asset); setSelection({ component: null, net: null }); updateUi({ reference: "" }); }
+    const currentBoard = boardAssetRef.current;
+    const currentPdf = pdfRef.current;
+    if (asset.kind === "pdf") {
+      const pair = sessionPairFor(currentBoard?.id, asset.id, !!currentBoard && sameDevice(asset, currentBoard));
+      if (pair) setSessionPair(pair);
+      setPdf(asset); if (currentPdfId.current !== asset.id) setPdfPage(1);
+    } else {
+      const pair = sessionPairFor(asset.id, currentPdf?.id, !!currentPdf && sameDevice(asset, currentPdf));
+      if (pair) setSessionPair(pair);
+      setBoardAsset(asset); setSelection({ component: null, net: null }); updateUi({ reference: "" });
+    }
     updateUi({ mode: "split" });
   }, []);
   const { candidates: related, error: relatedError, verifiedIds, loading: linking } = useLinkedAssets(anchor, openCounterpart);
-  const linked = !!(pdf && boardAsset && (pairIsVerified(pdf,boardAsset) || (anchor?.id===boardAsset.id && verifiedIds.includes(pdf.id)) || (anchor?.id===pdf.id && verifiedIds.includes(boardAsset.id))));
+  const verifiedPair = !!(pdf && boardAsset && (pairIsVerified(pdf,boardAsset) || (anchor?.id===boardAsset.id && verifiedIds.includes(pdf.id)) || (anchor?.id===pdf.id && verifiedIds.includes(boardAsset.id))));
+  const sessionLinked = !!(pdf && boardAsset && sessionPair?.boardId === boardAsset.id && sessionPair.pdfId === pdf.id);
+  const linked = verifiedPair || sessionLinked;
   function openAsset(asset: SchematicAsset) {
     setAnchor(asset); setReferenceChoices([]);
     catalogCache.current.set(asset.id, asset);
@@ -81,11 +97,13 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     updateUi({ library: false, message: "" });
     if (asset.kind === "pdf") {
       const keepBoard=boardAsset&&sameDevice(asset,boardAsset);
-      if(!keepBoard){setBoardAsset(null);setSelection({component:null,net:null});}
+      if(!keepBoard){setBoardAsset(null);setSelection({component:null,net:null});setSessionPair(null);}
+      else if (boardAsset) setSessionPair({ boardId: boardAsset.id, pdfId: asset.id });
       setPdfPage(1); setPdf(asset); updateUi({reference:'',mode:keepBoard?'split':'pdf'}); return;
     }
     const keepPdf=pdf&&sameDevice(asset,pdf);
-    if(!keepPdf){setPdf(null);setPdfPage(1);}
+    if(!keepPdf){setPdf(null);setPdfPage(1);setSessionPair(null);}
+    else if (pdf) setSessionPair({ boardId: asset.id, pdfId: pdf.id });
     if (asset.id !== boardAsset?.id) {
       setBoardAsset(asset); setSelection({ component: null, net: null }); updateUi({ reference: "" });
     }
@@ -110,6 +128,10 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
       if (compatibleDocument?.kind === "pdf") { setPdf(compatibleDocument); setPdfPage(saved.page); }
       updateUi({ library: false, mode: plate && compatibleDocument ? "split" : compatibleDocument ? "pdf" : "board" });
       if (!plate) pendingLocation.current = null;
+      if (plate?.kind === "pcbe" && compatibleDocument?.kind === "pdf") {
+        const pair = sessionPairFor(plate.id, compatibleDocument.id, sameDevice(plate, compatibleDocument));
+        if (pair) setSessionPair(pair);
+      }
     }).catch((cause: unknown) => { pendingLocation.current = null; updateUi({ message: cause instanceof Error ? cause.message : "No se pudo restaurar la sesión" }); });
   }, [preferences.ready, preferences.location, assetById]);
   useEffect(() => {
@@ -153,6 +175,23 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     if (options.length > 1) { setReferenceChoices(options); return; }
     if (options.length === 1) { select(options[0].component, options[0].net, true); updateUi({ mode: "split" }); }
   }
+  function closeBoard() {
+    const nextMode = modeAfterClosing(ui.mode, "board", !!boardAsset, !!pdf);
+    setBoardAsset(null);
+    setSessionPair(null);
+    setSelection({ component: null, net: null });
+    setReferenceChoices([]);
+    setAnchor(pdf);
+    updateUi({ reference: "", referenceToken: ui.referenceToken + 1, mode: nextMode });
+  }
+  function closePdf() {
+    const nextMode = modeAfterClosing(ui.mode, "pdf", !!boardAsset, !!pdf);
+    setPdf(null);
+    setSessionPair(null);
+    setPdfPage(1);
+    setAnchor(boardAsset);
+    updateUi({ reference: "", referenceToken: ui.referenceToken + 1, mode: nextMode });
+  }
   return <main ref={expandedView.root} className={`sch-app ${expandedView.expanded ? `sch-expanded ${expandedView.controlsHidden ? "sch-focus" : ""}` : ""} ${ui.inspector ? "" : "sch-hide-inspector"}`}>
     <WorkbenchHeader hasBoard={!!boardAsset} hasPdf={!!pdf} onHideControls={() => { updateUi({library:false,inspector:false}); expandedView.toggleControls(); }} expanded={expandedView.expanded} onExpand={() => { if (!expandedView.expanded) updateUi({ library: false, inspector: false }); void expandedView.toggle(); }} plates={initial.counts.pcbe} documents={initial.counts.pdf} model={activeAsset?.model ?? "Biblioteca técnica"} library={ui.library} inspector={ui.inspector} mode={ui.mode} onLibrary={() => updateUi({ library: !ui.library })} onInspector={() => updateUi({ inspector: !ui.inspector })} onMode={mode => updateUi({ mode })} />
     {expandedView.expanded && expandedView.controlsHidden && <button className="sch-restore-tools" onClick={expandedView.toggleControls} aria-label="Mostrar controles">Mostrar controles · H</button>}
@@ -161,7 +200,19 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     <div className={`sch-layout ${ui.library ? "" : "sch-no-library"}`}>
       {ui.library && <LibrarySidebar canReindex={canEditIdentity} initial={initial} search={ui.search} onSearch={search => updateUi({ search })} boardId={boardAsset?.id} pdfId={pdf?.id} onOpen={openAsset} onOpenId={id => void openId(id)} favorites={preferences.favorites} recent={preferences.recent} />}
       <div className="sch-workarea">
-        <div className="sch-document-tab"><span className="sch-file-kind">{activeAsset?.kind === "pdf" ? <FileText size={15} /> : <CircuitBoard size={15} />}</span><span>{activeAsset?.name ?? "Mesa de trabajo"}</span>{pdf && boardAsset && <small><Link2 size={12} />{linked ? "Placa y PDF vinculados" : candidate ? "Catálogo sin verificar" : "Equipos distintos"}</small>}
+        <div className="sch-document-tab">
+          <div className="sch-document-tabs" aria-label="Documentos abiertos">
+            {boardAsset && <div className={`sch-document-tab-item ${ui.mode === "board" || ui.mode === "split" ? "is-active" : ""}`}>
+              <button className="sch-document-tab-select" aria-pressed={ui.mode === "board" || ui.mode === "split"} onClick={() => updateUi({ mode: "board" })}><CircuitBoard size={15} /><span>{boardAsset.name}</span></button>
+              <button className="sch-document-tab-close" aria-label={`Cerrar placa ${boardAsset.name}`} title="Cerrar placa" onClick={closeBoard}><X size={14} /></button>
+            </div>}
+            {pdf && <div className={`sch-document-tab-item ${ui.mode === "pdf" || ui.mode === "split" ? "is-active" : ""}`}>
+              <button className="sch-document-tab-select" aria-pressed={ui.mode === "pdf" || ui.mode === "split"} onClick={() => updateUi({ mode: "pdf" })}><FileText size={15} /><span>{pdf.name}</span></button>
+              <button className="sch-document-tab-close" aria-label={`Cerrar PDF ${pdf.name}`} title="Cerrar PDF" onClick={closePdf}><X size={14} /></button>
+            </div>}
+            {!boardAsset && !pdf && <span className="sch-document-tab-empty">Mesa de trabajo</span>}
+          </div>
+          {pdf && boardAsset && <small className="sch-document-pair-status"><Link2 size={12} />{verifiedPair ? "Placa y PDF vinculados" : sessionLinked ? "Par elegido en esta sesión · identidad pendiente" : candidate ? "Catálogo sin verificar" : "Equipos distintos"}</small>}
           {activeAsset && <button aria-label="Guardar o quitar favorito" aria-pressed={preferences.favorites.includes(activeAsset.id)} onClick={() => preferences.toggleFavorite(activeAsset.id)}><Star size={16} fill={preferences.favorites.includes(activeAsset.id) ? "currentColor" : "none"} /></button>}
           {(boardAsset || pdf) && <button aria-label="Copiar enlace a esta vista" onClick={() => { void navigator.clipboard.writeText(new URL(currentLink, window.location.origin).href).then(() => updateUi({ message: "Enlace copiado con componente y página actuales." })).catch(() => updateUi({ message: "No se pudo copiar el enlace. Usá el enlace Abrir esta vista." })); }}><Copy size={16} /></button>}
           {(boardAsset || pdf) && <a className="sch-view-link" href={currentLink}>Abrir esta vista</a>}

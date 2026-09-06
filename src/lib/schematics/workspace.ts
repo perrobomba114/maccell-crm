@@ -1,6 +1,19 @@
 import type { PcbeComponent } from "./types";
 
 export type WorkspaceLocation = { board?: string; pdf?: string; page: number; component?: string; net?: string; repair?: string };
+export type WorkspaceMode = "board" | "split" | "pdf";
+export type SessionPair = { boardId: string; pdfId: string };
+export function sessionPairFor(boardId: string | undefined, pdfId: string | undefined, compatible: boolean): SessionPair | null {
+  return compatible && boardId && pdfId ? { boardId, pdfId } : null;
+}
+export function modeAfterClosing(mode: WorkspaceMode, closing: "board" | "pdf", hasBoard: boolean, hasPdf: boolean): WorkspaceMode {
+  const nextBoard = closing === "board" ? false : hasBoard;
+  const nextPdf = closing === "pdf" ? false : hasPdf;
+  if (closing === "board" && nextPdf) return "pdf";
+  if (closing === "pdf" && nextBoard) return "board";
+  if (mode === "split") return nextBoard ? "board" : "pdf";
+  return mode;
+}
 export function clampPdfPage(page: number, total: number): number {
   return Math.max(1, Math.min(Number.isSafeInteger(page) ? page : 1, total));
 }

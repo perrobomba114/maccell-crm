@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { selectionLayers, workspaceLink, readWorkspaceLink, clampPdfPage, shouldNavigateReference } from "../../lib/schematics/workspace";
+import { selectionLayers, workspaceLink, readWorkspaceLink, clampPdfPage, shouldNavigateReference, modeAfterClosing, sessionPairFor } from "../../lib/schematics/workspace";
 import type { PcbeComponent } from "../../lib/schematics/types";
 
 const parts: PcbeComponent[] = [{ id: "u1", name: "U1", kind: "IC", outlineCount: 0, pads: [
@@ -24,4 +24,15 @@ test("restoring or reindexing a reference preserves page; explicit selection nav
   assert.equal(shouldNavigateReference(1, 1, "U2", "U2"), false);
   assert.equal(clampPdfPage(999, 8), 8);
   assert.equal(clampPdfPage(-1, 8), 1);
+});
+test("closing one document leaves the remaining viewer active", () => {
+  assert.equal(modeAfterClosing("split", "board", true, true), "pdf");
+  assert.equal(modeAfterClosing("split", "pdf", true, true), "board");
+  assert.equal(modeAfterClosing("board", "board", true, true), "pdf");
+  assert.equal(modeAfterClosing("pdf", "pdf", true, true), "board");
+});
+test("an automatically selected compatible PDF establishes the session pair", () => {
+  assert.deepEqual(sessionPairFor("board-1", "pdf-1", true), { boardId: "board-1", pdfId: "pdf-1" });
+  assert.equal(sessionPairFor("board-1", "pdf-1", false), null);
+  assert.equal(sessionPairFor(undefined, "pdf-1", true), null);
 });

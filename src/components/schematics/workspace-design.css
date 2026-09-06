@@ -30,6 +30,16 @@
 .sch-library-index summary,.sch-library-index button { color:var(--foreground); border-color:var(--border); }
 .sch-document-tab { min-height:46px; }
 .sch-file-kind { flex:0 0 auto !important; color:var(--primary); }
+.sch-document-tabs { display:flex; align-items:stretch; gap:6px; min-width:0; flex:1; overflow:auto; }
+.sch-document-tab-item { display:flex; align-items:center; min-width:0; border:1px solid var(--border); border-radius:8px; background:var(--background); }
+.sch-document-tab-item.is-active { border-color:var(--primary); background:color-mix(in srgb,var(--primary) 8%,var(--background)); }
+.sch-document-tab-select { display:flex; align-items:center; gap:7px; min-width:0; padding:7px 9px; color:var(--foreground); text-align:left; }
+.sch-document-tab-select svg { flex:0 0 auto; color:var(--primary); }
+.sch-document-tab-select span { max-width:min(34vw,420px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+.sch-document-tab-close { display:grid; place-items:center; align-self:stretch; padding:0 8px; border-left:1px solid var(--border); color:var(--muted-foreground); }
+.sch-document-tab-close:hover,.sch-document-tab-close:focus-visible { color:var(--destructive); background:color-mix(in srgb,var(--destructive) 10%,transparent); }
+.sch-document-tab-empty { color:var(--muted-foreground); font-size:12px; }
+.sch-document-pair-status { display:flex; align-items:center; gap:4px; white-space:nowrap; color:var(--muted-foreground); }
 .sch-related button { background:var(--muted); color:var(--foreground); border-color:var(--border); }
 .sch-start { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:36px clamp(20px,4vw,64px); overflow:auto; background:var(--background); text-align:center; }
 .sch-start-icon { display:grid; place-items:center; width:58px; height:58px; border:1px solid var(--border); border-radius:16px; color:var(--primary); background:var(--card); }
