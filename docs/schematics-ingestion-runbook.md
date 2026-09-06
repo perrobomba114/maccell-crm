@@ -24,6 +24,21 @@ Este runbook es la guía humana de la skill [`schematic-library-ingestion`](../.
 9. Verificar FileBrowser, búsqueda y navegación PDF/PCBE.
 10. Conservar el manifiesto y limpiar staging sólo con aprobación.
 
+## Regla de ubicación Samsung y corrección del incidente
+
+Los modelos Samsung no se publican en la raíz. La forma válida es:
+
+```text
+/mnt/data2/Samsung/<modelo>/Pdf/<archivo>.pdf
+/mnt/data2/Samsung/<modelo>/Pcbe/<archivo>.pcbe
+```
+
+En el incidente del 05/09/2026 una normalización inicial calculó destinos `Samsung ...` relativos a `/mnt/data2` y dejó cientos de carpetas sueltas visibles en FileBrowser. Se detuvo el worker, se movieron únicamente esas carpetas a `/mnt/data2/Samsung/`, se verificaron `root-level Samsung folders = 0`, propietario `1000:1000`, directorios `755`, archivos `644`, y se reescribió el catálogo desde el reporte SHA-256. Para futuras tandas, ejecutar y conservar el reporte de `scripts/normalize-schematic-library.py`; luego usar `scripts/rewrite-schematic-catalog-after-normalization.mjs`. No corregirlo con renombrados manuales sin reporte.
+
+## Diagnóstico de `202 Accepted` al abrir un PDF
+
+FileBrowser puede devolver `202 Accepted` en `/api/raw` cuando el usuario tiene permiso para listar pero no para descargar/servir el archivo inline. La corrección aplicada fue habilitar `download` y `share` para el usuario operativo mediante la CLI del mismo contenedor, reiniciar el servicio y validar el PDF desde la vista web. Si vuelve a ocurrir, comprobar en este orden: permiso efectivo del usuario, propietario/UID de la ruta, permisos `755/644`, montaje `/mnt/data2` y recién después el catálogo. No volver a subir el PDF por este síntoma.
+
 ## Auditoría incremental realizada sobre SCRAPING/downloads
 
 La auditoría de la carpeta local actual encontró:
@@ -95,6 +110,7 @@ El hash SHA-256 del contenido es la regla principal. El nombre, tamaño, modelo 
 - PCBE visible pero sin componentes: revisar que el parser reconozca el encabezado/geometría; renombrar `.pcb` a `.pcbe` no lo hace válido.
 - PDF y PCBE no se vinculan: validar identidad desde Inspector; una carpeta común no alcanza.
 - RAG no responde pero la búsqueda textual sí: revisar embeddings y `RAG_WORKER_URL`; no borrar el índice textual.
+- FileBrowser muestra `202 Accepted`: revisar permiso `download` del usuario; listar carpetas no demuestra que el endpoint raw pueda servir el PDF.
 
 ## Cierre de una tanda
 

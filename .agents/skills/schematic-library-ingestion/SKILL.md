@@ -37,6 +37,12 @@ La biblioteca física se organiza así:
   ...
 ```
 
+#### Regla crítica para Samsung
+
+Toda carpeta de modelo Samsung debe quedar debajo de `/mnt/data2/Samsung/<modelo>`. Nunca se debe construir el destino como `/mnt/data2/<modelo>`: eso deja carpetas `Samsung ...` sueltas en la raíz y FileBrowser las muestra como modelos separados. En el catálogo, la ruta equivalente siempre empieza por `sources/Samsung/<modelo>/`.
+
+Para una reorganización masiva ya auditada se usan los scripts versionados `scripts/normalize-schematic-library.py` y `scripts/rewrite-schematic-catalog-after-normalization.mjs`. El primero calcula SHA-256, evita sobrescrituras, conserva variantes y genera un reporte; el segundo actualiza catálogo/DB desde ese reporte. No repetir un `mv` manual ni regenerar el catálogo desde cero.
+
 La normalización solicitada por MACCELL es: primera letra del nombre en mayúscula y resto en minúscula, conservando números, guiones y la información técnica necesaria. No convertir automáticamente nombres técnicos a un modelo inventado. Los nombres de archivos deben mantener componentes, board-code y revisión cuando existan; sólo se normaliza la presentación, no se elimina información.
 
 ## Flujo obligatorio
@@ -98,6 +104,8 @@ find /mnt/data2/Iphone/'Iphone 17 pro max' -type f -exec chmod 644 {} +
 ```
 
 No usar `chmod 777`, no cambiar permisos de `/mnt/data2` completo y no hacer `chown` sobre carpetas no pertenecientes a la tanda. Luego comprobar desde FileBrowser que aparecen `Pdf` y `Pcbe`, y comprobar desde el contenedor de la aplicación que puede leer un archivo de cada carpeta.
+
+Si el visor de FileBrowser muestra `202 Accepted` al abrir un PDF, no es una respuesta de indexación: en FileBrowser suele significar que el usuario puede listar pero no tiene permiso de descarga/lectura inline. Verificar el permiso efectivo del usuario con la CLI del mismo contenedor y activar `download` para el usuario autorizado; después recargar el visor y comprobar que aparecen `Cerrar`, `Descargar` e `Info`. Mantener además propietario `1000:1000`, directorios `755` y archivos `644` cuando ese sea el UID/GID confirmado del contenedor.
 
 ### 2. Copiar sólo a staging
 
