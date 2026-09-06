@@ -41,6 +41,20 @@ La normalización solicitada por MACCELL es: primera letra del nombre en mayúsc
 
 ## Flujo obligatorio
 
+### Regla incremental: comparar antes de transferir
+
+Nunca se debe ejecutar `rsync` sobre todo `downloads/` como primera acción. La carpeta local contiene árboles históricos (`pdf`, `pcbe` y `bulk`) y el servidor conserva tanto la biblioteca publicada como `.incoming-scraping`. Las tres fuentes se comparan por SHA-256 y se toma la unión de hashes:
+
+| Resultado del hash | Acción |
+| --- | --- |
+| Ya publicado en `/mnt/data2` | Omitir; no copiar ni recatalogar por segunda vez |
+| Ya presente en `/mnt/data2/.incoming-scraping` | Omitir la transferencia; continuar desde ese staging y completar su proceso |
+| No existe en publicado ni staging | Candidato nuevo; subir sólo este archivo |
+| Hash repetido dentro de la fuente local | Conservar una sola copia y registrar todas las rutas de origen |
+| Mismo nombre con hash distinto | No sobrescribir; crear variante y revisión |
+
+Los conteos de archivos no son suficientes: una misma tanda puede tener nombres distintos con el mismo contenido y el staging puede contener una copia que todavía no aparece en el catálogo. El criterio de "ya está" siempre es el hash, separado en publicado y staging.
+
 ### 1. Descubrir la fuente y el destino real
 
 En el equipo local localizar la carpeta de la tanda sin suponer un nombre:
@@ -95,7 +109,7 @@ rsync -rlt --partial --progress --ignore-existing \
   "maccell@100.127.204.5:/mnt/data2/.incoming-scraping/<lote>/"
 ```
 
-`--ignore-existing` sólo evita una copia repetida durante la transferencia; no reemplaza la auditoría por hash. Para archivos con el mismo nombre se debe comparar SHA-256 en el servidor.
+`--ignore-existing` sólo evita una copia repetida durante la transferencia; no reemplaza la auditoría por hash. Para archivos con el mismo nombre se debe comparar SHA-256 en el servidor. Si la auditoría generó una lista diferencial, `rsync` debe recibir esa lista o un directorio temporal que contenga únicamente los candidatos `new`; nunca se vuelve a transferir la carpeta completa.
 
 ### 3. Auditar extensiones y hashes
 
@@ -117,6 +131,8 @@ find /mnt/data2/.incoming-scraping/<lote> -type f \
 ```
 
 El manifiesto se conserva hasta terminar la indexación.
+
+Los archivos auxiliares como `.DS_Store`, `manifest-*.json`, capturas y catálogos de SCRAPING no son assets de la biblioteca. Se conservan en SCRAPING como evidencia, pero no se suben a `Pdf` ni `Pcbe`.
 
 ### 4. Clasificar y normalizar sin perder evidencia
 

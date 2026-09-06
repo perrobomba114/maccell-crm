@@ -24,6 +24,33 @@ Este runbook es la guía humana de la skill [`schematic-library-ingestion`](../.
 9. Verificar FileBrowser, búsqueda y navegación PDF/PCBE.
 10. Conservar el manifiesto y limpiar staging sólo con aprobación.
 
+## Auditoría incremental realizada sobre SCRAPING/downloads
+
+La auditoría de la carpeta local actual encontró:
+
+- 1.984 archivos con extensiones PDF/PCBE/PCB.
+- 1.956 hashes únicos; 28 archivos son duplicados exactos dentro de la propia descarga.
+- 1.425 hashes locales ya existen en `.incoming-scraping` del servidor.
+- 1.427 hashes locales ya existen en la biblioteca publicada.
+- 529 hashes no existen ni en publicado ni en staging: 74 PCBE y 456 PDF, unos 0,677 GiB.
+- Los 93 assets del árbol local `bulk` no aportan hashes nuevos en esta comparación.
+- `.DS_Store` y `manifest-bulk.json` quedaron fuera del conjunto de assets.
+
+Estos grupos se solapan; no se suman. El conjunto que debe transferirse es exclusivamente `hashes locales - hashes publicados - hashes staging`. Los 1.425 hashes ya presentes en staging no deben volver a subirse: deben continuar por clasificación, catálogo e indexación.
+
+Este resultado es una fotografía de la auditoría actual. Antes de cada transferencia se debe regenerar el manifiesto porque pueden cambiar archivos, staging o la biblioteca.
+
+## Procedimiento para no repetir la tanda
+
+1. Generar el manifiesto local con ruta, tamaño y SHA-256.
+2. Obtener el conjunto de hashes publicado y el conjunto de hashes de `.incoming-scraping`.
+3. Calcular la diferencia, conservar las rutas locales de los hashes nuevos y revisar colisiones de nombre.
+4. Transferir únicamente esa lista diferencial a un nuevo lote de staging.
+5. Registrar en el manifiesto que los hashes omitidos ya estaban publicados o en staging.
+6. No borrar el staging anterior: si contiene un hash de esta tanda, es evidencia de una transferencia ya realizada, no un motivo para duplicarlo.
+
+Si no se puede obtener el manifiesto remoto o comparar hashes, la operación queda en modo análisis y no se permite copiar toda la carpeta como alternativa.
+
 ## Incidente conocido: archivos invisibles por propietario `root`
 
 En la tanda de `Iphone 17 pro max`, los archivos sí estaban físicamente en `/mnt/data2`, pero habían sido creados como `root:root`. FileBrowser usa otro usuario —en la corrección realizada, UID/GID `1000:1000`— y por eso no podía listarlos aunque la ruta existiera. No se solucionó subiendo una segunda copia: se corrigió propietario y permisos sobre las carpetas afectadas.
