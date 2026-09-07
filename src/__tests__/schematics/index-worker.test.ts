@@ -28,8 +28,8 @@ test('invalid or excessive concurrency never creates an unbounded OCR pool', () 
   assert.equal(workerConcurrency('1'), 1);
 });
 test('physical inventory scans are throttled and remain configurable within safe bounds', () => {
-  assert.equal(physicalInventoryRefreshMs(undefined), 60_000);
-  assert.equal(physicalInventoryRefreshMs('1000'), 60_000);
+  assert.equal(physicalInventoryRefreshMs(undefined), 300_000);
+  assert.equal(physicalInventoryRefreshMs('1000'), 300_000);
   assert.equal(physicalInventoryRefreshMs('120000'), 120_000);
   assert.equal(physicalInventoryRefreshMs('999999999'), 900_000);
 });

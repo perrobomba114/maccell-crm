@@ -29,9 +29,11 @@ async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
       cachedCatalogAssets = local;
     } }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-  const catalogChanged = nextSignature !== catalogSignature;
   const inventoryExpired = Date.now() - physicalAssetsScannedAt >= inventoryRefreshMs;
-  if (!physicalAssets.length || catalogChanged || inventoryExpired) {
+  // A catalog update is cheap metadata churn during bulk uploads. It must not
+  // turn into a full recursive walk every 15 seconds; the bounded refresh
+  // still discovers all new files after the upload settles.
+  if (!physicalAssets.length || inventoryExpired) {
     physicalAssets = await discoverPhysicalAssets(root, local);
     physicalAssetsScannedAt = Date.now();
   }

@@ -7,7 +7,7 @@ export function workerConcurrency(value: string | undefined): number {
 /** Full filesystem walks are expensive on the shared production volume. */
 export function physicalInventoryRefreshMs(value: string | undefined): number {
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 30_000 ? Math.min(parsed, 15 * 60_000) : 60_000;
+  return Number.isFinite(parsed) && parsed >= 60_000 ? Math.min(parsed, 15 * 60_000) : 5 * 60_000;
 }
 
 /** A failed file does not discard later work; cancellation stops only new work. */
