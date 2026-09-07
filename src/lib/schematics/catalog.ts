@@ -25,8 +25,10 @@ export async function readCatalog(): Promise<SchematicCatalog> {
   try {
     const result = JSON.parse(await readFile(path.join(libraryRoot(), "catalog.json"), "utf8")) as SchematicCatalog;
     if (result.version !== 1 || !Array.isArray(result.assets)) throw new Error("Catálogo de esquemáticos inválido");
-    const physical = await discoverPhysicalAssets(libraryRoot(), result.assets);
-    return databaseAssets ? { ...result, assets: mergeCatalogAssets(physical, databaseAssets) } : { ...result, assets: physical };
+    // The technical catalog is already produced from the mounted library. Re-scanning
+    // thousands of files during every page/API request makes the schematics route time out.
+    // Keep the physical walk only for installations where the database/catalog is absent.
+    return databaseAssets ? { ...result, assets: mergeCatalogAssets(result.assets, databaseAssets) } : { ...result, assets: await discoverPhysicalAssets(libraryRoot(), result.assets) };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { version: 1, importedAt: "", assets: await discoverPhysicalAssets(libraryRoot(), databaseAssets ?? []) };
