@@ -14,6 +14,12 @@ export type SelectionCandidate = {
   label: string;
 };
 
+export function selectionCandidateDescription(candidate: Pick<SelectionCandidate, 'kind' | 'label' | 'netId'>): string {
+  const kind = candidate.kind === 'pad' ? 'Pad' : candidate.kind === 'via' ? 'Vía' : candidate.kind === 'trace' ? 'Pista' : 'Componente';
+  const net = candidate.netId === null ? '' : ` · Net ${candidate.netId}`;
+  return `${kind}: ${candidate.label}${net}`;
+}
+
 export type SpatialIndex = {
   cellSize: number;
   cells: Map<string, number[]>;

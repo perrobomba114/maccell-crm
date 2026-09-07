@@ -89,11 +89,9 @@ function DirectoryBranch({
                   {roleLabels[documentRole(asset)]}
                 </small>
               </div>
-              {asset.status !== "ready" && (
-                <i className="text-amber-500 not-italic text-xs font-bold shrink-0 ml-1" title={asset.detail}>
-                  !
-                </i>
-              )}
+              {asset.status !== "ready" && <i className="sch-asset-badge is-review" title={asset.detail}>Revisar</i>}
+              {asset.status === "ready" && <i className="sch-asset-badge is-ready" title="Archivo indexado y disponible">Válido</i>}
+              {asset.kind === "pcbe" && (asset.detail?.toLowerCase().includes("diode") || asset.name.toLowerCase().includes("diode")) && <i className="sch-asset-badge is-diode" title="Contiene anotaciones de diodo originales">Diodos</i>}
             </button>
           );
         })}

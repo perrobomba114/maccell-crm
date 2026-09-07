@@ -5,7 +5,7 @@ import { initialLayer, workshopGeometry, type BoardDetail } from "@/lib/schemati
 import { BoardSearch } from "./board-search";
 import { LayerControls } from "./layer-controls";
 import { Maximize, Minus, Plus, RotateCcw } from "lucide-react";
-import { hitTestCandidates } from "@/lib/schematics/boardview";
+import { hitTestCandidates, selectionCandidateDescription, type SelectionCandidate } from "@/lib/schematics/boardview";
 import type { PcbeDocument } from "@/lib/schematics/types";
 import { boundsFor, renderBoard, transformFor, type View } from "./board-renderer";
 
@@ -19,6 +19,8 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
   const [detail, setDetail] = useState<BoardDetail>("clean");
   const [vias, setVias] = useState(false);
   const [overlay, setOverlay] = useState(false);
+  const [candidates, setCandidates] = useState<SelectionCandidate[]>([]);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const visibleGeometry = useMemo(() => workshopGeometry(board.geometry, layers, detail, vias), [board, layers, detail, vias]);
   const drag = useRef<{ x: number; y: number; view: View; moved: boolean } | null>(null);
   const bounds = useMemo(() => boundsFor(board.geometry), [board]);
@@ -78,6 +80,10 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
     const t = transformFor(width, height, bounds, { zoom, x: 0, y: 0 });
     setView({ zoom, x: width / 2 - t.x((b.minX + b.maxX) / 2), y: height / 2 - t.y((b.minY + b.maxY) / 2) });
   }
+  function chooseCandidate(candidate: SelectionCandidate) {
+    setCandidates([]);
+    onSelect(candidate.componentId ?? null, candidate.netId);
+  }
   const pendingSearch = useRef<string | null>(null);
   useEffect(() => {
     if (pendingSearch.current !== component) return;
@@ -116,17 +122,32 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
         if(event.key==='Escape')onSelect(null,null);
       }}
       onPointerDown={(event) => { if(event.button!==0 && event.button!==1)return; event.preventDefault(); event.currentTarget.focus(); drag.current = { x: event.clientX, y: event.clientY, view, moved: false }; event.currentTarget.setPointerCapture(event.pointerId); }}
-      onPointerMove={(event) => { const d = drag.current; if (!d) return; const dx = event.clientX - d.x, dy = event.clientY - d.y; if (Math.hypot(dx, dy) > 4) d.moved = true; if (d.moved) setView({ ...d.view, x: d.view.x + dx, y: d.view.y + dy }); }}
+      onPointerMove={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setCursor(transformFor(rect.width, rect.height, bounds, view).inverse(event.clientX - rect.left, event.clientY - rect.top));
+        const d = drag.current; if (!d) return; const dx = event.clientX - d.x, dy = event.clientY - d.y; if (Math.hypot(dx, dy) > 4) d.moved = true; if (d.moved) setView({ ...d.view, x: d.view.x + dx, y: d.view.y + dy });
+      }}
       onPointerUp={(event) => {
         if (event.button === 0 && drag.current && !drag.current.moved) {
           const rect = event.currentTarget.getBoundingClientRect(), t = transformFor(rect.width, rect.height, bounds, view);
           const p = t.inverse(event.clientX - rect.left, event.clientY - rect.top);
-          const hit = hitTestCandidates(visibleGeometry, p, { tolerance: 7 / t.scale, visibleLayerIds: new Set(visibleGeometry.map(item => item.layer)) })[0];
-          onSelect(hit?.componentId ?? null, hit?.netId ?? null);
+          const hits = hitTestCandidates(visibleGeometry, p, { tolerance: 7 / t.scale, visibleLayerIds: new Set(visibleGeometry.map(item => item.layer)) });
+          if (hits.length > 1) setCandidates(hits.slice(0, 8));
+          else if (hits[0]) chooseCandidate(hits[0]);
+          else { setCandidates([]); onSelect(null, null); }
         }
         drag.current = null; event.currentTarget.releasePointerCapture(event.pointerId);
-      }} onPointerCancel={() => { drag.current = null; }} />
+      }} onPointerCancel={() => { drag.current = null; }} onPointerLeave={() => setCursor(null)} />
       {!board.geometry.length && <div className="sch-overlay">Este PCBE todavía no tiene geometría compatible.</div>}
+      {candidates.length > 1 && <div className="sch-candidate-menu" role="dialog" aria-label="Elementos encontrados en esta zona">
+        <div className="sch-candidate-heading"><strong>Elegí el elemento</strong><button type="button" aria-label="Cerrar selección de elementos" onClick={() => setCandidates([])}>×</button></div>
+        {candidates.map((candidate, index) => <button type="button" key={`${candidate.primitiveIndex}:${candidate.kind}:${index}`} onClick={() => chooseCandidate(candidate)}>{selectionCandidateDescription(candidate)}<small>{candidate.distance.toFixed(1)} px del cursor</small></button>)}
+      </div>}
+      <div className="sch-canvas-hud" aria-live="polite">
+        <span>Cursor: {cursor ? `${Math.round(cursor.x)} × ${Math.round(cursor.y)}` : "—"}</span>
+        <span>Net: {net === null ? "ninguna" : board.netCatalog.find(item => item.id === net)?.name ?? `Net ${net}`}</span>
+        <span>Modo: {component ? "componente" : net !== null ? "net" : "selección"}</span>
+      </div>
       <div className="sch-canvas-hint">Arrastrar: mover · Rueda: zoom · + / − · 0: ajustar · Flechas: mover · F: centrar</div>
     </div>
     <LayerControls catalog={board.layerCatalog} layers={layers} detail={detail} vias={vias} overlay={overlay} onDetail={setDetail} onVias={() => setVias(value => !value)} onOverlay={() => { setOverlay(value => !value); setLayers(current => new Set([[...current][0] ?? initialLayer(board.geometry)])); }} onLayer={id => { setLayers(current => overlay ? new Set([...current, id]) : new Set([id])); }} />

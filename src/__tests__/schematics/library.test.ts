@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parsePcbe } from "../../lib/schematics/pcbe";
 import { parsePartRecord } from "../../lib/schematics/parts";
-import { buildNetCatalog, hitTestCandidates } from "../../lib/schematics/boardview";
+import { buildNetCatalog, hitTestCandidates, selectionCandidateDescription } from "../../lib/schematics/boardview";
 import { modelKey } from "../../lib/schematics/catalog-types";
 import { findReferencePages } from "../../lib/schematics/references";
 
@@ -35,6 +35,10 @@ test("only visible layers participate in selection", () => {
   const geometry = [{ kind: "pin" as const, layer: 29, x: 10, y: 10, radius: 1, name: "1", netIndex: 42 }];
   assert.equal(hitTestCandidates(geometry, { x: 10, y: 10 }, { tolerance: 2, visibleLayerIds: new Set([1]) }).length, 0);
   assert.equal(hitTestCandidates(geometry, { x: 10, y: 10 }, { tolerance: 2, visibleLayerIds: new Set([29]) })[0].netId, 42);
+});
+test("candidate descriptions preserve the element type and real net id", () => {
+  assert.equal(selectionCandidateDescription({ kind: "pad", label: "A1", netId: 42 }), "Pad: A1 · Net 42");
+  assert.equal(selectionCandidateDescription({ kind: "via", label: "Vía", netId: null }), "Vía: Vía");
 });
 test("PDF references do not confuse U4000 with U40001 or a net suffix", () => {
   const pages = [{ page: 1, text: "U40001 PP_VDD_MAIN_WLAN" }, { page: 2, text: "U4000 PP_VDD_MAIN" }];
