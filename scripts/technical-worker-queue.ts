@@ -4,6 +4,12 @@ export function workerConcurrency(value: string | undefined): number {
   return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 4) : 2;
 }
 
+/** Full filesystem walks are expensive on the shared production volume. */
+export function physicalInventoryRefreshMs(value: string | undefined): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 30_000 ? Math.min(parsed, 15 * 60_000) : 60_000;
+}
+
 /** A failed file does not discard later work; cancellation stops only new work. */
 export async function runBounded<T, R>(items: readonly T[], concurrency: number, work: (item: T) => Promise<R>, signal?: AbortSignal): Promise<PromiseSettledResult<R>[]> {
   const results: PromiseSettledResult<R>[] = [];

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runBounded, workerConcurrency } from '../../../scripts/technical-worker-queue';
+import { physicalInventoryRefreshMs, runBounded, workerConcurrency } from '../../../scripts/technical-worker-queue';
 
 test('bounded indexing processes each asset once and isolates a failing asset', async () => {
   let running = 0, maximum = 0;
@@ -26,6 +26,12 @@ test('invalid or excessive concurrency never creates an unbounded OCR pool', () 
   for (const value of ['0','-2','NaN','2.5']) assert.equal(workerConcurrency(value), 2);
   assert.equal(workerConcurrency('99'), 4);
   assert.equal(workerConcurrency('1'), 1);
+});
+test('physical inventory scans are throttled and remain configurable within safe bounds', () => {
+  assert.equal(physicalInventoryRefreshMs(undefined), 60_000);
+  assert.equal(physicalInventoryRefreshMs('1000'), 60_000);
+  assert.equal(physicalInventoryRefreshMs('120000'), 120_000);
+  assert.equal(physicalInventoryRefreshMs('999999999'), 900_000);
 });
 
 test('cancelled extraction stops before reading a PDF or spawning OCR', async () => {

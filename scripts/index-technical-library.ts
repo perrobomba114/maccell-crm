@@ -7,16 +7,19 @@ import { indexFileIsCurrent, indexIsCurrent, type TechnicalIndex } from '../src/
 import type { SchematicAsset, SchematicCatalog } from '../src/lib/schematics/catalog-types';
 import { mergeCatalogAssets } from '../src/lib/schematics/catalog-merge';
 import { persistTechnicalIndex } from './technical-index-database';
-import { runBounded, workerConcurrency, withIndexConnection, selectIndexAssets } from './technical-worker-queue';
+import { physicalInventoryRefreshMs, runBounded, workerConcurrency, withIndexConnection, selectIndexAssets } from './technical-worker-queue';
 import { discoverPhysicalAssets } from '../src/lib/schematics/physical-inventory';
 
 const concurrency = workerConcurrency(process.env.SCHEMATICS_INDEX_CONCURRENCY);
+const inventoryRefreshMs = physicalInventoryRefreshMs(process.env.SCHEMATICS_INVENTORY_REFRESH_MS);
 const root = path.resolve(process.env.SCHEMATICS_ROOT ?? 'upload/schematics');
 const stop = new AbortController();
 process.once('SIGTERM', () => stop.abort());
 process.once('SIGINT', () => stop.abort());
 let catalogSignature = '';
 let cachedCatalogAssets: SchematicAsset[] = [];
+let physicalAssets: SchematicAsset[] = [];
+let physicalAssetsScannedAt = 0;
 async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
   let local: SchematicAsset[] = cachedCatalogAssets;
   let nextSignature = '';
@@ -26,7 +29,13 @@ async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
       cachedCatalogAssets = local;
     } }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-  const physical = await discoverPhysicalAssets(root, local);
+  const catalogChanged = nextSignature !== catalogSignature;
+  const inventoryExpired = Date.now() - physicalAssetsScannedAt >= inventoryRefreshMs;
+  if (!physicalAssets.length || catalogChanged || inventoryExpired) {
+    physicalAssets = await discoverPhysicalAssets(root, local);
+    physicalAssetsScannedAt = Date.now();
+  }
+  const physical = physicalAssets;
   for (const asset of physical) {
     // Refresh file facts atomically without overwriting concurrent identity edits.
     await client.query(`INSERT INTO schematics.assets AS previous(id,relative_path,sha256,kind,model_key,metadata) VALUES($1,$2,$3,$4,$5,$6)
