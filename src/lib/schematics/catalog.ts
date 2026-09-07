@@ -8,6 +8,7 @@ import { databaseCatalog, databaseSearchablePages } from "./database";
 import { mergeCatalogAssets } from "./catalog-merge";
 import { sameDevice } from "./catalog-types";
 import type { SearchablePage } from "./search";
+import { discoverPhysicalAssets } from "./physical-inventory";
 
 export function libraryRoot(): string {
   return path.resolve(process.env.SCHEMATICS_ROOT ?? path.join(process.cwd(), "upload/schematics"));
@@ -24,10 +25,11 @@ export async function readCatalog(): Promise<SchematicCatalog> {
   try {
     const result = JSON.parse(await readFile(path.join(libraryRoot(), "catalog.json"), "utf8")) as SchematicCatalog;
     if (result.version !== 1 || !Array.isArray(result.assets)) throw new Error("Catálogo de esquemáticos inválido");
-    return databaseAssets ? { ...result, assets: mergeCatalogAssets(result.assets, databaseAssets) } : result;
+    const physical = await discoverPhysicalAssets(libraryRoot(), result.assets);
+    return databaseAssets ? { ...result, assets: mergeCatalogAssets(physical, databaseAssets) } : { ...result, assets: physical };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { version: 1, importedAt: "", assets: databaseAssets ?? [] };
+      return { version: 1, importedAt: "", assets: await discoverPhysicalAssets(libraryRoot(), databaseAssets ?? []) };
     }
     throw error;
   }

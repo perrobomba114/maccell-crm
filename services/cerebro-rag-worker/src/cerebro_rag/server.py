@@ -27,7 +27,22 @@ def _authorize(authorization: str | None, settings: WorkerSettings) -> None:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    try:
+        settings = WorkerSettings()
+        with psycopg.connect(settings.rag_database_url.get_secret_value()) as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    (SELECT count(*) FROM rag_model_versions WHERE active = true AND dimensions = 1024),
+                    (SELECT count(*) FROM rag_documents WHERE status = 'READY' AND retired_at IS NULL),
+                    (SELECT count(*) FROM rag_chunks)
+                """
+            ).fetchone()
+        if not row or row[0] != 1 or row[1] < 1 or row[2] < 1:
+            raise RuntimeError("RAG coverage is incomplete")
+        return {"status": "ok"}
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="RAG worker is not ready") from error
 
 
 @app.post("/internal/embed")

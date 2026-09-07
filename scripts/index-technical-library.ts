@@ -8,6 +8,7 @@ import type { SchematicAsset, SchematicCatalog } from '../src/lib/schematics/cat
 import { mergeCatalogAssets } from '../src/lib/schematics/catalog-merge';
 import { persistTechnicalIndex } from './technical-index-database';
 import { runBounded, workerConcurrency, withIndexConnection, selectIndexAssets } from './technical-worker-queue';
+import { discoverPhysicalAssets } from '../src/lib/schematics/physical-inventory';
 
 const concurrency = workerConcurrency(process.env.SCHEMATICS_INDEX_CONCURRENCY);
 const root = path.resolve(process.env.SCHEMATICS_ROOT ?? 'upload/schematics');
@@ -25,7 +26,8 @@ async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
       cachedCatalogAssets = local;
     } }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-  for (const asset of local) {
+  const physical = await discoverPhysicalAssets(root, local);
+  for (const asset of physical) {
     // Refresh file facts atomically without overwriting concurrent identity edits.
     await client.query(`INSERT INTO schematics.assets AS previous(id,relative_path,sha256,kind,model_key,metadata) VALUES($1,$2,$3,$4,$5,$6)
       ON CONFLICT(id) DO UPDATE SET relative_path=excluded.relative_path,sha256=excluded.sha256,kind=excluded.kind,
@@ -37,14 +39,14 @@ async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
       updated_at=CASE WHEN previous.sha256<>excluded.sha256 OR previous.relative_path<>excluded.relative_path THEN now() ELSE previous.updated_at END`, [asset.id,asset.relativePath,asset.sha256,asset.kind,asset.modelKey,JSON.stringify(asset)]);
   }
   catalogSignature=nextSignature;
-  if (local.length === 0) {
-    return (await client.query<{ metadata: SchematicAsset }>('SELECT metadata FROM schematics.assets ORDER BY kind,relative_path')).rows.map(row => row.metadata);
+  if (physical.length === 0) {
+    return [];
   }
-  const ids = local.map(asset => asset.id);
+  const ids = physical.map(asset => asset.id);
   const stored = (await client.query<{ metadata: SchematicAsset }>('SELECT metadata FROM schematics.assets WHERE id = ANY($1::text[])', [ids])).rows.map(row => row.metadata);
   // The filesystem catalog is authoritative. Never resurrect historical DB rows
   // whose files were removed or moved out of the current library.
-  return mergeCatalogAssets(local, stored);
+  return mergeCatalogAssets(physical, stored);
 }
 async function cycle(client: pg.PoolClient, pool: pg.Pool, signal: AbortSignal) {
   const acquired = (await client.query<{ locked: boolean }>('SELECT pg_try_advisory_lock(748193205) AS locked')).rows[0].locked;

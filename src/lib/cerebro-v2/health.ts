@@ -1,4 +1,5 @@
 import { getGroqKeys } from "@/lib/groq";
+import { isTechnicalRagOperational } from "./health-status";
 
 import { queryRag } from "./rag-db";
 
@@ -21,8 +22,9 @@ export type CerebroHealthDependencies = {
 
 const defaultDependencies: CerebroHealthDependencies = {
     rag: async () => {
-        const rows = await queryRag<{ ok: number }>("SELECT 1 AS ok", []);
-        return rows[0]?.ok === 1;
+        await queryRag<{ ok: number }>("SELECT 1 AS ok", []);
+        const { readLibrarySemanticStatus } = await import("@/lib/schematics/semantic-status-server");
+        return isTechnicalRagOperational(await readLibrarySemanticStatus());
     },
     worker: async () => {
         const workerUrl = process.env.RAG_WORKER_URL ?? "http://maccell-rag-worker:8080";
