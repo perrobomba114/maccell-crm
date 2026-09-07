@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { roleLabels, documentRole } from "@/lib/schematics/pairing";
 import { FileText, CircuitBoard, Folder } from "lucide-react";
 import type { SchematicAsset } from "@/lib/schematics/catalog-types";
@@ -33,10 +33,14 @@ function DirectoryBranch({
     () => nodeContainsAsset(node, boardId) || nodeContainsAsset(node, pdfId),
     [node, boardId, pdfId]
   );
-  const isOpen = expanded || containsActive || level === 0;
+  const [open, setOpen] = useState(expanded || containsActive);
+
+  useEffect(() => {
+    if (expanded || containsActive) setOpen(true);
+  }, [expanded, containsActive]);
 
   return (
-    <details key={`${node.fullPath}:${expanded}:${isOpen}`} open={isOpen} className="sch-folder select-none">
+    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className="sch-folder select-none">
       <summary className="flex items-center gap-2 py-1 px-1.5 rounded-md hover:bg-muted/70 cursor-pointer text-xs font-semibold text-foreground/90 transition-colors">
         <Folder size={14} className="text-primary/80 shrink-0" />
         <span className="truncate flex-1">{node.name}</span>

@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, Star, Loader2, X, CircuitBoard, FileText, Library } from "lucide-react";
 import type { SchematicAsset } from "@/lib/schematics/catalog-types";
 import { LibraryIndexStatus } from "./library-index-status";
 import { AssetTree } from "./asset-tree";
+import { usePolling } from "@/hooks/use-polling";
 
 export type CatalogPage = { assets: SchematicAsset[]; total: number; page: number; pageSize: number; counts: { pcbe: number; pdf: number } };
 type Props = {
@@ -20,6 +21,7 @@ export function LibrarySidebar(props: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  const refreshing = useRef(false);
 
   // Debounce search query by 250ms to eliminate rapid requests and UI flickering
   const [debouncedQuery, setDebouncedQuery] = useState(props.search);
@@ -35,40 +37,42 @@ export function LibrarySidebar(props: Props) {
   const firstResult = result.total === 0 ? 0 : (page - 1) * result.pageSize + 1;
   const lastResult = Math.min(page * result.pageSize, result.total);
 
-  useEffect(() => {
+  const refreshCatalog = useCallback(async (signal?: AbortSignal) => {
+    if (refreshing.current) return;
     if (scope === "favorites" && !ids) {
-      setResult({ ...props.initial, assets: [], total: 0 });
+      setResult((current) => ({ ...current, assets: [], total: 0, counts: { pcbe: 0, pdf: 0 } }));
       setBusy(false);
       setError("");
       return;
     }
 
-    const controller = new AbortController();
+    const controller = signal ? undefined : new AbortController();
+    const requestSignal = signal ?? controller?.signal;
+    refreshing.current = true;
     setBusy(true);
     setError("");
+    try {
+      const params = new URLSearchParams({ q: debouncedQuery, kind, page: String(page), pageSize: "5000" });
+      if (ids) params.set("ids", ids);
+      const response = await fetch(`/api/schematics/catalog?${params}`, { signal: requestSignal });
+      if (!response.ok) throw new Error("No se pudo cargar la biblioteca. Reintentá la búsqueda.");
+      const data = (await response.json()) as CatalogPage;
+      if (!requestSignal?.aborted) setResult(data);
+    } catch (cause: unknown) {
+      if (!requestSignal?.aborted) setError(cause instanceof Error ? cause.message : "Error al buscar");
+    } finally {
+      refreshing.current = false;
+      if (!requestSignal?.aborted) setBusy(false);
+    }
+  }, [debouncedQuery, ids, kind, page, scope]);
 
-    const params = new URLSearchParams({ q: debouncedQuery, kind, page: String(page), pageSize: "5000" });
-    if (ids) params.set("ids", ids);
-
-    fetch(`/api/schematics/catalog?${params}`, { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("No se pudo cargar la biblioteca. Reintentá la búsqueda.");
-        const data = (await response.json()) as CatalogPage;
-        if (!controller.signal.aborted) {
-          setResult(data);
-        }
-      })
-      .catch((cause: unknown) => {
-        if (!controller.signal.aborted) {
-          setError(cause instanceof Error ? cause.message : "Error al buscar");
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setBusy(false);
-      });
-
+  useEffect(() => {
+    const controller = new AbortController();
+    void refreshCatalog(controller.signal);
     return () => controller.abort();
-  }, [debouncedQuery, kind, page, ids, scope, props.initial, retry]);
+  }, [refreshCatalog, retry]);
+
+  usePolling(() => refreshCatalog(), 15_000);
 
   return (
     <aside className="sch-library" aria-label="Biblioteca de esquemáticos">

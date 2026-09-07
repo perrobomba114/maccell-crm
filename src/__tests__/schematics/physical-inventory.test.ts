@@ -24,3 +24,21 @@ test("physical inventory counts mounted files and drops stale catalog paths", as
     ]);
     assert.deepEqual(assets.map((asset) => asset.kind), ["pcbe", "pdf"]);
 });
+
+test("physical inventory pairs brand-prefixed model folders across Pdf and Pcbe", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "maccell-inventory-prefixed-"));
+    await mkdir(path.join(root, "sources", "Samsung A15 5G SM-A1560", "Pdf"), { recursive: true });
+    await mkdir(path.join(root, "sources", "Samsung A15 5G SM-A1560", "Pcbe"), { recursive: true });
+    await writeFile(path.join(root, "sources", "Samsung A15 5G SM-A1560", "Pdf", "service.pdf"), "%PDF-1.7");
+    await writeFile(path.join(root, "sources", "Samsung A15 5G SM-A1560", "Pcbe", "board.pcbe"), "XZZPCB V1.0");
+
+    const assets = await discoverPhysicalAssets(root, [{
+        id: "pdf", name: "old.pdf", kind: "pdf", brand: "Samsung A15 5G SM-A1560", model: "Pdf", modelKey: "pdf",
+        relativePath: "sources/Samsung A15 5G SM-A1560/Pdf/service.pdf", size: 7, sha256: "a".repeat(64), status: "ready",
+    }]);
+
+    assert.deepEqual(assets.map((asset) => ({ brand: asset.brand, model: asset.model, modelKey: asset.modelKey })), [
+        { brand: "SAMSUNG", model: "Samsung A15 5G SM-A1560", modelKey: "samsunga155gsma1560" },
+        { brand: "SAMSUNG", model: "Samsung A15 5G SM-A1560", modelKey: "samsunga155gsma1560" },
+    ]);
+});
