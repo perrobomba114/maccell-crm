@@ -34,27 +34,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-spa \
     && rm -rf /var/lib/apt/lists/*
 
-RUN groupadd --system --gid 1001 nodejs
-RUN useradd --system --uid 1001 -g nodejs nextjs
+# The official node:20-slim image provides node as UID/GID 1000, which is
+# also the identity used by the RAG worker for the shared schematic volume.
 
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
-COPY --from=builder --chown=nextjs:nodejs /app/src ./src
+COPY --from=builder --chown=node:node /app/prisma ./prisma
+COPY --from=builder --chown=node:node /app/scripts ./scripts
+COPY --from=builder --chown=node:node /app/src ./src
 
 RUN mkdir .next
-RUN chown nextjs:nodejs .next
+RUN chown node:node .next
 RUN mkdir -p backups
-RUN chown nextjs:nodejs backups
+RUN chown node:node backups
 RUN mkdir -p upload/repairs/images upload/branches upload/profiles upload/knowledge upload/pantallas
-RUN chown -R nextjs:nodejs upload
+RUN chown -R node:node upload
 
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-USER nextjs
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=node:node /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=node:node /app/node_modules/prisma ./node_modules/prisma
+USER node
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"

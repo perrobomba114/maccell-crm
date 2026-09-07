@@ -32,6 +32,8 @@ export function LibrarySidebar(props: Props) {
   }, [props.search]);
 
   const ids = scope === "favorites" ? props.favorites.join(",") : "";
+  const firstResult = result.total === 0 ? 0 : (page - 1) * result.pageSize + 1;
+  const lastResult = Math.min(page * result.pageSize, result.total);
 
   useEffect(() => {
     if (scope === "favorites" && !ids) {
@@ -45,7 +47,7 @@ export function LibrarySidebar(props: Props) {
     setBusy(true);
     setError("");
 
-    const params = new URLSearchParams({ q: debouncedQuery, kind, page: String(page), pageSize: "40" });
+    const params = new URLSearchParams({ q: debouncedQuery, kind, page: String(page), pageSize: "100" });
     if (ids) params.set("ids", ids);
 
     fetch(`/api/schematics/catalog?${params}`, { signal: controller.signal })
@@ -101,9 +103,9 @@ export function LibrarySidebar(props: Props) {
       <div className="sch-kind-tabs" role="group" aria-label="Tipo de archivo">
         {(
           [
-            { value: "all", label: "Todos", icon: Library },
-            { value: "pcbe", label: "Placas", icon: CircuitBoard },
-            { value: "pdf", label: "PDF", icon: FileText },
+            { value: "all", label: `Todos (${result.total})`, icon: Library },
+            { value: "pcbe", label: `Placas (${result.counts.pcbe})`, icon: CircuitBoard },
+            { value: "pdf", label: `PDF (${result.counts.pdf})`, icon: FileText },
           ] as const
         ).map(({ value, label, icon: Icon }) => (
           <button
@@ -196,7 +198,7 @@ export function LibrarySidebar(props: Props) {
           Anterior
         </button>
         <span>
-          {page} / {Math.max(1, Math.ceil(result.total / result.pageSize))}
+          Mostrando {firstResult}–{lastResult} de {result.total}
         </span>
         <button disabled={page * result.pageSize >= result.total || busy} onClick={() => setPage((value) => value + 1)}>
           Siguiente
@@ -208,4 +210,3 @@ export function LibrarySidebar(props: Props) {
     </aside>
   );
 }
-

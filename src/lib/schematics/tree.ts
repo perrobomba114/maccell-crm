@@ -20,7 +20,7 @@ export function createDirectoryNode(name: string, fullPath: string): DirectoryNo
 
 /**
  * Builds a hierarchical directory tree from a list of schematic assets.
- * Strips technical root prefixes ('pcbe' or 'pdf') so that top-level folders
+ * Strips technical root prefixes ('sources', 'pcbe' or 'pdf') so that top-level folders
  * are intuitive collections/brands (e.g. 'iPhone(VIP)', 'bulk', 'Samsung').
  */
 export function buildDirectoryTree(assets: SchematicAsset[]): DirectoryNode[] {
@@ -33,8 +33,8 @@ export function buildDirectoryTree(assets: SchematicAsset[]): DirectoryNode[] {
     // Remove filename from directory segments
     const dirParts = rawParts.slice(0, -1);
 
-    // If first segment is a technical type ('pcbe' | 'pdf') and there are deeper segments, strip it
-    if (dirParts.length > 1 && (dirParts[0].toLowerCase() === "pcbe" || dirParts[0].toLowerCase() === "pdf")) {
+    // Production mounts use sources/<brand>/<model>; local imports may use pdf/<...> or pcbe/<...>.
+    if (dirParts.length > 1 && ["sources", "pcbe", "pdf"].includes(dirParts[0].toLowerCase())) {
       dirParts.shift();
     }
 

@@ -11,5 +11,5 @@ export default async function SchematicsPage() {
   if (!user) redirect("/login");
   if (!["TECHNICIAN", "ADMIN"].includes(user.role)) redirect("/");
   const catalog = await readCatalog();
-  return <SchematicsWorkbench initial={paginateCatalog(catalog.assets, { kind: "all", page: 1, pageSize: 40 })} userId={user.id} canEditIdentity={user.role === "ADMIN"} />;
+  return <SchematicsWorkbench initial={paginateCatalog(catalog.assets, { kind: "all", page: 1, pageSize: 100 })} userId={user.id} canEditIdentity={user.role === "ADMIN"} />;
 }

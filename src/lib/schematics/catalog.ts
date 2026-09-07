@@ -3,9 +3,10 @@ import { readFile, realpath, open, rm, rename, writeFile } from "node:fs/promise
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
-import type { SchematicCatalog } from "./catalog-types";
+import type { SchematicAsset, SchematicCatalog } from "./catalog-types";
 import { databaseCatalog, databaseSearchablePages } from "./database";
-import { sameDevice, type SchematicAsset } from "./catalog-types";
+import { mergeCatalogAssets } from "./catalog-merge";
+import { sameDevice } from "./catalog-types";
 import type { SearchablePage } from "./search";
 
 export function libraryRoot(): string {
@@ -13,14 +14,21 @@ export function libraryRoot(): string {
 }
 
 export async function readCatalog(): Promise<SchematicCatalog> {
-  const assets = await databaseCatalog();
-  if (assets) return { version: 1, importedAt: "", assets };
+  let databaseAssets: SchematicAsset[] | null = null;
+  try {
+    databaseAssets = await databaseCatalog();
+  } catch {
+    databaseAssets = null;
+  }
+
   try {
     const result = JSON.parse(await readFile(path.join(libraryRoot(), "catalog.json"), "utf8")) as SchematicCatalog;
     if (result.version !== 1 || !Array.isArray(result.assets)) throw new Error("Catálogo de esquemáticos inválido");
-    return result;
+    return databaseAssets ? { ...result, assets: mergeCatalogAssets(result.assets, databaseAssets) } : result;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { version: 1, importedAt: "", assets: [] };
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { version: 1, importedAt: "", assets: databaseAssets ?? [] };
+    }
     throw error;
   }
 }

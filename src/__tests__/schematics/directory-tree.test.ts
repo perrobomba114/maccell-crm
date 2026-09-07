@@ -63,3 +63,12 @@ test("nodeContainsAsset finds asset recursively", () => {
   assert.equal(nodeContainsAsset(rootVip, "target-123"), true);
   assert.equal(nodeContainsAsset(rootVip, "non-existent"), false);
 });
+
+test("directory tree hides the physical sources prefix used by production mounts", () => {
+  const tree = buildDirectoryTree([
+    mockAsset("source-1", "sources/Xiaomi/Redmi 9/Pdf/Redmi 9.pdf", "Redmi 9.pdf", "pdf"),
+  ]);
+
+  assert.equal(tree[0]?.name, "Xiaomi");
+  assert.equal(tree[0]?.subfolders.get("Redmi 9")?.totalFiles, 1);
+});
