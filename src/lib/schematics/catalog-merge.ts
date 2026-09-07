@@ -13,9 +13,15 @@ export function mergeCatalogAssets(physical: SchematicAsset[], database: Schemat
 
     return {
       ...stored,
+      // The mounted catalog is the source of truth for the current physical
+      // identity. Database metadata may contain verified enrichment, but an
+      // old import must not make a board and its document look unrelated.
       id: asset.id,
       name: asset.name,
       kind: asset.kind,
+      brand: asset.brand,
+      model: asset.model,
+      modelKey: asset.modelKey,
       relativePath: asset.relativePath,
       size: asset.size,
       sha256: asset.sha256,

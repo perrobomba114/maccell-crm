@@ -40,3 +40,28 @@ test("stale database paths cannot replace physical catalog paths", () => {
   assert.equal(merged?.relativePath, physical.relativePath);
   assert.equal(merged?.sha256, physical.sha256);
 });
+
+test("stale database identity cannot break a physical PCBE/PDF pair", () => {
+  const physicalPdf = asset("a", {
+    kind: "pdf",
+    name: "A03S-96516_1_12 REV1.0 image.pdf",
+    brand: "SAMSUNG",
+    model: "A03s",
+    modelKey: "a03s",
+    relativePath: "sources/Samsung/Samsung A03s/Pdf/A03S-96516_1_12 REV1.0 image.pdf",
+  });
+  const staleDatabase = asset("a", {
+    brand: "SAMSUNG",
+    model: "A03s-96516_1_12 REV1.0 image",
+    modelKey: "a03s96516112rev10image",
+    aliases: ["old-import-label"],
+    identityVerified: true,
+  });
+
+  const [merged] = mergeCatalogAssets([physicalPdf], [staleDatabase]);
+
+  assert.equal(merged?.model, physicalPdf.model);
+  assert.equal(merged?.modelKey, physicalPdf.modelKey);
+  assert.equal(merged?.relativePath, physicalPdf.relativePath);
+  assert.equal(merged?.identityVerified, true);
+});
