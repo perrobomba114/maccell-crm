@@ -1,0 +1,12 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import test from "node:test";
+import { strict as assert } from "node:assert";
+
+test("technical worker catalog scope is limited to the current catalog", () => {
+    const source = readFileSync(resolve(process.cwd(), "scripts/index-technical-library.ts"), "utf8");
+
+    assert.match(source, /WHERE id = ANY\(\$1::text\[\]\)/);
+    assert.match(source, /return mergeCatalogAssets\(local, stored\)/);
+    assert.doesNotMatch(source, /SELECT metadata FROM schematics\.assets ORDER BY kind,relative_path\)\.rows\.map/);
+});

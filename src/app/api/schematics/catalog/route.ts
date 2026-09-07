@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const rawKind = params.get("kind") ?? "all";
     if (!allowedKinds.has(rawKind as CatalogKind)) return Response.json({ error: "Tipo de archivo inválido" }, { status: 400 });
     const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1);
-    const pageSize = Math.min(100, Math.max(1, Number.parseInt(params.get("pageSize") ?? "40", 10) || 40));
+    const pageSize = Math.min(5000, Math.max(1, Number.parseInt(params.get("pageSize") ?? "40", 10) || 40));
     const q = params.get("q")?.trim().slice(0, 100);
     const ids = params.get("ids")?.split(",").filter((id) => /^[a-f0-9]{64}$/.test(id)).slice(0, 100);
     if (ids?.length) {

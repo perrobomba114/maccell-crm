@@ -1,13 +1,11 @@
-import { ArrowUpRight, CircuitBoard, FileText, History, Library } from "lucide-react";
+import { CircuitBoard, FileText, Library } from "lucide-react";
 
 type Props = {
   isLibraryOpen?: boolean;
   onBrowse(): void;
-  recent: { id: string; name: string }[];
-  onOpen(id: string): void;
 };
 
-export function WorkspaceWelcome({ isLibraryOpen = true, onBrowse, recent, onOpen }: Props) {
+export function WorkspaceWelcome({ isLibraryOpen = true, onBrowse }: Props) {
   return (
     <section className="sch-start" aria-label="Empezar una consulta técnica">
       <div className="sch-start-icon">
@@ -45,44 +43,6 @@ export function WorkspaceWelcome({ isLibraryOpen = true, onBrowse, recent, onOpe
         </div>
       </div>
 
-      {recent.length > 0 && (
-        <div className="sch-start-recent">
-          <h3>
-            <History size={15} /> Retomar una consulta reciente
-          </h3>
-          <div className="flex flex-col gap-2 mt-2">
-            {recent.slice(0, 5).map((item) => {
-              const isPcbe = item.name.toLowerCase().endsWith(".pcbe");
-              const isPdf = item.name.toLowerCase().endsWith(".pdf");
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onOpen(item.id)}
-                  className="flex items-center justify-between p-2.5 rounded-lg border border-border/60 hover:bg-muted/60 hover:border-border transition-colors text-left group"
-                >
-                  <div className="flex items-center gap-2.5 overflow-hidden">
-                    {isPcbe ? (
-                      <CircuitBoard size={16} className="text-emerald-500 shrink-0" />
-                    ) : isPdf ? (
-                      <FileText size={16} className="text-amber-500 shrink-0" />
-                    ) : (
-                      <CircuitBoard size={16} className="text-primary shrink-0" />
-                    )}
-                    <span className="font-medium text-foreground text-sm truncate">
-                      {item.name.replace(/\.(pcbe|pdf)$/i, "")}
-                    </span>
-                    <span className="text-[10px] uppercase font-semibold tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
-                      {isPcbe ? "Placa" : isPdf ? "PDF" : "Archivo"}
-                    </span>
-                  </div>
-                  <ArrowUpRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0 ml-2" />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </section>
   );
 }
-

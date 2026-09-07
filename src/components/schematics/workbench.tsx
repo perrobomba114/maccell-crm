@@ -30,7 +30,7 @@ type Ui = { search: string; reference: string; library: boolean; inspector: bool
 export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { initial: CatalogPage; userId: string; canEditIdentity: boolean }) {
   const expandedView = useExpandedWorkbench();
   const preferences = useWorkspacePreferences(userId);
-  const { ready: preferencesReady, saveLocation } = preferences;
+  const { ready: preferencesReady } = preferences;
   const [ui, updateUi] = useReducer((state: Ui, patch: Partial<Ui>) => ({ ...state, ...patch }), { search: "", reference: "", library: true, inspector: false, mode: "board", message: "", referenceToken: 0 });
   const [boardAsset, setBoardAsset] = useState<SchematicAsset | null>(null);
   const [pdf, setPdf] = useState<SchematicAsset | null>(null);
@@ -141,7 +141,9 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     if (!preferences.ready || restored.current) return;
     restored.current = true;
     const params = new URLSearchParams(window.location.search);
-    const saved = params.has("board") || params.has("pdf") || params.has("repair") ? readWorkspaceLink(params) : preferences.location;
+    // Only an explicit shared URL restores documents. A browser refresh must not
+    // reopen stale boards or PDFs from an older local session.
+    const saved = params.has("board") || params.has("pdf") || params.has("repair") ? readWorkspaceLink(params) : null;
     if (!saved) return;
     setRepairId(saved.repair); pendingLocation.current = saved;
     if (!saved.board && !saved.pdf) { pendingLocation.current = null; return; }
@@ -157,7 +159,7 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
         if (pair) setSessionPair(pair);
       }
     }).catch((cause: unknown) => { pendingLocation.current = null; updateUi({ message: cause instanceof Error ? cause.message : "No se pudo restaurar la sesión" }); });
-  }, [preferences.ready, preferences.location, assetById]);
+  }, [preferences.ready, assetById]);
   useEffect(() => {
     if (!board || !pendingLocation.current) return;
     const saved = pendingLocation.current;
@@ -178,10 +180,6 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     }).catch((cause: unknown) => { if (!controller.signal.aborted) updateUi({ message: cause instanceof Error ? cause.message : "Error al consultar reparación" }); });
     return () => controller.abort();
   }, [repairId]);
-  useEffect(() => {
-    if (!preferencesReady || pendingLocation.current || (!boardAsset && !pdf)) return;
-    saveLocation(readWorkspaceLink(new URL(currentLink, window.location.origin).searchParams));
-  }, [currentLink, preferencesReady, saveLocation, boardAsset, pdf]);
   function select(component: string | null, net: number | null, focus = false) {
     setReferenceChoices([]);
     if (linked && (component !== null || net !== null)) updateUi({ mode: "split" });
@@ -224,7 +222,7 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     {repairLabel && <div className="sch-repair-context">{repairLabel}</div>}
     {(ui.message || preferences.warning || relatedError) && <div className="sch-notice" role="status">{ui.message || preferences.warning || relatedError}</div>}
     <div className={`sch-layout ${ui.library ? "" : "sch-no-library"}`}>
-      {ui.library && <LibrarySidebar canReindex={canEditIdentity} initial={initial} search={ui.search} onSearch={search => updateUi({ search })} boardId={boardAsset?.id} pdfId={pdf?.id} onOpen={openAsset} onOpenId={id => void openId(id)} favorites={preferences.favorites} recent={preferences.recent} />}
+      {ui.library && <LibrarySidebar canReindex={canEditIdentity} initial={initial} search={ui.search} onSearch={search => updateUi({ search })} boardId={boardAsset?.id} pdfId={pdf?.id} onOpen={openAsset} favorites={preferences.favorites} />}
       <div className="sch-workarea">
         <div className="sch-document-tab">
           <div className="sch-document-tabs" aria-label="Documentos abiertos">
@@ -249,7 +247,7 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
         {referenceChoices.length > 1 && <div className="sch-pdf-label-choices"><span>Hay varias ubicaciones con esa referencia:</span>{referenceChoices.map(item => <button key={item.label} onClick={() => { select(item.component, item.net, true); updateUi({ mode: "split" }); }}>{item.label}</button>)}<button onClick={() => setReferenceChoices([])}>Cerrar</button></div>}
         <div className={`sch-viewers sch-view-${ui.mode}`}>
           <div className="sch-board-slot" hidden={ui.mode === "pdf"}>
-            {loading ? <div className="sch-empty"><Loader2 className="animate-spin" /><h3>Abriendo placa…</h3><p>Procesando componentes y redes.</p></div> : error ? <div className="sch-empty" role="alert"><h3>No se pudo abrir</h3><p>{error}</p><button onClick={() => setBoardAsset(boardAsset ? { ...boardAsset } : null)}>Reintentar</button></div> : board ? <BoardCanvas key={boardAsset?.id} board={board} component={selection.component} net={selection.net} onSelect={select} focusToken={focusToken} /> : <WorkspaceWelcome isLibraryOpen={ui.library} onBrowse={() => updateUi({ library: true })} recent={preferences.recent} onOpen={id => void openId(id)} />}
+            {loading ? <div className="sch-empty"><Loader2 className="animate-spin" /><h3>Abriendo placa…</h3><p>Procesando componentes y redes.</p></div> : error ? <div className="sch-empty" role="alert"><h3>No se pudo abrir</h3><p>{error}</p><button onClick={() => setBoardAsset(boardAsset ? { ...boardAsset } : null)}>Reintentar</button></div> : board ? <BoardCanvas key={boardAsset?.id} board={board} component={selection.component} net={selection.net} onSelect={select} focusToken={focusToken} /> : <WorkspaceWelcome isLibraryOpen={ui.library} onBrowse={() => updateUi({ library: true })} />}
           </div>
           <div className="sch-pdf-slot" hidden={ui.mode === "board"}>
             {pdf ? <PdfPanel key={pdf.id} page={pdfPage} onPage={setPdfPage} navigationToken={ui.referenceToken} canReindex={canEditIdentity} asset={pdf} reference={linked ? ui.reference : ""} references={linked ? pdfReferences : emptyReferences} onReference={selectPdfReference} /> : <div className="sch-empty"><FileText size={32} /><h3>Documentación del equipo</h3><p>Elegí un PDF. La sincronización requiere identidad técnica compatible.</p><div className="sch-related">{related.map(asset => <button key={asset.id} onClick={() => openAsset(asset)}>{asset.name}</button>)}</div><button onClick={() => updateUi({ library: true })}>Abrir biblioteca</button></div>}

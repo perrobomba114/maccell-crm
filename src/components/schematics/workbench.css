@@ -29,6 +29,7 @@
 .sch-library-filters select{width:100%;min-width:0;border:1px solid var(--border);border-radius:6px;background:var(--background);padding:7px;font-size:12px}
 .sch-library-filters button{display:flex;align-items:center;gap:5px;border:1px solid var(--border);padding:7px;border-radius:6px}
 .sch-library-filters button[aria-pressed=true]{color:var(--primary);border-color:var(--primary)}
+.sch-library-total{padding:10px 12px;border-top:1px solid var(--border);font-size:11px;color:var(--muted-foreground);text-align:center}
 .sch-library-status{display:flex;align-items:center;gap:6px;padding:6px 12px;color:var(--muted-foreground)}
 .sch-library-pagination{justify-content:space-between;border-top:1px solid var(--border)}
 .sch-library-pagination button,.sch-more{padding:7px 10px;border:1px solid var(--border);border-radius:6px;color:var(--foreground);background:var(--background)}

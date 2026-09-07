@@ -60,7 +60,10 @@ function DirectoryBranch({
             />
           ))}
 
-        {node.files.map((asset) => {
+        {node.files
+          .slice()
+          .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true, sensitivity: "base" }))
+          .map((asset) => {
           const isActive = asset.id === boardId || asset.id === pdfId;
           const isPcbe = asset.kind === "pcbe";
           return (
@@ -94,7 +97,7 @@ function DirectoryBranch({
               {asset.kind === "pcbe" && (asset.detail?.toLowerCase().includes("diode") || asset.name.toLowerCase().includes("diode")) && <i className="sch-asset-badge is-diode" title="Contiene anotaciones de diodo originales">Diodos</i>}
             </button>
           );
-        })}
+          })}
       </div>
     </details>
   );

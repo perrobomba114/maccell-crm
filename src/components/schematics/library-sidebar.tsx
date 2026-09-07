@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Search, Star, History, Loader2, X, CircuitBoard, FileText, Library } from "lucide-react";
+import { Search, Star, Loader2, X, CircuitBoard, FileText, Library } from "lucide-react";
 import type { SchematicAsset } from "@/lib/schematics/catalog-types";
 import { LibraryIndexStatus } from "./library-index-status";
 import { AssetTree } from "./asset-tree";
@@ -8,8 +8,8 @@ import { AssetTree } from "./asset-tree";
 export type CatalogPage = { assets: SchematicAsset[]; total: number; page: number; pageSize: number; counts: { pcbe: number; pdf: number } };
 type Props = {
   canReindex: boolean; initial: CatalogPage; search: string; onSearch(value: string): void;
-  boardId?: string; pdfId?: string; onOpen(asset: SchematicAsset): void; onOpenId(id: string): void;
-  favorites: string[]; recent: { id: string; name: string }[];
+  boardId?: string; pdfId?: string; onOpen(asset: SchematicAsset): void;
+  favorites: string[];
 };
 
 export function LibrarySidebar(props: Props) {
@@ -47,7 +47,7 @@ export function LibrarySidebar(props: Props) {
     setBusy(true);
     setError("");
 
-    const params = new URLSearchParams({ q: debouncedQuery, kind, page: String(page), pageSize: "100" });
+    const params = new URLSearchParams({ q: debouncedQuery, kind, page: String(page), pageSize: "5000" });
     if (ids) params.set("ids", ids);
 
     fetch(`/api/schematics/catalog?${params}`, { signal: controller.signal })
@@ -154,22 +154,6 @@ export function LibrarySidebar(props: Props) {
       )}
 
       <div className={`sch-tree transition-opacity duration-200 ${busy ? "opacity-70" : "opacity-100"}`} aria-busy={busy}>
-        {scope === "all" && kind === "all" && !debouncedQuery && props.recent.length > 0 && (
-          <details open className="sch-folder select-none">
-            <summary className="flex items-center gap-2">
-              <History size={15} />
-              <span>Recientes</span>
-            </summary>
-            <div className="sch-folder-children pl-2 ml-1.5 border-l border-border/50">
-              {props.recent.map((item) => (
-                <button key={item.id} className="sch-asset" onClick={() => props.onOpenId(item.id)}>
-                  <span className="truncate">{item.name}</span>
-                </button>
-              ))}
-            </div>
-          </details>
-        )}
-
         {!busy && !error && result.total === 0 && (
           <div className="sch-library-empty">
             <Search size={24} />
@@ -193,20 +177,23 @@ export function LibrarySidebar(props: Props) {
         )}
       </div>
 
-      <div className="sch-library-pagination">
-        <button disabled={page <= 1 || busy} onClick={() => setPage((value) => value - 1)}>
-          Anterior
-        </button>
-        <span>
-          Mostrando {firstResult}–{lastResult} de {result.total}
-        </span>
-        <button disabled={page * result.pageSize >= result.total || busy} onClick={() => setPage((value) => value + 1)}>
-          Siguiente
-        </button>
-      </div>
+      {result.total > result.pageSize ? (
+        <div className="sch-library-pagination">
+          <button disabled={page <= 1 || busy} onClick={() => setPage((value) => value - 1)}>
+            Anterior
+          </button>
+          <span>
+            Mostrando {firstResult}–{lastResult} de {result.total}
+          </span>
+          <button disabled={page * result.pageSize >= result.total || busy} onClick={() => setPage((value) => value + 1)}>
+            Siguiente
+          </button>
+        </div>
+      ) : (
+        <div className="sch-library-total">Mostrando todos los archivos del catálogo · {result.total}</div>
+      )}
 
       <LibraryIndexStatus canReindex={props.canReindex} />
-      <div className="sch-library-foot">Favoritos y recientes se guardan para tu usuario en este navegador.</div>
     </aside>
   );
 }

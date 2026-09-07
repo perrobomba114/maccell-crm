@@ -5,6 +5,7 @@ import pg from 'pg';
 import { extractTechnicalIndex } from '../src/lib/schematics/technical-extractor';
 import { indexFileIsCurrent, indexIsCurrent, type TechnicalIndex } from '../src/lib/schematics/unified-index';
 import type { SchematicAsset, SchematicCatalog } from '../src/lib/schematics/catalog-types';
+import { mergeCatalogAssets } from '../src/lib/schematics/catalog-merge';
 import { persistTechnicalIndex } from './technical-index-database';
 import { runBounded, workerConcurrency, withIndexConnection, selectIndexAssets } from './technical-worker-queue';
 
@@ -14,11 +15,15 @@ const stop = new AbortController();
 process.once('SIGTERM', () => stop.abort());
 process.once('SIGINT', () => stop.abort());
 let catalogSignature = '';
+let cachedCatalogAssets: SchematicAsset[] = [];
 async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
-  let local: SchematicAsset[] = [];
+  let local: SchematicAsset[] = cachedCatalogAssets;
   let nextSignature = '';
   try { const info=await stat(path.join(root,'catalog.json'));nextSignature=`${info.mtimeMs}:${info.size}`;
-    if(nextSignature!==catalogSignature) local = (JSON.parse(await readFile(path.join(root, 'catalog.json'), 'utf8')) as SchematicCatalog).assets; }
+    if(nextSignature!==catalogSignature) {
+      local = (JSON.parse(await readFile(path.join(root, 'catalog.json'), 'utf8')) as SchematicCatalog).assets;
+      cachedCatalogAssets = local;
+    } }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
   for (const asset of local) {
     // Refresh file facts atomically without overwriting concurrent identity edits.
@@ -32,7 +37,14 @@ async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
       updated_at=CASE WHEN previous.sha256<>excluded.sha256 OR previous.relative_path<>excluded.relative_path THEN now() ELSE previous.updated_at END`, [asset.id,asset.relativePath,asset.sha256,asset.kind,asset.modelKey,JSON.stringify(asset)]);
   }
   catalogSignature=nextSignature;
-  return (await client.query<{ metadata: SchematicAsset }>('SELECT metadata FROM schematics.assets ORDER BY kind,relative_path')).rows.map(row => row.metadata);
+  if (local.length === 0) {
+    return (await client.query<{ metadata: SchematicAsset }>('SELECT metadata FROM schematics.assets ORDER BY kind,relative_path')).rows.map(row => row.metadata);
+  }
+  const ids = local.map(asset => asset.id);
+  const stored = (await client.query<{ metadata: SchematicAsset }>('SELECT metadata FROM schematics.assets WHERE id = ANY($1::text[])', [ids])).rows.map(row => row.metadata);
+  // The filesystem catalog is authoritative. Never resurrect historical DB rows
+  // whose files were removed or moved out of the current library.
+  return mergeCatalogAssets(local, stored);
 }
 async function cycle(client: pg.PoolClient, pool: pg.Pool, signal: AbortSignal) {
   const acquired = (await client.query<{ locked: boolean }>('SELECT pg_try_advisory_lock(748193205) AS locked')).rows[0].locked;
