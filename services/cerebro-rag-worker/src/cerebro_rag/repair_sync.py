@@ -9,9 +9,14 @@ from cerebro_rag.config import WorkerSettings
 from cerebro_rag.embeddings import get_worker_embedding_service
 from cerebro_rag.repair_cursor import RepairCursor
 from cerebro_rag.repair_indexer import RepairIndexer, repair_source_from_row
-from cerebro_rag.repairs import REPAIR_SYNC_QUERY
+from cerebro_rag.repairs import REPAIR_SYNC_QUERY, REPAIR_SYNC_QUERY_WITHOUT_LEARNING
 
 ACTIVE_REPAIR_IDS_QUERY = 'SELECT id FROM repairs WHERE "statusId" IN (1, 2, 3, 4)'
+
+
+def _is_permission_denied(error: BaseException) -> bool:
+    sqlstate = getattr(error, "sqlstate", None)
+    return sqlstate == "42501" or "permission denied" in str(error).lower()
 
 
 def _retire_active_repairs(
@@ -59,11 +64,26 @@ def sync_repairs_once(settings: WorkerSettings) -> tuple[int, int]:
         rag_connection.commit()
         cursor = _load_cursor(rag_connection)
         indexer = RepairIndexer(rag_connection, embeddings)
+        repair_query = REPAIR_SYNC_QUERY
         while True:
-            rows = source_connection.execute(
-                REPAIR_SYNC_QUERY,
-                (cursor.updated_at, cursor.repair_id, settings.batch_size),
-            ).fetchall()
+            try:
+                rows = source_connection.execute(
+                    repair_query,
+                    (cursor.updated_at, cursor.repair_id, settings.batch_size),
+                ).fetchall()
+            except Exception as error:
+                if repair_query != REPAIR_SYNC_QUERY or not _is_permission_denied(error):
+                    raise
+                source_connection.rollback()
+                repair_query = REPAIR_SYNC_QUERY_WITHOUT_LEARNING
+                print(
+                    "REPAIR_SYNC_DEGRADED reason=permission_denied optional=repair_learning_records",
+                    flush=True,
+                )
+                rows = source_connection.execute(
+                    repair_query,
+                    (cursor.updated_at, cursor.repair_id, settings.batch_size),
+                ).fetchall()
             if not rows:
                 break
             batch_indexed, batch_skipped = indexer.index_batch(repair_source_from_row(row) for row in rows)
@@ -89,5 +109,9 @@ def run_repair_sync(settings: WorkerSettings, interval_seconds: int) -> None:
             indexed, skipped = sync_repairs_once(settings)
             print(f"REPAIR_SYNC indexed={indexed} skipped={skipped}", flush=True)
         except Exception as error:
-            print(f"REPAIR_SYNC_FAILED type={type(error).__name__}", flush=True)
+            sqlstate = getattr(error, "sqlstate", None) or "unknown"
+            print(
+                f"REPAIR_SYNC_FAILED type={type(error).__name__} sqlstate={sqlstate}",
+                flush=True,
+            )
         sleep(interval_seconds)

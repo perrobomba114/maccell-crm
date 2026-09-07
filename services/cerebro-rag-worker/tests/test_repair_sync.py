@@ -4,10 +4,19 @@ import unittest
 from datetime import UTC, datetime
 
 from cerebro_rag.repair_cursor import RepairCursor
-from cerebro_rag.repair_sync import ACTIVE_REPAIR_IDS_QUERY
+from cerebro_rag.repair_sync import ACTIVE_REPAIR_IDS_QUERY, _is_permission_denied
 
 
 class RepairSyncCursorTest(unittest.TestCase):
+    def test_permission_denied_detection_accepts_postgres_sqlstate(self) -> None:
+        error = RuntimeError("permission denied for table repair_learning_records")
+        error.sqlstate = "42501"  # type: ignore[attr-defined]
+
+        self.assertTrue(_is_permission_denied(error))
+
+    def test_permission_denied_detection_does_not_mask_other_database_errors(self) -> None:
+        self.assertFalse(_is_permission_denied(RuntimeError("connection refused")))
+
     def test_active_repairs_are_reconciled_out_of_confirmed_evidence(self) -> None:
         self.assertIn('"statusId" IN (1, 2, 3, 4)', ACTIVE_REPAIR_IDS_QUERY)
 

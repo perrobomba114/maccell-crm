@@ -6,7 +6,26 @@ from dataclasses import dataclass
 from cerebro_rag.normalize import normalize_brand, normalize_model
 
 
-REPAIR_EXPORT_BASE = """
+_REPAIR_LEARNING_JOIN = """
+LEFT JOIN LATERAL (
+    SELECT jsonb_build_object(
+        'symptom', record.symptom,
+        'rootCause', record."rootCause",
+        'confirmingEvidence', record."confirmingEvidence",
+        'intervention', record.intervention,
+        'verification', record.verification,
+        'affectedReferences', record."affectedReferences",
+        'authority', record.authority,
+        'trainingEligible', record."trainingEligible"
+    ) AS record,
+    record."updatedAt" AS latest
+    FROM repair_learning_records AS record
+    WHERE record."repairId" = repair.id
+) AS learning ON true
+"""
+
+
+REPAIR_EXPORT_BASE = f"""
 SELECT
     repair.id,
     repair."ticketNumber" AS ticket_number,
@@ -49,29 +68,34 @@ LEFT JOIN LATERAL (
     JOIN repair_statuses AS value ON value.id = transition."toStatusId"
     WHERE transition."repairId" = repair.id
 ) AS history ON true
-LEFT JOIN LATERAL (
-    SELECT jsonb_build_object(
-        'symptom', record.symptom,
-        'rootCause', record."rootCause",
-        'confirmingEvidence', record."confirmingEvidence",
-        'intervention', record.intervention,
-        'verification', record.verification,
-        'affectedReferences', record."affectedReferences",
-        'authority', record.authority,
-        'trainingEligible', record."trainingEligible"
-    ) AS record,
-    record."updatedAt" AS latest
-    FROM repair_learning_records AS record
-    WHERE record."repairId" = repair.id
-) AS learning ON true
+{_REPAIR_LEARNING_JOIN}
 WHERE repair."statusId" IN (5, 6, 10)
 """
 
 REPAIR_EXPORT_QUERY = REPAIR_EXPORT_BASE + "\nORDER BY effective_updated_at, repair.id"
 
+REPAIR_EXPORT_BASE_WITHOUT_LEARNING = REPAIR_EXPORT_BASE.replace(
+    _REPAIR_LEARNING_JOIN,
+    """
+LEFT JOIN LATERAL (
+    SELECT NULL::jsonb AS record, NULL::timestamptz AS latest
+) AS learning ON true
+""",
+)
+
 REPAIR_SYNC_QUERY = f"""
 WITH repair_source AS (
 {REPAIR_EXPORT_BASE}
+)
+SELECT * FROM repair_source
+WHERE (effective_updated_at, id) > (%s::timestamptz, %s)
+ORDER BY effective_updated_at, id
+LIMIT %s
+"""
+
+REPAIR_SYNC_QUERY_WITHOUT_LEARNING = f"""
+WITH repair_source AS (
+{REPAIR_EXPORT_BASE_WITHOUT_LEARNING}
 )
 SELECT * FROM repair_source
 WHERE (effective_updated_at, id) > (%s::timestamptz, %s)

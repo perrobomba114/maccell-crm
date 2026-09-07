@@ -3,7 +3,14 @@ from __future__ import annotations
 import unittest
 
 from cerebro_rag.repair_indexer import repair_source_from_row
-from cerebro_rag.repairs import REPAIR_EXPORT_QUERY, RepairSource, build_repair_content, has_useful_technical_content, sanitize_technical_text
+from cerebro_rag.repairs import (
+    REPAIR_EXPORT_QUERY,
+    REPAIR_SYNC_QUERY_WITHOUT_LEARNING,
+    RepairSource,
+    build_repair_content,
+    has_useful_technical_content,
+    sanitize_technical_text,
+)
 
 
 class RepairReconstructionTest(unittest.TestCase):
@@ -86,7 +93,14 @@ class RepairReconstructionTest(unittest.TestCase):
         self.assertNotIn("cobrada en Venta", content)
 
     def test_sync_query_only_exports_final_repair_statuses(self) -> None:
-        self.assertIn('repair."statusId" IN (5, 6, 7, 8, 9, 10)', REPAIR_EXPORT_QUERY)
+        self.assertIn('repair."statusId" IN (5, 6, 10)', REPAIR_EXPORT_QUERY)
+
+    def test_permission_fallback_keeps_repair_sync_without_learning_table(self) -> None:
+        lowered = REPAIR_SYNC_QUERY_WITHOUT_LEARNING.lower()
+        self.assertIn("null::jsonb as record", lowered)
+        self.assertNotIn("repair_learning_records", lowered)
+        self.assertIn("effective_updated_at", lowered)
+        self.assertIn('repair."statusid" in (5, 6, 10)', lowered)
 
     def test_skips_final_records_without_useful_technical_content(self) -> None:
         empty = RepairSource(
