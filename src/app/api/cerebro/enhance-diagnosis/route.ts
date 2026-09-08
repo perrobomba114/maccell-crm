@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/actions/auth-actions";
+import { AI_MODELS } from "@/config/ai-models";
 import { createFallbackModel, type FallbackModelConfig } from "@/lib/cerebro/models";
 import { createLocalCerebroModel } from "@/lib/cerebro-v2/local-provider";
 import { buildGroqModelConfigurations } from "@/lib/cerebro-v2/model-routing";
@@ -41,7 +42,19 @@ export async function POST(req: NextRequest) {
 
         const { diagnosis } = parsed.data;
         const prompt = buildRepairDiagnosisPrompt(parsed.data);
-        const configurations: FallbackModelConfig[] = buildGroqModelConfigurations(getGroqKeys(), "diagnosis");
+        const configurations: FallbackModelConfig[] = [];
+        const openRouterKey = process.env.OPENROUTER_API_KEY;
+        if (openRouterKey) {
+            const modelId = process.env.OPENROUTER_MODEL ?? AI_MODELS.CHAT;
+            const openRouter = createOpenRouter({ apiKey: openRouterKey });
+            configurations.push({
+                instance: openRouter(modelId),
+                label: "OpenRouter Free",
+                keyId: "openrouter",
+                modelId,
+            });
+        }
+        configurations.push(...buildGroqModelConfigurations(getGroqKeys(), "diagnosis"));
         const localModel = createLocalCerebroModel(false);
         if (localModel) {
             configurations.push({
@@ -49,16 +62,6 @@ export async function POST(req: NextRequest) {
                 label: "Qwen local",
                 keyId: "local",
                 modelId: process.env.CEREBRO_LOCAL_AI_MODEL ?? "Qwen local",
-            });
-        }
-        const openRouterKey = process.env.OPENROUTER_API_KEY;
-        if (openRouterKey) {
-            const openRouter = createOpenRouter({ apiKey: openRouterKey });
-            configurations.push({
-                instance: openRouter(process.env.OPENROUTER_MODEL ?? "google/gemini-2.5-flash"),
-                label: "OpenRouter",
-                keyId: "openrouter",
-                modelId: process.env.OPENROUTER_MODEL ?? "google/gemini-2.5-flash",
             });
         }
         const emperoBaseUrl = process.env.CEREBRO_EMPERO_BASE_URL;

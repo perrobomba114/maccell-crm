@@ -1,16 +1,15 @@
 /**
  * CEREBRO — Configuración centralizada de IA
  *
- * Arquitectura: OpenRouter Cloud (Paid Tier)
- * Modelo principal: Gemini 2.0 Flash
+ * Arquitectura: OpenRouter Free Router
+ * El router elige un modelo gratuito compatible para cada solicitud.
  */
 
 import { LEVEL3_MASTER_KNOWLEDGE } from "@/lib/master-protocols";
 
 export const AI_MODELS = {
-    CHAT: "google/gemini-2.0-flash-001",
-    VISION: "google/gemini-2.0-flash-001",
-    EMBED: "google/gemini-2.0-flash-001", // O el modelo de embeddings de OpenRouter que prefieras
+    CHAT: "openrouter/free",
+    VISION: "openrouter/free",
 } as const;
 
 /** Límite de tickets por ejecución del cron nocturno */

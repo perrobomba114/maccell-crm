@@ -30,7 +30,7 @@ test("uses the technical report as the only authority for completed work", () =>
     assert.doesNotMatch(source, /validateEnhancedDiagnosis\(problemDescription/);
 });
 
-test("routes diagnosis enhancement through Qwen Groq and then local Qwen", () => {
+test("routes diagnosis enhancement through OpenRouter Free before Qwen Groq and local Qwen", () => {
     const source = readFileSync(routeUrl, "utf8");
 
     assert.match(source, /buildGroqModelConfigurations\(getGroqKeys\(\), "diagnosis"\)/);
@@ -38,6 +38,8 @@ test("routes diagnosis enhancement through Qwen Groq and then local Qwen", () =>
     assert.match(source, /createLocalCerebroModel\(false\)/);
     assert.match(source, /createFallbackModel/);
     assert.match(source, /maxRetries: 0/);
+    assert.ok(source.indexOf("createOpenRouter") < source.indexOf("buildGroqModelConfigurations"));
+    assert.match(source, /AI_MODELS\.CHAT/);
     assert.doesNotMatch(source, /qwen\/qwen3\.6-27b/);
     assert.doesNotMatch(source, /runWithGroqFallback/);
 });
@@ -56,7 +58,7 @@ test("continues through every configured diagnosis fallback", () => {
         hasLocal: true,
         hasOpenRouter: true,
         hasEmpero: true,
-    }), ["groq", "local", "openrouter", "empero"]);
+    }), ["openrouter", "groq", "local", "empero"]);
 });
 
 test("does not include unconfigured diagnosis providers", () => {

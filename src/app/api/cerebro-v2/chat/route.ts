@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/actions/auth-actions";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createUIMessageStream, createUIMessageStreamResponse, generateText, type LanguageModel, type ModelMessage, type UIMessage } from "ai";
 
+import { AI_MODELS } from "@/config/ai-models";
 import { createFallbackModel, type FallbackModelConfig } from "@/lib/cerebro/models";
 import { canUseCerebroV2 } from "@/lib/cerebro-v2/access";
 import { parseCerebroChatRequest, type CerebroChatRequest } from "@/lib/cerebro-v2/chat-contract";
@@ -34,21 +35,22 @@ function componentCodes(value: string): string[] {
 }
 
 function buildModel(onSelect: (provider: ProviderSelection) => void, vision: boolean): LanguageModel {
-    const configurations: FallbackModelConfig[] = buildGroqModelConfigurations(
-        getGroqKeys(),
-        vision ? "vision" : "text",
-    );
-    const localModel = createLocalCerebroModel(vision);
-    if (localModel) {
-        configurations.push({ instance: localModel, label: vision ? "Qwen local vision" : "Qwen local", keyId: "local" });
-    }
+    const configurations: FallbackModelConfig[] = [];
     const openRouterKey = process.env.OPENROUTER_API_KEY;
     if (openRouterKey) {
         const openRouter = createOpenRouter({ apiKey: openRouterKey });
         const modelId = vision
-            ? process.env.OPENROUTER_VISION_MODEL ?? "google/gemini-2.5-flash"
-            : process.env.OPENROUTER_MODEL ?? "google/gemini-2.5-flash";
-        configurations.push({ instance: openRouter(modelId), label: "OpenRouter", keyId: "openrouter" });
+            ? process.env.OPENROUTER_VISION_MODEL ?? AI_MODELS.VISION
+            : process.env.OPENROUTER_MODEL ?? AI_MODELS.CHAT;
+        configurations.push({ instance: openRouter(modelId), label: "OpenRouter Free", keyId: "openrouter", modelId });
+    }
+    configurations.push(...buildGroqModelConfigurations(
+        getGroqKeys(),
+        vision ? "vision" : "text",
+    ));
+    const localModel = createLocalCerebroModel(vision);
+    if (localModel) {
+        configurations.push({ instance: localModel, label: vision ? "Qwen local vision" : "Qwen local", keyId: "local" });
     }
     return createFallbackModel(configurations, onSelect) as unknown as LanguageModel;
 }
