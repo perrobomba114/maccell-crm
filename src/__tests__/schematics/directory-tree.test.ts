@@ -42,6 +42,19 @@ test("buildDirectoryTree constructs canonical brand/model/type folders", () => {
   assert.equal(iphone11Node.subfolders.has("Esquemáticos"), true);
 });
 
+test("normalizes noisy vendor folders into commercial Samsung models", () => {
+  const tree = buildDirectoryTree([
+    Object.assign(mockAsset("a03", "sources/Samsung A03 Core SM-A032F/Pdf/a03.pdf", "a03 schematic.pdf", "pdf"), { brand: "SAMSUNG", model: "Samsung A03 Core SM-A032F" }),
+    Object.assign(mockAsset("j3300", "sources/Samsung 7 01 SM-J3300/Pdf/j3300.pdf", "j3300 schematic.pdf", "pdf"), { brand: "SAMSUNG", model: "Samsung 7 01 SM-J3300" }),
+  ]);
+
+  const samsung = tree.find((node) => node.name === "Samsung");
+  assert.ok(samsung);
+  assert.ok(samsung.subfolders.has("A03 Core"));
+  assert.ok(samsung.subfolders.has("SM-J3300"));
+  assert.equal(samsung.subfolders.has("Samsung A03 Core SM-A032F"), false);
+});
+
 test("nodeContainsAsset finds asset recursively", () => {
   const assets: SchematicAsset[] = [
     mockAsset("target-123", "pcbe/iPhone(VIP)/iPhone13/Schematic/layer.pcbe", "layer.pcbe", "pcbe"),

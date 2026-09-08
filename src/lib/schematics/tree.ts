@@ -44,12 +44,59 @@ function brandLabel(value: string): string {
   return aliases[key] ?? (clean || "Otros");
 }
 
+function canonicalBrand(asset: SchematicAsset, pathParts: string[]): string {
+  const declared = cleanLabel(asset.brand ?? "");
+  const declaredKey = declared.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const known = new Set([
+    "apple", "iphone", "ipad", "ipod", "samsung", "xiaomi", "redmi", "poco", "motorola", "moto",
+    "huawei", "honor", "lg", "oppo", "vivo", "realme", "oneplus", "nintendo", "playstation", "sony",
+    "xbox", "microsoft", "sega", "steamdeck", "valve",
+  ]);
+  if (known.has(declaredKey)) return brandLabel(declared);
+  const pathBrand = pathParts.find((part) => /^(?:apple|iphone|ipad|ipod|samsung|xiaomi|redmi|poco|motorola|moto|huawei|honor|lg|oppo|vivo|realme|oneplus|nintendo|playstation|sony|xbox|microsoft|sega|steam\s*deck|valve)\b/i.test(part));
+  return brandLabel(pathBrand ?? declared ?? pathParts[0] ?? "Otros");
+}
+
+function removeBrandPrefix(value: string, brand: string): string {
+  // iPhone/iPad are commercial product names, not noise to remove from the
+  // model label. Only the duplicated manufacturer prefix is discarded.
+  const aliases = brand === "Apple" ? "apple" : brand.toLowerCase();
+  return value.replace(new RegExp(`^(?:${aliases})\\b[\\s_-]*`, "i"), "").trim();
+}
+
+function samsungCommercialModel(value: string): string {
+  // Keep hyphens because Samsung board codes use them (SM-A032F, GT-I9000).
+  const clean = value.replace(/_/g, " ").replace(/\s+/g, " ").trim();
+  const code = clean.match(/\b(?:SM|GT|SCH|SGH|SC|SHV)-?[A-Z0-9]+(?:-[A-Z0-9]+)*\b/i);
+  if (!code) return clean;
+  const before = clean.slice(0, code.index).trim();
+  const familyMatches = [...before.matchAll(/\b(?:A|M|S|J|F|N|E|C|G|Z|X)\s*\d{1,3}(?:\s*(?:5G|4G|LTE|FE|PLUS|PRO|CORE|LITE|ULTRA|EDGE|ACTIVE|NEO|PRIME|NOTE))?/gi)];
+  const family = familyMatches.at(-1)?.[0]?.replace(/\s+/g, " ").trim();
+  if (family) {
+    const suffix = before.slice((familyMatches.at(-1)?.index ?? 0) + familyMatches.at(-1)![0].length).match(/\b(?:5G|4G|LTE|FE|PLUS|PRO|CORE|LITE|ULTRA|EDGE|ACTIVE|NEO|PRIME)\b/gi);
+    return [family, ...(suffix ?? [])].join(" ").replace(/\s+/g, " ").trim();
+  }
+  const note = before.match(/\bNote\s*\d+(?:\s+(?:LTE|FE|PLUS|ULTRA|PRO))?/i)?.[0];
+  return note?.replace(/\s+/g, " ").trim() ?? code[0].replace(/-/g, "-");
+}
+
+function commercialModel(asset: SchematicAsset, brand: string, fallback: string): string {
+  const declared = removeBrandPrefix(cleanLabel(asset.model || ""), brand);
+  // Old catalog rows may not have a brand and can carry a model from the
+  // generic mock/legacy identity. In that case the physical path is the
+  // safer source for the tree grouping.
+  const fallbackLabel = asset.brand ? removeBrandPrefix(cleanLabel(fallback), brand) : cleanLabel(fallback);
+  const candidate = (asset.brand ? declared : "") || fallbackLabel || declared;
+  const normalized = brand === "Samsung" ? samsungCommercialModel(candidate) : candidate;
+  return normalized || "Modelo sin clasificar";
+}
+
 function treeIdentity(asset: SchematicAsset): { brand: string; model: string; category: string } {
   const raw = (asset.relativePath || "").replace(/\\/g, "/").split("/").filter(Boolean).slice(0, -1);
   const parts = raw.filter(part => !TECHNICAL_FOLDERS.has(part.toLowerCase()));
-  const brand = brandLabel(parts[0] ?? asset.brand ?? "Otros");
+  const brand = canonicalBrand(asset, parts);
   const modelParts = parts.slice(1).filter(part => cleanLabel(part).toLowerCase() !== brand.toLowerCase());
-  const model = (cleanLabel(modelParts.at(-1) ?? asset.model ?? "Modelo sin clasificar") || "Modelo sin clasificar");
+  const model = commercialModel(asset, brand, modelParts.at(-1) ?? "Modelo sin clasificar");
   const role = documentRole(asset);
   const category = role === "board" ? "Placas" : role === "schematic" ? "Esquemáticos" : role === "repair" ? "Casos de reparación" : role === "accessory" ? "Accesorios" : "Documentos";
   return { brand, model, category };
