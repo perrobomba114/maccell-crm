@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { paginateCatalog } from '../../lib/schematics/search';
-import { declaredModel, documentRole, preferredCounterpart, confirmedPair, contentPairEvidence } from '../../lib/schematics/pairing';
+import { declaredModel, documentRole, preferredCounterpart, recommendedCounterpartId, confirmedPair, contentPairEvidence } from '../../lib/schematics/pairing';
 import type { SchematicAsset } from '../../lib/schematics/catalog-types';
 const board: SchematicAsset = {id:'board',sha256:'board-sha',name:'iPhone13ProMax AP Boardview 820-02400-06.pcbe',model:'iPhone13ProMAX',modelKey:'iphone13promax',brand:'Apple',kind:'pcbe',relativePath:'pcbe/file',size:1,status:'ready'};
 const pdf: SchematicAsset = {...board,id:'pdf',sha256:'pdf-sha',kind:'pdf',name:'iPhone 13 Pro Max schematic.pdf'};
@@ -44,6 +44,10 @@ test('board images and layouts never become the automatic schematic PDF', () => 
  assert.equal(preferredCounterpart([image]),null);
  assert.equal(preferredCounterpart([layout]),null);
  assert.equal(preferredCounterpart([image,pdf])?.id,pdf.id);
+});
+test('pair recommendation does not use a non-schematic PDF fallback',()=>{
+ const image={...pdf,id:'image',name:'iPhone13ProMax image.pdf'};
+ assert.equal(recommendedCounterpartId(board,[image],new Set()),null);
 });
 test('confirmed pairs are bound to both current file hashes',()=>{
  const linked={...board,documentLinks:[{assetId:pdf.id,sha256:pdf.sha256,sourceSha256:board.sha256,confirmedBy:'admin',confirmedAt:'2026-09-05'}]};

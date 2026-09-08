@@ -31,6 +31,16 @@ export function preferredCounterpart(compatible: SchematicAsset[]): SchematicAss
   const wholeBoard = compatible.filter(asset => asset.kind === 'pcbe' && documentRole(asset) === 'board' && /(?:^|\s)boardview\.pcbe$/i.test(asset.name) && !/\b(?:AP|BB)\b|PCB.?layer|820[-\s]\d/i.test(asset.name));
   return wholeBoard.length === 1 ? wholeBoard[0] : null;
 }
+export function recommendedCounterpartId(anchor: SchematicAsset, compatible: SchematicAsset[], verifiedIds: ReadonlySet<string>): string | null {
+  const verifiedRecommended = preferredCounterpart(compatible.filter(asset => verifiedIds.has(asset.id)))?.id;
+  const automatic = preferredCounterpart(compatible);
+  return verifiedRecommended
+    ?? automatic?.id
+    // A PDF anchor may still open a compatible board when no schematic PDF is
+    // available. A PCBE anchor must never fall back to an arbitrary document.
+    ?? (anchor.kind === 'pdf' ? compatible.find(asset => documentRole(asset) === 'board')?.id : undefined)
+    ?? null;
+}
 export function confirmedPair(a: SchematicAsset, b: SchematicAsset): boolean {
   if (a.kind === b.kind || a.status !== 'ready' || b.status !== 'ready' || !sameDevice(a,b)) return false;
   return !![...a.documentLinks?.filter(link=>link.sourceSha256===a.sha256 && link.assetId===b.id && link.sha256===b.sha256) ?? [],

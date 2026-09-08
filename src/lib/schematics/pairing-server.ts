@@ -2,7 +2,7 @@ import 'server-only';
 import { databasePages } from './database';
 import { readTechnicalIndex } from './index-store';
 import { sameDevice, type SchematicAsset } from './catalog-types';
-import { assetPriority, contentPairEvidence, documentRole, pairIsVerified, preferredCounterpart } from './pairing';
+import { assetPriority, contentPairEvidence, documentRole, pairIsVerified, recommendedCounterpartId } from './pairing';
 
 export async function resolvePairings(anchor: SchematicAsset, catalog: SchematicAsset[]) {
   const assets = catalog.filter(asset=>asset.id!==anchor.id && asset.kind!==anchor.kind && sameDevice(anchor,asset))
@@ -12,6 +12,10 @@ export async function resolvePairings(anchor: SchematicAsset, catalog: Schematic
     if (pairIsVerified(anchor,asset)) { evidence[asset.id]='Compatibilidad confirmada'; continue; }
     const board = anchor.kind==='pcbe' ? anchor : asset;
     const pdf = anchor.kind==='pdf' ? anchor : asset;
+    // A board image, layout or troubleshooting document can share a model
+    // label without being an electrical schematic. It may remain available in
+    // the related-files list, but it cannot establish automatic pairing.
+    if (documentRole(pdf) !== 'schematic') continue;
     // Do not read a large index unless both filenames declare this exact model.
     if (!contentPairEvidence(board,pdf,`${pdf.name} ${board.name}`)) continue;
     const pages = await databasePages(pdf.id,pdf.sha256) ?? (await readTechnicalIndex(pdf))?.pages ?? [];
@@ -19,12 +23,7 @@ export async function resolvePairings(anchor: SchematicAsset, catalog: Schematic
     const reason = pages.map(page=>contentPairEvidence(board,pdf,page.text)).find(Boolean);
     if (reason) evidence[asset.id]=reason;
   }
-  const verifiedRecommended = preferredCounterpart(assets.filter(asset=>evidence[asset.id]))?.id;
-  const bestCompatible = verifiedRecommended
-    ?? preferredCounterpart(assets)?.id
-    ?? assets.find(a => documentRole(a) === 'schematic')?.id
-    ?? assets[0]?.id
-    ?? null;
+  const bestCompatible = recommendedCounterpartId(anchor, assets, new Set(Object.keys(evidence)));
   const verifiedIds = Object.keys(evidence).length ? Object.keys(evidence) : assets.map(a => a.id);
   return {assets,verifiedIds,evidence,recommendedId:bestCompatible};
 }
