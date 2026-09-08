@@ -49,7 +49,7 @@ function DirectoryBranch({
         </span>
       </summary>
 
-      <div className="sch-folder-children pl-2 ml-1.5 border-l border-border/50 flex flex-col gap-0.5 mt-0.5 mb-1">
+      {open && <div className="sch-folder-children pl-2 ml-1.5 border-l border-border/50 flex flex-col gap-0.5 mt-0.5 mb-1">
         {Array.from(node.subfolders.values())
           .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
           .map((sub) => (
@@ -96,13 +96,13 @@ function DirectoryBranch({
                   {roleLabels[documentRole(asset)]}
                 </small>
               </div>
-              {asset.status !== "ready" && <i className="sch-asset-badge is-review" title={asset.detail}>Revisar</i>}
-              {asset.status === "ready" && <i className="sch-asset-badge is-ready" title="Archivo indexado y disponible">Válido</i>}
+              {asset.status !== "ready" && <i className="sch-asset-badge is-review" title={asset.detail}>{asset.detail?.includes("catálogo de DZKJ") ? "Descarga inválida" : "Revisar"}</i>}
+              {asset.status === "ready" && <i className="sch-asset-badge is-ready" title="Archivo disponible; consultá su estado de indexación">Disponible</i>}
               {asset.kind === "pcbe" && (asset.detail?.toLowerCase().includes("diode") || asset.name.toLowerCase().includes("diode")) && <i className="sch-asset-badge is-diode" title="Contiene anotaciones de diodo originales">Diodos</i>}
             </button>
           );
           })}
-      </div>
+      </div>}
     </details>
   );
 }

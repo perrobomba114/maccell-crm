@@ -22,6 +22,7 @@ export function LibrarySidebar(props: Props) {
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const refreshing = useRef(false);
+  const requestSerial = useRef(0);
 
   // Debounce search query by 250ms to eliminate rapid requests and UI flickering
   const [debouncedQuery, setDebouncedQuery] = useState(props.search);
@@ -38,7 +39,8 @@ export function LibrarySidebar(props: Props) {
   const lastResult = Math.min(page * result.pageSize, result.total);
 
   const refreshCatalog = useCallback(async (signal?: AbortSignal) => {
-    if (refreshing.current) return;
+    if (refreshing.current && !signal) return;
+    const serial = ++requestSerial.current;
     if (scope === "favorites" && !ids) {
       setResult((current) => ({ ...current, assets: [], total: 0, counts: { pcbe: 0, pdf: 0 } }));
       setBusy(false);
@@ -52,17 +54,17 @@ export function LibrarySidebar(props: Props) {
     setBusy(true);
     setError("");
     try {
-      const params = new URLSearchParams({ q: debouncedQuery, kind, page: String(page), pageSize: "5000" });
+      const params = new URLSearchParams({ q: debouncedQuery, kind, page: String(page), pageSize: "5000", view: "tree" });
       if (ids) params.set("ids", ids);
       const response = await fetch(`/api/schematics/catalog?${params}`, { signal: requestSignal });
       if (!response.ok) throw new Error("No se pudo cargar la biblioteca. Reintentá la búsqueda.");
       const data = (await response.json()) as CatalogPage;
-      if (!requestSignal?.aborted) setResult(data);
+      if (!requestSignal?.aborted && serial === requestSerial.current) setResult(data);
     } catch (cause: unknown) {
-      if (!requestSignal?.aborted) setError(cause instanceof Error ? cause.message : "Error al buscar");
+      if (!requestSignal?.aborted && serial === requestSerial.current) setError(cause instanceof Error ? cause.message : "Error al buscar");
     } finally {
-      refreshing.current = false;
-      if (!requestSignal?.aborted) setBusy(false);
+      if (serial === requestSerial.current) refreshing.current = false;
+      if (!requestSignal?.aborted && serial === requestSerial.current) setBusy(false);
     }
   }, [debouncedQuery, ids, kind, page, scope]);
 
@@ -72,7 +74,7 @@ export function LibrarySidebar(props: Props) {
     return () => controller.abort();
   }, [refreshCatalog, retry]);
 
-  usePolling(() => refreshCatalog(), 15_000);
+  usePolling(() => refreshCatalog(), 60_000);
 
   return (
     <aside className="sch-library" aria-label="Biblioteca de esquemáticos">
@@ -107,8 +109,8 @@ export function LibrarySidebar(props: Props) {
       <div className="sch-kind-tabs" role="group" aria-label="Tipo de archivo">
         {(
           [
-            { value: "all", label: `Todos (${result.total})`, icon: Library },
-            { value: "pcbe", label: `Placas (${result.counts.pcbe})`, icon: CircuitBoard },
+            { value: "all", label: `Todos (${result.counts.pcbe + result.counts.pdf})`, icon: Library },
+            { value: "pcbe", label: `PCBE/PCB (${result.counts.pcbe})`, icon: CircuitBoard },
             { value: "pdf", label: `PDF (${result.counts.pdf})`, icon: FileText },
           ] as const
         ).map(({ value, label, icon: Icon }) => (

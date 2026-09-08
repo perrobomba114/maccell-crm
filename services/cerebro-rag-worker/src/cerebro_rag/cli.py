@@ -8,9 +8,9 @@ import psycopg
 from cerebro_rag.config import WorkerSettings
 from cerebro_rag.device_alias_catalog import catalog_pdf_aliases
 from cerebro_rag.embeddings import get_worker_embedding_service
-from cerebro_rag.indexer import PdfIndexer
+from cerebro_rag.indexer import PdfIndexer, pdf_descriptor
 from cerebro_rag.migrations import apply_migrations
-from cerebro_rag.pdf_inventory import iter_pdf_inventory
+from cerebro_rag.pdf_inventory import iter_pdf_inventory, published_pdf_paths
 from cerebro_rag.repair_indexer import RepairIndexer, repair_source_from_row
 from cerebro_rag.repairs import REPAIR_EXPORT_QUERY
 from cerebro_rag.repair_sync import run_repair_sync
@@ -27,6 +27,12 @@ def index_pdfs(
     entries = iter_pdf_inventory(settings.library_root, shard_index, shard_count)
     processed = ready = failed = pages = chunks = 0
     with psycopg.connect(settings.rag_database_url.get_secret_value()) as connection:
+        paths = [path.relative_to(settings.library_root.resolve()).as_posix() for path in published_pdf_paths(settings.library_root)]
+        connection.execute(
+            "UPDATE rag_documents SET retired_at=now(),updated_at=now() WHERE source_type='PDF' AND retired_at IS NULL AND NOT (relative_path = ANY(%s))",
+            (paths,),
+        )
+        connection.commit()
         indexer = PdfIndexer(
             connection,
             get_worker_embedding_service(settings),
@@ -45,6 +51,13 @@ def index_pdfs(
                 chunks += chunk_count
                 print(f"INDEXED {processed} ready={ready} skipped={int(skipped)} failed={failed}", flush=True)
             except Exception as error:
+                connection.rollback()
+                document_id = indexer.versions.create_or_get(pdf_descriptor(entry))
+                connection.execute(
+                    "UPDATE rag_documents SET status='FAILED', metadata=metadata || jsonb_build_object('error_type', %s::text), updated_at=now() WHERE id=%s",
+                    (type(error).__name__, document_id),
+                )
+                connection.commit()
                 failed += 1
                 print(f"FAILED {processed} type={type(error).__name__} ready={ready} failed={failed}", flush=True)
     print(f"SUMMARY processed={processed} ready={ready} failed={failed} pages={pages} chunks={chunks}")

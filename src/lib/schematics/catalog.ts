@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type { SchematicAsset, SchematicCatalog } from "./catalog-types";
 import { databaseCatalog, databaseSearchablePages } from "./database";
-import { mergeCatalogSources } from "./catalog-merge";
+import { mergeCatalogAssets } from "./catalog-merge";
 import { sameDevice } from "./catalog-types";
 import type { SearchablePage } from "./search";
 import { discoverPhysicalAssets } from "./physical-inventory";
@@ -28,7 +28,8 @@ export async function readCatalog(): Promise<SchematicCatalog> {
     // The technical worker can discover new files before the JSON snapshot is
     // rewritten. Use both persisted sources so a bulk upload is immediately
     // visible without recursively scanning thousands of files on every request.
-    return databaseAssets ? { ...result, assets: mergeCatalogSources(result.assets, databaseAssets) } : { ...result, assets: await discoverPhysicalAssets(libraryRoot(), result.assets) };
+    const physical = result.inventoryComplete ? result.assets : await discoverPhysicalAssets(libraryRoot(), result.assets);
+    return { ...result, assets: mergeCatalogAssets(physical, databaseAssets ?? []) };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { version: 1, importedAt: "", assets: await discoverPhysicalAssets(libraryRoot(), databaseAssets ?? []) };

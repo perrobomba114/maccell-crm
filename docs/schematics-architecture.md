@@ -31,17 +31,9 @@ RAG V2 (maccell-rag-worker → maccell-rag-db)
 Cerebro AI
 ```
 
-Durante una carga masiva, `catalog.json` puede quedar temporalmente atrasado
-respecto de `schematics.assets`. La biblioteca combina ambas fuentes para que
-los activos que el worker ya descubrió no queden ocultos mientras se actualiza
-el snapshot JSON. Por eso `1215/21561` significa **1.215 índices técnicos
-actuales sobre 21.561 activos del inventario**; no significa que sólo existan
-1.215 archivos.
+El worker publica `SCHEMATICS_ROOT/catalog.json` después de completar el inventario físico, con `inventoryComplete: true`. El CRM usa ese snapshot para determinar qué archivos existen y la base para enriquecerlos. Nunca se elige una fuente por tener más registros. Los registros históricos de DB no visibles en el snapshot se conservan para trazabilidad.
 
-Cuando el inventario técnico ya es mayor que el snapshot JSON, prevalece ese
-inventario para evitar sumar registros históricos que sólo quedaron en
-`Catalog.json`. Si todavía es menor durante una ingesta, se conserva el
-snapshot completo hasta que el worker alcance la misma fotografía física.
+`/mnt/data2/Pcbe/Catalog.json` es un manifiesto de adquisición con otra raíz relativa. No se consume directamente como catálogo del CRM. La recuperación y las inconsistencias verificadas están en [el reporte del 8 de septiembre](schematics-recovery-2026-09-08.md).
 
 ## Responsabilidad de cada capa
 
@@ -62,7 +54,7 @@ snapshot completo hasta que el worker alcance la misma fotografía física.
   esquemático/circuit diagram y pasa la identidad de dispositivo. Un archivo
   `image.pdf`, `boardview`, `PCB layer`, layout o repair case queda como
   documentación independiente.
-- La vista del árbol es virtual y estable: `PDF/PCBE → Marca → Modelo comercial →
+- La vista del árbol es virtual y estable: `Marca → Modelo comercial →
   Placas/Esquemáticos/Casos de reparación/Accesorios/Documentos`. Esto no mueve
   archivos físicos ni cambia sus rutas históricas.
 - Las consolas y marcas nuevas se agrupan por la identidad observada; no deben

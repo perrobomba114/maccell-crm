@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
-import { readFile, readdir, stat } from "node:fs/promises";
+import { readFile, readdir, stat, open } from "node:fs/promises";
 import path from "node:path";
 
 import type { SchematicAsset } from "./catalog-types";
 import { modelKey } from "./catalog-types";
+
+import { inventoryFormatProblem } from "./board-format";
 
 const FILE_PATTERN = /\.(?:pdf|pcb|pcbe)$/i;
 
@@ -20,6 +22,7 @@ async function walk(root: string): Promise<string[]> {
 }
 
 const BRAND_PREFIXES: Array<{ pattern: RegExp; value: string }> = [
+    { pattern: /^sony\s+playstation\b/i, value: "PLAYSTATION" },
     { pattern: /^(?:apple|iphone|ipad|ipod)\b/i, value: "APPLE" },
     { pattern: /^samsung\b/i, value: "SAMSUNG" },
     { pattern: /^(?:xiaomi|redmi|poco)\b/i, value: "XIAOMI" },
@@ -32,6 +35,7 @@ const BRAND_PREFIXES: Array<{ pattern: RegExp; value: string }> = [
     { pattern: /^oneplus\b/i, value: "ONEPLUS" },
     { pattern: /^nokia\b/i, value: "NOKIA" },
     { pattern: /^zte\b/i, value: "ZTE" },
+    ...["NINTENDO", "XBOX", "PLAYSTATION", "SONY", "SEGA", "VALVE", "GOOGLE", "ASUS", "ACER", "LENOVO", "DELL", "HP", "MSI", "INFINIX", "TECNO", "ITEL", "MEIZU", "MICROSOFT"].map(value => ({ pattern: new RegExp(`^${value}\\b`, "i"), value })),
 ];
 
 const GENERIC_MODEL_FOLDERS = /^(?:[a-z]\s*series|vip|free|premium|official|china|global)$/i;
@@ -64,15 +68,17 @@ export function declaredIdentity(relativePath: string, name: string): { brand?: 
     const parts = relativePath.split("/").filter(Boolean);
     const sourceIndex = parts[0]?.toLowerCase() === "sources" ? 1 : 0;
     const folders = parts.slice(sourceIndex, -1);
-    const technicalFolder = /^(?:pdf|pcbe|pcb|schematic|schematics)$/i;
+    const technicalFolder = /^(?:pdf|pcbe|pcb|schematic|schematics|schematic and boardview|repair cases?|diode value|block diagram|boardview|pcb layer|images?|documents?|manuals?|troubleshooting|sch)$/i;
     const modelFolders = folders.filter((folder) => !technicalFolder.test(folder));
+    const brandIndex = modelFolders.findIndex(folder => BRAND_PREFIXES.some(({ pattern }) => pattern.test(folder)));
+    if (brandIndex > 0) modelFolders.splice(0, brandIndex);
     const firstFolder = modelFolders[0];
     const fallbackModel = path.basename(name, path.extname(name));
 
     if (!firstFolder) return { model: fallbackModel };
 
     const prefixedBrand = BRAND_PREFIXES.find(({ pattern }) => pattern.test(firstFolder));
-    const firstIsBrandOnly = isBrandOnly(firstFolder);
+    const firstIsBrandOnly = /^sony\s+playstation$/i.test(cleanIdentityPart(firstFolder)) || isBrandOnly(firstFolder) || BRAND_PREFIXES.some(({ value }) => cleanIdentityPart(firstFolder).toUpperCase() === value);
 
     // Both layouts are present in the mounted library:
     //   sources/Samsung/A72/Pdf/file.pdf
@@ -97,11 +103,25 @@ export async function discoverPhysicalAssets(root: string, previous: readonly Sc
         const name = path.basename(relativePath);
         const kind = path.extname(name).toLowerCase() === ".pdf" ? "pdf" : "pcbe";
         const identity = declaredIdentity(relativePath, name);
-        if (previousAsset && previousAsset.size === facts.size) {
+        if (previousAsset && previousAsset.size === facts.size && previousAsset.fileMtimeMs === facts.mtimeMs) {
             // Physical folder identity is authoritative. Keep technical metadata from the
             // catalog, but never keep stale brand/model values after the folder layout changes.
+            let problem = previousAsset.detail;
+            let status = previousAsset.status;
+            if (previousAsset.inventoryVersion !== 2) {
+                const handle = await open(absolute, 'r');
+                try {
+                    const header = new Uint8Array(1024);
+                    const { bytesRead } = await handle.read(header, 0, header.length, 0);
+                    problem = inventoryFormatProblem(header.subarray(0, bytesRead), kind);
+                    status = problem ? "unsupported" : previousAsset.status === "locked" ? "locked" : "ready";
+                } finally { await handle.close(); }
+            }
             discovered.push({
                 ...previousAsset,
+                inventoryVersion: 2,
+                status,
+                detail: problem,
                 name,
                 kind,
                 brand: identity.brand,
@@ -112,9 +132,15 @@ export async function discoverPhysicalAssets(root: string, previous: readonly Sc
             continue;
         }
         const bytes = await readFile(absolute);
+        const after = await stat(absolute);
+        if (after.size !== facts.size || after.mtimeMs !== facts.mtimeMs) throw new Error(`INVENTORY_CHANGED: ${relativePath}`);
         const sha256 = createHash("sha256").update(bytes).digest("hex");
+        const problem = inventoryFormatProblem(bytes, kind);
         discovered.push({
-            id: createHash("sha256").update(relativePath).digest("hex"),
+            ...previousAsset,
+            identityVerified: previousAsset?.sha256 === sha256 ? previousAsset.identityVerified : false,
+            inventoryVersion: 2,
+            id: previousAsset?.id ?? createHash("sha256").update(relativePath).digest("hex"),
             name,
             kind,
             brand: identity.brand,
@@ -122,8 +148,10 @@ export async function discoverPhysicalAssets(root: string, previous: readonly Sc
             modelKey: modelKey(identity.model),
             relativePath,
             size: bytes.length,
+            fileMtimeMs: facts.mtimeMs,
             sha256,
-            status: "ready",
+            status: problem ? "unsupported" : "ready",
+            detail: problem,
         });
     }
     return discovered.sort((left, right) => left.relativePath.localeCompare(right.relativePath));

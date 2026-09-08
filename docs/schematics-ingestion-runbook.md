@@ -9,7 +9,7 @@ Este runbook es la guía humana de la skill [`schematic-library-ingestion`](../.
 - FileBrowser: publica ese mismo almacenamiento; no es otra copia.
 - Aplicación CRM: `sistema.maccell.com.ar`.
 - Montaje conocido en la aplicación: `/mnt/data2` se monta como `/app/upload/schematics/sources`.
-- Estructura canónica aprobada: `/mnt/data2/Pcbe/Catalog.json`,
+- Manifiesto de adquisición: `/mnt/data2/Pcbe/Catalog.json` (no es el snapshot consumido por el CRM),
   `/mnt/data2/pdf/<MARCA>/<MODELO COMERCIAL>/` y
   `/mnt/data2/pcbe/<MARCA>/<MODELO COMERCIAL>/`.
 - La especificación completa está en
@@ -102,7 +102,7 @@ El hash SHA-256 del contenido es la regla principal. El nombre, tamaño, modelo 
 | Etapa | Fuente de verdad | Herramienta |
 | --- | --- | --- |
 | Archivos | `/mnt/data2` | FileBrowser/SSH |
-| Catálogo | `/mnt/data2/Pcbe/Catalog.json` y `schematics.assets` | `scripts/import-schematics.ts` |
+| Catálogo | `SCHEMATICS_ROOT/catalog.json` (inventario completo) y enriquecimiento en `schematics.assets` | worker técnico / `scripts/reconcile-schematic-library.ts` |
 | Texto PDF | `schematics.pages` y `.index` | importador/worker |
 | PCBE y referencias | `schematics.technical_indexes` y `.technical` | `scripts/technical-worker.cjs` |
 | Embeddings | RAG V2: `rag_documents`, `rag_pages`, `rag_chunks` | `maccell-rag-worker` |

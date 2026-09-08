@@ -41,7 +41,7 @@ def parse_pdf_identity(relative_path: Path) -> PdfIdentity:
     samsung_matches = filename_matches or re.findall(samsung_pattern, searchable)
     motorola = re.search(r"\bXT\d{4,5}\b", searchable)
 
-    if "IPHONE" in searchable or "APPLE" in searchable:
+    if any(term in searchable for term in ("IPHONE", "IPAD", "IPOD", "MACBOOK", "APPLE")):
         brand = "APPLE"
     elif "SAMSUNG" in searchable or samsung_matches:
         brand = "SAMSUNG"
@@ -57,11 +57,27 @@ def parse_pdf_identity(relative_path: Path) -> PdfIdentity:
         first_directory = relative_path.parts[0].strip() if len(relative_path.parts) > 1 else ""
         brand = normalize_brand(first_directory) if first_directory.lower() != "pdf" else "UNKNOWN"
 
-    if samsung_matches:
+    # The mount can include pdf/<brand>/<model> and legacy brand/<model>/Pdf.
+    # Resolve folder identity before falling back to phone-specific filenames.
+    brands = {name: name for name in (
+        "NINTENDO", "XBOX", "PLAYSTATION", "SONY", "SEGA", "VALVE", "GOOGLE", "ASUS", "ACER",
+        "LENOVO", "DELL", "HP", "MSI", "INFINIX", "TECNO", "ITEL", "MEIZU", "MICROSOFT",
+        "OPPO", "VIVO", "REALME", "ONEPLUS", "NOKIA", "ZTE",
+    )}
+    for folder in relative_path.parts[:-1]:
+        label = re.sub(r"\s*\((?:VIP|FREE|OFFICIAL|PREMIUM|CHINA|GLOBAL)\)", "", _searchable(folder)).strip()
+        if label == "SONY PLAYSTATION":
+            brand = "PLAYSTATION"
+            break
+        if label in brands:
+            brand = brands[label]
+            break
+
+    if samsung_matches and brand == "SAMSUNG":
         model = re.sub(r"[\s_-]+", "-", max(samsung_matches, key=len))
     elif motorola:
         model = motorola.group(0)
-    elif brand == "APPLE":
+    elif brand == "APPLE" and "IPHONE" in searchable:
         model_match = re.search(r"\bIPHONE\s*(?:SE\s*)?\d{1,2}(?:\s*(?:PRO\s*MAX|PRO|PLUS|MINI))?\b", searchable)
         if model_match:
             model = model_match.group(0)
@@ -75,7 +91,7 @@ def parse_pdf_identity(relative_path: Path) -> PdfIdentity:
                     break
             model = parent_match or relative_path.stem
     else:
-        generic_folders = {"pdf", "pcbe", "sources", "files", "schematics", "manuals", "documentos", brand.lower()}
+        generic_folders = {"pdf", "pcbe", "sources", "files", "schematics", "manuals", "documentos", "schematic and boardview", "repair case", "repair cases", "diode value", "block diagram", "pcb layer", "images", "image", "sch", brand.lower()}
         meaningful_parts = [part for part in reversed(relative_path.parts[:-1]) if part.lower() not in generic_folders]
         model = meaningful_parts[0] if meaningful_parts else relative_path.stem
 
@@ -106,6 +122,13 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def published_pdf_paths(library_root: Path) -> list[Path]:
+    root = library_root.resolve(strict=True)
+    return sorted(candidate for candidate in root.rglob("*")
+        if candidate.suffix.casefold() == ".pdf" and candidate.is_file() and not candidate.is_symlink()
+        and not any(part.startswith(".") or part.casefold() == "backups" for part in candidate.relative_to(root).parts))
+
+
 def iter_pdf_inventory(
     library_root: Path,
     shard_index: int = 0,
@@ -114,9 +137,7 @@ def iter_pdf_inventory(
     if shard_count < 1 or shard_index < 0 or shard_index >= shard_count:
         raise ValueError("invalid inventory shard")
     root = library_root.resolve(strict=True)
-    pdf_candidates = sorted(
-        candidate for candidate in root.rglob("*") if candidate.suffix.casefold() == ".pdf"
-    )
+    pdf_candidates = published_pdf_paths(root)
     for position, candidate in enumerate(pdf_candidates):
         if position % shard_count != shard_index:
             continue

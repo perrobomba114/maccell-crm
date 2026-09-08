@@ -15,13 +15,15 @@ export type SchematicAsset = {
   identityVerificationHistory?: Array<{ verifiedBy: string; verifiedAt: string; brand: string; model: string; boardCode: string; revision: string; aliases: string[] }>;
   relativePath: string;
   size: number;
+  fileMtimeMs?: number;
+  inventoryVersion?: number;
   sha256: string;
   status: "ready" | "locked" | "unsupported";
   detail?: string;
   components?: number;
   nets?: number;
 };
-export type SchematicCatalog = { version: 1; importedAt: string; assets: SchematicAsset[] };
+export type SchematicCatalog = { version: 1; importedAt: string; inventoryComplete?: boolean; assets: SchematicAsset[] };
 
 export function modelKey(model: string): string {
   return model.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g, "");

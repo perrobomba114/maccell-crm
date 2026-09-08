@@ -75,3 +75,19 @@ test("commercial Samsung normalization keeps A03 and A03s separate", async () =>
     assert.deepEqual(assets.map((asset) => asset.modelKey), ["a03", "a03s"]);
     assert.equal(sameDevice(assets[0]!, assets[1]!), false);
 });
+
+test("console identity keeps model folders and ignores document roles", async () => {
+    const { declaredIdentity } = await import('../../lib/schematics/physical-inventory');
+    assert.deepEqual(declaredIdentity('sources/pcbe/Nintendo/SWITCH2/PCB layer/board.pcb', 'board.pcb'), { brand: 'NINTENDO', model: 'SWITCH2' });
+    assert.deepEqual(declaredIdentity('sources/pdf/SONY/PS5/Schematic and boardview/service.pdf', 'service.pdf'), { brand: 'SONY', model: 'PS5' });
+    assert.deepEqual(declaredIdentity('sources/pcbe/XBOX/Xbox Series S(VIP)/board.pcbe', 'board.pcbe'), { brand: 'XBOX', model: 'Xbox Series S' });
+});
+
+test("same-size file replacement invalidates the inventory hash", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'inventory-hash-'));
+    await writeFile(path.join(root, 'test.pdf'), '%PDF-one');
+    const [old] = await discoverPhysicalAssets(root, []);
+    await writeFile(path.join(root, 'test.pdf'), '%PDF-two');
+    const [updated] = await discoverPhysicalAssets(root, [{ ...old, fileMtimeMs: 0 }]);
+    assert.notEqual(updated.sha256, old.sha256);
+});

@@ -18,11 +18,12 @@ export function paginateCatalog(assets: SchematicAsset[], query: CatalogQuery) {
   const terms = normalized.split(/\s+/).map(identityKey).filter(Boolean);
   const exact = identityKey(normalized);
   const exactModel = declaredModel(normalized) === exact && assets.some(asset => identityKey(asset.model) === exact);
-  const filtered = assets.filter((asset) => (query.kind === "all" || asset.kind === query.kind) && (!exactModel || identityKey(asset.model) === exact) && terms.every(term => assetSearchText(asset).includes(term)));
+  const matching = assets.filter((asset) => (!exactModel || identityKey(asset.model) === exact) && terms.every(term => assetSearchText(asset).includes(term)));
+  const filtered = matching.filter(asset => query.kind === "all" || asset.kind === query.kind);
   if (terms.length) filtered.sort((a,b)=>Number(identityKey(b.model)===exact)-Number(identityKey(a.model)===exact) || assetPriority(a)-assetPriority(b) || a.name.localeCompare(b.name,'es',{numeric:true}));
   const counts = {
-    pcbe: filtered.filter((asset) => asset.kind === "pcbe").length,
-    pdf: filtered.filter((asset) => asset.kind === "pdf").length,
+    pcbe: matching.filter((asset) => asset.kind === "pcbe").length,
+    pdf: matching.filter((asset) => asset.kind === "pdf").length,
   };
   const start = (query.page - 1) * query.pageSize;
   return { assets: filtered.slice(start, start + query.pageSize), total: filtered.length, page: query.page, pageSize: query.pageSize, counts };
@@ -58,4 +59,11 @@ export function validatedSemanticMatches(selected: SchematicAsset, assets: Schem
     seen.add(key);
     return [{ assetId: asset.id, name: asset.name, page: row.page_number, excerpt: row.content.slice(0, 700), score: row.score, source: row.source }];
   });
+}
+
+/** Complete navigation inventory. Rendering of closed folders stays lazy. */
+export function treeCatalog(assets: SchematicAsset[], query: Omit<CatalogQuery, "page" | "pageSize">) {
+  const result = paginateCatalog(assets, { ...query, page: 1, pageSize: Math.max(1, assets.length) });
+  return { ...result, assets: result.assets.map(({ id, name, kind, brand, model, modelKey, relativePath, size, sha256, status, detail, boardCode, revision }) =>
+    ({ id, name, kind, brand, model, modelKey, relativePath, size, sha256, status, detail, boardCode, revision })) };
 }

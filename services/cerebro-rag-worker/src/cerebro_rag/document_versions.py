@@ -35,7 +35,16 @@ class DocumentVersionRepository:
                 model_family, document_type, authority
             )
             VALUES (%s::rag_source_type, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::rag_authority)
-            ON CONFLICT (source_type, source_id, sha256) DO NOTHING
+            ON CONFLICT (source_type, source_id, sha256) DO UPDATE SET
+                original_brand = excluded.original_brand,
+                original_model = excluded.original_model,
+                normalized_brand = excluded.normalized_brand,
+                normalized_model = excluded.normalized_model,
+                model_family = excluded.model_family,
+                document_type = excluded.document_type,
+                metadata = CASE WHEN (rag_documents.normalized_brand, rag_documents.normalized_model, rag_documents.document_type)
+                    IS DISTINCT FROM (excluded.normalized_brand, excluded.normalized_model, excluded.document_type)
+                    THEN rag_documents.metadata - 'index_schema_version' ELSE rag_documents.metadata END
             RETURNING id
             """,
             (

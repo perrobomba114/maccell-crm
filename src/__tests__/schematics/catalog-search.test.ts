@@ -69,3 +69,12 @@ test("legacy catalogs search brand/model terms independently of folder order", (
   assert.equal(paginateCatalog([legacy], { q: "Samsung A125M", kind: "all", page: 1, pageSize: 40 }).total, 1);
   assert.equal(paginateCatalog([legacy], { q: "A125M Samsung", kind: "all", page: 1, pageSize: 40 }).total, 1);
 });
+
+test('navigation keeps consoles beyond the old 5000 asset cutoff', async () => {
+  const { treeCatalog } = await import('../../lib/schematics/search');
+  const inventory = Array.from({ length: 5001 }, (_, index) => asset({ id: String(index) }));
+  inventory.push(asset({ id: 'console', brand: 'NINTENDO', model: 'SWITCH2' }));
+  const result = treeCatalog(inventory, { kind: 'all' });
+  assert.equal(result.assets.length, result.total);
+  assert.equal(result.assets.at(-1)?.id, 'console');
+});

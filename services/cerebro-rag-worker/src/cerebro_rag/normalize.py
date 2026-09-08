@@ -108,11 +108,13 @@ def normalize_brand(value: str) -> str:
 def normalize_model(brand: str, value: str) -> str:
     normalized_brand = normalize_brand(brand)
     clean = re.sub(r"[_\s-]+", " ", value.strip().upper())
-    if clean.startswith(f"{normalized_brand} "):
+    if normalized_brand not in {"XBOX", "PLAYSTATION"} and clean.startswith(f"{normalized_brand} "):
         clean = clean[len(normalized_brand) + 1 :]
     compact = clean.replace(" ", "")
 
     if normalized_brand == "APPLE":
+        if re.match(r"^(?:IPAD|IPOD|MACBOOK|IMAC|MAC MINI|MAC STUDIO)\b", clean):
+            return clean
         if compact in IPHONE_PM_MAP:
             return IPHONE_PM_MAP[compact]
         apple_match = re.match(r"^(?:IPHONE)?(\d{1,2}|SE(?:\d)?)(PROMAX|PRO_PROMAX|PRO|PLUS|MINI)?$", compact)

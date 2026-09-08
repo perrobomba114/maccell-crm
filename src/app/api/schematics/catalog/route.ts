@@ -1,7 +1,7 @@
 import { getCurrentUser } from "@/actions/auth-actions";
 import { readCatalog } from "@/lib/schematics/catalog";
 import { sameDevice } from "@/lib/schematics/catalog-types";
-import { paginateCatalog, type CatalogKind } from "@/lib/schematics/search";
+import { paginateCatalog, treeCatalog, type CatalogKind } from "@/lib/schematics/search";
 
 export const dynamic = "force-dynamic";
 const allowedKinds = new Set<CatalogKind>(["all", "pcbe", "pdf"]);
@@ -23,6 +23,7 @@ export async function GET(request: Request) {
       const wanted = new Set(ids);
       return Response.json(paginateCatalog(catalog.assets.filter((asset) => wanted.has(asset.id)), { q, kind: rawKind as CatalogKind, page, pageSize }));
     }
+    if (params.get("view") === "tree") return Response.json(treeCatalog(catalog.assets, { q, kind: rawKind as CatalogKind }));
     const relatedId = params.get("related");
     if (relatedId) {
       const selected = catalog.assets.find((asset) => asset.id === relatedId);

@@ -10,6 +10,8 @@ import { persistTechnicalIndex } from './technical-index-database';
 import { physicalInventoryRefreshMs, runBounded, workerConcurrency, withIndexConnection, selectIndexAssets } from './technical-worker-queue';
 import { discoverPhysicalAssets } from '../src/lib/schematics/physical-inventory';
 
+import { publishInventory } from './publish-schematic-inventory';
+
 const concurrency = workerConcurrency(process.env.SCHEMATICS_INDEX_CONCURRENCY);
 const inventoryRefreshMs = physicalInventoryRefreshMs(process.env.SCHEMATICS_INVENTORY_REFRESH_MS);
 const root = path.resolve(process.env.SCHEMATICS_ROOT ?? 'upload/schematics');
@@ -62,6 +64,7 @@ async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
   // still discovers all new files after the upload settles.
   if (!physicalAssets.length || inventoryExpired) {
     physicalAssets = await discoverPhysicalAssets(root, local);
+    await publishInventory(root, physicalAssets);
     physicalAssetsScannedAt = Date.now();
   }
   const physical = physicalAssets;
@@ -69,10 +72,10 @@ async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
     await reconcileAssetIdForPath(client, asset);
     // Refresh file facts atomically without overwriting concurrent identity edits.
     await client.query(`INSERT INTO schematics.assets AS previous(id,relative_path,sha256,kind,model_key,metadata) VALUES($1,$2,$3,$4,$5,$6)
-      ON CONFLICT(id) DO UPDATE SET relative_path=excluded.relative_path,sha256=excluded.sha256,kind=excluded.kind,
+      ON CONFLICT(id) DO UPDATE SET relative_path=excluded.relative_path,sha256=excluded.sha256,kind=excluded.kind,model_key=excluded.model_key,
       metadata=(previous.metadata - 'detail' - 'components' - 'nets') || jsonb_strip_nulls(jsonb_build_object(
         'relativePath',excluded.relative_path,'sha256',excluded.sha256,'kind',excluded.kind,'name',excluded.metadata->'name',
-        'size',excluded.metadata->'size','status',excluded.metadata->'status','detail',excluded.metadata->'detail',
+        'brand',excluded.metadata->'brand','model',excluded.metadata->'model','modelKey',excluded.metadata->'modelKey','fileMtimeMs',excluded.metadata->'fileMtimeMs','size',excluded.metadata->'size','status',excluded.metadata->'status','detail',excluded.metadata->'detail',
         'components',excluded.metadata->'components','nets',excluded.metadata->'nets'))
         || CASE WHEN previous.sha256<>excluded.sha256 THEN '{"identityVerified":false,"identityVerifiedBy":null,"identityVerifiedAt":null}'::jsonb ELSE '{}'::jsonb END,
       updated_at=CASE WHEN previous.sha256<>excluded.sha256 OR previous.relative_path<>excluded.relative_path THEN now() ELSE previous.updated_at END`, [asset.id,asset.relativePath,asset.sha256,asset.kind,asset.modelKey,JSON.stringify(asset)]);

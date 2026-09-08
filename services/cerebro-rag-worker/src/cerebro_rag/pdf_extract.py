@@ -129,6 +129,8 @@ def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> t
         images = convert_from_path(
             str(pdf_path),
             dpi=144,
+            size=4000,
+            timeout=90,
             first_page=index,
             last_page=index,
             fmt="png",
@@ -139,7 +141,7 @@ def extract_pdf_pages(pdf_path: Path, document_hash: str, cache_root: Path) -> t
             continue
         image = images[0]
         image.save(rendered_path, "PNG")
-        ocr_text = sanitize_extracted_text(pytesseract.image_to_string(image, lang="eng+spa")).strip()
+        ocr_text = sanitize_extracted_text(pytesseract.image_to_string(image, lang="eng+spa", timeout=90)).strip()
         combined_text = merge_page_texts(native_text, ocr_text)
         extracted.append(ExtractedPage(index, combined_text, method, rendered_path))
 

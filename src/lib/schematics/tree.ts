@@ -39,6 +39,8 @@ function brandLabel(value: string): string {
     lg: "LG", oppo: "Oppo", vivo: "Vivo", realme: "Realme", oneplus: "OnePlus",
     nintendo: "Nintendo", playstation: "PlayStation", sony: "Sony", xbox: "Xbox",
     microsoft: "Microsoft", sega: "Sega", steamdeck: "Steam Deck", valve: "Valve",
+    google: "Google", asus: "Asus", acer: "Acer", lenovo: "Lenovo", dell: "Dell", hp: "HP",
+    msi: "MSI", infinix: "Infinix", tecno: "Tecno", itel: "Itel", meizu: "Meizu", nokia: "Nokia", zte: "ZTE",
     bulk: "Otros", downloads: "Otros", download: "Otros", incoming: "Otros",
   };
   if (aliases[key]) return aliases[key];
@@ -52,7 +54,7 @@ function canonicalBrand(asset: SchematicAsset, pathParts: string[]): string {
   const known = new Set([
     "apple", "iphone", "ipad", "ipod", "samsung", "xiaomi", "redmi", "poco", "motorola", "moto",
     "huawei", "honor", "lg", "oppo", "vivo", "realme", "oneplus", "nintendo", "playstation", "sony",
-    "xbox", "microsoft", "sega", "steamdeck", "valve",
+    "xbox", "microsoft", "sega", "steamdeck", "valve", "google", "asus", "acer", "lenovo", "dell", "hp", "msi", "infinix", "tecno", "itel", "meizu", "nokia", "zte",
   ]);
   if (known.has(declaredKey) || [...known].some((brand) => declaredKey.startsWith(brand) && declaredKey.length > brand.length)) return brandLabel(declared);
   const pathBrand = pathParts.find((part) => /^(?:apple|iphone|ipad|ipod|samsung|xiaomi|redmi|poco|motorola|moto|huawei|honor|lg|oppo|vivo|realme|oneplus|nintendo|playstation|sony|xbox|microsoft|sega|steam\s*deck|valve)\b/i.test(part));

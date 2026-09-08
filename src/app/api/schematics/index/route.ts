@@ -1,4 +1,5 @@
 import {getCurrentUser} from '@/actions/auth-actions';
+import {readCatalog} from '@/lib/schematics/catalog';
 import {db} from '@/lib/db';
 import {readLibrarySemanticStatus} from '@/lib/schematics/semantic-status-server';
 import {libraryIndexIssues,type LibraryIndexIssueRow} from '@/lib/schematics/library-index-issues';
@@ -8,19 +9,20 @@ export async function GET() {
     const user=await getCurrentUser();
     if(!user)return Response.json({error:'Sesión requerida'},{status:401});
     if(!['ADMIN','TECHNICIAN'].includes(user.role))return Response.json({error:'Acceso restringido'},{status:403});
+    const ids=(await readCatalog()).assets.map(asset=>asset.id);
     const rows=await db.$queryRaw<{total:number;indexed:number;pending:number;failed:number;unsupported:number;verified:number}[]>`
       SELECT count(*)::integer AS total,
       count(*) FILTER(WHERE i.index_version=1 AND i.asset_sha256=a.sha256)::integer AS indexed,
       count(*) FILTER(WHERE a.metadata->>'status'='ready' AND (j.status IN ('pending','processing') OR i.asset_id IS NULL OR i.asset_sha256<>a.sha256 OR i.index_version<>1) AND COALESCE(j.status,'pending')<>'failed')::integer AS pending,
-      count(*) FILTER(WHERE j.status='failed')::integer AS failed,
+      count(*) FILTER(WHERE a.metadata->>'status'='ready' AND j.status='failed')::integer AS failed,
       count(*) FILTER(WHERE a.metadata->>'status'<>'ready')::integer AS unsupported,
       count(*) FILTER(WHERE a.metadata->>'identityVerified'='true')::integer AS verified
-      FROM schematics.assets a LEFT JOIN schematics.technical_indexes i ON i.asset_id=a.id LEFT JOIN schematics.index_jobs j ON j.asset_id=a.id`;
+      FROM schematics.assets a LEFT JOIN schematics.technical_indexes i ON i.asset_id=a.id LEFT JOIN schematics.index_jobs j ON j.asset_id=a.id WHERE a.id=ANY(${ids}::text[])`;
     const [issueRows,semantic]=await Promise.all([
       db.$queryRaw<LibraryIndexIssueRow[]>`SELECT a.id,a.kind,a.metadata->>'name' AS name,
         a.metadata->>'status' AS "catalogStatus",a.metadata->>'detail' AS "catalogDetail",j.status AS "jobStatus"
         FROM schematics.assets a LEFT JOIN schematics.index_jobs j ON j.asset_id=a.id
-        WHERE j.status='failed' OR a.metadata->>'status'<>'ready'
+        WHERE a.id=ANY(${ids}::text[]) AND (j.status='failed' OR a.metadata->>'status'<>'ready')
         ORDER BY CASE WHEN a.metadata->>'status'<>'ready' THEN 0 ELSE 1 END,a.id LIMIT 20`,
       readLibrarySemanticStatus(),
     ]);
@@ -35,9 +37,10 @@ export async function POST() {
     const user=await getCurrentUser();
     if(!user)return Response.json({error:'Sesión requerida'},{status:401});
     if(user.role!=='ADMIN')return Response.json({error:'Solo un administrador puede reindexar'},{status:403});
+    const ids=(await readCatalog()).assets.map(asset=>asset.id);
     const queued=await db.$executeRaw`INSERT INTO schematics.index_jobs(asset_id,asset_sha256,status)
       SELECT a.id,a.sha256,'pending' FROM schematics.assets a LEFT JOIN schematics.technical_indexes i ON i.asset_id=a.id LEFT JOIN schematics.index_jobs j ON j.asset_id=a.id
-      WHERE a.metadata->>'status'='ready' AND (i.asset_id IS NULL OR i.index_version<>1 OR i.asset_sha256<>a.sha256 OR j.status='failed')
+      WHERE a.id=ANY(${ids}::text[]) AND a.metadata->>'status'='ready' AND (i.asset_id IS NULL OR i.index_version<>1 OR i.asset_sha256<>a.sha256 OR j.status='failed')
       ON CONFLICT(asset_id) DO UPDATE SET status='pending',error=NULL,asset_sha256=excluded.asset_sha256,updated_at=now() WHERE schematics.index_jobs.status<>'processing'`;
     return Response.json({queued},{status:202});
   }catch(error){

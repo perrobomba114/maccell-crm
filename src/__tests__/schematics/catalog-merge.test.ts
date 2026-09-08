@@ -105,12 +105,19 @@ test("database-only legacy rows receive physical commercial identity before pair
   assert.equal(sameDevice(merged[0]!, merged[1]!), true);
 });
 
-test("technical inventory suppresses catalog-only historical rows once complete", () => {
+test("source sizes never prove that catalog-only paths are historical", () => {
   const catalog = [asset("a"), asset("legacy")];
   const database = [asset("a"), asset("b", { kind: "pcbe", name: "board.pcbe" }), asset("c")];
 
   const merged = mergeCatalogSources(catalog, database);
 
-  assert.deepEqual(merged.map((item) => item.id), ["a", "b", "c"]);
-  assert.equal(merged.some((item) => item.id === "legacy"), false);
+  assert.deepEqual(merged.map((item) => item.id), ["a", "legacy", "b", "c"]);
+  assert.equal(merged.some((item) => item.id === "legacy"), true);
+});
+
+test('equal-sized incomplete sources do not hide additions', () => {
+  const a = asset('a', {relativePath:'sources/Apple/A/a.pdf'});
+  const b = asset('b', {relativePath:'sources/Apple/B/b.pdf'});
+  const c = asset('c', {relativePath:'sources/Nintendo/Switch/c.pdf'});
+  assert.deepEqual(mergeCatalogSources([a,b],[b,c]).map(row=>row.id), ['a','b','c']);
 });

@@ -19,7 +19,7 @@ export function WorkbenchHeader(props: Props) {
         <p className="text-sm text-muted-foreground">Buscá el equipo. Abrí su placa o documentación.</p>
       </div>
       <div className="flex gap-2 text-xs font-semibold text-muted-foreground">
-        <span className="rounded-lg border px-3 py-2">{props.plates} placas</span>
+        <span className="rounded-lg border px-3 py-2">{props.plates} PCBE/PCB</span>
         <span className="rounded-lg border px-3 py-2">{props.documents} PDF</span>
       </div>
     </header>

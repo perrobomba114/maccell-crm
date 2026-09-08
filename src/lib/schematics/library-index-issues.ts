@@ -5,6 +5,8 @@ export type LibraryIndexIssueRow = {
 };
 export type LibraryIndexIssue = { id: string; name: string; status: 'failed' | 'unsupported'; reason: string; href: string };
 const safeReasons = new Set([
+  'La descarga contiene el catálogo de DZKJ, no el documento solicitado. Requiere recuperar el archivo original.',
+  'El contenido descargado no es un PDF válido. Requiere recuperar el archivo original.',
   'Este formato todavía no contiene geometría decodificable por el visor.',
   'El PDF requiere contraseña para abrirse e indexarse.',
   'No se pudo interpretar el contenido del archivo.',

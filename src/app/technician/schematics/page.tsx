@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { readCatalog } from "@/lib/schematics/catalog";
 import { SchematicsWorkbench } from "@/components/schematics/workbench";
-import { paginateCatalog } from "@/lib/schematics/search";
+import { treeCatalog } from "@/lib/schematics/search";
 
 export const dynamic = "force-dynamic";
 
@@ -11,5 +11,5 @@ export default async function SchematicsPage() {
   if (!user) redirect("/login");
   if (!["TECHNICIAN", "ADMIN"].includes(user.role)) redirect("/");
   const catalog = await readCatalog();
-  return <SchematicsWorkbench initial={paginateCatalog(catalog.assets, { kind: "all", page: 1, pageSize: 5000 })} userId={user.id} canEditIdentity={user.role === "ADMIN"} />;
+  return <SchematicsWorkbench initial={treeCatalog(catalog.assets, { kind: "all" })} userId={user.id} canEditIdentity={user.role === "ADMIN"} />;
 }

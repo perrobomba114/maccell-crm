@@ -60,6 +60,23 @@ def build_document_chunks(
     )
 
 
+def pdf_descriptor(entry: PdfInventoryEntry) -> DocumentDescriptor:
+    return DocumentDescriptor(
+        source_type="PDF",
+        source_id=entry.relative_path.as_posix(),
+        relative_path=entry.relative_path.as_posix(),
+        sha256=entry.sha256,
+        title=entry.identity.title,
+        original_brand=entry.identity.brand,
+        original_model=entry.identity.model,
+        normalized_brand=entry.identity.brand,
+        normalized_model=entry.identity.model,
+        document_type=entry.identity.document_type,
+        authority="TECHNICAL_DOCUMENT",
+        model_family=model_family(entry.identity.brand, entry.identity.model),
+    )
+
+
 class PdfIndexer:
     def __init__(
         self,
@@ -73,20 +90,7 @@ class PdfIndexer:
         self.versions = DocumentVersionRepository(connection)
 
     def index(self, entry: PdfInventoryEntry, force: bool = False) -> tuple[UUID, int, int, bool]:
-        descriptor = DocumentDescriptor(
-            source_type="PDF",
-            source_id=entry.relative_path.as_posix(),
-            relative_path=entry.relative_path.as_posix(),
-            sha256=entry.sha256,
-            title=entry.identity.title,
-            original_brand=entry.identity.brand,
-            original_model=entry.identity.model,
-            normalized_brand=entry.identity.brand,
-            normalized_model=entry.identity.model,
-            document_type=entry.identity.document_type,
-            authority="TECHNICAL_DOCUMENT",
-            model_family=model_family(entry.identity.brand, entry.identity.model),
-        )
+        descriptor = pdf_descriptor(entry)
         document_id = self.versions.create_or_get(descriptor)
         status, schema_version = self.connection.execute(
             """
@@ -96,6 +100,7 @@ class PdfIndexer:
             (document_id,),
         ).fetchone()
         if not force and document_metadata_current(status, schema_version):
+            self.connection.commit()
             return document_id, 0, 0, True
 
 

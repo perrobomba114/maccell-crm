@@ -163,3 +163,26 @@ class PdfInventoryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_console_brands_under_pdf_root_and_document_subfolders():
+    from pathlib import Path
+    from cerebro_rag.pdf_inventory import parse_pdf_identity
+    for path, brand, model in [
+        ('pdf/Nintendo/SWITCH2/Schematic and boardview/schematic.pdf', 'NINTENDO', 'SWITCH2'),
+        ('pdf/SONY/PS5/schematic.pdf', 'SONY', 'PS5'),
+        ('pdf/XBOX/Xbox Series S/Repair Case/case.pdf', 'XBOX', 'XBOX SERIES S'),
+    ]:
+        result = parse_pdf_identity(Path(path))
+        assert result.brand == brand
+        assert result.model == model
+
+
+def test_inventory_excludes_staging_backups_and_directories_with_pdf_suffix(tmp_path):
+    from cerebro_rag.pdf_inventory import published_pdf_paths
+    for name in ['pdf/Nintendo/Switch/valid.pdf', '.incoming-scraping/test.pdf', 'Backups/old.pdf']:
+        p = tmp_path / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b'%PDF-1.7')
+    (tmp_path / 'folder.pdf').mkdir()
+    assert [p.relative_to(tmp_path).as_posix() for p in published_pdf_paths(tmp_path)] == ['pdf/Nintendo/Switch/valid.pdf']
