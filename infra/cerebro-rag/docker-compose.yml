@@ -47,8 +47,9 @@ services:
     user: "1000:1000"
     working_dir: /app
     command: ["node", "scripts/technical-worker.cjs", "--retry-failed"]
+    env_file:
+      - /var/lib/maccell/upload/.technical-indexer.env
     environment:
-      DATABASE_URL: ${SOURCE_DATABASE_URL}
       SCHEMATICS_ROOT: /app/upload/schematics
       SCHEMATICS_INDEX_CONCURRENCY: "1"
       OMP_THREAD_LIMIT: "1"
