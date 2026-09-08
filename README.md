@@ -10,6 +10,7 @@ Este README es la entrada rápida del proyecto. Las reglas obligatorias para age
 - [.agents/skills/maccell/SKILL.md](./.agents/skills/maccell/SKILL.md): skill activa para agentes.
 - [.agents/skills/schematic-library-ingestion/SKILL.md](./.agents/skills/schematic-library-ingestion/SKILL.md): ingesta segura de PDF/PCBE, deduplicación, catálogo, índice técnico y RAG.
 - [docs/schematics-ingestion-runbook.md](./docs/schematics-ingestion-runbook.md): runbook para subir y acomodar nuevas tandas desde SCRAPING.
+- [docs/schematics-architecture.md](./docs/schematics-architecture.md): mapa de vínculos entre archivos físicos, catálogo, índice técnico, RAG V2 y Workbench.
 - [docs/agent-tooling.md](./docs/agent-tooling.md): Codex, Claude, skills y MCP recomendados.
 - [docs/technical-debt-roadmap.md](./docs/technical-debt-roadmap.md): checklist vivo de deuda técnica.
 
