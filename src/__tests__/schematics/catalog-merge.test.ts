@@ -79,3 +79,13 @@ test("technical inventory additions remain visible while catalog json lags", () 
   assert.equal(merged[0]?.identityVerified, true);
   assert.equal(merged[1]?.kind, "pcbe");
 });
+
+test("technical inventory suppresses catalog-only historical rows once complete", () => {
+  const catalog = [asset("a"), asset("legacy")];
+  const database = [asset("a"), asset("b", { kind: "pcbe", name: "board.pcbe" }), asset("c")];
+
+  const merged = mergeCatalogSources(catalog, database);
+
+  assert.deepEqual(merged.map((item) => item.id), ["a", "b", "c"]);
+  assert.equal(merged.some((item) => item.id === "legacy"), false);
+});

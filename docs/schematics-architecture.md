@@ -36,6 +36,18 @@ el snapshot JSON. Por eso `1215/21561` significa **1.215 índices técnicos
 actuales sobre 21.561 activos del inventario**; no significa que sólo existan
 1.215 archivos.
 
+Cuando el inventario técnico ya es mayor que el snapshot JSON, prevalece ese
+inventario para evitar sumar registros históricos que sólo quedaron en
+`Catalog.json`. Si todavía es menor durante una ingesta, se conserva el
+snapshot completo hasta que el worker alcance la misma fotografía física.
+
+Durante una carga masiva, `catalog.json` puede quedar temporalmente atrasado
+respecto de `schematics.assets`. La biblioteca combina ambas fuentes para que
+los activos que el worker ya descubrió no queden ocultos mientras se actualiza
+el snapshot JSON. Por eso `1215/21561` significa **1.215 índices técnicos
+actuales sobre 21.561 activos del inventario**; no significa que sólo existan
+1.215 archivos.
+
 ## Responsabilidad de cada capa
 
 | Capa | Fuente de verdad | Qué puede hacer | Qué no debe hacer |
@@ -94,7 +106,10 @@ los documentos RAG antes de declarar la biblioteca operativa.
 
 - Producción usa el servicio `MACCELL CRM` y un worker RAG separado en
   Dokploy; el montaje operativo esperado es `/mnt/data2`.
-- La página comprobada muestra `492 placas`, `3314 PDF` y `3806 archivos`.
+- Antes de `7078034`, la página mostraba `492 placas`, `3314 PDF` y `3806
+  archivos`, aunque el índice técnico ya reportaba `1215/21561`.
+- `7078034` hizo visibles los activos del inventario técnico; la corrección
+  posterior evita sumar las entradas históricas que sólo existen en el JSON.
 - El problema de vinculación de un PDF `image` como esquemático está cubierto
   por clasificación de roles y pruebas de regresión.
 - La normalización visual de marca/modelo está implementada con heurísticas

@@ -41,10 +41,26 @@ export function mergeCatalogAssets(physical: SchematicAsset[], database: Schemat
  * as the identity source and database metadata only enriches it.
  */
 export function mergeCatalogSources(catalog: SchematicAsset[], database: SchematicAsset[]): SchematicAsset[] {
+  // Once the technical inventory is larger than the import snapshot it is
+  // the complete reconciled source. Catalog-only rows are then historical
+  // leftovers and must not inflate the visible count. During the opposite
+  // transition, keep the physical/catalog snapshot complete until the worker
+  // catches up with it.
+  if (database.length <= catalog.length) return mergeCatalogAssets(catalog, database);
+
   const catalogById = new Map(catalog.map((asset) => [asset.id, asset]));
-  const databaseOnly = database
-    .filter((asset) => !catalogById.has(asset.id))
-    .slice()
-    .sort((left, right) => left.relativePath.localeCompare(right.relativePath, "es", { numeric: true, sensitivity: "base" }));
-  return [...mergeCatalogAssets(catalog, database), ...databaseOnly];
+  return database.map((asset) => {
+    const snapshot = catalogById.get(asset.id);
+    if (!snapshot || snapshot.sha256 !== asset.sha256) return asset;
+    return {
+      ...snapshot,
+      ...asset,
+      identityVerified: asset.identityVerified ?? snapshot.identityVerified,
+      identityVerifiedBy: asset.identityVerifiedBy ?? snapshot.identityVerifiedBy,
+      identityVerifiedAt: asset.identityVerifiedAt ?? snapshot.identityVerifiedAt,
+      aliases: asset.aliases ?? snapshot.aliases,
+      documentLinks: asset.documentLinks ?? snapshot.documentLinks,
+      identityVerificationHistory: asset.identityVerificationHistory ?? snapshot.identityVerificationHistory,
+    };
+  });
 }
