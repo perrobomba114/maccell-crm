@@ -20,6 +20,29 @@ let catalogSignature = '';
 let cachedCatalogAssets: SchematicAsset[] = [];
 let physicalAssets: SchematicAsset[] = [];
 let physicalAssetsScannedAt = 0;
+
+/**
+ * A previous catalog version could derive a different ID for an unchanged
+ * path. Rebind its dependent technical rows before the unique path upsert so
+ * one historical row cannot abort the complete library cycle.
+ */
+async function reconcileAssetIdForPath(client: pg.PoolClient, asset: SchematicAsset): Promise<void> {
+  const pathRows = await client.query<{ id: string }>('SELECT id FROM schematics.assets WHERE relative_path=$1', [asset.relativePath]);
+  const previousId = pathRows.rows[0]?.id;
+  if (!previousId || previousId === asset.id) return;
+
+  const currentRows = await client.query<{ id: string }>('SELECT id FROM schematics.assets WHERE id=$1', [asset.id]);
+  if (currentRows.rows.length) throw new Error(`CONFLICTING_ASSET_ID:${asset.relativePath}`);
+
+  await client.query('UPDATE schematics.pages SET asset_id=$1 WHERE asset_id=$2', [asset.id, previousId]);
+  await client.query('UPDATE schematics.technical_indexes SET asset_id=$1 WHERE asset_id=$2', [asset.id, previousId]);
+  await client.query('UPDATE schematics.index_jobs SET asset_id=$1 WHERE asset_id=$2', [asset.id, previousId]);
+  await client.query('UPDATE schematics.repair_consultations SET asset_id=$1 WHERE asset_id=$2', [asset.id, previousId]);
+  await client.query('UPDATE schematics.repair_entries SET asset_id=$1 WHERE asset_id=$2', [asset.id, previousId]);
+  await client.query('UPDATE schematics.repair_entries SET pdf_asset_id=$1 WHERE pdf_asset_id=$2', [asset.id, previousId]);
+  await client.query('UPDATE schematics.assets SET id=$1 WHERE id=$2', [asset.id, previousId]);
+}
+
 async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
   let local: SchematicAsset[] = cachedCatalogAssets;
   let nextSignature = '';
@@ -39,6 +62,7 @@ async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
   }
   const physical = physicalAssets;
   for (const asset of physical) {
+    await reconcileAssetIdForPath(client, asset);
     // Refresh file facts atomically without overwriting concurrent identity edits.
     await client.query(`INSERT INTO schematics.assets AS previous(id,relative_path,sha256,kind,model_key,metadata) VALUES($1,$2,$3,$4,$5,$6)
       ON CONFLICT(id) DO UPDATE SET relative_path=excluded.relative_path,sha256=excluded.sha256,kind=excluded.kind,
