@@ -30,3 +30,21 @@ export function mergeCatalogAssets(physical: SchematicAsset[], database: Schemat
     };
   });
 }
+
+/**
+ * Combines the persisted catalog snapshot with the technical inventory.
+ *
+ * During bulk imports the JSON snapshot can lag behind the worker. In that
+ * window the database is the only persisted list containing newly discovered
+ * physical assets, so the UI must not hide those rows just because the JSON
+ * file has not been rewritten yet. Shared ids still use the physical snapshot
+ * as the identity source and database metadata only enriches it.
+ */
+export function mergeCatalogSources(catalog: SchematicAsset[], database: SchematicAsset[]): SchematicAsset[] {
+  const catalogById = new Map(catalog.map((asset) => [asset.id, asset]));
+  const databaseOnly = database
+    .filter((asset) => !catalogById.has(asset.id))
+    .slice()
+    .sort((left, right) => left.relativePath.localeCompare(right.relativePath, "es", { numeric: true, sensitivity: "base" }));
+  return [...mergeCatalogAssets(catalog, database), ...databaseOnly];
+}

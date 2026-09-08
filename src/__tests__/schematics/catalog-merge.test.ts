@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mergeCatalogAssets } from "../../lib/schematics/catalog-merge";
+import { mergeCatalogAssets, mergeCatalogSources } from "../../lib/schematics/catalog-merge";
 import type { SchematicAsset } from "../../lib/schematics/catalog-types";
 
 function asset(id: string, overrides: Partial<SchematicAsset> = {}): SchematicAsset {
@@ -64,4 +64,18 @@ test("stale database identity cannot break a physical PCBE/PDF pair", () => {
   assert.equal(merged?.modelKey, physicalPdf.modelKey);
   assert.equal(merged?.relativePath, physicalPdf.relativePath);
   assert.equal(merged?.identityVerified, true);
+});
+
+test("technical inventory additions remain visible while catalog json lags", () => {
+  const catalog = [asset("a")];
+  const database = [
+    asset("a", { identityVerified: true }),
+    asset("b", { relativePath: "sources/Samsung/SM-A035M/board.pcbe", kind: "pcbe", name: "board.pcbe" }),
+  ];
+
+  const merged = mergeCatalogSources(catalog, database);
+
+  assert.deepEqual(merged.map((item) => item.id), ["a", "b"]);
+  assert.equal(merged[0]?.identityVerified, true);
+  assert.equal(merged[1]?.kind, "pcbe");
 });

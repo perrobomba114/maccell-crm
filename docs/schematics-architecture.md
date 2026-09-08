@@ -29,6 +29,13 @@ RAG V2 (maccell-rag-worker → maccell-rag-db)
 Cerebro AI
 ```
 
+Durante una carga masiva, `catalog.json` puede quedar temporalmente atrasado
+respecto de `schematics.assets`. La biblioteca combina ambas fuentes para que
+los activos que el worker ya descubrió no queden ocultos mientras se actualiza
+el snapshot JSON. Por eso `1215/21561` significa **1.215 índices técnicos
+actuales sobre 21.561 activos del inventario**; no significa que sólo existan
+1.215 archivos.
+
 ## Responsabilidad de cada capa
 
 | Capa | Fuente de verdad | Qué puede hacer | Qué no debe hacer |

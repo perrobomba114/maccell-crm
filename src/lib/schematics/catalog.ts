@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type { SchematicAsset, SchematicCatalog } from "./catalog-types";
 import { databaseCatalog, databaseSearchablePages } from "./database";
-import { mergeCatalogAssets } from "./catalog-merge";
+import { mergeCatalogSources } from "./catalog-merge";
 import { sameDevice } from "./catalog-types";
 import type { SearchablePage } from "./search";
 import { discoverPhysicalAssets } from "./physical-inventory";
@@ -25,10 +25,10 @@ export async function readCatalog(): Promise<SchematicCatalog> {
   try {
     const result = JSON.parse(await readFile(path.join(libraryRoot(), "catalog.json"), "utf8")) as SchematicCatalog;
     if (result.version !== 1 || !Array.isArray(result.assets)) throw new Error("Catálogo de esquemáticos inválido");
-    // The technical catalog is already produced from the mounted library. Re-scanning
-    // thousands of files during every page/API request makes the schematics route time out.
-    // Keep the physical walk only for installations where the database/catalog is absent.
-    return databaseAssets ? { ...result, assets: mergeCatalogAssets(result.assets, databaseAssets) } : { ...result, assets: await discoverPhysicalAssets(libraryRoot(), result.assets) };
+    // The technical worker can discover new files before the JSON snapshot is
+    // rewritten. Use both persisted sources so a bulk upload is immediately
+    // visible without recursively scanning thousands of files on every request.
+    return databaseAssets ? { ...result, assets: mergeCatalogSources(result.assets, databaseAssets) } : { ...result, assets: await discoverPhysicalAssets(libraryRoot(), result.assets) };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { version: 1, importedAt: "", assets: await discoverPhysicalAssets(libraryRoot(), databaseAssets ?? []) };
