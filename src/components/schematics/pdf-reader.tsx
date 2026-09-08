@@ -9,8 +9,8 @@ import { fitPageZoom, pdfRasterScale } from "@/lib/schematics/navigation";
 
 import { containsReference, readableReferenceZoom, referencesInText, validPdfBox, type PdfBox } from "@/lib/schematics/linked-navigation";
 import { usePdfPageIndex } from "./use-pdf-page-index";
-type Props = { toolbar?: ReactNode; id: string; page: number; onPage(page: number): void; references: ReadonlySet<string>; selected: string; onReference(reference: string, box: PdfBox): void; revision: number; focusBox?: PdfBox; focusToken: number; onTextAvailable(available: boolean): void };
-export default function PdfReader({ toolbar, id, page, onPage, references, selected, onReference, onTextAvailable, revision, focusBox, focusToken }: Props) {
+type Props = { referenceDestination?: string; toolbar?: ReactNode; id: string; page: number; onPage(page: number): void; references: ReadonlySet<string>; selected: string; onReference(reference: string, box: PdfBox): void; revision: number; focusBox?: PdfBox; focusToken: number; onTextAvailable(available: boolean): void };
+export default function PdfReader({ referenceDestination = "la placa", toolbar, id, page, onPage, references, selected, onReference, onTextAvailable, revision, focusBox, focusToken }: Props) {
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
@@ -108,7 +108,7 @@ export default function PdfReader({ toolbar, id, page, onPage, references, selec
     <div className="sch-reader-scroll" ref={container} tabIndex={0} aria-label="Área de navegación del PDF" title="Arrastrar para mover · Rueda para zoom · Shift + rueda para desplazar · + / − / 0 y flechas" {...navigation.handlers}>
       {busy && <div className="sch-reader-loading"><Loader2 size={17} className="animate-spin" />Cargando página…</div>}
       <div className="sch-reader-page" style={{ width: dimensions.width, height: dimensions.height }}><canvas ref={canvas} aria-label={`Página ${page} del esquema`} />
-        {overlays.map(({ box, labels, selected: highlighted }, i) => <button className={`sch-pdf-reference ${highlighted ? "is-selected" : ""}`} key={i} disabled={!labels.length} title={labels.length ? `Localizar ${labels.join(", ")} en la placa${pageIndex?.source === "ocr" ? " · OCR: verificar imagen" : ""}` : box.text} aria-label={labels.length ? `Localizar ${labels.join(", ")} en la placa` : `Coincidencia ${selected}`} style={{ left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.width * 100}%`, height: `${box.height * 100}%` }} onClick={() => { if (labels.length === 1) onReference(labels[0], box); else setChoices({ labels, box }); }} />)}
+        {overlays.map(({ box, labels, selected: highlighted }, i) => <button className={`sch-pdf-reference ${highlighted ? "is-selected" : ""}`} key={i} disabled={!labels.length} title={labels.length ? `Localizar ${labels.join(", ")} en ${referenceDestination}${pageIndex?.source === "ocr" ? " · OCR: verificar imagen" : ""}` : box.text} aria-label={labels.length ? `Localizar ${labels.join(", ")} en ${referenceDestination}` : `Coincidencia ${selected}`} style={{ left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.width * 100}%`, height: `${box.height * 100}%` }} onClick={() => { if (labels.length === 1) onReference(labels[0], box); else setChoices({ labels, box }); }} />)}
       </div>
     </div>
   </div>;

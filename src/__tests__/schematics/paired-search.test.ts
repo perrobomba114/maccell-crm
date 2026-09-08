@@ -72,3 +72,10 @@ test("SCH file prefixes identify electrical schematics",()=>{
  assert.equal(documentRole({...pdf,name:"Sch_note 12r.pdf"}),"schematic");
  assert.equal(documentRole({...pdf,name:"Sub sch_note 12r.pdf"}),"schematic");
 });
+
+test('service guides can open when a model has no standalone schematic, while schematics remain preferred',()=>{
+ const manual={...pdf,id:'manual',sha256:'manual',name:'Sm-a037m_troubleshooting.pdf'};
+ assert.equal(documentRole(manual),'manual');
+ assert.equal(recommendedCounterpartId(board,[manual],new Set()),manual.id);
+ assert.equal(recommendedCounterpartId(board,[manual,pdf],new Set()),pdf.id);
+});

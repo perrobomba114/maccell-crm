@@ -128,3 +128,11 @@ Los nueve shards de ingesta RAG pertenecen al perfil Compose `maintenance-indexi
 El proceso web no inicia el worker técnico salvo que `SCHEMATICS_BACKGROUND_INDEXING=true`; cuando se habilita, usa concurrencia uno. La navegación por referencias de PDFs con texto nativo funciona bajo demanda, con coordenadas reales y caché por SHA-256, sin esperar a OCR ni embeddings. Los PDFs escaneados siguen necesitando OCR. El catálogo comparte lecturas concurrentes durante cinco segundos y se invalida al cambiar el inventario físico o la identidad de un archivo.
 
 La ejecución normal de recuperación usa `ingestion-sequential` para RAG y `technical-indexer` para el índice técnico. Son contenedores separados del servidor web, con un CPU máximo cada uno y concurrencia uno; entre ambos no pueden consumir más de dos CPU. Procesan el inventario completo de forma reanudable y terminan al completar el recorrido. Los nueve shards siguen reservados al perfil de mantenimiento y no deben activarse junto a esta cola. Revisar los resúmenes terminales y los fallos por archivo antes de declarar finalizada la recuperación.
+
+### Referencias de PCBE y planos oficiales
+
+La coincidencia de texto no demuestra que un componente esté vinculado: `L41` puede ser un inductor del PCBE y una patilla BGA en el PDF. El visor detecta numeración local con redes `Net...` sin referencias de componentes compartidas y detiene ese salto automático. Conserva el PCBE y permite navegar desde las referencias del plano oficial del PDF a sus páginas de circuito. Esto no constituye un mapa PCBE/PDF verificado.
+
+Los manuales `Troubleshooting` y de servicio se ofrecen como manuales técnicos cuando no existe un esquemático independiente del mismo modelo. Un PDF llamado `image`, `layout` o `boardview` no se convierte por ello en esquema eléctrico. A03, A03 Core y A03s conservan identidades distintas.
+
+El worker aislado lee la conexión de escritura desde `/app/upload/.technical-indexer.env`, propiedad de UID 1000 y modo 600. Ese archivo se provisiona en el volumen existente desde la configuración efectiva del CRM, nunca en Git. No usar `SOURCE_DATABASE_URL`, que es una conexión de lectura para exportar datos al RAG. El bootstrap interpreta el archivo como datos, sin ejecutarlo como shell.

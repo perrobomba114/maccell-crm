@@ -114,7 +114,7 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
       }
       setPdfPage(1); setPdf(asset); updateUi({ reference: '', mode: targetBoard ? 'split' : 'pdf' }); return;
     }
-    const keepPdf = pdf && pdf.status === 'ready' && sameDevice(asset, pdf) && documentRole(pdf) === 'schematic';
+    const keepPdf = pdf && pdf.status === 'ready' && sameDevice(asset, pdf) && ['schematic','manual'].includes(documentRole(pdf));
     let targetPdf = keepPdf ? pdf : null;
     if (!targetPdf) {
       const choices = [...catalogCache.current.values(), ...initial.assets];

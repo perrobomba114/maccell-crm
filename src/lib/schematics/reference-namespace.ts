@@ -7,3 +7,14 @@ export function referenceNamespaceMismatch(componentNames: readonly string[], ne
   const localNets = netNames.filter(name=>/^net\s*\d+$/i.test(name)).length / netNames.length;
   return localNets > 0.9 && ![...board].some(name=>document.has(name));
 }
+
+/** Follow an explicit components-layout heading to its accompanying reference drawing. */
+export function officialLayoutPages(pages: readonly {page:number;text:string}[]): number[] {
+  return pages.flatMap((page,index)=>{
+    if (/Manufacture\s+Count|Created\s+date\s+of\s+PCB/i.test(page.text)) return [page.page];
+    if (!/Components?\s+Layout|Component\s+Placement/i.test(page.text)) return [];
+    const references=(text:string)=>(text.match(/\b[A-Z]{1,5}\d{3,5}\b/g)??[]).length;
+    if(references(page.text)>=30)return [page.page];
+    const next=pages[index+1];return next&&references(next.text)>=30?[next.page]:[];
+  });
+}

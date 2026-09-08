@@ -8,7 +8,7 @@ export function declaredModel(text: string): string | null {
 export function catalogQuery(value: string): string {
   return value.replace(/\b(?:iphone[\s_-]*)?(\d{1,2})\s*(pm|pro\s*max)\b/gi, 'iphone $1 pro max');
 }
-export function documentRole(asset: SchematicAsset): 'schematic' | 'board' | 'accessory' | 'repair' | 'document' {
+export function documentRole(asset: SchematicAsset): 'schematic' | 'board' | 'accessory' | 'repair' | 'document' | 'manual' {
   const name = asset.name.toLowerCase();
   if (/repair.?case|case.?repair|malfunction|fault|failure|common.?issue/.test(name)) return 'repair';
   if (/flexible|flat.?cable|face.?id|front.?camera|flex\b/.test(name)) return 'accessory';
@@ -17,11 +17,12 @@ export function documentRole(asset: SchematicAsset): 'schematic' | 'board' | 'ac
   if (/schematic|esquem[aá]tico|circuit.?diagram|diagrama.?de.?circuito|(?:^|[ _-])sch(?:[ _-]|\.pdf$)/i.test(name)) return 'schematic';
   // A rendered board image/layout alone is not an electrical schematic.
   if (/\b(?:image|board.?view|pcb.?layer|board.?image|layout)\b/.test(name)) return 'document';
+  if (/troubleshooting|service[ _-]*manual|manual[ _-]*(?:de[ _-]*)?servicio/i.test(name)) return 'manual';
   return 'document';
 }
-export const roleLabels = {schematic:'Esquema',board:'Placa',accessory:'Flex / accesorio',repair:'Caso de reparación',document:'Documento'};
+export const roleLabels = {schematic:'Esquema',board:'Placa',accessory:'Flex / accesorio',repair:'Caso de reparación',document:'Documento',manual:'Manual técnico'};
 export function assetPriority(asset: SchematicAsset): number {
-  return {schematic:0,board:1,accessory:2,document:3,repair:4}[documentRole(asset)];
+  return {schematic:0,board:1,accessory:2,document:3,repair:4,manual:1}[documentRole(asset)];
 }
 export function preferredCounterpart(compatible: SchematicAsset[]): SchematicAsset | null {
   const seen = new Set<string>();
@@ -41,8 +42,9 @@ export function schematicCandidates(anchor: SchematicAsset, catalog: SchematicAs
   const boardCodes = new Set(codes(anchor));
   const score = (asset: SchematicAsset) => (pairIsVerified(anchor,asset) ? 100 : 0)
     + (codes(asset).some(code => boardCodes.has(code)) ? 20 : 0)
+    + (documentRole(asset) === 'schematic' ? 1000 : 0)
     + (/complete|completo|full/i.test(asset.name) ? 3 : 0);
-  const sorted = catalog.filter(asset => asset.status === 'ready' && asset.kind === 'pdf' && sameDevice(anchor,asset) && documentRole(asset) === 'schematic')
+  const sorted = catalog.filter(asset => asset.status === 'ready' && asset.kind === 'pdf' && sameDevice(anchor,asset) && ['schematic','manual'].includes(documentRole(asset)))
     .sort((a,b) => score(b)-score(a) || a.name.localeCompare(b.name,'es',{numeric:true}) || a.relativePath.localeCompare(b.relativePath));
   const seen = new Set<string>();
   return sorted.filter(asset => { if(seen.has(asset.sha256))return false;seen.add(asset.sha256);return true; });

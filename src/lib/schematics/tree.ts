@@ -103,7 +103,7 @@ function treeIdentity(asset: SchematicAsset): { brand: string; model: string; ca
   const modelParts = (brandIndex >= 0 ? parts.slice(brandIndex + 1) : parts).filter(part => cleanLabel(part).toLowerCase() !== brand.toLowerCase());
   const model = commercialModel(asset, brand, modelParts.at(-1) ?? "Modelo sin clasificar");
   const role = documentRole(asset);
-  const category = role === "board" ? "Placas" : role === "schematic" ? "Esquemáticos" : role === "repair" ? "Casos de reparación" : role === "accessory" ? "Accesorios" : "Documentos";
+  const category = role === "board" ? "Placas" : role === "schematic" ? "Esquemáticos" : role === "manual" ? "Manuales técnicos" : role === "repair" ? "Casos de reparación" : role === "accessory" ? "Accesorios" : "Documentos";
   return { brand, model, category };
 }
 

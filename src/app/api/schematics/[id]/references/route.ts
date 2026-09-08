@@ -11,7 +11,7 @@ import { currentReferenceFile, mergeReferenceMatches, readRagReferenceMatches } 
 import { nativeReferencePages } from "@/lib/schematics/native-reference-index";
 import { searchSchematicReferences } from "@/lib/schematics/schematic-reference-search";
 import {boardReferenceProfile} from "@/lib/schematics/board-reference-profile";
-import {referenceNamespaceMismatch} from "@/lib/schematics/reference-namespace";
+import {referenceNamespaceMismatch,officialLayoutPages} from "@/lib/schematics/reference-namespace";
 import { sameDevice } from "@/lib/schematics/catalog-types";
 
 export const dynamic = "force-dynamic";
@@ -39,13 +39,13 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         if (referenceNamespaceMismatch(profile.components,profile.nets,text)) return Response.json({
           matches:[],status:'mapping_required',
           referenceNames:[...new Set(text.toUpperCase().match(/\b[A-Z]{1,5}\d{3,5}\b/g) ?? [])],
-          layoutPages:native.filter(page=>/Manufacture\s+Count|Created\s+date\s+of\s+PCB/i.test(page.text)).map(page=>page.page),
+          layoutPages:officialLayoutPages(native),
         });
       }
     }
     type ReferenceMatchItem = { page: number; excerpt: string; boxes?: import("@/lib/schematics/unified-index").ReferenceBox[] };
     let matches: ReferenceMatchItem[] = technical && technical.complete !== false ? indexReferenceMatches(technical.pages, term) : [];
-    if (matches.length) {
+    if (matches.some(match=>match.boxes?.length)) {
       return Response.json({
         matches,
         status: "indexed",
@@ -70,7 +70,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     matches = matches.length ? matches : findReferencePages(pages, term);
     const sources = [...new Set(pages.map((page) => page.source ?? "text"))];
     // Native PDF references must work before the background OCR/RAG queue finishes.
-    if (!matches.length) {
+    if (!matches.length || matches.every(match=>!match.boxes?.length)) {
       try {
         const native = await nativeReferencePages(asset,libraryRoot());
         matches = indexReferenceMatches(native,term);
