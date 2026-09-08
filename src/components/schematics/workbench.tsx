@@ -99,8 +99,8 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
       const keepBoard = boardAsset && sameDevice(asset, boardAsset);
       let targetBoard = keepBoard ? boardAsset : null;
       if (!targetBoard) {
-        targetBoard = [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pcbe" && sameDevice(asset, item) && documentRole(item) === "board")
-          ?? [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pcbe" && sameDevice(asset, item))
+        targetBoard = [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pcbe" && item.status === "ready" && sameDevice(asset, item) && documentRole(item) === "board")
+          ?? [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pcbe" && item.status === "ready" && sameDevice(asset, item))
           ?? null;
       }
       if (targetBoard) {
@@ -116,8 +116,8 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     const keepPdf = pdf && sameDevice(asset, pdf);
     let targetPdf = keepPdf ? pdf : null;
     if (!targetPdf) {
-      targetPdf = [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pdf" && sameDevice(asset, item) && documentRole(item) === "schematic")
-        ?? [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pdf" && sameDevice(asset, item))
+      targetPdf = [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pdf" && item.status === "ready" && sameDevice(asset, item) && documentRole(item) === "schematic")
+        ?? [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pdf" && item.status === "ready" && sameDevice(asset, item))
         ?? null;
     }
     if (targetPdf) {

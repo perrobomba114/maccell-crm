@@ -7,6 +7,10 @@ export function useBoardDocument(asset: SchematicAsset | null) {
   const [result, setResult] = useState<{ id?: string; board: PcbeDocument | null; error: string; loading: boolean }>({ board: null, error: "", loading: false });
   useEffect(() => {
     if (!asset) return;
+    if (asset.status !== "ready") {
+      setResult({ id: asset.id, board: null, error: asset.detail || "El archivo requiere revisión antes de abrirse como placa.", loading: false });
+      return;
+    }
     const controller = new AbortController();
     let worker: Worker | undefined;
     setResult({ id: asset.id, board: null, error: "", loading: true });

@@ -91,8 +91,9 @@ def parse_pdf_identity(relative_path: Path) -> PdfIdentity:
                     break
             model = parent_match or relative_path.stem
     else:
-        generic_folders = {"pdf", "pcbe", "sources", "files", "schematics", "manuals", "documentos", "schematic and boardview", "repair case", "repair cases", "diode value", "block diagram", "pcb layer", "images", "image", "sch", brand.lower()}
-        meaningful_parts = [part for part in reversed(relative_path.parts[:-1]) if part.lower() not in generic_folders]
+        generic_folders = {"pdf", "pcbe", "sources", "files", "schematics", "manuals", "documentos", "schematic and boardview", "repair case", "repair cases", "diode value", "block diagram", "pcb layer", "images", "image", "sch", "sony playstation", brand.lower()}
+        folders = [re.sub(r"\s*\((?:vip|free|official|premium|china|global)\)", "", part, flags=re.IGNORECASE).strip() for part in relative_path.parts[:-1]]
+        meaningful_parts = [part for part in reversed(folders) if part.lower() not in generic_folders]
         model = meaningful_parts[0] if meaningful_parts else relative_path.stem
 
     if any(term in searchable for term in ("REPAIR CASE", "FAULT", "FAILURE", "COMMON PROBLEMS", "FLYING WIRE", "FLY LINE")):

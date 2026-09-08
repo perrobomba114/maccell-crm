@@ -186,3 +186,9 @@ def test_inventory_excludes_staging_backups_and_directories_with_pdf_suffix(tmp_
         p.write_bytes(b'%PDF-1.7')
     (tmp_path / 'folder.pdf').mkdir()
     assert [p.relative_to(tmp_path).as_posix() for p in published_pdf_paths(tmp_path)] == ['pdf/Nintendo/Switch/valid.pdf']
+
+
+def test_flat_playstation_source_uses_document_identity():
+    result = parse_pdf_identity(Path('pdf/SONY PlayStation/PS4 Power Supply Schematic ADP-240AR.pdf'))
+    assert result.brand == 'PLAYSTATION'
+    assert result.model.startswith('PS4 POWER SUPPLY')
