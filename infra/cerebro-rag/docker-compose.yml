@@ -18,8 +18,8 @@ x-ingestion-base: &ingestion-base
     REMOTE_EMBEDDING_SECRET: ${INTERNAL_API_SECRET}
     REMOTE_EMBEDDING_TIMEOUT_SECONDS: "45"
     HF_HOME: /model-cache
-    OMP_NUM_THREADS: "3"
-    MKL_NUM_THREADS: "3"
+    OMP_NUM_THREADS: "1"
+    MKL_NUM_THREADS: "1"
   volumes:
     - /mnt/data2:/library:ro
     - /var/lib/maccell/rag-pages:/page-cache
@@ -36,6 +36,33 @@ x-ingestion-base: &ingestion-base
         memory: 2G
 
 services:
+  ingestion-sequential:
+    <<: *ingestion-base
+    profiles: []
+    command: ["sh", "-lc", "cerebro-rag migrate && exec cerebro-rag index-pdfs"]
+
+  technical-indexer:
+    image: maccell-fhexow:latest
+    restart: on-failure
+    user: "1000:1000"
+    working_dir: /app
+    command: ["node", "scripts/technical-worker.cjs", "--retry-failed"]
+    environment:
+      DATABASE_URL: ${SOURCE_DATABASE_URL}
+      SCHEMATICS_ROOT: /app/upload/schematics
+      SCHEMATICS_INDEX_CONCURRENCY: "1"
+      OMP_THREAD_LIMIT: "1"
+    volumes:
+      - /var/lib/maccell/upload:/app/upload
+      - /mnt/data2:/app/upload/schematics/sources:ro
+    networks:
+      - dokploy-network
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 6G
+
   worker:
     <<: *worker-image
     build:
