@@ -17,13 +17,13 @@ type ModelExecutor = {
     }>;
 };
 
-type UnifiedFinishReason = {
-    unified?: string;
-};
-
 function normalizeFinishReason(result: { finishReason?: unknown }) {
-    if (result.finishReason && typeof result.finishReason === 'object') {
-        result.finishReason = (result.finishReason as UnifiedFinishReason).unified || 'stop';
+    if (typeof result.finishReason === 'string') {
+        const raw = result.finishReason;
+        result.finishReason = {
+            unified: raw === 'length' ? 'length' : raw === 'tool-calls' ? 'tool-calls' : raw === 'content-filter' ? 'content-filter' : raw === 'error' ? 'error' : raw === 'stop' ? 'stop' : 'other',
+            raw,
+        };
     }
 }
 
@@ -59,9 +59,10 @@ const isGroqConfig = (config: FallbackModelConfig): boolean => config.keyId.star
 export function createFallbackModel(configs: FallbackModelConfig[], onSelect: (info: FallbackModelConfig) => void) {
     if (configs.length === 0) throw new Error("No model configs provided");
     return {
-        specificationVersion: 'v2',
+        specificationVersion: 'v3',
         provider: 'cerebro-fallback',
         modelId: 'fallback-logic',
+        supportedUrls: { 'image/*': [/^https?:\/\/.+$/] },
         doGenerate: async (params: unknown) => {
             let lastErr: unknown;
             let groqRateLimited = false;

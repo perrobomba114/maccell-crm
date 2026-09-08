@@ -10,6 +10,7 @@ export async function GET(request: Request): Promise<Response> {
     if (!user) return Response.json({ error: "No autorizado" }, { status: 401 });
     await ensureRepairChatListener();
     const encoder = new TextEncoder();
+    let closeStream: (() => void) | null = null;
     const stream = new ReadableStream<Uint8Array>({
         start(controller) {
             controller.enqueue(encoder.encode(`event: connected\ndata: ${JSON.stringify({ connectionId: randomUUID() })}\nretry: 3000\n\n`));
@@ -19,11 +20,20 @@ export async function GET(request: Request): Promise<Response> {
                     || (user.role === "TECHNICIAN" && (user.id === event.assignedUserId || user.id === event.previousAssignedUserId));
                 if (allowed) controller.enqueue(encoder.encode(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`));
             });
-            request.signal.addEventListener("abort", () => {
+            let closed = false;
+            closeStream = () => {
+                if (closed) return;
+                closed = true;
                 unsubscribe();
-                controller.close();
-            }, { once: true });
+                try {
+                    controller.close();
+                } catch {
+                    // The runtime already closed the stream.
+                }
+            };
+            request.signal.addEventListener("abort", closeStream, { once: true });
         },
+        cancel() { closeStream?.(); },
     });
     return new Response(stream, {
         headers: {

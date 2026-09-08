@@ -43,3 +43,12 @@ test("does not hammer the remaining Groq keys after an organization rate limit",
 
     assert.deepEqual(attempts, ["groq-1", "local"]);
 });
+
+test("declares the current AI SDK language-model protocol", () => {
+    const fallback = createFallbackModel([
+        { instance: { doGenerate: async () => ({ finishReason: "stop" }), doStream: async () => ({ stream: new ReadableStream() }) }, label: "test", keyId: "test" },
+    ], () => undefined);
+
+    assert.equal(fallback.specificationVersion, "v3");
+    assert.deepEqual(fallback.supportedUrls, { "image/*": [/^https?:\/\/.+$/] });
+});

@@ -23,5 +23,7 @@ test("SSE route authenticates and disables proxy buffering", () => {
     assert.match(source, /text\/event-stream/);
     assert.match(source, /X-Accel-Buffering/);
     assert.match(source, /request\.signal/);
+    assert.match(source, /cancel\(\)/);
+    assert.match(source, /unsubscribe\(\)/);
     assert.match(source, /previousAssignedUserId/);
 });
