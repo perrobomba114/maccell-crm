@@ -67,3 +67,8 @@ test('confirmed pairs are bound to both current file hashes',()=>{
  assert.equal(confirmedPair({...linked,sha256:'changed'},pdf),false);
  assert.equal(confirmedPair(linked,{...pdf,model:'iPhone 13 Pro',modelKey:'iphone13pro'}),false);
 });
+
+test("SCH file prefixes identify electrical schematics",()=>{
+ assert.equal(documentRole({...pdf,name:"Sch_note 12r.pdf"}),"schematic");
+ assert.equal(documentRole({...pdf,name:"Sub sch_note 12r.pdf"}),"schematic");
+});

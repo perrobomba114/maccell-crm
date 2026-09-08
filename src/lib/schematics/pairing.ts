@@ -14,7 +14,7 @@ export function documentRole(asset: SchematicAsset): 'schematic' | 'board' | 'ac
   if (/flexible|flat.?cable|face.?id|front.?camera|flex\b/.test(name)) return 'accessory';
   if (asset.kind === 'pcbe') return 'board';
   // A combined schematic + layout still contains the electrical schematic.
-  if (/schematic|esquem[aá]tico|circuit.?diagram|diagrama.?de.?circuito|(?:^|[ _-])sch\.pdf$/i.test(name)) return 'schematic';
+  if (/schematic|esquem[aá]tico|circuit.?diagram|diagrama.?de.?circuito|(?:^|[ _-])sch(?:[ _-]|\.pdf$)/i.test(name)) return 'schematic';
   // A rendered board image/layout alone is not an electrical schematic.
   if (/\b(?:image|board.?view|pcb.?layer|board.?image|layout)\b/.test(name)) return 'document';
   return 'document';

@@ -10,6 +10,8 @@ import { queryRag } from "@/lib/cerebro-v2/rag-db";
 import { currentReferenceFile, mergeReferenceMatches, readRagReferenceMatches } from "@/lib/schematics/rag-reference-pages";
 import { nativeReferencePages } from "@/lib/schematics/native-reference-index";
 import { searchSchematicReferences } from "@/lib/schematics/schematic-reference-search";
+import {boardReferenceProfile} from "@/lib/schematics/board-reference-profile";
+import {referenceNamespaceMismatch} from "@/lib/schematics/reference-namespace";
 import { sameDevice } from "@/lib/schematics/catalog-types";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +29,20 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (!asset) return Response.json({ error: "PDF no encontrado" }, { status: 404 });
     if (asset.status !== "ready") return Response.json({ matches: [], status: asset.status });
     const technical = await readTechnicalIndex(asset);
+    const boardId = new URL(request.url).searchParams.get('board');
+    const board = catalog.assets.find(candidate=>candidate.id===boardId && candidate.kind==='pcbe' && candidate.status==='ready');
+    if (board && sameDevice(board,asset)) {
+      const profile = await boardReferenceProfile(board,libraryRoot());
+      if (profile.nets.filter(name=>/^net\s*\d+$/i.test(name)).length > profile.nets.length * .9) {
+        const native = await nativeReferencePages(asset,libraryRoot());
+        const text = native.map(page=>page.text).join(' ');
+        if (referenceNamespaceMismatch(profile.components,profile.nets,text)) return Response.json({
+          matches:[],status:'mapping_required',
+          referenceNames:[...new Set(text.toUpperCase().match(/\b[A-Z]{1,5}\d{3,5}\b/g) ?? [])],
+          layoutPages:native.filter(page=>/Manufacture\s+Count|Created\s+date\s+of\s+PCB/i.test(page.text)).map(page=>page.page),
+        });
+      }
+    }
     type ReferenceMatchItem = { page: number; excerpt: string; boxes?: import("@/lib/schematics/unified-index").ReferenceBox[] };
     let matches: ReferenceMatchItem[] = technical && technical.complete !== false ? indexReferenceMatches(technical.pages, term) : [];
     if (matches.length) {
@@ -63,8 +79,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         console.error('[ESQUEMATICOS] No se pudo extraer texto nativo',error instanceof Error ? error.message : 'Error');
       }
     }
-    const boardId = new URL(request.url).searchParams.get('board');
-    const board = catalog.assets.find(candidate=>candidate.id===boardId && candidate.kind==='pcbe' && candidate.status==='ready');
     if (!matches.length && board && sameDevice(board,asset)) {
       const found = await searchSchematicReferences(board,asset.id,catalog.assets,term,async candidate=>{
         const indexed = await readTechnicalIndex(candidate);
