@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { mergeCatalogAssets, mergeCatalogSources } from "../../lib/schematics/catalog-merge";
-import type { SchematicAsset } from "../../lib/schematics/catalog-types";
+import { sameDevice, type SchematicAsset } from "../../lib/schematics/catalog-types";
 
 function asset(id: string, overrides: Partial<SchematicAsset> = {}): SchematicAsset {
   return {
@@ -78,6 +78,31 @@ test("technical inventory additions remain visible while catalog json lags", () 
   assert.deepEqual(merged.map((item) => item.id), ["a", "b"]);
   assert.equal(merged[0]?.identityVerified, true);
   assert.equal(merged[1]?.kind, "pcbe");
+});
+
+test("database-only legacy rows receive physical commercial identity before pairing", () => {
+  const database = [
+    asset("a", {
+      kind: "pcbe",
+      name: "A03s board.pcbe",
+      brand: "SAMSUNG",
+      model: "A series",
+      modelKey: "aseries",
+      relativePath: "sources/pcbe/SAMSUNG/A series(VIP)/A03s 96516/A03s board.pcbe",
+    }),
+    asset("b", {
+      name: "A03s schematic.pdf",
+      brand: "SAMSUNG",
+      model: "A03s 96516",
+      modelKey: "a03s96516",
+      relativePath: "sources/pdf/SAMSUNG/A series(VIP)/A03s 96516/A03s schematic.pdf",
+    }),
+  ];
+
+  const merged = mergeCatalogSources([], database);
+
+  assert.deepEqual(merged.map((item) => item.modelKey), ["a03s", "a03s"]);
+  assert.equal(sameDevice(merged[0]!, merged[1]!), true);
 });
 
 test("technical inventory suppresses catalog-only historical rows once complete", () => {

@@ -1,4 +1,16 @@
 import type { SchematicAsset } from "./catalog-types";
+import { modelKey } from "./catalog-types";
+import { declaredIdentity } from "./physical-inventory";
+
+function applyPhysicalIdentity(asset: SchematicAsset): SchematicAsset {
+  const identity = declaredIdentity(asset.relativePath, asset.name);
+  return {
+    ...asset,
+    brand: identity.brand,
+    model: identity.model,
+    modelKey: modelKey(identity.model),
+  };
+}
 
 /**
  * The filesystem catalog is authoritative for which files exist. Database rows
@@ -11,7 +23,7 @@ export function mergeCatalogAssets(physical: SchematicAsset[], database: Schemat
     const stored = databaseById.get(asset.id);
     if (!stored || stored.sha256 !== asset.sha256) return asset;
 
-    return {
+    return applyPhysicalIdentity({
       ...stored,
       // The mounted catalog is the source of truth for the current physical
       // identity. Database metadata may contain verified enrichment, but an
@@ -27,7 +39,7 @@ export function mergeCatalogAssets(physical: SchematicAsset[], database: Schemat
       sha256: asset.sha256,
       status: asset.status,
       detail: asset.detail,
-    };
+    });
   });
 }
 
@@ -51,8 +63,8 @@ export function mergeCatalogSources(catalog: SchematicAsset[], database: Schemat
   const catalogById = new Map(catalog.map((asset) => [asset.id, asset]));
   return database.map((asset) => {
     const snapshot = catalogById.get(asset.id);
-    if (!snapshot || snapshot.sha256 !== asset.sha256) return asset;
-    return {
+    if (!snapshot || snapshot.sha256 !== asset.sha256) return applyPhysicalIdentity(asset);
+    return applyPhysicalIdentity({
       ...snapshot,
       ...asset,
       identityVerified: asset.identityVerified ?? snapshot.identityVerified,
@@ -61,6 +73,6 @@ export function mergeCatalogSources(catalog: SchematicAsset[], database: Schemat
       aliases: asset.aliases ?? snapshot.aliases,
       documentLinks: asset.documentLinks ?? snapshot.documentLinks,
       identityVerificationHistory: asset.identityVerificationHistory ?? snapshot.identityVerificationHistory,
-    };
+    });
   });
 }

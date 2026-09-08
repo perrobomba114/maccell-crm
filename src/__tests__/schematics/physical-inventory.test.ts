@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { discoverPhysicalAssets } from "../../lib/schematics/physical-inventory";
+import { sameDevice } from "../../lib/schematics/catalog-types";
 
 test("physical inventory counts mounted files and drops stale catalog paths", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "maccell-inventory-"));
@@ -38,7 +39,39 @@ test("physical inventory pairs brand-prefixed model folders across Pdf and Pcbe"
     }]);
 
     assert.deepEqual(assets.map((asset) => ({ brand: asset.brand, model: asset.model, modelKey: asset.modelKey })), [
-        { brand: "SAMSUNG", model: "Samsung A15 5G SM-A1560", modelKey: "samsunga155gsma1560" },
-        { brand: "SAMSUNG", model: "Samsung A15 5G SM-A1560", modelKey: "samsunga155gsma1560" },
+        { brand: "SAMSUNG", model: "A15 5G", modelKey: "a155g" },
+        { brand: "SAMSUNG", model: "A15 5G", modelKey: "a155g" },
     ]);
+});
+
+test("physical inventory reconciles legacy Samsung folders by commercial model", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "maccell-inventory-samsung-"));
+    const files = [
+        ["sources/Samsung A03s/Pcbe/A03s board.pcbe", "XZZPCB V1.0"],
+        ["sources/Samsung A03s/Pdf/A03s schematic.pdf", "%PDF-1.7"],
+        ["sources/pcbe/SAMSUNG/A series(VIP)/A03s 96516/A03s alternate.pcbe", "XZZPCB V1.0"],
+        ["sources/pdf/SAMSUNG/A series(VIP)/A03s 96516/A03s alternate schematic.pdf", "%PDF-1.7"],
+    ] as const;
+    for (const [file, content] of files) {
+        await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+        await writeFile(path.join(root, file), content);
+    }
+
+    const assets = await discoverPhysicalAssets(root, []);
+    assert.deepEqual(new Set(assets.map((asset) => asset.modelKey)), new Set(["a03s"]));
+    assert.equal(assets.every((asset) => asset.brand === "SAMSUNG"), true);
+    assert.equal(sameDevice(assets[0]!, assets[1]!), true);
+    assert.equal(sameDevice(assets[0]!, assets[2]!), true);
+});
+
+test("commercial Samsung normalization keeps A03 and A03s separate", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "maccell-inventory-samsung-separate-"));
+    for (const [folder, name] of [["Samsung A03 SM-A035", "board.pcbe"], ["Samsung A03s SM-A037M", "board.pcbe"]] as const) {
+        await mkdir(path.join(root, "sources", folder, "Pcbe"), { recursive: true });
+        await writeFile(path.join(root, "sources", folder, "Pcbe", name), "XZZPCB V1.0");
+    }
+
+    const assets = await discoverPhysicalAssets(root, []);
+    assert.deepEqual(assets.map((asset) => asset.modelKey), ["a03", "a03s"]);
+    assert.equal(sameDevice(assets[0]!, assets[1]!), false);
 });
