@@ -84,3 +84,15 @@ test("directory tree hides the physical sources prefix used by production mounts
   assert.equal(tree[0]?.name, "Xiaomi");
   assert.equal(tree[0]?.subfolders.get("Redmi 9")?.totalFiles, 1);
 });
+
+test("directory tree turns noisy brand-prefixed folders into manufacturer groups", () => {
+  const tree = buildDirectoryTree([
+    Object.assign(mockAsset("redmi-board", "pcbe/RedMi G Ryzen 2021 game RTX3060 bm5104 ver1.5/board.pcbe", "board.pcbe"), { brand: "RedMi G Ryzen 2021 game RTX3060 bm5104 ver1.5", model: "BM5104" }),
+    Object.assign(mockAsset("unknown-board", "pcbe/2、PC Motherboard/board.pcbe", "board.pcbe"), { brand: "2、PC Motherboard", model: "PC Motherboard" }),
+  ]);
+
+  assert.ok(tree.some((node) => node.name === "Xiaomi"));
+  assert.ok(tree.some((node) => node.name === "Otros"));
+  assert.equal(tree.some((node) => node.name.includes("RedMi G Ryzen")), false);
+  assert.equal(tree.some((node) => node.name.includes("2、PC Motherboard")), false);
+});

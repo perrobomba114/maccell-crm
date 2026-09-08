@@ -41,7 +41,9 @@ function brandLabel(value: string): string {
     microsoft: "Microsoft", sega: "Sega", steamdeck: "Steam Deck", valve: "Valve",
     bulk: "Otros", downloads: "Otros", download: "Otros", incoming: "Otros",
   };
-  return aliases[key] ?? (clean || "Otros");
+  if (aliases[key]) return aliases[key];
+  const prefix = Object.entries(aliases).find(([alias]) => key.startsWith(alias) && key.length > alias.length);
+  return prefix?.[1] ?? (clean || "Otros");
 }
 
 function canonicalBrand(asset: SchematicAsset, pathParts: string[]): string {
@@ -52,9 +54,9 @@ function canonicalBrand(asset: SchematicAsset, pathParts: string[]): string {
     "huawei", "honor", "lg", "oppo", "vivo", "realme", "oneplus", "nintendo", "playstation", "sony",
     "xbox", "microsoft", "sega", "steamdeck", "valve",
   ]);
-  if (known.has(declaredKey)) return brandLabel(declared);
+  if (known.has(declaredKey) || [...known].some((brand) => declaredKey.startsWith(brand) && declaredKey.length > brand.length)) return brandLabel(declared);
   const pathBrand = pathParts.find((part) => /^(?:apple|iphone|ipad|ipod|samsung|xiaomi|redmi|poco|motorola|moto|huawei|honor|lg|oppo|vivo|realme|oneplus|nintendo|playstation|sony|xbox|microsoft|sega|steam\s*deck|valve)\b/i.test(part));
-  return brandLabel(pathBrand ?? declared ?? pathParts[0] ?? "Otros");
+  return brandLabel(pathBrand ?? "Otros");
 }
 
 function removeBrandPrefix(value: string, brand: string): string {
@@ -95,7 +97,8 @@ function treeIdentity(asset: SchematicAsset): { brand: string; model: string; ca
   const raw = (asset.relativePath || "").replace(/\\/g, "/").split("/").filter(Boolean).slice(0, -1);
   const parts = raw.filter(part => !TECHNICAL_FOLDERS.has(part.toLowerCase()));
   const brand = canonicalBrand(asset, parts);
-  const modelParts = parts.slice(1).filter(part => cleanLabel(part).toLowerCase() !== brand.toLowerCase());
+  const brandIndex = parts.findIndex((part) => brandLabel(part) === brand);
+  const modelParts = (brandIndex >= 0 ? parts.slice(brandIndex + 1) : parts).filter(part => cleanLabel(part).toLowerCase() !== brand.toLowerCase());
   const model = commercialModel(asset, brand, modelParts.at(-1) ?? "Modelo sin clasificar");
   const role = documentRole(asset);
   const category = role === "board" ? "Placas" : role === "schematic" ? "Esquemáticos" : role === "repair" ? "Casos de reparación" : role === "accessory" ? "Accesorios" : "Documentos";
