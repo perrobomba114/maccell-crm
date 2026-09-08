@@ -10,6 +10,7 @@ test("technical worker catalog scope follows the mounted physical inventory", ()
     assert.match(source, /discoverPhysicalAssets\(root, local\)/);
     assert.match(source, /return mergeCatalogAssets\(physical, stored\)/);
     assert.match(source, /reconcileAssetIdForPath\(client, asset\)/);
-    assert.match(source, /assets SET id=\$1 WHERE id=\$2/);
+    assert.match(source, /INSERT INTO schematics\.assets\(id,relative_path,sha256,kind,model_key,metadata\)/);
+    assert.match(source, /DELETE FROM schematics\.assets WHERE id=\$1/);
     assert.doesNotMatch(source, /SELECT metadata FROM schematics\.assets ORDER BY kind,relative_path\)\.rows\.map/);
 });

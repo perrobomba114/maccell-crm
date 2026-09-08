@@ -34,13 +34,17 @@ async function reconcileAssetIdForPath(client: pg.PoolClient, asset: SchematicAs
   const currentRows = await client.query<{ id: string }>('SELECT id FROM schematics.assets WHERE id=$1', [asset.id]);
   if (currentRows.rows.length) throw new Error(`CONFLICTING_ASSET_ID:${asset.relativePath}`);
 
+  const legacyPath = `${asset.relativePath}.legacy-${previousId}`;
+  await client.query('UPDATE schematics.assets SET relative_path=$1 WHERE id=$2', [legacyPath, previousId]);
+  await client.query(`INSERT INTO schematics.assets(id,relative_path,sha256,kind,model_key,metadata)
+    VALUES($1,$2,$3,$4,$5,$6)`, [asset.id, asset.relativePath, asset.sha256, asset.kind, asset.modelKey, JSON.stringify(asset)]);
   await client.query('UPDATE schematics.pages SET asset_id=$1 WHERE asset_id=$2', [asset.id, previousId]);
   await client.query('UPDATE schematics.technical_indexes SET asset_id=$1 WHERE asset_id=$2', [asset.id, previousId]);
   await client.query('UPDATE schematics.index_jobs SET asset_id=$1 WHERE asset_id=$2', [asset.id, previousId]);
   await client.query('UPDATE schematics.repair_consultations SET asset_id=$1 WHERE asset_id=$2', [asset.id, previousId]);
   await client.query('UPDATE schematics.repair_entries SET asset_id=$1 WHERE asset_id=$2', [asset.id, previousId]);
   await client.query('UPDATE schematics.repair_entries SET pdf_asset_id=$1 WHERE pdf_asset_id=$2', [asset.id, previousId]);
-  await client.query('UPDATE schematics.assets SET id=$1 WHERE id=$2', [asset.id, previousId]);
+  await client.query('DELETE FROM schematics.assets WHERE id=$1', [previousId]);
 }
 
 async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
