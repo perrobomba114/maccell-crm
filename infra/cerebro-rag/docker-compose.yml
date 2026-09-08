@@ -3,6 +3,7 @@ x-worker-image: &worker-image
 
 x-ingestion-base: &ingestion-base
   <<: *worker-image
+  profiles: [maintenance-indexing]
   restart: on-failure
   user: "1000:1000"
   environment:
@@ -28,7 +29,7 @@ x-ingestion-base: &ingestion-base
   deploy:
     resources:
       limits:
-        cpus: "3"
+        cpus: "1"
         memory: 12G
       reservations:
         cpus: "1"

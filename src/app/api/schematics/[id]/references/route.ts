@@ -8,6 +8,9 @@ import { indexReferenceMatches } from "@/lib/schematics/unified-index";
 import { findReferencePages } from "@/lib/schematics/references";
 import { queryRag } from "@/lib/cerebro-v2/rag-db";
 import { currentReferenceFile, mergeReferenceMatches, readRagReferenceMatches } from "@/lib/schematics/rag-reference-pages";
+import { nativeReferencePages } from "@/lib/schematics/native-reference-index";
+import { searchSchematicReferences } from "@/lib/schematics/schematic-reference-search";
+import { sameDevice } from "@/lib/schematics/catalog-types";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +53,27 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     pages = pages.filter((page) => !("sha256" in page) || page.sha256 === asset.sha256);
     matches = matches.length ? matches : findReferencePages(pages, term);
     const sources = [...new Set(pages.map((page) => page.source ?? "text"))];
+    // Native PDF references must work before the background OCR/RAG queue finishes.
+    if (!matches.length) {
+      try {
+        const native = await nativeReferencePages(asset,libraryRoot());
+        matches = indexReferenceMatches(native,term);
+        if (matches.length) return Response.json({matches,status:'indexed',sources:['text'],textIndex:'native_pdf'});
+      } catch (error) {
+        console.error('[ESQUEMATICOS] No se pudo extraer texto nativo',error instanceof Error ? error.message : 'Error');
+      }
+    }
+    const boardId = new URL(request.url).searchParams.get('board');
+    const board = catalog.assets.find(candidate=>candidate.id===boardId && candidate.kind==='pcbe' && candidate.status==='ready');
+    if (!matches.length && board && sameDevice(board,asset)) {
+      const found = await searchSchematicReferences(board,asset.id,catalog.assets,term,async candidate=>{
+        const indexed = await readTechnicalIndex(candidate);
+        if (indexed?.pages.some(page=>page.text.trim())) return indexed.pages;
+        try { return await nativeReferencePages(candidate,libraryRoot()); }
+        catch (error) { console.error('[ESQUEMATICOS] Esquema alternativo sin texto legible',error instanceof Error ? error.message : 'Error');return []; }
+      },request.signal);
+      if (found) return Response.json({...found,status:'indexed',textIndex:'model_schematic'});
+    }
     if (process.env.RAG_DATABASE_URL) {
       if (!await currentReferenceFile(asset, libraryRoot())) return Response.json({ matches: [], status: "stale" });
       try {

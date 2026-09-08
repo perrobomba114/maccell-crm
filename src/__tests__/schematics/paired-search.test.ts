@@ -29,13 +29,24 @@ test('content pairing requires model declaration and exact board revision',()=>{
  assert.equal(contentPairEvidence(board,pdf,'iPhone 13 Pro Max 820-02400-07 Comparison iPhone 13 Pro 820-02400-06'),null);
  assert.equal(contentPairEvidence(board,pdf,'iPhone 13 Pro Max 820-02400-06 820-02400-07'),null);
 });
-test('preferred counterpart selects a unique primary schematic and keeps ambiguities explicit',()=>{
+test('preferred counterpart collapses identical schematic copies and keeps different contents explicit',()=>{
  const casePdf={...pdf,id:'case',name:'iPhone 13 Pro Max repair case.pdf'};
  assert.equal(preferredCounterpart([casePdf,pdf])?.id,pdf.id);
- assert.equal(preferredCounterpart([pdf,{...pdf,id:'other'}]),null);
+ assert.equal(preferredCounterpart([pdf,{...pdf,id:'other'}])?.id,pdf.id);
+ assert.equal(preferredCounterpart([pdf,{...pdf,id:'other',sha256:'different'}]),null);
  const whole={...board,id:'whole',name:'iPhone13ProMax Boardview.pcbe'};
  assert.equal(preferredCounterpart([board,whole])?.id,'whole');
  assert.equal(preferredCounterpart([board,{...board,id:'bb',name:'iPhone13ProMax BB Boardview.pcbe'}]),null);
+});
+test('schematic with layout is still an electrical schematic, unlike a layout alone',()=>{
+ assert.equal(documentRole({...pdf,name:'Esquematico completo & layout_iphone 11.pdf'}),'schematic');
+ assert.equal(documentRole({...pdf,name:'iPhone 11 layout.pdf'}),'document');
+});
+test('automatic PDF opening ranks matching board codes across multiple schematic versions',()=>{
+ const other={...pdf,id:'other',sha256:'other-sha',name:'iPhone 13 Pro Max schematic 820-99999.pdf'};
+ const matching={...pdf,name:'iPhone 13 Pro Max schematic 820-02400.pdf'};
+ assert.equal(recommendedCounterpartId(board,[other,matching],new Set()),matching.id);
+ assert.equal(recommendedCounterpartId(board,[{...matching,status:'unsupported'}],new Set()),null);
 });
 test('board images and layouts never become the automatic schematic PDF', () => {
  const image={...pdf,id:'image',name:'iPhone13ProMax image.pdf'};

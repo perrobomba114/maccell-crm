@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { CircuitBoard, Search, FileText, Loader2, Link2, Star, Copy, X } from "lucide-react";
 import { sameDevice, type SchematicAsset } from "@/lib/schematics/catalog-types";
 import { modeAfterClosing, readWorkspaceLink, sessionPairFor, workspaceLink, type WorkspaceLocation } from "@/lib/schematics/workspace";
-import { documentRole, pairIsVerified } from '@/lib/schematics/pairing';
+import { documentRole, pairIsVerified, recommendedCounterpartId } from '@/lib/schematics/pairing';
 import {PairingStatus} from './pairing-status';
 import { ConnectionInspector } from "./connection-inspector";
 import { PdfPanel } from "./pdf-panel";
@@ -87,6 +87,7 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
     updateUi({ mode: "split" });
   }, []);
   const { candidates: related, error: relatedError, verifiedIds, loading: linking } = useLinkedAssets(anchor, openCounterpart);
+  const openMatchedDocument = useCallback((asset:SchematicAsset,page:number)=>{openCounterpart(asset);setPdfPage(page);},[openCounterpart]);
   const verifiedPair = !!(pdf && boardAsset && (pairIsVerified(pdf,boardAsset) || (anchor?.id===boardAsset.id && verifiedIds.includes(pdf.id)) || (anchor?.id===pdf.id && verifiedIds.includes(boardAsset.id))));
   const sessionLinked = !!(pdf && boardAsset && sessionPair?.boardId === boardAsset.id && sessionPair.pdfId === pdf.id);
   const linked = verifiedPair || sessionLinked;
@@ -113,12 +114,12 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
       }
       setPdfPage(1); setPdf(asset); updateUi({ reference: '', mode: targetBoard ? 'split' : 'pdf' }); return;
     }
-    const keepPdf = pdf && sameDevice(asset, pdf);
+    const keepPdf = pdf && pdf.status === 'ready' && sameDevice(asset, pdf) && documentRole(pdf) === 'schematic';
     let targetPdf = keepPdf ? pdf : null;
     if (!targetPdf) {
-      targetPdf = [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pdf" && item.status === "ready" && sameDevice(asset, item) && documentRole(item) === "schematic")
-        ?? [...catalogCache.current.values(), ...initial.assets].find(item => item.kind === "pdf" && item.status === "ready" && sameDevice(asset, item))
-        ?? null;
+      const choices = [...catalogCache.current.values(), ...initial.assets];
+      const recommendedId = recommendedCounterpartId(asset,choices,new Set());
+      targetPdf = choices.find(item=>item.id===recommendedId) ?? null;
     }
     if (targetPdf) {
       catalogCache.current.set(targetPdf.id, targetPdf);
@@ -250,7 +251,7 @@ export function SchematicsWorkbench({ initial, userId, canEditIdentity }: { init
             {loading ? <div className="sch-empty"><Loader2 className="animate-spin" /><h3>Abriendo placa…</h3><p>Procesando componentes y redes.</p></div> : error ? <div className="sch-empty" role="alert"><h3>No se pudo abrir</h3><p>{error}</p><button onClick={() => setBoardAsset(boardAsset ? { ...boardAsset } : null)}>Reintentar</button></div> : board ? <BoardCanvas key={boardAsset?.id} board={board} component={selection.component} net={selection.net} onSelect={select} focusToken={focusToken} /> : <WorkspaceWelcome isLibraryOpen={ui.library} onBrowse={() => updateUi({ library: true })} />}
           </div>
           <div className="sch-pdf-slot" hidden={ui.mode === "board"}>
-            {pdf ? <PdfPanel key={pdf.id} page={pdfPage} onPage={setPdfPage} navigationToken={ui.referenceToken} canReindex={canEditIdentity} asset={pdf} reference={linked ? ui.reference : ""} references={linked ? pdfReferences : emptyReferences} onReference={selectPdfReference} /> : <div className="sch-empty"><FileText size={32} /><h3>Documentación del equipo</h3><p>Elegí un PDF. La sincronización requiere identidad técnica compatible.</p><div className="sch-related">{related.map(asset => <button key={asset.id} onClick={() => openAsset(asset)}>{asset.name}</button>)}</div><button onClick={() => updateUi({ library: true })}>Abrir biblioteca</button></div>}
+            {pdf ? <PdfPanel key={pdf.id} page={pdfPage} onPage={setPdfPage} navigationToken={ui.referenceToken} canReindex={canEditIdentity} asset={pdf} boardId={linked ? boardAsset?.id : undefined} onMatchedDocument={openMatchedDocument} reference={linked ? ui.reference : ""} references={linked ? pdfReferences : emptyReferences} onReference={selectPdfReference} /> : <div className="sch-empty"><FileText size={32} /><h3>Esquemático del equipo</h3><p>{linking ? 'Buscando el PDF esquemático…' : 'No hay un PDF esquemático compatible publicado para esta placa.'}</p><button onClick={() => updateUi({ library: true })}>Abrir biblioteca</button></div>}
           </div>
         </div>
         {pdf && boardAsset && <PairingStatus key={`${boardAsset.id}:${pdf.id}`} board={boardAsset} pdf={pdf} linked={linked} canEdit={canEditIdentity} onUpdated={asset=>{catalogCache.current.set(asset.id,asset);setBoardAsset(asset);setAnchor(asset);}} />}

@@ -13,10 +13,10 @@ export function documentRole(asset: SchematicAsset): 'schematic' | 'board' | 'ac
   if (/repair.?case|case.?repair|malfunction|fault|failure|common.?issue/.test(name)) return 'repair';
   if (/flexible|flat.?cable|face.?id|front.?camera|flex\b/.test(name)) return 'accessory';
   if (asset.kind === 'pcbe') return 'board';
-  // A rendered board image/layout is documentation, not an electrical
-  // schematic. It must not be selected as the automatic PDF counterpart.
+  // A combined schematic + layout still contains the electrical schematic.
+  if (/schematic|esquem[aá]tico|circuit.?diagram|diagrama.?de.?circuito|(?:^|[ _-])sch\.pdf$/i.test(name)) return 'schematic';
+  // A rendered board image/layout alone is not an electrical schematic.
   if (/\b(?:image|board.?view|pcb.?layer|board.?image|layout)\b/.test(name)) return 'document';
-  if (/schematic|esquem[aá]tico|circuit.?diagram/.test(name)) return 'schematic';
   return 'document';
 }
 export const roleLabels = {schematic:'Esquema',board:'Placa',accessory:'Flex / accesorio',repair:'Caso de reparación',document:'Documento'};
@@ -24,14 +24,34 @@ export function assetPriority(asset: SchematicAsset): number {
   return {schematic:0,board:1,accessory:2,document:3,repair:4}[documentRole(asset)];
 }
 export function preferredCounterpart(compatible: SchematicAsset[]): SchematicAsset | null {
-  const primary = compatible.filter(asset => documentRole(asset) === 'schematic');
+  const seen = new Set<string>();
+  const primary = compatible.filter(asset => {
+    if (asset.status !== 'ready' || documentRole(asset) !== 'schematic' || seen.has(asset.sha256)) return false;
+    seen.add(asset.sha256);return true;
+  });
   if (primary.length === 1) return primary[0];
   // Never open an arbitrary image, boardview or repair PDF as a schematic.
   if (!primary.length && compatible.some(asset => asset.kind === 'pdf')) return null;
   const wholeBoard = compatible.filter(asset => asset.kind === 'pcbe' && documentRole(asset) === 'board' && /(?:^|\s)boardview\.pcbe$/i.test(asset.name) && !/\b(?:AP|BB)\b|PCB.?layer|820[-\s]\d/i.test(asset.name));
   return wholeBoard.length === 1 ? wholeBoard[0] : null;
 }
+/** Candidates share physical device identity; this ranking is not electrical proof. */
+export function schematicCandidates(anchor: SchematicAsset, catalog: SchematicAsset[]): SchematicAsset[] {
+  const codes = (asset: SchematicAsset) => asset.name.match(/\b820[- ]\d{4,5}\b/gi)?.map(code => code.toUpperCase().replace(/ /g,'-')) ?? [];
+  const boardCodes = new Set(codes(anchor));
+  const score = (asset: SchematicAsset) => (pairIsVerified(anchor,asset) ? 100 : 0)
+    + (codes(asset).some(code => boardCodes.has(code)) ? 20 : 0)
+    + (/complete|completo|full/i.test(asset.name) ? 3 : 0);
+  const sorted = catalog.filter(asset => asset.status === 'ready' && asset.kind === 'pdf' && sameDevice(anchor,asset) && documentRole(asset) === 'schematic')
+    .sort((a,b) => score(b)-score(a) || a.name.localeCompare(b.name,'es',{numeric:true}) || a.relativePath.localeCompare(b.relativePath));
+  const seen = new Set<string>();
+  return sorted.filter(asset => { if(seen.has(asset.sha256))return false;seen.add(asset.sha256);return true; });
+}
 export function recommendedCounterpartId(anchor: SchematicAsset, compatible: SchematicAsset[], verifiedIds: ReadonlySet<string>): string | null {
+  if (anchor.kind === 'pcbe') {
+    const candidates = schematicCandidates(anchor,compatible);
+    return candidates.find(asset => verifiedIds.has(asset.id))?.id ?? candidates[0]?.id ?? null;
+  }
   const verifiedRecommended = preferredCounterpart(compatible.filter(asset => verifiedIds.has(asset.id)))?.id;
   const automatic = preferredCounterpart(compatible);
   return verifiedRecommended

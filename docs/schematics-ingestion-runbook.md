@@ -120,3 +120,9 @@ El hash SHA-256 del contenido es la regla principal. El nombre, tamaño, modelo 
 ## Cierre de una tanda
 
 El cierre debe incluir los conteos de archivos nuevos, duplicados exactos, colisiones, bloqueados/no soportados, assets catalogados, trabajos técnicos indexados/pendientes y chunks vectoriales creados/cacheados. Si falta alguno de esos datos, la tanda queda abierta.
+
+### Prioridad del CRM durante la indexación
+
+Los nueve shards de ingesta RAG pertenecen al perfil Compose `maintenance-indexing` y no arrancan en un despliegue normal. Cada shard tiene un límite de un CPU. Activar únicamente el servicio necesario durante una ventana de mantenimiento; no iniciar todos los shards juntos mientras trabajan los técnicos.
+
+El proceso web no inicia el worker técnico salvo que `SCHEMATICS_BACKGROUND_INDEXING=true`; cuando se habilita, usa concurrencia uno. La navegación por referencias de PDFs con texto nativo funciona bajo demanda, con coordenadas reales y caché por SHA-256, sin esperar a OCR ni embeddings. Los PDFs escaneados siguen necesitando OCR. El catálogo comparte lecturas concurrentes durante cinco segundos y se invalida al cambiar el inventario físico o la identidad de un archivo.

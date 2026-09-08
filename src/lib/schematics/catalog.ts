@@ -1,5 +1,5 @@
 import "server-only";
-import { readFile, realpath, open, rm, rename, writeFile } from "node:fs/promises";
+import { readFile, realpath, open, rm, rename, writeFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
@@ -9,12 +9,19 @@ import { mergeCatalogAssets } from "./catalog-merge";
 import { sameDevice } from "./catalog-types";
 import type { SearchablePage } from "./search";
 import { discoverPhysicalAssets } from "./physical-inventory";
+import { schematicCatalogCache } from './catalog-cache';
 
 export function libraryRoot(): string {
   return path.resolve(process.env.SCHEMATICS_ROOT ?? path.join(process.cwd(), "upload/schematics"));
 }
 
 export async function readCatalog(): Promise<SchematicCatalog> {
+  const root=libraryRoot();
+  const file=await stat(path.join(root,'catalog.json')).catch((error:NodeJS.ErrnoException)=>{if(error.code==='ENOENT')return null;throw error;});
+  return schematicCatalogCache.read(`${root}:${file?.size}:${file?.mtimeMs}`,loadCatalog);
+}
+
+async function loadCatalog(): Promise<SchematicCatalog> {
   let databaseAssets: SchematicAsset[] | null = null;
   try {
     databaseAssets = await databaseCatalog();

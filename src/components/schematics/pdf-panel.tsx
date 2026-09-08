@@ -9,8 +9,8 @@ import { AssetIndexStatus } from "./asset-index-status";
 import type { SchematicAsset } from "@/lib/schematics/catalog-types";
 
 const PdfReader = dynamic(() => import("./pdf-reader"), { ssr: false });
-type Props = { asset: SchematicAsset; reference: string; references: ReadonlySet<string>; onReference(reference: string): void; page: number; onPage(page: number): void; navigationToken: number; canReindex: boolean };
-export function PdfPanel({ asset, reference, references, onReference, page, onPage, navigationToken, canReindex }: Props) {
+type Props = { asset: SchematicAsset; boardId?: string; onMatchedDocument(asset:SchematicAsset,page:number):void; reference: string; references: ReadonlySet<string>; onReference(reference: string): void; page: number; onPage(page: number): void; navigationToken: number; canReindex: boolean };
+export function PdfPanel({ asset, boardId, onMatchedDocument, reference, references, onReference, page, onPage, navigationToken, canReindex }: Props) {
   const [matches, setMatches] = useState<{ page: number; excerpt: string; boxes?: PdfBox[] }[]>([]);
   const [status, setStatus] = useState("");
   const [query, setQuery] = useState("");
@@ -31,8 +31,9 @@ export function PdfPanel({ asset, reference, references, onReference, page, onPa
     const controller = new AbortController();
     const cleanup = () => { controller.abort(); navigation.cancel(ticket); };
     if (term.length < 2) { setMatches([]); setStatus(""); return cleanup; }
-    const applyMatches = (data: { matches: { page: number; excerpt: string; boxes?: PdfBox[] }[]; status: string; sources?: string[] }) => {
+    const applyMatches = (data: { asset?:SchematicAsset; matches: { page: number; excerpt: string; boxes?: PdfBox[] }[]; status: string; sources?: string[] }) => {
       if (controller.signal.aborted || !navigation.isCurrent(ticket)) return;
+      if (data.asset && data.asset.id !== asset.id && data.matches.length) { onMatchedDocument(data.asset,data.matches[0].page);return; }
       setMatches(data.matches);
       setOccurrence(current => Math.min(current, Math.max(0, referenceOccurrences(data.matches, term).length - 1)));
       const navigate = navigation.accept(ticket, data.matches.length > 0);
@@ -44,17 +45,18 @@ export function PdfPanel({ asset, reference, references, onReference, page, onPa
         setStatus(`${data.matches.length} páginas con ${term}${data.sources?.includes("ocr") ? " · incluye texto OCR" : ""}`);
       } else setStatus(data.status === "indexed" ? `Sin coincidencias exactas para ${term}` : data.status === "no_text" ? "PDF sin texto extraíble: podés reconocer la página con OCR." : "Este PDF todavía no tiene un índice consultable.");
     };
-    if (preloaded?.complete && /^[A-Za-z0-9_]+$/.test(term)) {
-      applyMatches({ matches: preloaded.lookup.get(term) ?? [], status: "indexed" });
+    const cachedMatches = preloaded?.lookup.get(term) ?? [];
+    if (preloaded?.complete && cachedMatches.length && /^[A-Za-z0-9_]+$/.test(term)) {
+      applyMatches({ matches: cachedMatches, status: "indexed" });
       return cleanup;
     }
     setStatus("Buscando referencia…"); setMatches([]);
-    fetch(`/api/schematics/${asset.id}/references?q=${encodeURIComponent(term)}`, { signal: controller.signal }).then(async response => {
+    fetch(`/api/schematics/${asset.id}/references?q=${encodeURIComponent(term)}${boardId ? `&board=${encodeURIComponent(boardId)}` : ''}`, { signal: controller.signal }).then(async response => {
       if (!response.ok) throw new Error("No se pudo consultar el índice");
       applyMatches(await response.json());
     }).catch((error: unknown) => { if (!controller.signal.aborted && navigation.isCurrent(ticket)) setStatus(error instanceof Error ? error.message : "Error de búsqueda"); });
     return cleanup;
-  }, [asset.id, term, request, revision, onPage, navigation, preloaded]);
+  }, [asset.id, boardId, onMatchedDocument, term, request, revision, onPage, navigation, preloaded]);
   async function recognizePage() {
     setOcrBusy(true); setOcrMessage("");
     try {

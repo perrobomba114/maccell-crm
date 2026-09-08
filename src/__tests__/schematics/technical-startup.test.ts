@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-test('startup runs the technical worker without duplicating the existing RAG pipeline', async () => {
+test('startup prioritizes the CRM and only runs the technical worker when explicitly enabled', async () => {
   const { mkdtemp, writeFile, readFile, rm } = await import('node:fs/promises');
   const { tmpdir } = await import('node:os');
   const path = await import('node:path');
@@ -21,17 +21,17 @@ else if (process.argv.includes('--watch')) { const timer = setInterval(() => {},
     for (const configured of [false, true]) {
       await writeFile(log, '');
       const env = {...process.env, PATH: `${directory}:${process.env.PATH}`, STARTUP_TEST_LOG: log,
-        DATABASE_URL: 'test-db', RAG_DATABASE_URL: configured ? 'test-rag' : '', RAG_INTERNAL_API_SECRET: configured ? 'never-print-this' : '', SCHEMATICS_EMBEDDING_VERSION: configured ? 'test-model' : ''};
+        SCHEMATICS_BACKGROUND_INDEXING: configured ? 'true' : 'false', DATABASE_URL: 'test-db', RAG_DATABASE_URL: configured ? 'test-rag' : '', RAG_INTERNAL_API_SECRET: configured ? 'never-print-this' : '', SCHEMATICS_EMBEDDING_VERSION: configured ? 'test-model' : ''};
       const result = await promisify(execFile)('sh', ['scripts/start-with-technical-worker.sh'], {env,timeout:5000});
       const calls = await readFile(log, 'utf8');
       assert.equal(calls.includes('scripts/index-schematics-vectors.mjs'), false);
       assert.equal(calls.includes('schematics-vector-worker'), false);
       assert.equal((result.stdout + result.stderr).includes('SCHEMATICS_EMBEDDING_VERSION'), false);
-      assert.equal(calls.includes('scripts/technical-worker.cjs --watch'), true);
+      assert.equal(calls.includes('scripts/technical-worker.cjs --watch'), configured);
       assert.equal(calls.includes('server.js'), true);
       const registration = calls.indexOf('scripts/register-schematic-additions.mjs');
       assert.ok(registration > calls.indexOf('migrate deploy'));
-      assert.ok(registration < calls.indexOf('scripts/technical-worker.cjs'));
+      if(configured) assert.ok(registration < calls.indexOf('scripts/technical-worker.cjs'));
       assert.ok(registration < calls.indexOf('server.js'));
       assert.equal((result.stdout + result.stderr).includes('never-print-this'), false);
     }
@@ -41,7 +41,7 @@ else if (process.argv.includes('--watch')) { const timer = setInterval(() => {},
     });
     const failedCalls = await readFile(log, 'utf8');
     assert.equal(failedCalls.includes('scripts/register-schematic-additions.mjs'), true);
-    assert.equal(failedCalls.includes('--watch'), true);
+    assert.equal(failedCalls.includes('--watch'), false);
     assert.equal(failedCalls.includes('server.js'), true);
     assert.match(importFailure.stderr, /\[SCHEMATICS IMPORT\].*falló.*CRM continúa/);
     await writeFile(log, '');

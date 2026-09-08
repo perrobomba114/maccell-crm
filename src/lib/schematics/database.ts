@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { mergeOcrPage, type TechnicalIndex, type ReferenceBox } from "./unified-index";
 import type { SchematicAsset } from "./catalog-types";
+import { schematicCatalogCache } from './catalog-cache';
 
 export async function databaseCatalog(): Promise<SchematicAsset[] | null> {
   const existing = await db.$queryRaw<{ name: string | null }[]>`SELECT to_regclass('schematics.assets')::text AS name`;
@@ -67,5 +68,6 @@ export async function saveDatabaseAssetIdentity(asset: SchematicAsset, expected:
   const changed = await db.$executeRaw`UPDATE schematics.assets SET model_key=${asset.modelKey},metadata=${metadata}::jsonb,updated_at=now()
     WHERE id=${asset.id} AND metadata=${previous}::jsonb`;
   if (changed !== 1) throw new Error("IDENTITY_CONFLICT");
+  schematicCatalogCache.invalidate();
   return true;
 }

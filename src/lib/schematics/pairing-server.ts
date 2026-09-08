@@ -5,7 +5,7 @@ import { sameDevice, type SchematicAsset } from './catalog-types';
 import { assetPriority, contentPairEvidence, documentRole, pairIsVerified, recommendedCounterpartId } from './pairing';
 
 export async function resolvePairings(anchor: SchematicAsset, catalog: SchematicAsset[]) {
-  const assets = catalog.filter(asset=>asset.id!==anchor.id && asset.kind!==anchor.kind && sameDevice(anchor,asset))
+  const assets = catalog.filter(asset=>asset.id!==anchor.id && asset.kind!==anchor.kind && asset.status==='ready' && sameDevice(anchor,asset))
     .sort((a,b)=>assetPriority(a)-assetPriority(b) || a.name.localeCompare(b.name,'es',{numeric:true}));
   const evidence: Record<string,string> = {};
   for (const asset of assets) {
@@ -24,6 +24,6 @@ export async function resolvePairings(anchor: SchematicAsset, catalog: Schematic
     if (reason) evidence[asset.id]=reason;
   }
   const bestCompatible = recommendedCounterpartId(anchor, assets, new Set(Object.keys(evidence)));
-  const verifiedIds = Object.keys(evidence).length ? Object.keys(evidence) : assets.map(a => a.id);
+  const verifiedIds = Object.keys(evidence);
   return {assets,verifiedIds,evidence,recommendedId:bestCompatible};
 }

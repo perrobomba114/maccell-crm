@@ -6,6 +6,7 @@ import { BoardSearch } from "./board-search";
 import { LayerControls } from "./layer-controls";
 import { Maximize, Minus, Plus, RotateCcw } from "lucide-react";
 import { hitTestCandidates, selectionCandidateDescription, type SelectionCandidate } from "@/lib/schematics/boardview";
+import { clickSelections } from "@/lib/schematics/click-selection";
 import type { PcbeDocument } from "@/lib/schematics/types";
 import { boundsFor, renderBoard, transformFor, type View } from "./board-renderer";
 
@@ -131,20 +132,20 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
         if (event.button === 0 && drag.current && !drag.current.moved) {
           const rect = event.currentTarget.getBoundingClientRect(), t = transformFor(rect.width, rect.height, bounds, view);
           const p = t.inverse(event.clientX - rect.left, event.clientY - rect.top);
-          const hits = hitTestCandidates(visibleGeometry, p, { tolerance: 7 / t.scale, visibleLayerIds: new Set(visibleGeometry.map(item => item.layer)) });
-          if (hits.length > 1) setCandidates(hits.slice(0, 8));
-          else if (hits[0]) chooseCandidate(hits[0]);
+          const hits = clickSelections(hitTestCandidates(visibleGeometry, p, { tolerance: 7 / t.scale, visibleLayerIds: new Set(visibleGeometry.map(item => item.layer)) }));
+          if (hits[0]) { chooseCandidate(hits[0]); setCandidates(hits.slice(0,8)); }
           else { setCandidates([]); onSelect(null, null); }
         }
         drag.current = null; event.currentTarget.releasePointerCapture(event.pointerId);
       }} onPointerCancel={() => { drag.current = null; }} onPointerLeave={() => setCursor(null)} />
       {!board.geometry.length && <div className="sch-overlay">Este PCBE todavía no tiene geometría compatible.</div>}
-      {candidates.length > 1 && <div className="sch-candidate-menu" role="dialog" aria-label="Elementos encontrados en esta zona">
-        <div className="sch-candidate-heading"><strong>Elegí el elemento</strong><button type="button" aria-label="Cerrar selección de elementos" onClick={() => setCandidates([])}>×</button></div>
-        {candidates.map((candidate, index) => <button type="button" key={`${candidate.primitiveIndex}:${candidate.kind}:${index}`} onClick={() => chooseCandidate(candidate)}>{selectionCandidateDescription(candidate)}<small>{candidate.distance.toFixed(1)} px del cursor</small></button>)}
-      </div>}
+      {candidates.length > 1 && <details key={candidates.map(c=>c.primitiveIndex).join(':')} className="sch-candidate-menu">
+        <summary>Otros elementos en esta zona ({candidates.length - 1})</summary>
+        {candidates.map((candidate, index) => <button type="button" key={`${candidate.primitiveIndex}:${candidate.kind}:${index}`} onClick={() => chooseCandidate(candidate)}>{candidate.componentId ? board.components.find(item=>item.id===candidate.componentId)?.name ?? candidate.label : selectionCandidateDescription(candidate)}</button>)}
+      </details>}
       <div className="sch-canvas-hud" aria-live="polite">
         <span>Cursor: {cursor ? `${Math.round(cursor.x)} × ${Math.round(cursor.y)}` : "—"}</span>
+        {component && <strong>Componente: {board.components.find(item=>item.id===component)?.name}</strong>}
         <span>Net: {net === null ? "ninguna" : board.netCatalog.find(item => item.id === net)?.name ?? `Net ${net}`}</span>
         <span>Modo: {component ? "componente" : net !== null ? "net" : "selección"}</span>
       </div>
