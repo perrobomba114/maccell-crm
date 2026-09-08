@@ -17,7 +17,7 @@ function mockAsset(id: string, relativePath: string, name: string, kind: "pcbe" 
   };
 }
 
-test("buildDirectoryTree constructs hierarchical folders and strips technical prefix", () => {
+test("buildDirectoryTree constructs canonical brand/model/type folders", () => {
   const assets: SchematicAsset[] = [
     mockAsset("1", "pcbe/iPhone(VIP)/iPhone11/Diode value/iPhone-11-BC surface.pcbe", "iPhone-11-BC surface.pcbe", "pcbe"),
     mockAsset("2", "pcbe/iPhone(VIP)/iPhone11/Schematic and boardview/iPhone11 AP+BB PCB layer.pcbe", "iPhone11 AP+BB PCB layer.pcbe", "pcbe"),
@@ -26,31 +26,20 @@ test("buildDirectoryTree constructs hierarchical folders and strips technical pr
   ];
 
   const tree = buildDirectoryTree(assets);
-  assert.equal(tree.length, 2); // 'iPhone(VIP)' and 'bulk'
-
-  const bulkNode = tree.find((n) => n.name === "bulk");
+  assert.equal(tree.length, 2); // Apple and Otros
+  const bulkNode = tree.find((n) => n.name === "Otros");
   assert.ok(bulkNode);
-  assert.equal(bulkNode.files.length, 1);
-  assert.equal(bulkNode.totalFiles, 1);
+  assert.equal(bulkNode?.totalFiles, 1);
 
-  const vipNode = tree.find((n) => n.name === "iPhone(VIP)");
+  const vipNode = tree.find((n) => n.name === "Apple");
   assert.ok(vipNode);
   assert.equal(vipNode.totalFiles, 3);
   assert.equal(vipNode.subfolders.size, 1); // 'iPhone11'
 
   const iphone11Node = vipNode.subfolders.get("iPhone11");
   assert.ok(iphone11Node);
-  assert.equal(iphone11Node.subfolders.size, 2); // 'Diode value' and 'Schematic and boardview'
-
-  const diodeNode = iphone11Node.subfolders.get("Diode value");
-  assert.ok(diodeNode);
-  assert.equal(diodeNode.files.length, 1);
-  assert.equal(diodeNode.files[0].id, "1");
-
-  const schemNode = iphone11Node.subfolders.get("Schematic and boardview");
-  assert.ok(schemNode);
-  assert.equal(schemNode.files.length, 2);
-  assert.equal(schemNode.totalFiles, 2);
+  assert.equal(iphone11Node.subfolders.has("Placas"), true);
+  assert.equal(iphone11Node.subfolders.has("Esquemáticos"), true);
 });
 
 test("nodeContainsAsset finds asset recursively", () => {
@@ -58,10 +47,20 @@ test("nodeContainsAsset finds asset recursively", () => {
     mockAsset("target-123", "pcbe/iPhone(VIP)/iPhone13/Schematic/layer.pcbe", "layer.pcbe", "pcbe"),
   ];
   const tree = buildDirectoryTree(assets);
-  const rootVip = tree.find((n) => n.name === "iPhone(VIP)");
+  const rootVip = tree.find((n) => n.name === "Apple");
   assert.ok(rootVip);
   assert.equal(nodeContainsAsset(rootVip, "target-123"), true);
   assert.equal(nodeContainsAsset(rootVip, "non-existent"), false);
+});
+
+test("directory tree groups consoles and removes source labels", () => {
+  const tree = buildDirectoryTree([
+    mockAsset("console-board", "pcbe/PlayStation(Official)/PlayStation 4/board.pcbe", "board.pcbe", "pcbe"),
+    mockAsset("console-pdf", "pdf/PlayStation(Official)/PlayStation 4/PS4 schematic.pdf", "PS4 schematic.pdf", "pdf"),
+  ]);
+  const consoleNode = tree.find((node) => node.name === "PlayStation");
+  assert.ok(consoleNode);
+  assert.ok(consoleNode.subfolders.has("PlayStation 4"));
 });
 
 test("directory tree hides the physical sources prefix used by production mounts", () => {

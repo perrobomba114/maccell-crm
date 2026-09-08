@@ -13,6 +13,9 @@ export function documentRole(asset: SchematicAsset): 'schematic' | 'board' | 'ac
   if (/repair.?case|case.?repair|malfunction|fault|failure|common.?issue/.test(name)) return 'repair';
   if (/flexible|flat.?cable|face.?id|front.?camera|flex\b/.test(name)) return 'accessory';
   if (asset.kind === 'pcbe') return 'board';
+  // A rendered board image/layout is documentation, not an electrical
+  // schematic. It must not be selected as the automatic PDF counterpart.
+  if (/\b(?:image|board.?view|pcb.?layer|board.?image|layout)\b/.test(name)) return 'document';
   if (/schematic|esquem[aá]tico|circuit.?diagram/.test(name)) return 'schematic';
   return 'document';
 }
@@ -21,9 +24,10 @@ export function assetPriority(asset: SchematicAsset): number {
   return {schematic:0,board:1,accessory:2,document:3,repair:4}[documentRole(asset)];
 }
 export function preferredCounterpart(compatible: SchematicAsset[]): SchematicAsset | null {
-  if (compatible.length === 1) return compatible[0];
   const primary = compatible.filter(asset => documentRole(asset) === 'schematic');
   if (primary.length === 1) return primary[0];
+  // Never open an arbitrary image, boardview or repair PDF as a schematic.
+  if (!primary.length && compatible.some(asset => asset.kind === 'pdf')) return null;
   const wholeBoard = compatible.filter(asset => asset.kind === 'pcbe' && documentRole(asset) === 'board' && /(?:^|\s)boardview\.pcbe$/i.test(asset.name) && !/\b(?:AP|BB)\b|PCB.?layer|820[-\s]\d/i.test(asset.name));
   return wholeBoard.length === 1 ? wholeBoard[0] : null;
 }

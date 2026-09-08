@@ -37,6 +37,14 @@ test('preferred counterpart selects a unique primary schematic and keeps ambigui
  assert.equal(preferredCounterpart([board,whole])?.id,'whole');
  assert.equal(preferredCounterpart([board,{...board,id:'bb',name:'iPhone13ProMax BB Boardview.pcbe'}]),null);
 });
+test('board images and layouts never become the automatic schematic PDF', () => {
+ const image={...pdf,id:'image',name:'iPhone13ProMax image.pdf'};
+ const layout={...pdf,id:'layout',name:'iPhone13ProMax PCB layer.pdf'};
+ assert.equal(documentRole(image),'document');
+ assert.equal(preferredCounterpart([image]),null);
+ assert.equal(preferredCounterpart([layout]),null);
+ assert.equal(preferredCounterpart([image,pdf])?.id,pdf.id);
+});
 test('confirmed pairs are bound to both current file hashes',()=>{
  const linked={...board,documentLinks:[{assetId:pdf.id,sha256:pdf.sha256,sourceSha256:board.sha256,confirmedBy:'admin',confirmedAt:'2026-09-05'}]};
  assert.equal(confirmedPair(linked,pdf),true);

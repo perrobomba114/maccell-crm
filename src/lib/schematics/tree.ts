@@ -1,4 +1,5 @@
 import type { SchematicAsset } from "./catalog-types";
+import { documentRole } from "./pairing";
 
 export interface DirectoryNode {
   name: string;
@@ -18,25 +19,50 @@ export function createDirectoryNode(name: string, fullPath: string): DirectoryNo
   };
 }
 
-/**
- * Builds a hierarchical directory tree from a list of schematic assets.
- * Strips technical root prefixes ('sources', 'pcbe' or 'pdf') so that top-level folders
- * are intuitive collections/brands (e.g. 'iPhone(VIP)', 'bulk', 'Samsung').
- */
+const TECHNICAL_FOLDERS = new Set([
+  "sources", "pdf", "pcbe", "pcb", "schematic", "schematics", "repair case", "repair cases",
+  "cases", "troubleshooting", "service", "manual", "documents", "documentos", "diode value",
+  "schematic and boardview", "boardview", "board views", "images", "image",
+]);
+
+function cleanLabel(value: string): string {
+  return value.replace(/\s*\((?:vip|free|premium|official|china|global)\)\s*/gi, " ").replace(/\s+/g, " ").trim();
+}
+
+function brandLabel(value: string): string {
+  const clean = cleanLabel(value);
+  const key = clean.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const aliases: Record<string, string> = {
+    apple: "Apple", iphone: "Apple", ipad: "Apple", ipod: "Apple",
+    samsung: "Samsung", xiaomi: "Xiaomi", redmi: "Xiaomi", poco: "Xiaomi",
+    motorola: "Motorola", moto: "Motorola", huawei: "Huawei", honor: "Honor",
+    lg: "LG", oppo: "Oppo", vivo: "Vivo", realme: "Realme", oneplus: "OnePlus",
+    nintendo: "Nintendo", playstation: "PlayStation", sony: "Sony", xbox: "Xbox",
+    microsoft: "Microsoft", sega: "Sega", steamdeck: "Steam Deck", valve: "Valve",
+    bulk: "Otros", downloads: "Otros", download: "Otros", incoming: "Otros",
+  };
+  return aliases[key] ?? (clean || "Otros");
+}
+
+function treeIdentity(asset: SchematicAsset): { brand: string; model: string; category: string } {
+  const raw = (asset.relativePath || "").replace(/\\/g, "/").split("/").filter(Boolean).slice(0, -1);
+  const parts = raw.filter(part => !TECHNICAL_FOLDERS.has(part.toLowerCase()));
+  const brand = brandLabel(parts[0] ?? asset.brand ?? "Otros");
+  const modelParts = parts.slice(1).filter(part => cleanLabel(part).toLowerCase() !== brand.toLowerCase());
+  const model = (cleanLabel(modelParts.at(-1) ?? asset.model ?? "Modelo sin clasificar") || "Modelo sin clasificar");
+  const role = documentRole(asset);
+  const category = role === "board" ? "Placas" : role === "schematic" ? "Esquemáticos" : role === "repair" ? "Casos de reparación" : role === "accessory" ? "Accesorios" : "Documentos";
+  return { brand, model, category };
+}
+
+/** Builds a stable presentation tree: brand -> commercial model -> document type. */
 export function buildDirectoryTree(assets: SchematicAsset[]): DirectoryNode[] {
   const root = createDirectoryNode("root", "");
 
   for (const asset of assets) {
-    const rawParts = (asset.relativePath || "").replace(/\\/g, "/").split("/").filter(Boolean);
-    if (!rawParts.length) continue;
-
-    // Remove filename from directory segments
-    const dirParts = rawParts.slice(0, -1);
-
-    // Production mounts use sources/<brand>/<model>; local imports may use pdf/<...> or pcbe/<...>.
-    if (dirParts.length > 1 && ["sources", "pcbe", "pdf"].includes(dirParts[0].toLowerCase())) {
-      dirParts.shift();
-    }
+    if (!asset.relativePath) continue;
+    const identity = treeIdentity(asset);
+    const dirParts = [identity.brand, identity.model, identity.category];
 
     let current = root;
     let pathAcc = "";
