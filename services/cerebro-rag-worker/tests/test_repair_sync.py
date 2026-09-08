@@ -4,7 +4,11 @@ import unittest
 from datetime import UTC, datetime
 
 from cerebro_rag.repair_cursor import RepairCursor
-from cerebro_rag.repair_sync import ACTIVE_REPAIR_IDS_QUERY, _is_permission_denied
+from cerebro_rag.repair_sync import (
+    ACTIVE_REPAIR_IDS_QUERY,
+    _is_optional_permission_denied,
+    _is_permission_denied,
+)
 
 
 class RepairSyncCursorTest(unittest.TestCase):
@@ -16,6 +20,22 @@ class RepairSyncCursorTest(unittest.TestCase):
 
     def test_permission_denied_detection_does_not_mask_other_database_errors(self) -> None:
         self.assertFalse(_is_permission_denied(RuntimeError("connection refused")))
+
+    def test_active_repair_retirement_permission_is_optional(self) -> None:
+        self.assertTrue(
+            _is_optional_permission_denied(
+                "retire_active_repairs",
+                RuntimeError("permission denied"),
+            )
+        )
+
+    def test_source_read_permission_is_not_optional(self) -> None:
+        self.assertFalse(
+            _is_optional_permission_denied(
+                "source_export",
+                RuntimeError("permission denied"),
+            )
+        )
 
     def test_active_repairs_are_reconciled_out_of_confirmed_evidence(self) -> None:
         self.assertIn('"statusId" IN (1, 2, 3, 4)', ACTIVE_REPAIR_IDS_QUERY)
