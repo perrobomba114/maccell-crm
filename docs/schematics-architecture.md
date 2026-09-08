@@ -3,7 +3,9 @@
 Este documento describe el flujo real de los archivos técnicos en MACCELL. La
 biblioteca no tiene una única fuente lógica: el archivo físico, el catálogo, el
 índice técnico y el RAG cumplen funciones diferentes y deben reconciliarse por
-ruta relativa y SHA-256.
+ruta relativa y SHA-256. La estructura física canónica y sus reglas completas
+están documentadas en
+[`docs/superpowers/specs/2026-09-08-biblioteca-esquematicos-estructura-canonica-design.md`](superpowers/specs/2026-09-08-biblioteca-esquematicos-estructura-canonica-design.md).
 
 ## Flujo de datos
 
@@ -41,13 +43,6 @@ inventario para evitar sumar registros históricos que sólo quedaron en
 `Catalog.json`. Si todavía es menor durante una ingesta, se conserva el
 snapshot completo hasta que el worker alcance la misma fotografía física.
 
-Durante una carga masiva, `catalog.json` puede quedar temporalmente atrasado
-respecto de `schematics.assets`. La biblioteca combina ambas fuentes para que
-los activos que el worker ya descubrió no queden ocultos mientras se actualiza
-el snapshot JSON. Por eso `1215/21561` significa **1.215 índices técnicos
-actuales sobre 21.561 activos del inventario**; no significa que sólo existan
-1.215 archivos.
-
 ## Responsabilidad de cada capa
 
 | Capa | Fuente de verdad | Qué puede hacer | Qué no debe hacer |
@@ -67,7 +62,7 @@ actuales sobre 21.561 activos del inventario**; no significa que sólo existan
   esquemático/circuit diagram y pasa la identidad de dispositivo. Un archivo
   `image.pdf`, `boardview`, `PCB layer`, layout o repair case queda como
   documentación independiente.
-- La vista del árbol es virtual y estable: `Marca → Modelo comercial →
+- La vista del árbol es virtual y estable: `PDF/PCBE → Marca → Modelo comercial →
   Placas/Esquemáticos/Casos de reparación/Accesorios/Documentos`. Esto no mueve
   archivos físicos ni cambia sus rutas históricas.
 - Las consolas y marcas nuevas se agrupan por la identidad observada; no deben
@@ -93,11 +88,14 @@ los documentos RAG antes de declarar la biblioteca operativa.
 
 - Las nuevas tandas se incorporan con el runbook
   `docs/schematics-ingestion-runbook.md` y la skill de ingesta.
+- La publicación física final usa `pdf/<MARCA>/<MODELO COMERCIAL>` y
+  `pcbe/<MARCA>/<MODELO COMERCIAL>`; `/app/upload/schematics/sources` es el
+  mount de compatibilidad que consume el CRM.
 - El worker técnico usa concurrencia acotada y refresco de inventario espaciado;
   nunca se debe iniciar un escaneo completo por cada carga de página.
-- No ejecutar `scripts/index-schematics-vectors.mjs` para RAG V2 sin verificar
-  antes su esquema: ese script pertenece al índice legado `schematics.chunks`,
-  mientras Cerebro V2 consulta `rag_documents/rag_pages/rag_chunks`.
+- No ejecutar `scripts/index-schematics-vectors.mjs` para RAG V2: ese script
+  pertenece al índice legado `schematics.chunks`, mientras Cerebro V2 consulta
+  `rag_documents/rag_pages/rag_chunks` mediante `maccell-rag-worker`.
 - Una reorganización física requiere staging, manifiesto SHA-256, backup de
   catálogo, reporte de conflictos y verificación posterior. La reorganización
   visual del Workbench no reemplaza esa reconciliación.

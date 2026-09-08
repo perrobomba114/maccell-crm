@@ -11,6 +11,7 @@ Este README es la entrada rápida del proyecto. Las reglas obligatorias para age
 - [.agents/skills/schematic-library-ingestion/SKILL.md](./.agents/skills/schematic-library-ingestion/SKILL.md): ingesta segura de PDF/PCBE, deduplicación, catálogo, índice técnico y RAG.
 - [docs/schematics-ingestion-runbook.md](./docs/schematics-ingestion-runbook.md): runbook para subir y acomodar nuevas tandas desde SCRAPING.
 - [docs/schematics-architecture.md](./docs/schematics-architecture.md): mapa de vínculos entre archivos físicos, catálogo, índice técnico, RAG V2 y Workbench.
+- [docs/superpowers/specs/2026-09-08-biblioteca-esquematicos-estructura-canonica-design.md](./docs/superpowers/specs/2026-09-08-biblioteca-esquematicos-estructura-canonica-design.md): contrato canónico de carpetas, catálogo, vinculación y migración.
 - [docs/agent-tooling.md](./docs/agent-tooling.md): Codex, Claude, skills y MCP recomendados.
 - [docs/technical-debt-roadmap.md](./docs/technical-debt-roadmap.md): checklist vivo de deuda técnica.
 
@@ -34,7 +35,7 @@ open docs/technical-debt-roadmap.md
 | UI | Tailwind CSS v4, shadcn/ui, Recharts, Lucide |
 | Formularios | React Hook Form, Zod |
 | AI | Groq, OpenRouter fallback, Vercel AI SDK |
-| RAG | Xenova embeddings 384 dims, pgvector/fallback |
+| RAG | BGE-M3 embeddings 1.024 dims, PostgreSQL/pgvector |
 | Facturación | AFIP/ARCA |
 | Impresión | Tickets térmicos, Zebra/ZPL |
 | Infra | Docker, Dokploy, `output: "standalone"` |
