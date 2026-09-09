@@ -125,7 +125,8 @@ export function planToGuidedQuestion(plan: DiagnosticPlan, sources: readonly Cer
 export function fallbackDiagnosticPlan(reason: string, state?: DiagnosticState): DiagnosticPlan {
     const human=state?.observations.filter(o=>o.origin==='technician'&&!o.superseded).map(o=>o.text).join(' ')??'';
     const startupKnown=/vibra|sonido|detect|imagen|pantalla/i.test(human) || state?.answeredQuestions.some(q=>/vibra|sonido|detecci[oó]n USB|pantalla (?:est[eé] )?negra/i.test(q));
-    if (state && /no (?:enciende|arranca)/i.test(`${state.sellerProblem} ${human}`) && /dato de recepci[oó]n sin comprobar/i.test(human) && !startupKnown) {
+    const startupUncertain=/(?:no (?:enciende|arranca)|ingres(?:a|[óo]) apagado)/i.test(`${state?.sellerProblem ?? ''} ${human}`);
+    if (state && startupUncertain && /dato de recepci[oó]n sin comprobar/i.test(human) && !startupKnown) {
         return {id:crypto.randomUUID(),kind:'clarification',stage:'Distinguir arranque de imagen',
             question:'Con las comprobaciones ya realizadas, ¿observaste vibración, sonido o detección USB aunque la pantalla esté negra?',
             reason:'Distinguir ausencia de arranque de un posible problema de imagen sin atribuir todavía una causa.',

@@ -34,8 +34,7 @@ test("retrieval failure degrades explicitly instead of aborting diagnosis", asyn
 
 test('after discarding an intake reading, provider failure asks for existing signs of startup',async()=>{
     const result=await diagnoseRepair({repair:{...repair,problemDescription:'Revisar y presupuestar / ingresa apagado / recibe carga 0.6'},
-        history:[{id:'u0',role:'user',content:'No enciende'},
-            {id:'a0',role:'assistant',content:'',question:'El dato 0.6 no tiene unidad confirmada. Indicá instrumento y cuándo se midió.'},
+        history:[{id:'a0',role:'assistant',content:'',question:'El dato 0.6 no tiene unidad confirmada. Indicá instrumento y cuándo se midió.'},
             {id:'a1',role:'assistant',content:'',question:'Adjuntá una imagen legible de la zona o página que estás revisando.'}],
         text:'Es un dato de recepción sin comprobar.',images:[],messageId:'u3'}, {
         retrieve:async()=>({sources:[],unavailable:[]}),vision:async()=>({facts:'',warnings:[]}),
