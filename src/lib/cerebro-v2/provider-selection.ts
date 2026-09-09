@@ -7,7 +7,11 @@ import { buildGroqModelConfigurations } from "./model-routing";
 import { getGroqKeys } from "@/lib/groq";
 export type ProviderSelection = { label: string; keyId: string };
 
-export function buildModel(onSelect: (provider: ProviderSelection) => void, vision: boolean): LanguageModel {
+export function structuredOpenRouterModels(configured: string): string[] {
+    return [...new Set([...(configured==='openrouter/free'?[]:[configured]),'google/gemma-4-31b-it:free','openrouter/free'])];
+}
+
+export function buildModel(onSelect: (provider: ProviderSelection) => void, vision: boolean, structured=false): LanguageModel {
     const configurations: FallbackModelConfig[] = [];
     const openRouterKey = process.env.OPENROUTER_API_KEY;
     if (openRouterKey) {
@@ -15,7 +19,9 @@ export function buildModel(onSelect: (provider: ProviderSelection) => void, visi
         const modelId = vision
             ? process.env.OPENROUTER_VISION_MODEL ?? AI_MODELS.VISION
             : process.env.OPENROUTER_MODEL ?? AI_MODELS.CHAT;
-        configurations.push({ instance: openRouter(modelId), label: "OpenRouter Free", keyId: "openrouter", modelId });
+        for (const candidate of structured ? structuredOpenRouterModels(modelId) : [modelId]) {
+            configurations.push({instance:openRouter(candidate),label:'OpenRouter',keyId:'openrouter',modelId:candidate, ...(structured?{timeoutMs:12_000}:{})});
+        }
     }
     configurations.push(...buildGroqModelConfigurations(
         getGroqKeys(),
@@ -25,5 +31,5 @@ export function buildModel(onSelect: (provider: ProviderSelection) => void, visi
     if (localModel) {
         configurations.push({ instance: localModel, label: vision ? "Qwen local vision" : "Qwen local", keyId: "local" });
     }
-    return createFallbackModel(configurations, onSelect) as unknown as LanguageModel;
+    return createFallbackModel(configurations.map(config=>structured?{timeoutMs:8_000,...config}:config), onSelect) as unknown as LanguageModel;
 }

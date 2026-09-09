@@ -22,10 +22,10 @@ export type DiagnosisDependencies={
 
 async function draft(prompt:string,correction?:string):Promise<DraftResult> {
     let provider:ProviderSelection={label:'Pendiente',keyId:'pending'};
-    const result=await generateText({model:buildModel(p=>{provider=p;},false),system:prompt,
+    const result=await generateText({model:buildModel(p=>{provider=p;},false,true),system:prompt,
         messages:[{role:'user',content:correction?`Corregí la decisión: ${correction}. Devolvé JSON válido y una sola comprobación respaldada.`:'Prepará la próxima comprobación con el expediente y las fuentes.'}],
-        output:Output.json(),providerOptions:{openrouter:{reasoning:{effort:'minimal'}}},
-        temperature:0.1,maxOutputTokens:3000,maxRetries:0,abortSignal:AbortSignal.timeout(30_000)});
+        output:Output.json(),providerOptions:{openrouter:{reasoning:{enabled:false}}},
+        temperature:0.1,maxOutputTokens:2000,maxRetries:0,abortSignal:AbortSignal.timeout(45_000)});
     return {text:result.text,provider:provider.keyId};
 }
 const defaults:DiagnosisDependencies={retrieve:retrieveTechnicalEvidence,draft,vision:loadEvidenceVision};

@@ -3,6 +3,7 @@ export type FallbackModelConfig = {
     instance: unknown;
     label: string;
     keyId: string;
+    timeoutMs?: number;
     [key: string]: unknown;
 };
 
@@ -56,6 +57,30 @@ function isRateLimitError(error: unknown): boolean {
 
 const isGroqConfig = (config: FallbackModelConfig): boolean => config.keyId.startsWith("groq-");
 
+function requestAbortSignal(params: unknown): AbortSignal | undefined {
+    if (params && typeof params === "object" && "abortSignal" in params && params.abortSignal instanceof AbortSignal) {
+        return params.abortSignal;
+    }
+    return undefined;
+}
+
+async function generateAttempt(config: FallbackModelConfig, params: unknown, requestSignal?: AbortSignal) {
+    const executor = getExecutor(config.instance);
+    if (config.timeoutMs === undefined) return executor.doGenerate(params);
+    if (!Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1 || config.timeoutMs > 2_147_483_647) {
+        throw new RangeError("Provider generation timeout must be a positive bounded integer");
+    }
+    const deadline = new AbortController();
+    const signal = requestSignal ? AbortSignal.any([requestSignal, deadline.signal]) : deadline.signal;
+    const timer = setTimeout(() => deadline.abort(new DOMException("Provider generation timed out", "TimeoutError")), config.timeoutMs);
+    try {
+        const options = params && typeof params === "object" ? params : {};
+        return await executor.doGenerate({ ...options, abortSignal: signal });
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 function requireRequestedJson(params: unknown, result: { [key: string]: unknown }) {
     const format=params && typeof params==='object' && 'responseFormat' in params ? params.responseFormat : null;
     if (!format || typeof format!=='object' || !('type' in format) || format.type!=='json') return;
@@ -77,15 +102,19 @@ export function createFallbackModel(configs: FallbackModelConfig[], onSelect: (i
         doGenerate: async (params: unknown) => {
             let lastErr: unknown;
             let groqRateLimited = false;
+            const requestSignal = requestAbortSignal(params);
             for (const config of configs) {
+                requestSignal?.throwIfAborted();
                 if (groqRateLimited && isGroqConfig(config)) continue;
                 try {
                     onSelect(config);
-                    const result = await getExecutor(config.instance).doGenerate(params);
+                    const result = await generateAttempt(config, params, requestSignal);
+                    requestSignal?.throwIfAborted();
                     normalizeFinishReason(result);
                     requireRequestedJson(params, result);
                     return result;
                 } catch (e) {
+                    requestSignal?.throwIfAborted();
                     lastErr = e;
                     if (isRateLimitError(e) && isGroqConfig(config)) groqRateLimited = true;
                     const message = e instanceof Error ? e.message : String(e);
