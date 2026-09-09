@@ -35,7 +35,7 @@ async function describe(image:string|Uint8Array):Promise<string> {
     const result=await generateText({model:buildModel(()=>undefined,true,true),system:VISION_FACTS_SYSTEM_PROMPT,
         messages:[{role:'user',content:[{type:'text',text:'Leé únicamente hechos visibles, sin inferir conexiones ni pines ilegibles.'},{type:'image',image}]}],
         output:Output.json(),providerOptions:{openrouter:{reasoning:{enabled:false}}},
-        temperature:0,maxOutputTokens:1600,maxRetries:0,abortSignal:AbortSignal.timeout(35_000)});
+        temperature:0,maxOutputTokens:600,maxRetries:0,abortSignal:AbortSignal.timeout(35_000)});
     const facts=parseVisibleSchematicFacts(result.text);
     if (!facts) throw new Error('Lectura visual no interpretable');
     return formatVisibleSchematicFacts(facts);
