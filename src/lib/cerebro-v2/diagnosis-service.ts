@@ -1,4 +1,4 @@
-import { generateText } from 'ai';
+import { generateText, Output } from 'ai';
 import { normalizeDeviceIdentity, deviceModelAliases } from './normalization';
 import { buildTechnicalSearchQuery, diagnosticSubsystemTerms } from './diagnostic-planner';
 import { buildDiagnosticState, type DiagnosticHistoryMessage, type DiagnosticState } from './diagnostic-state';
@@ -24,7 +24,8 @@ async function draft(prompt:string,correction?:string):Promise<DraftResult> {
     let provider:ProviderSelection={label:'Pendiente',keyId:'pending'};
     const result=await generateText({model:buildModel(p=>{provider=p;},false),system:prompt,
         messages:[{role:'user',content:correction?`Corregí la decisión: ${correction}. Devolvé JSON válido y una sola comprobación respaldada.`:'Prepará la próxima comprobación con el expediente y las fuentes.'}],
-        temperature:0.1,maxOutputTokens:1400,maxRetries:0,abortSignal:AbortSignal.timeout(30_000)});
+        output:Output.json(),providerOptions:{openrouter:{reasoning:{effort:'minimal'}}},
+        temperature:0.1,maxOutputTokens:3000,maxRetries:0,abortSignal:AbortSignal.timeout(30_000)});
     return {text:result.text,provider:provider.keyId};
 }
 const defaults:DiagnosisDependencies={retrieve:retrieveTechnicalEvidence,draft,vision:loadEvidenceVision};
@@ -78,11 +79,14 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
                 break;
             }
             correction=validation.reason;
+            console.warn('[CEREBRO] Decision rejected', {provider,attempt:attempt+1,reason:validation.reason});
         }
         if (!plan) {
             warnings.push('La propuesta automática no superó la verificación técnica');
-            plan=fallbackDiagnosticPlan('La evidencia disponible no permite validar una medición de placa específica.');
-            text='No pude validar una próxima medición con las fuentes actuales. Conservé el expediente y los antecedentes para continuar con una referencia verificable.';
+            plan=fallbackDiagnosticPlan('La evidencia disponible no permite validar una medición de placa específica.',state);
+            text=plan.kind==='clarification'
+                ? 'El dato de recepción quedó sin confirmar. Falta distinguir si el equipo no arranca o no muestra imagen; los antecedentes todavía no confirman la causa.'
+                : 'No pude validar una próxima medición con las fuentes actuales. Conservé el expediente y los antecedentes para continuar con una referencia verificable.';
         }
     }
     return {text,sources,metadata:buildMetadata(state,plan,sources,warnings,provider)};

@@ -31,3 +31,16 @@ test("retrieval failure degrades explicitly instead of aborting diagnosis", asyn
     assert.ok(result.metadata.retrievalWarnings?.some((warning) => /recuperar evidencia/i.test(warning)));
     assert.doesNotMatch(JSON.stringify(result), /database address/);
 });
+
+test('after discarding an intake reading, provider failure asks for existing signs of startup',async()=>{
+    const result=await diagnoseRepair({repair:{...repair,problemDescription:'No enciende, recibe carga 0.6'},
+        history:[{id:'a0',role:'assistant',content:'',question:'El dato 0.6 no tiene unidad confirmada. Indicá instrumento y cuándo se midió.'}],
+        text:'Es un dato de recepción sin comprobar.',images:[],messageId:'u3'}, {
+        retrieve:async()=>({sources:[],unavailable:[]}),vision:async()=>({facts:'',warnings:[]}),
+        draft:async()=>{throw new Error('offline');},
+    });
+    assert.equal(result.metadata.diagnosticPlan?.kind,'clarification');
+    assert.match(result.metadata.diagnosticPlan?.question??'',/vibración, sonido o detección USB/);
+    assert.match(result.metadata.diagnosticPlan?.conditions??'',/No conectes/);
+    assert.doesNotMatch(result.text,/No pude validar una próxima medición/);
+});

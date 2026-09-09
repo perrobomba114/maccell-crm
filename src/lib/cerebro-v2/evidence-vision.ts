@@ -5,7 +5,7 @@ import { mkdtemp, readFile, rm, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { generateText } from 'ai';
+import { generateText, Output } from 'ai';
 import { buildModel } from './provider-selection';
 import { requestRagPageImage } from './worker-client';
 import { formatVisibleSchematicFacts, parseVisibleSchematicFacts, VISION_FACTS_SYSTEM_PROMPT } from './vision-analysis';
@@ -34,7 +34,8 @@ export async function requestEvidencePage(source:CerebroSource):Promise<Uint8Arr
 async function describe(image:string|Uint8Array):Promise<string> {
     const result=await generateText({model:buildModel(()=>undefined,true),system:VISION_FACTS_SYSTEM_PROMPT,
         messages:[{role:'user',content:[{type:'text',text:'Leé únicamente hechos visibles, sin inferir conexiones ni pines ilegibles.'},{type:'image',image}]}],
-        temperature:0,maxOutputTokens:600,maxRetries:0,abortSignal:AbortSignal.timeout(20_000)});
+        output:Output.json(),providerOptions:{openrouter:{reasoning:{effort:'minimal'}}},
+        temperature:0,maxOutputTokens:1600,maxRetries:0,abortSignal:AbortSignal.timeout(20_000)});
     const facts=parseVisibleSchematicFacts(result.text);
     if (!facts) throw new Error('Lectura visual no interpretable');
     return formatVisibleSchematicFacts(facts);
