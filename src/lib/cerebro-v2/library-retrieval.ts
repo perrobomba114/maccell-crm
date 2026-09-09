@@ -43,18 +43,18 @@ AND (
      WHERE regexp_replace(lower(models.value), '[^a-z0-9]', '', 'g') = ANY($2::text[]))
     OR EXISTS (SELECT 1 FROM unnest($2::text[]) m WHERE length(m) >= 2 AND (
         regexp_replace(lower(a.relative_path), '[^a-z0-9]', '', 'g') LIKE '%' || m || '%'
-        OR regexp_replace(lower(a.name), '[^a-z0-9]', '', 'g') LIKE '%' || m || '%'
+        OR regexp_replace(lower(COALESCE(a.metadata->>'name', '')), '[^a-z0-9]', '', 'g') LIKE '%' || m || '%'
     ))
 )
 AND NOT EXISTS (SELECT 1 FROM schematics.index_jobs job WHERE job.asset_id = a.id AND job.status = 'failed')
 AND i.asset_sha256 = a.sha256 AND i.asset_sha256 = a.metadata->>'sha256' AND i.index_version = 1
 AND (
     EXISTS (SELECT 1 FROM unnest($3::text[]) term WHERE i.payload::text ILIKE '%' || term || '%')
-    OR EXISTS (SELECT 1 FROM unnest($3::text[]) term WHERE a.name ILIKE '%' || term || '%')
+    OR EXISTS (SELECT 1 FROM unnest($3::text[]) term WHERE COALESCE(a.metadata->>'name', '') ILIKE '%' || term || '%')
 )
 ORDER BY (SELECT count(*) FROM jsonb_array_elements(COALESCE(i.payload->'components', '[]'::jsonb)) AS components(value)
  WHERE lower(components.value->>'name') = ANY($3::text[])) DESC,
- (SELECT count(*) FROM unnest($3::text[]) term WHERE (i.payload::text ILIKE '%' || term || '%' OR a.name ILIKE '%' || term || '%')) DESC, a.id LIMIT 200`;
+ (SELECT count(*) FROM unnest($3::text[]) term WHERE (i.payload::text ILIKE '%' || term || '%' OR COALESCE(a.metadata->>'name', '') ILIKE '%' || term || '%')) DESC, a.id LIMIT 200`;
 const databaseSearch: LibrarySearch = async (sql, params) => {
     const { db } = await import('@/lib/db');
     return db.$queryRawUnsafe<LibraryRow[]>(sql, ...params);

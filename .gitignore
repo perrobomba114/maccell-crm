@@ -61,6 +61,7 @@ upload/
 # Local analysis and private generated reports
 /tmp/
 /output/
+/outputs/
 /informe_garantias_*.pdf
 /SM-A405FN_*.pdf
 

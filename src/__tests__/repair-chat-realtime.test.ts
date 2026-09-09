@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { repairChatEventSchema } from "../lib/repair-chat/realtime";
+import { subscribeToRepairChatEvents } from "../lib/repair-chat/realtime";
 
 test("realtime events contain routing metadata but no private message content", () => {
     const event = repairChatEventSchema.parse({
@@ -15,6 +16,17 @@ test("realtime events contain routing metadata but no private message content", 
     });
     assert.equal("content" in event, false);
     assert.equal("imageUrls" in event, false);
+});
+
+test("realtime fan-out accepts more than ten concurrent SSE subscribers without a leak warning", async () => {
+    const warnings: Error[] = [];
+    const captureWarning = (warning: Error) => warnings.push(warning);
+    process.on("warning", captureWarning);
+    const unsubscribe = Array.from({ length: 11 }, () => subscribeToRepairChatEvents(() => undefined));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    for (const close of unsubscribe) close();
+    process.off("warning", captureWarning);
+    assert.equal(warnings.some((warning) => warning.name === "MaxListenersExceededWarning"), false);
 });
 
 test("SSE route authenticates and disables proxy buffering", () => {

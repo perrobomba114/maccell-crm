@@ -16,6 +16,15 @@ test('library rejects stale hash and unrelated symptoms',async()=>{
  assert.deepEqual(await retrieveLibrarySources(input,async()=>[{...row,payload:{...row.payload,sha256:'old'}}]),[]);
  assert.deepEqual(await retrieveLibrarySources({...input,text:'camera'},async()=>[row]),[]);
 });
+test('library query reads the asset name from metadata instead of a missing table column', async () => {
+ let emittedSql = '';
+ await retrieveLibrarySources(input, async (sql) => {
+  emittedSql = sql;
+  return [];
+ });
+ assert.match(emittedSql, /a\.metadata->>'name'/);
+ assert.doesNotMatch(emittedSql, /a\.name/);
+});
 test('workbench links reject external URLs and unexpected parameters',()=>{
  assert.equal(safeWorkbenchUrl('https://evil.test'),undefined);
  assert.equal(safeWorkbenchUrl('/technician/schematics?board=x&redirect=evil'),undefined);

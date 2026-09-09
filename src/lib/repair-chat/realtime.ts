@@ -25,6 +25,9 @@ declare global {
 
 const emitter = globalThis.repairChatEmitter ?? new EventEmitter();
 globalThis.repairChatEmitter = emitter;
+// One process-wide emitter fans events out to every connected authorized SSE client.
+// Ten is Node's heuristic for accidental listeners, not a valid operational ceiling here.
+emitter.setMaxListeners(0);
 
 function connectionString(): string {
     return process.env.DATABASE_URL ?? "postgresql://dummy:dummy@localhost:5432/dummy";
