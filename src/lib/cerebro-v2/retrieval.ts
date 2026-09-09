@@ -1,4 +1,6 @@
 import { queryRag } from "./rag-db";
+import { selectEvidence } from "./evidence-selection";
+import { repairEvidenceIsUsable, repairEvidenceMatchesSymptom, summarizeRepairEvidence } from "./repair-evidence";
 import type { CerebroAuthority, CerebroSource, CerebroSourceType } from "./types";
 
 export type RetrievalInput = {
@@ -177,6 +179,9 @@ function repairEvidenceIsRelevant(row: RetrievalRow, input: RetrievalInput): boo
     if (input.excludeRepairTicket && row.title.toUpperCase().includes(input.excludeRepairTicket.toUpperCase())) {
         return false;
     }
+    if (!repairEvidenceIsUsable(row.content, row.title)) return false;
+    const summary = summarizeRepairEvidence(row.content, row.title);
+    if (!repairEvidenceMatchesSymptom(summary, input.text)) return false;
     const restartSearch = (input.subsystemTerms ?? []).some((term) => (
         /^(?:RESTART|REBOOT|PANIC|WATCHDOG|THERMALMONITORD|MISSING SENSOR)/i.test(term)
     ));
@@ -235,9 +240,10 @@ export async function retrieveCerebroSources(
         && (row.sourceType === "REPAIR" || row.sourceType === "PDF")
         && repairEvidenceIsRelevant(row, input)
     ));
-    const requestedModels = new Set(input.modelAliases ?? [input.model]);
+    const normalizeIdentity = (value: string) => value.normalize("NFKD").replace(/[^a-z0-9]/gi, "").toUpperCase();
+    const requestedModels = new Set([input.model, ...(input.modelAliases ?? [])].map(normalizeIdentity));
     const scopedRows = allowedRows.filter((row) => (
-        requestedModels.has(row.model) || row.identityMatch
+        requestedModels.has(normalizeIdentity(row.model))
     ));
     const rankedWithDuplicates = scopedRows
         .map((row) => ({
@@ -271,13 +277,5 @@ export async function retrieveCerebroSources(
         seenSources.add(key);
         return true;
     });
-    const limit = input.limit ?? 10;
-    const technicalDocuments = ranked.filter((source) => source.sourceType === "PDF");
-    const documentQuota = Math.min(technicalDocuments.length, Math.ceil(limit / 2));
-    const selectedDocuments = technicalDocuments.slice(0, documentQuota);
-    const selectedChunkIds = new Set(selectedDocuments.map((source) => source.chunkId));
-    const remaining = ranked
-        .filter((source) => !selectedChunkIds.has(source.chunkId))
-        .slice(0, limit - selectedDocuments.length);
-    return [...selectedDocuments, ...remaining];
+    return selectEvidence([ranked], input.limit ?? 10);
 }

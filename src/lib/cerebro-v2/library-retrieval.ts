@@ -15,6 +15,7 @@ export type LibraryRow = {
 };
 export type LibrarySearch = (sql: string, params: readonly unknown[]) => Promise<LibraryRow[]>;
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+const modelCodes = (value: string) => (value.toUpperCase().match(/\b(?:SM|XT|LM|RM|CPH|TA|INE|ANE)[- ]?[A-Z0-9]{3,}\b/g) ?? []).map(normalize);
 const normalizeBrandKey = (b: string) => {
     const v = b.toLowerCase();
     if (v.includes('iphone') || v.includes('apple')) return 'apple';
@@ -62,6 +63,7 @@ const databaseSearch: LibrarySearch = async (sql, params) => {
 const STOP = new Set(['para', 'con', 'sin', 'del', 'que', 'una', 'modelo', 'samsung', 'apple', 'motorola']);
 export async function retrieveLibrarySources(input: RetrievalInput, search: LibrarySearch = databaseSearch): Promise<CerebroSource[]> {
     const models = [input.model, ...(input.modelAliases ?? [])].map(normalize).filter(Boolean);
+    const requestedCodes = new Set([input.model, ...(input.modelAliases ?? [])].flatMap(modelCodes));
     if (!normalize(input.brand) || !models.length) return [];
     const lexiconTerms = expandTechnicalLexicon(input.text);
     const rawTokens = [
@@ -79,9 +81,8 @@ export async function retrieveLibrarySources(input: RetrievalInput, search: Libr
     for (const row of rows) {
         const {metadata: asset, payload} = row;
         const candidateModels = [asset.model, ...(asset.aliases ?? [])].filter(Boolean).map(normalize);
-        const matchesModel = candidateModels.some(cm => models.includes(cm))
-            || (candidateModels.length > 0 && models.some(m => m.length >= 2 && candidateModels.some(cm => cm.includes(m))))
-            || (Boolean(asset.name) && models.some(m => m.length >= 2 && normalize(asset.name).includes(m)));
+        const matchesModel = candidateModels.some(candidate => models.includes(candidate))
+            || [asset.model, ...(asset.aliases ?? [])].flatMap(modelCodes).some(code => requestedCodes.has(code));
         if (asset.status !== 'ready' || asset.identityVerified === false || normalizeBrandKey(asset.brand ?? '') !== normalizeBrandKey(input.brand)
             || !matchesModel
             || payload.version !== 1 || payload.sha256 !== asset.sha256 || payload.assetId !== row.assetId) continue;
@@ -97,7 +98,7 @@ export async function retrieveLibrarySources(input: RetrievalInput, search: Libr
             if (net) params.set('net', net);
             sources.push({chunkId: `library:${row.assetId}:${suffix}`, documentId: row.assetId,
                 sourceType: asset.kind === 'pdf' ? 'PDF' : 'BOARD', authority: 'TECHNICAL_DOCUMENT',
-                brand: input.brand, model: input.model, title: asset.name, pageNumber, content,
+                brand: asset.brand ?? input.brand, model: asset.model, title: asset.name, pageNumber, content,
                 score: 1 + score / terms.length, workbenchUrl: `/technician/schematics?${params}`});
         };
         for (const page of payload.pages ?? []) {
@@ -125,8 +126,8 @@ export async function retrieveLibrarySources(input: RetrievalInput, search: Libr
                     documentId: row.assetId,
                     sourceType: asset.kind === 'pdf' ? 'PDF' : 'BOARD',
                     authority: 'TECHNICAL_DOCUMENT',
-                    brand: input.brand,
-                    model: input.model,
+                    brand: asset.brand ?? input.brand,
+                    model: asset.model,
                     title: asset.name,
                     pageNumber: 1,
                     content: overviewContent,

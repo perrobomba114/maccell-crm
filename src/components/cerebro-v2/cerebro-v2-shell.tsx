@@ -7,6 +7,8 @@ import type { ChatMessage, ChatSession } from "@/lib/cerebro-v2/chat-repository"
 import type { CerebroRepairSummary } from "@/lib/cerebro-v2/repair-context";
 import { cerebroInitialState, cerebroUiReducer } from "@/lib/cerebro-v2/ui-state";
 import type { CerebroMessageMetadata } from "@/lib/cerebro-v2/types";
+import { CerebroV2Closure } from "./cerebro-v2-closure";
+import { CerebroV2RepairEvidence } from "./cerebro-v2-repair-evidence";
 import { CerebroV2Chat } from "./cerebro-v2-chat";
 import { CerebroV2Header } from "./cerebro-v2-header";
 import { CerebroV2History } from "./cerebro-v2-history";
@@ -30,6 +32,8 @@ function toUiMessages(messages: ChatMessage[]): CerebroUiMessage[] {
             provider: message.provider ?? "stored",
             sources: message.sources,
             retrievalWarnings: message.metadata.retrievalWarnings,
+            diagnosticState: message.metadata.diagnosticState,
+            diagnosticPlan: message.metadata.diagnosticPlan,
             ...(message.metadata.guidedQuestion ? { guidedQuestion: message.metadata.guidedQuestion } : {}),
         } : undefined;
         return {
@@ -53,6 +57,8 @@ export function CerebroV2Shell() {
     const [repairs, setRepairs] = useState<CerebroRepairSummary[]>([]);
     const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
     const [repairPickerOpen, setRepairPickerOpen] = useState(false);
+    const [closureOpen, setClosureOpen] = useState(false);
+    const [healthDetails, setHealthDetails] = useState<string[]>([]);
 
     const loadSessions = useCallback(async () => {
         try {
@@ -68,7 +74,15 @@ export function CerebroV2Shell() {
     }, []);
 
     useEffect(() => { void loadSessions(); }, [loadSessions]);
-    useEffect(() => { void jsonRequest<{ overall: "healthy" | "degraded" }>("/api/cerebro-v2/health").then((result) => setHealth(result.overall)).catch(() => setHealth("degraded")); }, []);
+    useEffect(() => {
+        let active = true;
+        void fetch("/api/cerebro-v2/health").then(response => response.json()).then((result: { overall?: "healthy" | "degraded"; reasons?: string[] }) => {
+            if (!active) return;
+            setHealth(result.overall ?? "degraded");
+            setHealthDetails(result.reasons?.length ? result.reasons : [result.overall === "healthy" ? "Las rutas de consulta están accesibles. Cada respuesta informa si su búsqueda o proveedor encontró una limitación." : "El detalle de disponibilidad no pudo verificarse."]);
+        }).catch(() => { if (active) { setHealth("degraded"); setHealthDetails(["No se pudo consultar el estado del servicio."]); } });
+        return () => { active = false; };
+    }, []);
 
     const selectSession = async (session: ChatSession) => {
         setLoading(true); setError(null);
@@ -104,11 +118,13 @@ export function CerebroV2Shell() {
 
     return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-slate-700/70 bg-[#0b1117] text-slate-100">
-            <CerebroV2Header selectedRepair={selectedRepair} activeSession={activeSession} health={health} onChooseRepair={() => setRepairPickerOpen(true)} onHistory={() => dispatch({ type: "toggle-history" })} onNewChat={() => void newChat()} />
+            <CerebroV2Header selectedRepair={selectedRepair} activeSession={activeSession} health={health} healthDetails={healthDetails} onCloseRepair={() => setClosureOpen(true)} onChooseRepair={() => setRepairPickerOpen(true)} onHistory={() => dispatch({ type: "toggle-history" })} onNewChat={() => void newChat()} />
             <div className="relative flex min-h-0 flex-1 overflow-hidden">
-                <CerebroV2RepairPicker open={repairPickerOpen} repairs={repairs} selectedId={selectedRepairId} onClose={() => setRepairPickerOpen(false)} onSelect={(repair) => { setSelectedRepairId(repair.id); setRepairPickerOpen(false); }} />
+                <CerebroV2RepairPicker open={repairPickerOpen} repairs={repairs} selectedId={selectedRepairId} onClose={() => setRepairPickerOpen(false)} onSelect={(repair) => { setSelectedRepairId(repair.id); setMessages([]); dispatch({ type: "repair-selected" }); setRepairPickerOpen(false); }} />
                 <CerebroV2History open={state.historyOpen} sessions={state.sessions} activeSessionId={state.activeSessionId} onClose={() => dispatch({ type: "close-history" })} onSelect={(session) => void selectSession(session)} onDelete={(sessionId) => void deleteChat(sessionId)} />
-                {loading ? <div className="flex flex-1 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div> : state.activeSessionId && activeSession ? <CerebroV2Chat key={state.activeSessionId} sessionId={state.activeSessionId} brand={activeSession.brand} model={activeSession.model} linkedToRepair={Boolean(activeSession.repairId)} initialMessages={messages} onOpenSource={(source) => dispatch({ type: "open-source", source })} onConversationUpdated={() => void loadSessions()} /> : <div className="flex flex-1 items-center justify-center p-6 text-center"><div><p className="font-mono text-xs uppercase tracking-widest text-cyan-300">Cerebro técnico</p><p className="mt-3 text-lg text-slate-200">Elegí una reparación asignada para comenzar.</p><p className="mt-2 text-sm text-slate-500">La identidad del equipo se toma del ticket y no puede editarse desde el chat.</p><button type="button" onClick={() => setRepairPickerOpen(true)} className="mt-5 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-cyan-400">Elegir reparación</button></div></div>}
+                {loading ? <div className="flex flex-1 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div> : state.activeSessionId && activeSession ? <CerebroV2Chat key={state.activeSessionId} sessionId={state.activeSessionId} brand={activeSession.brand} model={activeSession.model} linkedToRepair={repairs.some(repair => repair.id === activeSession.repairId)} initialMessages={messages} onOpenSource={(source) => dispatch({ type: "open-source", source })} onConversationUpdated={() => void loadSessions()} /> : <div className="flex flex-1 items-center justify-center p-6 text-center"><div><p className="font-mono text-xs uppercase tracking-widest text-cyan-300">Cerebro técnico</p><p className="mt-3 text-lg text-slate-200">{selectedRepair ? `${selectedRepair.ticketNumber} · ${selectedRepair.deviceBrand} ${selectedRepair.deviceModel}` : "Elegí una reparación asignada para comenzar."}</p><p className="mt-2 text-sm text-slate-500">La identidad del equipo se toma del ticket y no puede editarse desde el chat.</p><button type="button" onClick={() => selectedRepair ? void newChat() : setRepairPickerOpen(true)} className="mt-5 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-cyan-400">{selectedRepair ? "Iniciar diagnóstico" : "Elegir reparación"}</button></div></div>}
+                {closureOpen && (activeSession?.repairId || selectedRepairId) ? <CerebroV2Closure repairId={(activeSession?.repairId || selectedRepairId)!} onClose={() => setClosureOpen(false)} /> : null}
+                {state.activeSource?.sourceType === "REPAIR" && state.activeSessionId ? <CerebroV2RepairEvidence source={state.activeSource} sessionId={state.activeSessionId} onClose={() => dispatch({ type: "close-source" })} /> : null}
                 {state.activeSource?.sourceType === "PDF" ? <CerebroV2PdfViewer source={state.activeSource} onClose={() => dispatch({ type: "close-source" })} /> : null}
             </div>
             {error ? <div className="flex items-center gap-2 border-t border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200"><TriangleAlert size={15} />{error}<button type="button" onClick={() => setError(null)} className="ml-auto text-xs underline">Cerrar</button></div> : null}

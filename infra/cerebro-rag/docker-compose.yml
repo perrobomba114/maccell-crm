@@ -149,13 +149,13 @@ services:
       LIBRARY_ROOT: /library
       PAGE_CACHE_ROOT: /page-cache
       EMBEDDING_MODEL: BAAI/bge-m3
-      BATCH_SIZE: "32"
+      BATCH_SIZE: "16"
       REMOTE_EMBEDDING_URLS: ${REMOTE_EMBEDDING_URLS:-}
       REMOTE_EMBEDDING_SECRET: ${INTERNAL_API_SECRET}
       REMOTE_EMBEDDING_TIMEOUT_SECONDS: "45"
       HF_HOME: /model-cache
-      OMP_NUM_THREADS: "4"
-      MKL_NUM_THREADS: "4"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
     volumes:
       - /mnt/data2:/library:ro
       - /var/lib/maccell/rag-pages:/page-cache
@@ -165,10 +165,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "4"
+          cpus: "1"
           memory: 12G
         reservations:
-          cpus: "1"
+          cpus: "0.5"
           memory: 2G
 
 networks:

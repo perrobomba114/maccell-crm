@@ -4,14 +4,23 @@ import hashlib
 from collections.abc import Iterable
 
 from psycopg import Connection
+from psycopg.types.json import Jsonb
 
-from cerebro_rag.authority import classify_authority
+from cerebro_rag.authority import RepairOutcome, classify_authority, latest_repair_outcome
 from cerebro_rag.chunking import extract_component_codes
 from cerebro_rag.document_versions import DocumentDescriptor, DocumentVersionRepository
 from cerebro_rag.embeddings import EmbeddingService
 from cerebro_rag.indexer import vector_literal
 from cerebro_rag.normalize import model_family, normalize_brand, normalize_model
-from cerebro_rag.repairs import RepairSource, build_repair_content, has_useful_technical_content
+from cerebro_rag.repairs import (
+    RepairSource,
+    build_repair_content,
+    has_useful_technical_content,
+    is_verified_learning_record,
+    structured_learning_values,
+    technical_observations,
+)
+from cerebro_rag.repair_quality import REPAIR_QUALITY_POLICY_VERSION
 
 
 def repair_source_from_row(row: tuple[object, ...]) -> RepairSource:
@@ -31,6 +40,41 @@ def repair_source_from_row(row: tuple[object, ...]) -> RepairSource:
     )
 
 
+def authority_evidence(source: RepairSource) -> str:
+    values = (
+        source.diagnosis,
+        source.enriched_diagnosis,
+        *technical_observations(source.observations),
+        *(structured_learning_values(source.learning_record)
+          if is_verified_learning_record(source.learning_record) else ()),
+    )
+    return "\n".join(value.strip() for value in values if value.strip())
+
+
+def verified_learning_authority(source: RepairSource) -> str:
+    if not is_verified_learning_record(source.learning_record):
+        return ""
+    return str((source.learning_record or {}).get("authority") or "")
+
+
+def effective_authority(source: RepairSource) -> str:
+    return classify_authority(
+        source.current_status,
+        list(source.prior_statuses),
+        authority_evidence(source),
+        verified_learning_authority(source),
+    ).value
+
+
+def repair_quality_fingerprint(source: RepairSource) -> str:
+    outcome = latest_repair_outcome(source.current_status, list(source.prior_statuses)).value
+    authority = effective_authority(source)
+    training_eligible = authority == "CONFIRMED_SUCCESS" and is_verified_learning_record(
+        source.learning_record
+    )
+    return f"v{REPAIR_QUALITY_POLICY_VERSION}:{outcome}:{authority}:{int(training_eligible)}"
+
+
 class RepairIndexer:
     def __init__(self, connection: Connection[object], embeddings: EmbeddingService) -> None:
         self.connection = connection
@@ -39,7 +83,13 @@ class RepairIndexer:
 
     def index_batch(self, sources: Iterable[RepairSource]) -> tuple[int, int]:
         source_list = list(sources)
-        unusable = [source for source in source_list if not has_useful_technical_content(source)]
+        unusable = [
+            source
+            for source in source_list
+            if not has_useful_technical_content(source)
+            or latest_repair_outcome(source.current_status, list(source.prior_statuses))
+            == RepairOutcome.UNREPAIRED
+        ]
         for source in unusable:
             self.connection.execute(
                 """
@@ -52,7 +102,7 @@ class RepairIndexer:
         prepared = [
             (source, build_repair_content(source))
             for source in source_list
-            if has_useful_technical_content(source)
+            if source not in unusable
         ]
         pending: list[tuple[RepairSource, str]] = []
         skipped = len(source_list) - len(prepared)
@@ -60,12 +110,20 @@ class RepairIndexer:
             digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
             existing = self.connection.execute(
                 """
-                SELECT status::text FROM rag_documents
+                SELECT status::text,
+                       metadata->>'repair_quality_policy_version',
+                       metadata->>'repair_quality_fingerprint'
+                FROM rag_documents
                 WHERE source_type = 'REPAIR' AND source_id = %s AND sha256 = %s
                 """,
                 (source.repair_id, digest),
             ).fetchone()
-            if existing and existing[0] == "READY":
+            if (
+                existing
+                and existing[0] == "READY"
+                and existing[1] == str(REPAIR_QUALITY_POLICY_VERSION)
+                and existing[2] == repair_quality_fingerprint(source)
+            ):
                 skipped += 1
             else:
                 pending.append((source, content))
@@ -101,12 +159,7 @@ class RepairIndexer:
     ) -> None:
         brand = normalize_brand(source.brand)
         model = normalize_model(brand, source.model)
-        authority = classify_authority(
-            source.current_status,
-            list(source.prior_statuses),
-            source.diagnosis or source.enriched_diagnosis,
-            str((source.learning_record or {}).get("authority") or ""),
-        ).value
+        authority = effective_authority(source)
         digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
         document_id = self.versions.create_or_get(
             DocumentDescriptor(
@@ -145,3 +198,24 @@ class RepairIndexer:
             ),
         )
         self.versions.mark_ready(document_id)
+        self.connection.execute(
+            """
+            UPDATE rag_documents
+            SET metadata = metadata || %s::jsonb,
+                authority = %s::rag_authority,
+                updated_at = now()
+            WHERE id = %s
+            """,
+            (
+                Jsonb({
+                    "repair_quality_policy_version": REPAIR_QUALITY_POLICY_VERSION,
+                    "repair_quality_fingerprint": repair_quality_fingerprint(source),
+                    "repair_training_eligible": (
+                        authority == "CONFIRMED_SUCCESS"
+                        and is_verified_learning_record(source.learning_record)
+                    ),
+                }),
+                authority,
+                document_id,
+            ),
+        )

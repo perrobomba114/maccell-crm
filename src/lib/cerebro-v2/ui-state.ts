@@ -10,6 +10,7 @@ export type CerebroUiState = {
 };
 
 export type CerebroUiAction =
+    | { type: "repair-selected" }
     | { type: "sessions-loaded"; sessions: ChatSession[] }
     | { type: "session-selected"; session: ChatSession }
     | { type: "session-created"; session: ChatSession }
@@ -29,6 +30,8 @@ export const cerebroInitialState: CerebroUiState = {
 
 export function cerebroUiReducer(state: CerebroUiState, action: CerebroUiAction): CerebroUiState {
     switch (action.type) {
+        case "repair-selected":
+            return { ...state, activeSessionId: null, activeSource: null, sourcePanelOpen: false, historyOpen: false };
         case "sessions-loaded":
             return { ...state, sessions: action.sessions };
         case "session-selected":
@@ -45,6 +48,7 @@ export function cerebroUiReducer(state: CerebroUiState, action: CerebroUiAction)
                 sessions: [action.session, ...state.sessions.filter((item) => item.id !== action.session.id)],
                 activeSessionId: action.session.id,
                 historyOpen: false,
+                activeSource: null, sourcePanelOpen: false,
             };
         case "session-deleted":
             return {

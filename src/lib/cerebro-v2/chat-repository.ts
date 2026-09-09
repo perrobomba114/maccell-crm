@@ -59,6 +59,16 @@ const defaultAdapter: ChatQueryAdapter = { query: queryRag };
 
 export function createChatRepository(adapter: ChatQueryAdapter = defaultAdapter) {
     return {
+        listRepairMessages: (userId: string, repairId: string) => adapter.query<MessageRow>(`
+            SELECT message.id::text, message.client_message_id AS "clientMessageId",
+                   message.role, message.content, message.attachments,
+                   message.sources, message.prompt_version AS "promptVersion",
+                   message.provider, message.metadata, message.created_at AS "createdAt"
+            FROM rag_chat_messages AS message
+            JOIN rag_chat_sessions AS session ON session.id = message.session_id
+            WHERE session.user_id = $1 AND session.repair_id = $2
+            ORDER BY message.created_at, message.id
+        `, [userId, repairId]),
         listSessions: (userId: string) => adapter.query<SessionRow>(`
             SELECT id::text, title, brand, model, repair_id AS "repairId",
                    ticket_number AS "ticketNumber",

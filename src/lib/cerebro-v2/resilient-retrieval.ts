@@ -1,31 +1,40 @@
 import { retrieveCerebroSources, type RetrievalInput } from './retrieval';
 import { retrieveLibrarySources } from './library-retrieval';
 import { requestQueryEmbedding } from './worker-client';
+import { selectEvidence } from './evidence-selection';
+import { retrieveRepairFallbackSources } from './repair-evidence-retrieval';
 import type { CerebroSource } from './types';
 
-type Dependencies = {
+export type RetrievalDependencies = {
     embed: typeof requestQueryEmbedding;
     rag: typeof retrieveCerebroSources;
     library: typeof retrieveLibrarySources;
+    repairFallback: typeof retrieveRepairFallbackSources;
 };
 export async function retrieveTechnicalEvidence(input: Omit<RetrievalInput, 'embedding'>,
-    dependencies: Dependencies = {embed: requestQueryEmbedding, rag: retrieveCerebroSources, library: retrieveLibrarySources},
+    dependencies: Partial<RetrievalDependencies> = {},
 ): Promise<{sources: CerebroSource[]; unavailable: string[]}> {
+    const resolved: RetrievalDependencies = {embed: requestQueryEmbedding, rag: retrieveCerebroSources,
+        library: retrieveLibrarySources, repairFallback: retrieveRepairFallbackSources, ...dependencies};
     const [library, rag] = await Promise.allSettled([
-        dependencies.library({...input, embedding: []}),
-        dependencies.embed(input.text).then(embedding => dependencies.rag({...input, embedding})),
+        resolved.library({...input, embedding: []}),
+        resolved.embed(input.text).then(embedding => resolved.rag({...input, embedding})),
     ]);
     const indexed = library.status === 'fulfilled' ? library.value : [];
-    const existing = rag.status === 'fulfilled' ? rag.value : [];
-    const limit = input.limit ?? 8;
-    // Preserve both existing repair evidence and indexed technical evidence.
-    const quota = Math.min(indexed.length, existing.length ? Math.ceil(limit / 2) : limit);
-    const selectedExisting = existing.slice(0, limit - quota);
-    const repair = existing.find(source => source.sourceType === 'REPAIR');
-    if (repair && selectedExisting.length && !selectedExisting.some(source => source.sourceType === 'REPAIR')) {
-        selectedExisting[selectedExisting.length - 1] = repair;
+    let existing = rag.status === 'fulfilled' ? rag.value : [];
+    let historicalSearchUnavailable = false;
+    if (rag.status === 'rejected' || !existing.some(source => source.sourceType === 'REPAIR')) {
+        try {
+            const repairs = await resolved.repairFallback(input);
+            existing = rag.status === 'fulfilled' ? [...existing, ...repairs] : repairs;
+        } catch {
+            historicalSearchUnavailable = true;
+            if (rag.status === 'rejected') existing = [];
+        }
     }
-    const sources = [...indexed.slice(0, quota), ...selectedExisting];
+    const limit = input.limit ?? 8;
+    const sources = selectEvidence([indexed, existing], limit);
     return {sources, unavailable: [library.status === 'rejected' ? 'biblioteca técnica' : '',
-        rag.status === 'rejected' ? 'búsqueda semántica' : ''].filter(Boolean)};
+        rag.status === 'rejected' ? 'búsqueda semántica' : '',
+        historicalSearchUnavailable ? 'búsqueda de reparaciones históricas' : ''].filter(Boolean)};
 }

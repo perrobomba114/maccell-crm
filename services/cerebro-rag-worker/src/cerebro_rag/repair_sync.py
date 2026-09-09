@@ -60,7 +60,19 @@ def _load_cursor(connection: psycopg.Connection[object]) -> RepairCursor:
     row = connection.execute(
         "SELECT cursor FROM rag_ingestion_jobs WHERE job_type = 'REPAIR_SYNC' AND source_key = 'main'"
     ).fetchone()
-    return RepairCursor.from_json(row[0] if row else {})
+    stored = row[0] if row else {}
+    cursor = RepairCursor.from_json(stored)
+    if stored != cursor.to_json():
+        connection.execute(
+            """
+            UPDATE rag_ingestion_jobs
+            SET cursor = %s, updated_at = now()
+            WHERE job_type = 'REPAIR_SYNC' AND source_key = 'main'
+            """,
+            (Jsonb(cursor.to_json()),),
+        )
+        connection.commit()
+    return cursor
 
 
 def sync_repairs_once(settings: WorkerSettings) -> tuple[int, int]:

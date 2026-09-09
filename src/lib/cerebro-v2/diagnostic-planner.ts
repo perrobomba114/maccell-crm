@@ -1,11 +1,11 @@
 export type DiagnosticSubsystem = "POWER" | "BATTERY" | "CHARGING" | "BOOT" | "RESTART" | "DISPLAY" | "RF";
 
 const SUBSYSTEM_TERMS: Readonly<Record<DiagnosticSubsystem, readonly string[]>> = {
-    POWER: ["POWER ON", "PWR ON", "POWER", "PMIC", "POWER KEY", "VBAT", "VDD MAIN", "TRST_N", "RESET", "OSCILLATOR", "CLOCK", "SHORT CIRCUIT", "F2902", "TP2909"],
+    POWER: ["POWER ON", "PWR ON", "POWER", "PMIC", "POWER KEY", "VBAT", "VDD MAIN", "RESET", "OSCILLATOR", "CLOCK", "SHORT CIRCUIT"],
     BATTERY: ["BATTERY", "BATT", "PP_BATT", "NTC", "BATTERY CONNECTOR"],
-    CHARGING: ["CHARGING", "USB", "VBUS", "CHARGE IC", "DOCK FLEX", "TIGRIS", "HYDRA", "TRISTAR", "FUSE RESISTOR", "MIDDLE LAYER", "TAIL PLUG", "LIGHTNING", "TYPE-C", "SIN RAYO", "NOT CHARGING", "INSURANCE RESISTANCE", "CAPA MEDIA", "INTERPOSER", "PUERTO DE CARGA"],
+    CHARGING: ["CHARGING", "USB", "VBUS", "CHARGE IC", "DOCK FLEX", "FUSE RESISTOR", "TYPE-C", "NOT CHARGING", "PUERTO DE CARGA"],
     BOOT: ["BOOT", "RESET", "CLOCK", "NAND", "CPU"],
-    RESTART: ["RESTART", "REBOOT", "PANIC FULL", "PANIC", "WATCHDOG", "THERMALMONITORD", "MISSING SENSOR", "I2C SENSOR"],
+    RESTART: ["RESTART", "REBOOT", "WATCHDOG", "RESET", "I2C SENSOR"],
     DISPLAY: ["DISPLAY", "LCD OFF", "LCD", "OLED", "BACKLIGHT", "LUZ DE FONDO", "MIPI", "WSOD", "WHITE SCREEN", "GREEN SCREEN", "FLOWER SCREEN", "FLYING WIRE", "PANTALLA BLANCA", "PANTALLA VERDE", "LCM", "DISP_PWR", "TOUCH", "ANODO", "CATODO", "LED_A", "LED_K", "VLED", "VBOOST", "LINEAS DE BACKLIGHT", "LUZ"],
     RF: [
         "RF",
@@ -21,6 +21,10 @@ const SUBSYSTEM_TERMS: Readonly<Record<DiagnosticSubsystem, readonly string[]>> 
         "UIM",
         "NETWORK",
     ],
+};
+const APPLE_TERMS: Partial<Record<DiagnosticSubsystem, readonly string[]>> = {
+    CHARGING: ["TIGRIS", "HYDRA", "TRISTAR", "MIDDLE LAYER", "TAIL PLUG", "LIGHTNING", "SIN RAYO", "INSURANCE RESISTANCE", "CAPA MEDIA", "INTERPOSER"],
+    RESTART: ["PANIC FULL", "PANIC", "THERMALMONITORD", "MISSING SENSOR"],
 };
 
 export function inferDiagnosticSubsystems(text: string): DiagnosticSubsystem[] {
@@ -45,12 +49,20 @@ export type TechnicalSearchInput = {
 };
 
 export function buildTechnicalSearchQuery(input: TechnicalSearchInput): string {
-    const base = [input.problem, input.latestText, ...input.observations.slice(-6)].filter(Boolean).join(" ");
+    const measured = input.observations.flatMap(observation => {
+        const signal = observation.match(/\b\d+(?:[.,]\d+)?\s*(?:mA|A|mV|V|ohm)|\b(?:[RCULFDJ]\d{2,6}|TP\d{2,6})\b/i);
+        if (!signal) return [];
+        const index = signal.index ?? 0;
+        return [observation.slice(Math.max(0, index - 60), index + 160)];
+    });
+    const retained = [...new Set(measured)].join(" ").slice(0, 900);
+    const recent = input.observations.slice(-3).join(" ").slice(0, 200);
+    const base = [input.latestText.slice(0, 350), retained, input.problem.slice(0, 300), recent].filter(Boolean).join(" ");
     const subsystems = inferDiagnosticSubsystems(base);
-    const expansion = subsystems.flatMap((subsystem) => SUBSYSTEM_TERMS[subsystem]);
+    const expansion = subsystems.flatMap((subsystem) => [...SUBSYSTEM_TERMS[subsystem], ...(input.brand.toUpperCase() === "APPLE" ? APPLE_TERMS[subsystem] ?? [] : [])]);
     return [...new Set([input.brand, input.model, base, ...expansion])].join(" ").slice(0, 2_000);
 }
 
-export function diagnosticSubsystemTerms(text: string): string[] {
-    return inferDiagnosticSubsystems(text).flatMap((subsystem) => SUBSYSTEM_TERMS[subsystem]);
+export function diagnosticSubsystemTerms(text: string, brand?: string): string[] {
+    return inferDiagnosticSubsystems(text).flatMap((subsystem) => [...SUBSYSTEM_TERMS[subsystem], ...(brand?.toUpperCase() === "APPLE" ? APPLE_TERMS[subsystem] ?? [] : [])]);
 }

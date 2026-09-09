@@ -3,10 +3,12 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const routeUrl = new URL("../app/api/cerebro-v2/chat/route.ts", import.meta.url);
+const providerUrl = new URL("../lib/cerebro-v2/provider-selection.ts", import.meta.url);
+const visionUrl = new URL("../lib/cerebro-v2/evidence-vision.ts", import.meta.url);
 
 test("Cerebro chat prioriza OpenRouter y mantiene Groq y local como respaldo", () => {
-    const source = readFileSync(routeUrl, "utf8");
-    const buildModel = source.slice(source.indexOf("function buildModel"), source.indexOf("function toModelMessages"));
+    const providerSource = readFileSync(providerUrl, "utf8");
+    const buildModel = providerSource.slice(providerSource.indexOf("export function buildModel"));
     const groq = buildModel.indexOf("buildGroqModelConfigurations");
     const local = buildModel.indexOf("createLocalCerebroModel");
     const openRouter = buildModel.indexOf("createOpenRouter");
@@ -16,11 +18,11 @@ test("Cerebro chat prioriza OpenRouter y mantiene Groq y local como respaldo", (
     assert.ok(local > groq);
 });
 
-test("Cerebro vision limits Qwen input to three images", () => {
-    const source = readFileSync(routeUrl, "utf8");
+test("Cerebro vision bounds attached and document images", () => {
+    const source = readFileSync(visionUrl, "utf8");
 
-    assert.match(source, /const boundedImages = images\.slice\(0, 3\)/);
-    assert.match(source, /\.\.\.boundedImages\.map/);
+    assert.match(source, /images\.slice\(0,2\)/);
+    assert.match(source, /Math\.max\(0,2-images\.length\)/);
 });
 
 test("Cerebro chat no longer selects deprecated Llama 3.3", () => {

@@ -28,6 +28,15 @@ test("builds a direct same-brand prompt with isolated evidence delimiters", () =
     assert.doesNotMatch(prompt, /50\.000/);
 });
 
+test("matches legacy compact Samsung identity without rewriting source metadata", () => {
+    const compactSource = { ...source, model: "SMA125M", title: "SMA125M Power" };
+    const otherModel = { ...source, chunkId: "other", model: "SM-A405FN", title: "A40 Power" };
+    const prompt = buildCerebroSystemPrompt("SAMSUNG", "SM-A125M", [compactSource, otherModel]);
+    assert.match(prompt, /SMA125M Power/);
+    assert.doesNotMatch(prompt, /A40 Power/);
+    assert.equal(compactSource.model, "SMA125M");
+});
+
 test("requires an explicit measurement when exact-model evidence is absent", () => {
     const prompt = buildCerebroSystemPrompt("APPLE", "IPHONE 8", []);
     assert.match(prompt, /NO HAY EVIDENCIA EXACTA/);
@@ -144,4 +153,3 @@ test("prioritizes REPAIR CASE and includes charging circuit path guidance", () =
     assert.match(prompt, /tail plug.*fusible.*chip USB/i);
     assert.match(prompt, /Workbench: \/technician\/schematics/);
 });
-

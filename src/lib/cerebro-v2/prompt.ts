@@ -1,3 +1,4 @@
+import { normalizeBrand } from "./normalization";
 import type { CerebroSource } from "./types";
 
 export type CerebroEvidence = CerebroSource;
@@ -16,6 +17,7 @@ const PRICE_PATTERN = /(?:US\$|USD|ARS|\$)\s*\d[\d.,]*/gi;
 const UUID_PATTERN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi;
 const MAX_SOURCE_CHARACTERS = 3_500;
 const MAX_CONTEXT_CHARACTERS = 8_000;
+const modelKey = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 function sanitizeEvidence(value: string): string {
     return value
@@ -33,14 +35,14 @@ export function buildCerebroSystemPrompt(
     let usedCharacters = 0;
     const blocks: string[] = [];
     // Preserve manufacturer priority and repair cases while retaining original public citation numbers.
-    const orderedEvidence = evidence.filter(source => source.brand === brand).sort((left, right) => {
+    const orderedEvidence = evidence.filter(source => normalizeBrand(source.brand) === normalizeBrand(brand) && modelKey(source.model) === modelKey(model)).sort((left, right) => {
         const priority = (source: CerebroEvidence) => source.sourceType === "PDF"
             ? /TROUBLESHOOT|SERVICE MANUAL|MANUAL DE SERVICIO|REPAIR CASE|FAULT|FALLA/i.test(source.title) ? 0 : 1 : 2;
         return priority(left) - priority(right);
     });
     const sourceBudget = Math.floor(MAX_CONTEXT_CHARACTERS / Math.max(1, orderedEvidence.length));
     for (const source of orderedEvidence) {
-        if (source.brand !== brand || usedCharacters >= MAX_CONTEXT_CHARACTERS) continue;
+        if (normalizeBrand(source.brand) !== normalizeBrand(brand) || usedCharacters >= MAX_CONTEXT_CHARACTERS) continue;
         const remaining = MAX_CONTEXT_CHARACTERS - usedCharacters;
         const content = sanitizeEvidence(source.content).slice(0, Math.min(MAX_SOURCE_CHARACTERS, remaining, sourceBudget));
         usedCharacters += content.length;
@@ -65,7 +67,7 @@ export function buildCerebroSystemPrompt(
         : "Usá y citá únicamente la evidencia exacta incluida abajo.";
     const displaySymptom = Boolean(repair && /NO (?:DA|TIENE) IMAGEN|SIN IMAGEN|PANTALLA|DISPLAY|IMAGEN.*(?:VERDE|VIOLETA|AZUL)|T[ÁA]CTIL|TOUCH/i.test(repair.problem));
     const confirmedDisplayRepairs = evidence.filter((source) => (
-        source.brand === brand
+        normalizeBrand(source.brand) === normalizeBrand(brand)
         && source.model === model
         && source.sourceType === "REPAIR"
         && source.authority === "CONFIRMED_SUCCESS"

@@ -1,4 +1,5 @@
 import { safeWorkbenchUrl } from "./source-links";
+import { summarizeRepairEvidence } from "./repair-evidence";
 import type { CerebroPublicSource, CerebroSource } from "./types";
 
 type MessageInput = {
@@ -34,9 +35,11 @@ export function extractMessageInput(message: MessageInput): ExtractedMessageInpu
 }
 
 export function toPublicSources(sources: readonly CerebroSource[]): CerebroPublicSource[] {
-    return sources.flatMap((source) => {
+    return sources.flatMap((source, index) => {
         if (source.sourceType !== "REPAIR" && source.sourceType !== "PDF" && source.sourceType !== "BOARD") return [];
         return [{
+            citationId: `E${index + 1}`,
+            ...(source.sourceType === "REPAIR" ? { repairSummary: summarizeRepairEvidence(source.content, source.title) } : {}),
             documentId: source.documentId,
             sourceType: source.sourceType,
             authority: source.authority,

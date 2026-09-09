@@ -109,3 +109,12 @@ test("persists guided metadata with each message", async () => {
     assert.match(calls[0]?.sql ?? "", /metadata/);
     assert.match(String(calls[0]?.params.at(-1)), /guidedQuestion/);
 });
+
+test("repair dossier reads all persisted sessions while preserving owner and repair scope", async () => {
+    const calls: Array<{ sql: string; params: readonly unknown[] }> = [];
+    const repository = createChatRepository({ query: async (sql, params) => { calls.push({ sql, params }); return []; } });
+    await repository.listRepairMessages("tech-1", "repair-9");
+    assert.deepEqual(calls[0].params, ["tech-1", "repair-9"]);
+    assert.match(calls[0].sql, /session.user_id = \$1 AND session.repair_id = \$2/);
+    assert.doesNotMatch(calls[0].sql, /LIMIT\s+[68]\b/i);
+});

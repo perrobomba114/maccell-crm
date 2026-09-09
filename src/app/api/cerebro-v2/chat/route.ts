@@ -1,269 +1,59 @@
 import { getCurrentUser } from "@/actions/auth-actions";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { createUIMessageStream, createUIMessageStreamResponse, generateText, type LanguageModel, type ModelMessage, type UIMessage } from "ai";
-
-import { AI_MODELS } from "@/config/ai-models";
-import { createFallbackModel, type FallbackModelConfig } from "@/lib/cerebro/models";
 import { canUseCerebroV2 } from "@/lib/cerebro-v2/access";
-import { parseCerebroChatRequest, type CerebroChatRequest } from "@/lib/cerebro-v2/chat-contract";
+import { parseCerebroChatRequest } from "@/lib/cerebro-v2/chat-contract";
 import { cerebroChatRepository } from "@/lib/cerebro-v2/chat-repository";
-import { buildTechnicalSearchQuery, diagnosticSubsystemTerms } from "@/lib/cerebro-v2/diagnostic-planner";
-import { buildGuidedQuestion, validateGuidedAnswer } from "@/lib/cerebro-v2/guided-diagnosis";
-import { ensureObservedFacts, suppressUnsupportedMeasurements } from "@/lib/cerebro-v2/grounding";
-import { extractMessageInput, toPublicSources } from "@/lib/cerebro-v2/message-content";
-import { deviceModelAliases, normalizeDeviceIdentity } from "@/lib/cerebro-v2/normalization";
-import { formatExternalResearch, needsExternalResearch, searchExternalTechnicalSources } from "@/lib/cerebro-v2/external-research";
-import { buildCerebroSystemPrompt, CEREBRO_PROMPT_VERSION } from "@/lib/cerebro-v2/prompt";
+import { groundedUiResponse } from "@/lib/cerebro-v2/chat-stream";
+import { validateGuidedAnswer } from "@/lib/cerebro-v2/guided-diagnosis";
+import { extractMessageInput } from "@/lib/cerebro-v2/message-content";
 import { getAuthorizedCerebroRepair } from "@/lib/cerebro-v2/repair-context";
-import { createLocalCerebroModel } from "@/lib/cerebro-v2/local-provider";
-import { buildGroqModelConfigurations } from "@/lib/cerebro-v2/model-routing";
-import { retrieveTechnicalEvidence } from "@/lib/cerebro-v2/resilient-retrieval";
-import type { CerebroSource } from "@/lib/cerebro-v2/types";
-import type { CerebroMessageMetadata } from "@/lib/cerebro-v2/types";
-import { shouldLoadVisualEvidence } from "@/lib/cerebro-v2/visual-evidence";
-import { formatVisibleSchematicFacts, parseVisibleSchematicFacts, VISION_FACTS_SYSTEM_PROMPT } from "@/lib/cerebro-v2/vision-analysis";
-import { requestRagPageImage } from "@/lib/cerebro-v2/worker-client";
-import { getGroqKeys } from "@/lib/groq";
+import { diagnoseRepair } from "@/lib/cerebro-v2/diagnosis-service";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
-
-type ProviderSelection = { label: string; keyId: string };
-
-function componentCodes(value: string): string[] {
-    return [...new Set(value.toUpperCase().match(/\b[A-Z]{1,3}\d{3,5}\b/g) ?? [])];
-}
-
-function buildModel(onSelect: (provider: ProviderSelection) => void, vision: boolean): LanguageModel {
-    const configurations: FallbackModelConfig[] = [];
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
-    if (openRouterKey) {
-        const openRouter = createOpenRouter({ apiKey: openRouterKey });
-        const modelId = vision
-            ? process.env.OPENROUTER_VISION_MODEL ?? AI_MODELS.VISION
-            : process.env.OPENROUTER_MODEL ?? AI_MODELS.CHAT;
-        configurations.push({ instance: openRouter(modelId), label: "OpenRouter Free", keyId: "openrouter", modelId });
-    }
-    configurations.push(...buildGroqModelConfigurations(
-        getGroqKeys(),
-        vision ? "vision" : "text",
-    ));
-    const localModel = createLocalCerebroModel(vision);
-    if (localModel) {
-        configurations.push({ instance: localModel, label: vision ? "Qwen local vision" : "Qwen local", keyId: "local" });
-    }
-    return createFallbackModel(configurations, onSelect) as unknown as LanguageModel;
-}
-
-function toModelMessages(messages: CerebroChatRequest["messages"], includeImages: boolean): ModelMessage[] {
-    return messages.slice(-8).map((message): ModelMessage => {
-        const input = extractMessageInput(message);
-        if (message.role === "assistant") return { role: "assistant", content: input.text || "..." };
-        if (!includeImages || input.images.length === 0) return { role: "user", content: input.text || "Analizar equipo" };
-        return {
-            role: "user",
-            content: [
-                { type: "text", text: input.text || "Analizá esta imagen técnica del equipo." },
-                ...input.images.map((image) => ({ type: "image" as const, image })),
-            ],
-        };
-    });
-}
-
-async function extractVisualFacts(images: Array<string | Uint8Array>): Promise<string | null> {
-    if (images.length === 0) return null;
-    const boundedImages = images.slice(0, 3);
-    const result = await generateText({
-        model: buildModel(() => undefined, true),
-        system: VISION_FACTS_SYSTEM_PROMPT,
-        messages: [{
-            role: "user",
-            content: [
-                { type: "text", text: "Extraé los hechos visibles de estas imágenes técnicas." },
-                ...boundedImages.map((image) => ({ type: "image" as const, image })),
-            ],
-        }],
-        temperature: 0,
-        maxOutputTokens: 700,
-        maxRetries: 0,
-    });
-    const facts = parseVisibleSchematicFacts(result.text);
-    return facts ? formatVisibleSchematicFacts(facts) : null;
-}
-
-function diagnosticQuery(request: CerebroChatRequest): { text: string; images: string[] } {
-    const lastUser = request.messages.findLast((message) => message.role === "user");
-    if (!lastUser) return { text: "", images: [] };
-    return extractMessageInput(lastUser);
-}
-
-async function loadVisualEvidence(evidence: CerebroSource[]): Promise<Uint8Array[]> {
-    const candidates = evidence.filter(shouldLoadVisualEvidence).slice(0, 2);
-    const results = await Promise.allSettled(candidates.map((source) => (
-        requestRagPageImage(source.documentId, source.pageNumber ?? 1)
-    )));
-    return results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
-}
-
-function groundedUiResponse(
-    messageId: string,
-    text: string,
-    metadata: CerebroMessageMetadata,
-): Response {
-    type ServerMessage = UIMessage<CerebroMessageMetadata>;
-    const stream = createUIMessageStream<ServerMessage>({
-        execute: ({ writer }) => {
-            writer.write({ type: "start", messageId, messageMetadata: metadata });
-            writer.write({ type: "text-start", id: "diagnosis" });
-            writer.write({ type: "text-delta", id: "diagnosis", delta: text });
-            writer.write({ type: "text-end", id: "diagnosis" });
-            writer.write({ type: "finish", finishReason: "stop", messageMetadata: metadata });
-        },
-    });
-    return createUIMessageStreamResponse({ stream });
-}
+export const maxDuration = 120;
 
 export async function POST(request: Request): Promise<Response> {
+    let observationSaved = false;
     try {
         const user = await getCurrentUser();
         if (!user) return Response.json({ error: "No autorizado" }, { status: 401 });
         if (!canUseCerebroV2(user.role)) return Response.json({ error: "Sin acceso" }, { status: 403 });
-
         const parsed = parseCerebroChatRequest(await request.json());
         if (!parsed.success) return Response.json({ error: parsed.error }, { status: 400 });
-        const session = await cerebroChatRepository.getSession(user.id, parsed.data.sessionId);
-        if (!session) return Response.json({ error: "El chat no existe o no te pertenece" }, { status: 404 });
-        if (!session.repairId) {
-            return Response.json({ error: "Este chat anterior no está vinculado a una reparación. Creá uno nuevo." }, { status: 409 });
-        }
-        const repair = await getAuthorizedCerebroRepair(user, session.repairId);
-        if (!repair) {
-            return Response.json({ error: "La reparación fue finalizada o reasignada; el chat queda en modo lectura" }, { status: 403 });
-        }
-
-        const identity = normalizeDeviceIdentity(repair.deviceBrand, repair.deviceModel);
-        const { brand, model } = identity;
-        const query = diagnosticQuery(parsed.data);
-        if (!query.text && query.images.length === 0) {
-            return Response.json({ error: "Describí el síntoma o adjuntá una imagen" }, { status: 400 });
-        }
-
-        const previousMessages = await cerebroChatRepository.listMessages(user.id, session.id);
-        const pendingQuestion = previousMessages.findLast((message) => message.metadata.guidedQuestion)
-            ?.metadata.guidedQuestion ?? null;
-        const guidedOption = validateGuidedAnswer(pendingQuestion, parsed.data.guidedAnswer);
-        const searchText = buildTechnicalSearchQuery({
-            brand,
-            model,
-            problem: repair.problemDescription,
-            latestText: query.text || "Inspección visual",
-            observations: [
-                ...repair.observations,
-                ...(guidedOption ? [guidedOption.label] : []),
-            ],
+        const data=parsed.data;
+        const session=await cerebroChatRepository.getSession(user.id,data.sessionId);
+        if (!session) return Response.json({error:"El chat no existe o no te pertenece"},{status:404});
+        if (!session.repairId) return Response.json({error:"El chat no está vinculado a una reparación"},{status:409});
+        const repair=await getAuthorizedCerebroRepair(user,session.repairId);
+        if (!repair) return Response.json({error:"La reparación fue finalizada o reasignada; el chat queda en modo lectura"},{status:403});
+        const previous=await cerebroChatRepository.listMessages(user.id,session.id);
+        const completed=previous.find(m=>m.clientMessageId===`${data.clientMessageId}:assistant`);
+        if (completed) return groundedUiResponse(completed.clientMessageId,completed.content,{
+            ...completed.metadata,promptVersion:completed.promptVersion??"stored",provider:completed.provider??"stored",sources:completed.sources,
         });
-        const { sources: evidence, unavailable } = await retrieveTechnicalEvidence({
-            brand,
-            model,
-            modelAliases: deviceModelAliases(identity),
-            modelFamily: identity.modelFamily,
-            text: searchText,
-            componentCodes: componentCodes(searchText),
-            subsystemTerms: diagnosticSubsystemTerms(searchText),
-            excludeRepairTicket: repair.ticketNumber,
-            limit: 8,
-        });
-        const publicSources = toPublicSources(evidence);
-        const externalResearch = needsExternalResearch(evidence)
-            ? formatExternalResearch(await searchExternalTechnicalSources(`${brand} ${model} ${searchText}`))
-            : null;
-        await cerebroChatRepository.appendMessage({
-            userId: user.id,
-            sessionId: session.id,
-            clientMessageId: parsed.data.clientMessageId,
-            role: "user",
-            content: query.text,
-            attachments: query.images,
-            sources: [],
-            promptVersion: null,
-            provider: null,
-            metadata: guidedOption && parsed.data.guidedAnswer ? {
-                guidedAnswer: {
-                    ...parsed.data.guidedAnswer,
-                    observation: guidedOption.observation,
-                },
-            } : {},
-        });
-        const title = session.title === "Nuevo diagnóstico" ? searchText.slice(0, 80) : undefined;
-        await cerebroChatRepository.touchSession(user.id, session.id, title);
-
-        const guidedQuestion = buildGuidedQuestion({
-            repairProblem: repair.problemDescription,
-            latestText: query.text,
-            evidenceDocumentIds: publicSources.map((source) => source.documentId),
-        });
-        const visualEvidence = await loadVisualEvidence(evidence);
-        const modelMessages = toModelMessages(parsed.data.messages, false);
-        const visualFacts = await extractVisualFacts([...query.images, ...visualEvidence]);
-        if (visualFacts) {
-            modelMessages.push({
-                role: "user",
-                content: `${visualFacts}\nUsá estos hechos solo como evidencia visual; si no alcanzan, pedí una medición o página más nítida.`,
-            });
-        }
-        if (externalResearch) {
-            modelMessages.push({ role: "user", content: externalResearch });
-        }
-
-        let selectedProvider: ProviderSelection = { label: "Pendiente", keyId: "pending" };
-        const result = await generateText({
-            model: buildModel((provider) => { selectedProvider = provider; }, false),
-            system: buildCerebroSystemPrompt(brand, model, evidence, {
-                ticketNumber: repair.ticketNumber,
-                problem: repair.problemDescription,
-                diagnosis: repair.diagnosis ?? repair.diagnosisEnriched,
-                observations: repair.observations,
-                isWet: repair.isWet,
-                isWarranty: repair.isWarranty,
-            }),
-            messages: modelMessages,
-            temperature: 0.2,
-            maxOutputTokens: 900,
-            maxRetries: 0,
-        });
-        const groundedText = ensureObservedFacts(
-            suppressUnsupportedMeasurements(
-                result.text,
-                evidence.map((source) => source.content),
-            ),
-            {
-                device: `${brand} ${model}`,
-                sellerProblem: repair.problemDescription,
-                technicianInput: query.text || "Inspección visual adjunta",
-            },
-        );
-        await cerebroChatRepository.appendMessage({
-            userId: user.id,
-            sessionId: session.id,
-            clientMessageId: `${parsed.data.clientMessageId}:assistant`,
-            role: "assistant",
-            content: groundedText,
-            attachments: [],
-            sources: publicSources,
-            promptVersion: CEREBRO_PROMPT_VERSION,
-            provider: `${selectedProvider.keyId}:${selectedProvider.label}`,
-            metadata: { retrievalWarnings: unavailable, ...(guidedQuestion ? { guidedQuestion } : {}) },
-        });
-        const responseMetadata: CerebroMessageMetadata = {
-            promptVersion: CEREBRO_PROMPT_VERSION,
-            provider: selectedProvider.keyId,
-            retrievalWarnings: unavailable,
-            sources: publicSources,
-            ...(guidedQuestion ? { guidedQuestion } : {}),
-        };
-        return groundedUiResponse(`${parsed.data.clientMessageId}:assistant`, groundedText, responseMetadata);
+        const lastUser=data.messages.findLast(m=>m.role==='user');
+        if (!lastUser) return Response.json({error:"Describí el síntoma"},{status:400});
+        const query=extractMessageInput(lastUser);
+        const pending=previous.findLast(m=>m.role==='assistant')?.metadata.guidedQuestion??null;
+        const option=validateGuidedAnswer(pending,data.guidedAnswer);
+        if (data.guidedAnswer&&!option) return Response.json({error:"La comprobación cambió. Respondé al último paso del chat."},{status:409});
+        const text=option?.label??query.text;
+        const answerContext=pending ? {question:pending.prompt,conditions:pending.conditions} : undefined;
+        if (!text&&!query.images.length) return Response.json({error:"Describí el síntoma o adjuntá una imagen"},{status:400});
+        await cerebroChatRepository.appendMessage({userId:user.id,sessionId:session.id,clientMessageId:data.clientMessageId,
+            role:'user',content:text,attachments:query.images,sources:[],promptVersion:null,provider:null,
+            metadata:{answerContext,...(option&&data.guidedAnswer?{guidedAnswer:{...data.guidedAnswer,observation:option.observation}}:{})}});
+        observationSaved = true;
+        const persisted=await cerebroChatRepository.listRepairMessages(user.id,repair.id);
+        const result=await diagnoseRepair({repair,text,images:query.images,messageId:data.clientMessageId,answerContext,
+            history:persisted.filter(m=>m.clientMessageId!==data.clientMessageId).map(m=>({id:m.clientMessageId,role:m.role,content:m.content,question:m.metadata.diagnosticPlan?.question??m.metadata.guidedQuestion?.prompt,answerContext:m.metadata.answerContext}))});
+        await cerebroChatRepository.appendMessage({userId:user.id,sessionId:session.id,clientMessageId:`${data.clientMessageId}:assistant`,
+            role:'assistant',content:result.text,attachments:[],sources:result.metadata.sources,promptVersion:result.metadata.promptVersion,
+            provider:result.metadata.provider,metadata:{diagnosticState:result.metadata.diagnosticState,diagnosticPlan:result.metadata.diagnosticPlan,
+                guidedQuestion:result.metadata.guidedQuestion,retrievalWarnings:result.metadata.retrievalWarnings}});
+        await cerebroChatRepository.touchSession(user.id,session.id,session.title==='Nuevo diagnóstico'?`${repair.deviceBrand} ${repair.deviceModel} · ${text}`.slice(0,80):undefined);
+        return groundedUiResponse(`${data.clientMessageId}:assistant`,result.text,result.metadata);
     } catch (error) {
-        console.error("[cerebro-v2/chat] Error:", error instanceof Error ? error.message : "unknown error");
-        return Response.json({ error: "Cerebro no pudo completar el diagnóstico" }, { status: 503 });
+        console.error("[cerebro-v2/chat] Error:",error instanceof Error?error.message:"unknown error");
+        return Response.json({error:observationSaved ? "No se pudo completar la consulta. Tu observación permanece guardada; podés reintentar." : "No se pudo guardar la consulta. Reintentá el envío."},{status:503});
     }
 }

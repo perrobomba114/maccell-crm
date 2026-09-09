@@ -16,6 +16,7 @@ test("expands no-power searches toward the relevant schematic subsystems", () =>
     assert.ok(subsystems.includes("POWER"));
     assert.match(query, /VBAT|PMIC|POWER KEY/);
     assert.match(query, /SM-A125M/);
+    assert.doesNotMatch(query, /F2902|TP2909|PANIC FULL|TRISTAR|TIGRIS|HYDRA|LIGHTNING/);
 });
 
 test("expands no-power with missing backlight toward manufacturer repair sections", () => {
@@ -67,4 +68,17 @@ test("treats a timed iPhone restart as panic diagnostics instead of a charging f
     assert.ok(!subsystems.includes("CHARGING"));
     assert.match(query, /PANIC FULL/);
     assert.match(query, /WATCHDOG|THERMALMONITORD/);
+});
+
+test("does not inject iOS restart vocabulary into Android searches", () => {
+    const query = buildTechnicalSearchQuery({ brand: "MOTOROLA", model: "MOTO E7", problem: "Se reinicia", latestText: "reinicia cada tres minutos", observations: [] });
+    assert.doesNotMatch(query, /PANIC|THERMALMONITORD|MISSING SENSOR|LIGHTNING|F2902|TP2909/);
+    assert.match(query, /RESTART|WATCHDOG/);
+});
+
+test('technical search retains measured points before many later chat turns', () => {
+    const query=buildTechnicalSearchQuery({brand:'MOTOROLA',model:'E7',problem:'no enciende',latestText:'Continuar por alimentación',observations:['Medí 3.8 V en VBAT con multímetro',...Array.from({length:20},(_,index)=>`Observación ${index} sin cambios`)]});
+    assert.match(query,/VBAT/);
+    assert.match(query,/3\.8 V/);
+    assert.ok(query.length<=2000);
 });

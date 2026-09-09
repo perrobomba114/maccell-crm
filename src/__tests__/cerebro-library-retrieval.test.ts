@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { retrieveLibrarySources } from '../lib/cerebro-v2/library-retrieval';
 import { safeWorkbenchUrl } from '../lib/cerebro-v2/source-links';
-const input = {brand:'SAMSUNG', model:'SMA125M', text:'no carga USB', embedding:[]};
+const input = {brand:'SAMSUNG', model:'SM-A125M', text:'no carga USB', embedding:[]};
 const assetId = 'a'.repeat(64);
 const row = {assetId:assetId, metadata:{id:assetId,brand:'Samsung',model:'SM-A125M',kind:'pcbe',name:'A12',sha256:'abc',identityVerified:true,status:'ready'}, payload:{version:1,assetId:assetId,sha256:'abc',pages:[],components:[{id:'c1',name:'U100',kind:'IC',pads:[{id:'p1',name:'1',netIndex:0}]}],nets:[{id:0,name:'USB_VBUS'}]}};
 test('library retrieves exact verified board symptom evidence and safe deep link',async()=>{
@@ -11,6 +11,23 @@ test('library retrieves exact verified board symptom evidence and safe deep link
 });
 test('library rejects foreign and unverified identity even from adapter',async()=>{
  for(const metadata of [{...row.metadata,brand:'Apple'},{...row.metadata,model:'SM-A125F'},{...row.metadata,identityVerified:false}]) assert.deepEqual(await retrieveLibrarySources(input,async()=>[{...row,metadata}]),[]);
+});
+test('library rejects E7 Plus for E7 unless the variant is an explicit alias', async () => {
+ const e7Plus={...row,metadata:{...row.metadata,brand:'Motorola',model:'MOTO E7 PLUS',name:'Moto E7 Plus power.pdf'}};
+ const query={brand:'MOTOROLA',model:'MOTO E7',modelAliases:['E7','MOTO E7'],text:'power no enciende',embedding:[]};
+ assert.deepEqual(await retrieveLibrarySources(query,async()=>[e7Plus]),[]);
+});
+test('library rejects a longer hardware code that only starts with the requested code', async () => {
+ const a125fn={...row,metadata:{...row.metadata,model:'SM-A125FN',name:'SM-A125FN service.pdf'}};
+ const query={brand:'SAMSUNG',model:'SM-A125F',modelAliases:['SM-A125F'],text:'power no enciende',embedding:[]};
+ assert.deepEqual(await retrieveLibrarySources(query,async()=>[a125fn]),[]);
+});
+
+test('library preserves the actual source model instead of relabeling it as the query', async () => {
+ const source={...row,metadata:{...row.metadata,model:'SM-A125M',aliases:['GALAXY A12'],name:'A12 charging.pdf'}};
+ const query={...input,model:'GALAXY A12',modelAliases:['GALAXY A12','SM-A125M']};
+ const [result]=await retrieveLibrarySources(query,async()=>[source]);
+ assert.equal(result.model,'SM-A125M');
 });
 test('library rejects stale hash and unrelated symptoms',async()=>{
  assert.deepEqual(await retrieveLibrarySources(input,async()=>[{...row,payload:{...row.payload,sha256:'old'}}]),[]);
@@ -37,13 +54,13 @@ import { shouldLoadVisualEvidence } from '../lib/cerebro-v2/visual-evidence';
 test('worker failure preserves indexed evidence with explicit degradation', async()=>{
  const indexed=await retrieveLibrarySources(input,async()=>[row]);
  const result=await retrieveTechnicalEvidence(input,{embed:async()=>{throw new Error('offline');},rag:async()=>[],library:async()=>indexed});
- assert.deepEqual(result.sources,indexed); assert.deepEqual(result.unavailable,['búsqueda semántica']);
+ assert.deepEqual(result.sources,indexed); assert.deepEqual(result.unavailable,['búsqueda semántica','búsqueda de reparaciones históricas']);
  assert.equal(toPublicSources(indexed)[0].workbenchUrl,indexed[0].workbenchUrl);
 });
 test('missing index table preserves existing evidence and reports library unavailable',async()=>{
  const indexed=await retrieveLibrarySources(input,async()=>[row]);
  const result=await retrieveTechnicalEvidence(input,{embed:async()=>[],rag:async()=>indexed,library:async()=>{throw new Error('missing relation');}});
- assert.deepEqual(result.sources,indexed); assert.deepEqual(result.unavailable,['biblioteca técnica']);
+ assert.deepEqual(result.sources,indexed); assert.deepEqual(result.unavailable,['biblioteca técnica','búsqueda de reparaciones históricas']);
 });
 test('indexed PDF keeps OCR label and never calls legacy page image endpoint',async()=>{
  const pdf={...row,metadata:{...row.metadata,kind:'pdf'},payload:{...row.payload,components:[],pages:[{page:3,text:'USB charging circuit test',source:'ocr'}]}};
@@ -65,7 +82,7 @@ test('safe source links require unique params, sha256 ids and bounded page',()=>
 import { buildCerebroSystemPrompt } from '../lib/cerebro-v2/prompt';
 test('bounded context preserves board and repair citations in public source order',async()=>{
  const [board]=await retrieveLibrarySources(input,async()=>[row]);
- const sources=[{...board,sourceType:'PDF' as const,title:'manual',content:'X'.repeat(8000)},board,{...board,sourceType:'REPAIR' as const,content:'REPAIR_CONFIRMED_MARKER'}];
+ const sources=[{...board,sourceType:'PDF' as const,title:'manual',content:'X'.repeat(8000)},board,{...board,sourceType:'REPAIR' as const,content:'PROBLEMA: no carga\nDIAGNOSTICO: pin dañado\nSOLUCION: cambio de pin REPAIR_CONFIRMED_MARKER'}];
  const prompt=buildCerebroSystemPrompt(input.brand,input.model,sources);
  assert.match(prompt,/REPAIR_CONFIRMED_MARKER/); assert.match(prompt,/USB_VBUS/);
  assert.match(prompt,/EVIDENCIA E2 ---\n[^\n]*"sourceType":"BOARD"/);
@@ -75,6 +92,15 @@ test('mixing many PDFs retains an existing repair',async()=>{
  const repair={...board,sourceType:'REPAIR' as const,documentId:'repair'};
  const sources=await retrieveTechnicalEvidence({...input,limit:4},{embed:async()=>[],library:async()=>[board,board],rag:async()=>[{...board,sourceType:'PDF'}, {...board,sourceType:'PDF'},repair]});
  assert.ok(sources.sources.some(source=>source.documentId==='repair'));
+});
+test('balanced evidence keeps up to three relevant repairs and deduplicates mirrored PDFs', async () => {
+ const [board]=await retrieveLibrarySources(input,async()=>[row]);
+ const repairs=Array.from({length:4},(_,index)=>({...board,chunkId:`repair-${index}`,documentId:`repair-${index}`,sourceType:'REPAIR' as const,title:`Repair ${index}`,content:'PROBLEMA: no carga\nDIAGNOSTICO: puerto dañado\nSOLUCION: reemplazo del pin de carga\nVERIFICACION: carga estable'}));
+ const pdf={...board,sourceType:'PDF' as const,title:'A12 service manual',pageNumber:4};
+ const mirrored={...pdf,chunkId:'mirror',documentId:'mirror',model:'GALAXY A12'};
+ const result=await retrieveTechnicalEvidence({...input,limit:6},{embed:async()=>[],library:async()=>[pdf],rag:async()=>[mirrored,...repairs]});
+ assert.equal(result.sources.filter(source=>source.sourceType==='REPAIR').length,3);
+ assert.equal(result.sources.filter(source=>source.sourceType==='PDF').length,1);
 });
 test('schematic matches by title when page text is empty and produces workbench deep link',async()=>{
  const unextractedPdf={

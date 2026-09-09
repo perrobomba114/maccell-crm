@@ -10,5 +10,8 @@ export async function GET(): Promise<Response> {
         return Response.json({ error: "No autorizado" }, { status: 401 });
     }
     const health = await checkCerebroHealth();
-    return Response.json(health, { status: health.overall === "healthy" ? 200 : 503 });
+    return Response.json(health, {
+        status: health.overall === "healthy" ? 200 : 503,
+        headers: { "Cache-Control": "no-store" },
+    });
 }

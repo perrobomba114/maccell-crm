@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 
 from cerebro_rag.normalize import normalize_brand, normalize_model
+from cerebro_rag.authority import latest_repair_outcome
 
 
 _REPAIR_LEARNING_JOIN = """
@@ -21,6 +22,8 @@ LEFT JOIN LATERAL (
     record."updatedAt" AS latest
     FROM repair_learning_records AS record
     WHERE record."repairId" = repair.id
+    ORDER BY record."updatedAt" DESC
+    LIMIT 1
 ) AS learning ON true
 """
 
@@ -69,7 +72,7 @@ LEFT JOIN LATERAL (
     WHERE transition."repairId" = repair.id
 ) AS history ON true
 {_REPAIR_LEARNING_JOIN}
-WHERE repair."statusId" IN (5, 6, 10)
+WHERE repair."statusId" IN (5, 6, 7, 10)
 """
 
 REPAIR_EXPORT_QUERY = REPAIR_EXPORT_BASE + "\nORDER BY effective_updated_at, repair.id"
@@ -118,6 +121,13 @@ OPERATIONAL_OBSERVATION_PATTERN = re.compile(
     r"aviso\s+al\s+cliente)",
     re.IGNORECASE,
 )
+ADMINISTRATIVE_CONTENT_PATTERN = re.compile(
+    r"^(?:no (?:se dispone de|hay|tenemos) repuestos?|"
+    r"cliente no (?:autoriza|acepta)|"
+    r"sin autorizaci[oó]n|presupuesto (?:rechazado|pendiente)|"
+    r"equipo (?:entregado|retirado)|reparaci[oó]n tomada por t[eé]cnico)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,7 +164,12 @@ def has_useful_technical_content(source: RepairSource) -> bool:
         *technical_observations(source.observations),
         *structured_learning_values(source.learning_record),
     )
-    return any(len(sanitize_technical_text(value)) >= 12 for value in candidates)
+    return any(is_useful_technical_text(value) for value in candidates)
+
+
+def is_useful_technical_text(value: str) -> bool:
+    sanitized = sanitize_technical_text(value)
+    return len(sanitized) >= 12 and not ADMINISTRATIVE_CONTENT_PATTERN.match(sanitized)
 
 
 def structured_learning_values(record: dict[str, object] | None) -> tuple[str, ...]:
@@ -162,6 +177,24 @@ def structured_learning_values(record: dict[str, object] | None) -> tuple[str, .
         return ()
     fields = ("symptom", "rootCause", "confirmingEvidence", "intervention", "verification")
     return tuple(str(record.get(field) or "") for field in fields)
+
+
+def is_verified_learning_record(record: dict[str, object] | None) -> bool:
+    if not record:
+        return False
+    if record.get("authority") != "CONFIRMED_SUCCESS" or record.get("trainingEligible") is not True:
+        return False
+    required = ("rootCause", "confirmingEvidence", "intervention", "verification")
+    values = [sanitize_technical_text(str(record.get(field) or "")) for field in required]
+    if not all(is_useful_technical_text(value) for value in values):
+        return False
+    rejected = (
+        re.compile(r"^(?:causa\s+)?(?:(?:sin|no (?:se )?(?:pudo )?)\s+(?:determinar|determinad[ao]|diagn[oó]stico)|desconocid[ao])", re.IGNORECASE),
+        re.compile(r"^(?:sin (?:medici[oó]n|evidencia|prueba)|no se (?:realiz[oó]|hizo|midi[oó]))", re.IGNORECASE),
+        re.compile(r"^(?:se (?:revis[oó]|inspeccion[oó]) (?:el )?equipo|sin intervenci[oó]n|no se repar[oó])", re.IGNORECASE),
+        re.compile(r"^(?:sin verificar|no (?:se )?(?:pudo )?verific|pendiente de verific)", re.IGNORECASE),
+    )
+    return all(not pattern.search(value) for pattern, value in zip(rejected, values, strict=True))
 
 
 def build_repair_content(source: RepairSource) -> str:
@@ -176,6 +209,7 @@ def build_repair_content(source: RepairSource) -> str:
         for value in references
     ) if isinstance(references, list) else ""
     sections = (
+        f"RESULTADO_ULTIMO_CICLO: {latest_repair_outcome(source.current_status, list(source.prior_statuses)).value}",
         f"DISPOSITIVO: {brand} {model}",
         f"PROBLEMA: {sanitize_technical_text(source.problem)}",
         f"DIAGNOSTICO: {sanitize_technical_text(source.diagnosis)}",

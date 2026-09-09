@@ -1,3 +1,7 @@
+import type { DiagnosticPlan } from './diagnostic-plan';
+import type { DiagnosticState } from './diagnostic-state';
+import type { summarizeRepairEvidence } from './repair-evidence';
+
 export const CEREBRO_SOURCE_TYPES = ["REPAIR", "WIKI", "PDF", "CHAT_ATTACHMENT", "BOARD"] as const;
 
 export type CerebroSourceType = (typeof CEREBRO_SOURCE_TYPES)[number];
@@ -27,6 +31,8 @@ export type CerebroSource = {
 };
 
 export type CerebroPublicSource = {
+    repairSummary?: ReturnType<typeof summarizeRepairEvidence>;
+    citationId?: string;
     documentId: string;
     sourceType: Extract<CerebroSourceType, "REPAIR" | "PDF" | "BOARD">;
     authority: CerebroAuthority;
@@ -67,12 +73,17 @@ export type GuidedAnswer = {
 };
 
 export type CerebroStoredMessageMetadata = {
+    answerContext?: { question: string; conditions: string };
+    diagnosticState?: DiagnosticState;
+    diagnosticPlan?: DiagnosticPlan;
     retrievalWarnings?: string[];
     guidedQuestion?: GuidedQuestion;
     guidedAnswer?: GuidedAnswer & { observation?: GuidedObservation };
 };
 
 export type CerebroMessageMetadata = {
+    diagnosticState?: DiagnosticState;
+    diagnosticPlan?: DiagnosticPlan;
     promptVersion: string;
     provider: string;
     retrievalWarnings?: string[];

@@ -140,6 +140,39 @@ test("allows only explicitly declared model aliases before the SQL limit", async
     assert.deepEqual(results.map((source) => source.chunkId), ["a12"]);
 });
 
+test("rejects an adapter row whose identityMatch flag claims an undeclared cross-variant", async () => {
+    const e7Plus = { ...baseRow, chunkId: "e7-plus", brand: "MOTOROLA", model: "MOTO E7 PLUS", identityMatch: true };
+    const results = await retrieveCerebroSources(
+        { brand: "MOTOROLA", model: "MOTO E7", modelAliases: ["MOTO E7", "E7"], text: "no enciende", embedding: [0.1] },
+        { search: async () => [e7Plus] },
+    );
+    assert.deepEqual(results, []);
+});
+
+test("rejects administrative repair notes even when legacy authority says confirmed success", async () => {
+    const administrative = {
+        ...baseRow,
+        content: "PROBLEMA: no enciende\nDIAGNOSTICO: cliente no autoriza presupuesto\nSOLUCION: equipo entregado sin reparar",
+    };
+    const results = await retrieveCerebroSources(
+        { brand: "SAMSUNG", model: "SM-A405FN", text: "no enciende", subsystemTerms: ["POWER"], embedding: [0.1] },
+        adapterFor([administrative]),
+    );
+    assert.deepEqual(results, []);
+});
+
+test("no-power searches reject repairs that only say the phone entered switched off", async () => {
+    const displayRepair = {
+        ...baseRow,
+        content: "PROBLEMA: ingresó apagado con pantalla rota\nDIAGNOSTICO: módulo sin imagen\nSOLUCION: cambio de módulo\nVERIFICACION: imagen correcta",
+    };
+    const results = await retrieveCerebroSources(
+        { brand: "SAMSUNG", model: "SM-A405FN", text: "no enciende no prende muerto", subsystemTerms: ["POWER"], embedding: [0.1] },
+        adapterFor([displayRepair]),
+    );
+    assert.deepEqual(results, []);
+});
+
 test("boosts pages whose section matches the planned subsystem", async () => {
     const charging = { ...baseRow, chunkId: "charging", section: "USB CHARGING", subsystems: ["CHARGING"], semanticScore: 0.6 };
     const radio = { ...baseRow, chunkId: "radio", section: "RF", subsystems: ["RF"], semanticScore: 0.7 };
@@ -205,6 +238,25 @@ test("reserves half of the evidence for exact-model technical documents", async 
         ["manual-power-on", "manual-display", "block-diagram"],
     );
     assert.equal(results[0].chunkId, "manual-power-on");
+});
+
+test("keeps three useful repairs when high-scoring PDFs exceed the final limit", async () => {
+    const pdfs = Array.from({ length: 12 }, (_, index) => ({
+        ...baseRow, chunkId: `pdf-${index}`, documentId: `pdf-doc-${index}`,
+        sourceType: "PDF" as const, authority: "TECHNICAL_DOCUMENT" as const,
+        title: `Manual ${index}`, pageNumber: index + 1, semanticScore: 1 - index * 0.01,
+    }));
+    const repairs = Array.from({ length: 3 }, (_, index) => ({
+        ...baseRow, chunkId: `repair-low-${index}`, documentId: `repair-low-doc-${index}`,
+        authority: "INCOMPLETE" as const, semanticScore: 0.05,
+        content: `PROBLEMA: no enciende\nDIAGNOSTICO: consumo anormal ${index}\nSOLUCION: cambio de batería`,
+    }));
+    const results = await retrieveCerebroSources(
+        { brand: "SAMSUNG", model: "SM-A405FN", text: "no enciende", embedding: [0.1], limit: 10 },
+        adapterFor([...pdfs, ...repairs]),
+    );
+    assert.equal(results.filter(source => source.sourceType === "REPAIR").length, 3);
+    assert.equal(results.length, 10);
 });
 
 test("rejects RF repair anecdotes whose diagnosis never confirms the SIM failure", async () => {

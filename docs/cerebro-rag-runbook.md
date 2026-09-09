@@ -63,3 +63,17 @@ obligatoria, cursor, escritura RAG o embeddings.
 ## Rotación de secretos
 
 Rotar por separado credenciales PostgreSQL, secreto interno del worker, claves Groq/OpenRouter y token del repositorio. La clave privada y certificado AFIP requieren una ventana coordinada porque su cambio puede interrumpir facturación.
+
+## Calidad de antecedentes y cierres (2026-09-09)
+
+La migración `20260909123000_grant_rag_reader_learning_records` completa el
+`SELECT` sobre cierres técnicos del rol existente `rag_reader`, únicamente si
+ese rol ya puede leer `repairs`. No crea usuarios ni concede escrituras.
+Después del deploy, comprobar en logs de `repair-sync` que ya no aparezca
+`permission_denied optional=repair_learning_records`.
+
+La política de calidad 2 reinicia una vez el cursor histórico. Cada lote procesa
+16 registros con límite de una CPU; el cursor se confirma entre lotes. No
+reiniciar el job para acelerar la pasada. Esperar `REPAIR_SYNC indexed=...`
+sin error para acreditar el fin de la pasada. El fingerprint de calidad vuelve
+a evaluar aprobaciones/revocaciones aunque no cambie el texto técnico.
