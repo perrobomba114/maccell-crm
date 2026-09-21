@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
         const { diagnosis } = parsed.data;
         const prompt = buildRepairDiagnosisPrompt(parsed.data);
         const configurations: FallbackModelConfig[] = [];
+        // El informe técnico requiere la redacción más consistente disponible.
+        // Qwen en Groq es el modelo principal; los demás proveedores sólo
+        // intervienen si Groq no puede completar la solicitud.
+        configurations.push(...buildGroqModelConfigurations(getGroqKeys(), "diagnosis"));
         const openRouterKey = process.env.OPENROUTER_API_KEY;
         if (openRouterKey) {
             const modelId = process.env.OPENROUTER_MODEL ?? AI_MODELS.CHAT;
@@ -54,7 +58,6 @@ export async function POST(req: NextRequest) {
                 modelId,
             });
         }
-        configurations.push(...buildGroqModelConfigurations(getGroqKeys(), "diagnosis"));
         const localModel = createLocalCerebroModel(false);
         if (localModel) {
             configurations.push({
