@@ -3,7 +3,7 @@ import { readFile, realpath, open, rm, rename, writeFile, stat } from "node:fs/p
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
-import type { SchematicAsset, SchematicCatalog } from "./catalog-types";
+import { modelKey, type SchematicAsset, type SchematicCatalog } from "./catalog-types";
 import { databaseCatalog, databaseSearchablePages } from "./database";
 import { mergeCatalogAssets } from "./catalog-merge";
 import { sameDevice } from "./catalog-types";
@@ -27,9 +27,25 @@ async function readMountedCanonicalCatalog(root: string): Promise<SchematicCatal
   try {
     const catalog = JSON.parse(await readFile(catalogPath, "utf8")) as SchematicCatalog;
     if (catalog.version !== 1 || !Array.isArray(catalog.assets)) return null;
+    const assets = catalog.assets.flatMap((source) => {
+      const relativePath = source.relativePath.replace(/\\/g, "/");
+      const kind = /\.pdf$/i.test(relativePath) ? "pdf" : /\.(?:pcbe|pcb)$/i.test(relativePath) ? "pcbe" : null;
+      if (!kind) return [];
+      const parts = relativePath.split("/").filter(Boolean);
+      const model = source.model || parts.at(-2) || "Sin identidad";
+      return [{
+        ...source,
+        kind,
+        model,
+        modelKey: source.modelKey || modelKey(model),
+        status: source.status || "ready",
+        sha256: source.sha256 || source.id,
+        relativePath: path.posix.join("sources", relativePath),
+      } satisfies SchematicAsset];
+    });
     return {
       ...catalog,
-      assets: catalog.assets.map((asset) => ({ ...asset, relativePath: path.posix.join("sources", asset.relativePath.replace(/\\/g, "/")) })),
+      assets,
     };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
