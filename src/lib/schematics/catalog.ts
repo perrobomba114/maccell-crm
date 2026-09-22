@@ -27,22 +27,29 @@ async function readMountedCanonicalCatalog(root: string): Promise<SchematicCatal
   try {
     const catalog = JSON.parse(await readFile(catalogPath, "utf8")) as SchematicCatalog;
     if (catalog.version !== 1 || !Array.isArray(catalog.assets)) return null;
-    const assets = catalog.assets.flatMap((source) => {
+    const assets = (await Promise.all(catalog.assets.map(async (source) => {
       const relativePath = source.relativePath.replace(/\\/g, "/");
       const kind = /\.pdf$/i.test(relativePath) ? "pdf" : /\.(?:pcbe|pcb)$/i.test(relativePath) ? "pcbe" : null;
-      if (!kind) return [];
+      if (!kind) return null;
       const parts = relativePath.split("/").filter(Boolean);
       const model = source.model || parts.at(-2) || "Sin identidad";
-      return [{
+      const declaredPath = path.posix.join("sources", relativePath);
+      const flatConsolePath = parts.length >= 5 && parts[1]?.toLowerCase() === "consolas"
+        ? path.posix.join("sources", parts[0]!, parts[1]!, parts[2]!, parts.at(-1)!)
+        : declaredPath;
+      const resolvedPath = await stat(path.join(root, declaredPath)).then(() => declaredPath).catch(async () =>
+        stat(path.join(root, flatConsolePath)).then(() => flatConsolePath).catch(() => null));
+      if (!resolvedPath) return null;
+      return {
         ...source,
         kind,
         model,
         modelKey: source.modelKey || modelKey(model),
         status: source.status || "ready",
         sha256: source.sha256 || source.id,
-        relativePath: path.posix.join("sources", relativePath),
-      } satisfies SchematicAsset];
-    });
+        relativePath: resolvedPath,
+      } satisfies SchematicAsset;
+    }))).filter((asset): asset is SchematicAsset => asset !== null);
     return {
       ...catalog,
       assets,
