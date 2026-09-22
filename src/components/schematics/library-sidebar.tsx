@@ -6,7 +6,7 @@ import { LibraryIndexStatus } from "./library-index-status";
 import { AssetTree } from "./asset-tree";
 import { usePolling } from "@/hooks/use-polling";
 
-export type CatalogPage = { assets: SchematicAsset[]; total: number; page: number; pageSize: number; counts: { pcbe: number; pdf: number } };
+export type CatalogPage = { assets: SchematicAsset[]; total: number; page: number; pageSize: number; counts: { pcbe: number; pdf: number }; publishedTotal?: number; heldForIdentity?: number };
 type Props = {
   canReindex: boolean; initial: CatalogPage; search: string; onSearch(value: string): void;
   boardId?: string; pdfId?: string; onOpen(asset: SchematicAsset): void;
@@ -80,6 +80,7 @@ export function LibrarySidebar(props: Props) {
     <aside className="sch-library" aria-label="Biblioteca de esquemáticos">
       <div className="sch-section-heading">
         Biblioteca <span>{result.total} archivos</span>
+        {props.canReindex && (result.heldForIdentity ?? 0) > 0 && <small>{result.heldForIdentity} pendientes de identidad</small>}
       </div>
 
       <label className="sch-search">

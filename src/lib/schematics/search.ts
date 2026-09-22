@@ -1,6 +1,7 @@
 import type { SchematicAsset } from "./catalog-types";
 import { identityKey } from "./catalog-types";
 import { assetPriority, catalogQuery, declaredModel, pairIsVerified } from './pairing';
+import { isPublishedTreeAsset } from "./tree-identity";
 
 export type CatalogKind = "all" | SchematicAsset["kind"];
 export type CatalogQuery = { q?: string; kind: CatalogKind; page: number; pageSize: number };
@@ -64,6 +65,7 @@ export function validatedSemanticMatches(selected: SchematicAsset, assets: Schem
 /** Complete navigation inventory. Rendering of closed folders stays lazy. */
 export function treeCatalog(assets: SchematicAsset[], query: Omit<CatalogQuery, "page" | "pageSize">) {
   const result = paginateCatalog(assets, { ...query, page: 1, pageSize: Math.max(1, assets.length) });
-  return { ...result, assets: result.assets.map(({ id, name, kind, brand, model, modelKey, relativePath, size, sha256, status, detail, boardCode, revision }) =>
+  const publishedTotal = result.assets.filter(isPublishedTreeAsset).length;
+  return { ...result, publishedTotal, heldForIdentity: result.assets.length - publishedTotal, assets: result.assets.map(({ id, name, kind, brand, model, modelKey, relativePath, size, sha256, status, detail, boardCode, revision }) =>
     ({ id, name, kind, brand, model, modelKey, relativePath, size, sha256, status, detail, boardCode, revision })) };
 }

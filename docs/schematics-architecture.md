@@ -107,3 +107,6 @@ los documentos RAG antes de declarar la biblioteca operativa.
 - La cobertura física completa, la reconciliación total del catálogo y la
   cobertura RAG deben seguir verificándose en producción; no se consideran
   terminadas sólo porque el contenedor esté verde.
+# Catálogo publicado y rollback
+
+`SCHEMATICS_ROOT` debe apuntar al root montado que contiene `catalog.json`. El snapshot de despliegue es una copia de trabajo y no una segunda autoridad. Si la reconciliación requiere rollback, se restaura la configuración de fuente anterior o se desactiva la capa de presentación; nunca se borran archivos de `/mnt/data2`.

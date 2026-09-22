@@ -136,3 +136,6 @@ La coincidencia de texto no demuestra que un componente esté vinculado: `L41` p
 Los manuales `Troubleshooting` y de servicio se ofrecen como manuales técnicos cuando no existe un esquemático independiente del mismo modelo. Un PDF llamado `image`, `layout` o `boardview` no se convierte por ello en esquema eléctrico. A03, A03 Core y A03s conservan identidades distintas.
 
 El worker aislado lee la conexión de escritura desde `/app/upload/.technical-indexer.env`, propiedad de UID 1000 y modo 600. Ese archivo se provisiona en el volumen existente desde la configuración efectiva del CRM, nunca en Git. No usar `SOURCE_DATABASE_URL`, que es una conexión de lectura para exportar datos al RAG. El bootstrap interpreta el archivo como datos, sin ejecutarlo como shell.
+# Fuente del árbol publicado
+
+Antes de publicar, verificar que `SCHEMATICS_ROOT` resuelva al montaje canónico con su `catalog.json`. El rollback sólo cambia la fuente activa o desactiva la reconciliación de presentación; no elimina ni mueve activos en `/mnt/data2`.

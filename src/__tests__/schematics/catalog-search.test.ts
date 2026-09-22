@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { sameDevice, type SchematicAsset } from "../../lib/schematics/catalog-types";
-import { lexicalPageMatches, paginateCatalog, validatedSemanticMatches } from "../../lib/schematics/search";
+import { lexicalPageMatches, paginateCatalog, treeCatalog, validatedSemanticMatches } from "../../lib/schematics/search";
 
 function asset(overrides: Partial<SchematicAsset> = {}): SchematicAsset {
   return {
@@ -77,4 +77,13 @@ test('navigation keeps consoles beyond the old 5000 asset cutoff', async () => {
   const result = treeCatalog(inventory, { kind: 'all' });
   assert.equal(result.assets.length, result.total);
   assert.equal(result.assets.at(-1)?.id, 'console');
+});
+
+test("tree catalog counts published assets and holds noisy identities", () => {
+  const result = treeCatalog([
+    asset({ id: "published", relativePath: "pcbe/Consolas/Xbox/Series X/board.pcbe", model: "Series X" }),
+    asset({ id: "held", relativePath: "pdf/iPhone(VIP)/General/file.pdf", brand: "Apple", model: "General", kind: "pdf" }),
+  ], { kind: "all" });
+  assert.equal(result.publishedTotal, 1);
+  assert.equal(result.heldForIdentity, 1);
 });

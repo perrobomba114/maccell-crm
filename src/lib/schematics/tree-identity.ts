@@ -27,3 +27,8 @@ export function isNoiseModel(value: string): boolean {
 export function publishedTreeIdentity(asset: SchematicAsset): ConsoleIdentity | null {
   return consoleIdentityFromCanonicalPath(asset.relativePath);
 }
+
+export function isPublishedTreeAsset(asset: SchematicAsset): boolean {
+  if (consoleIdentityFromCanonicalPath(asset.relativePath)) return true;
+  return !isNoiseModel(asset.model);
+}
