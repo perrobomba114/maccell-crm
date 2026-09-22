@@ -62,8 +62,6 @@ async function loadCatalog(): Promise<SchematicCatalog> {
   }
 
   try {
-    const mounted = await readMountedCanonicalCatalog(libraryRoot());
-    if (mounted) return mounted;
     const result = JSON.parse(await readFile(path.join(libraryRoot(), "catalog.json"), "utf8")) as SchematicCatalog;
     if (result.version !== 1 || !Array.isArray(result.assets)) throw new Error("Catálogo de esquemáticos inválido");
     // The technical worker can discover new files before the JSON snapshot is
@@ -72,7 +70,11 @@ async function loadCatalog(): Promise<SchematicCatalog> {
     const physical = result.inventoryComplete ? result.assets : await discoverPhysicalAssets(libraryRoot(), result.assets);
     const merged = mergeCatalogAssets(physical, databaseAssets ?? []);
     const physicalPaths = new Set(physical.map((asset) => asset.relativePath));
-    return { ...result, assets: reconcilePublishedAssets(merged, physicalPaths) };
+    const localAssets = reconcilePublishedAssets(merged, physicalPaths);
+    const mounted = await readMountedCanonicalCatalog(libraryRoot());
+    if (!mounted) return { ...result, assets: localAssets };
+    const knownHashes = new Set(mounted.assets.map((asset) => asset.sha256));
+    return { ...mounted, assets: [...mounted.assets, ...localAssets.filter((asset) => !knownHashes.has(asset.sha256))] };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { version: 1, importedAt: "", assets: await discoverPhysicalAssets(libraryRoot(), databaseAssets ?? []) };
