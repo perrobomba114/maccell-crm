@@ -114,3 +114,10 @@ test("creates PlayStation only from canonical console paths", () => {
 
   assert.equal(tree.find((node) => node.name === "Consolas")?.subfolders.get("PlayStation")?.totalFiles, 1);
 });
+
+test("does not publish the singleton Acer folder", () => {
+  const tree = buildDirectoryTree([
+    Object.assign(mockAsset("acer", "pdf/Acer/Aspire/service.pdf", "service.pdf", "pdf"), { brand: "Acer", model: "Aspire" }),
+  ]);
+  assert.equal(tree.some((node) => node.name === "Acer"), false);
+});

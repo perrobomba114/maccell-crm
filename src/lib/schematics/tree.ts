@@ -25,6 +25,7 @@ const TECHNICAL_FOLDERS = new Set([
   "cases", "troubleshooting", "service", "manual", "documents", "documentos", "diode value",
   "schematic and boardview", "boardview", "board views", "images", "image",
 ]);
+const HIDDEN_SINGLETON_BRANDS = new Set(["Acer"]);
 
 function cleanLabel(value: string): string {
   return value.replace(/\s*\((?:vip|free|premium|official|china|global)\)\s*/gi, " ").replace(/\s+/g, " ").trim();
@@ -120,6 +121,7 @@ export function buildDirectoryTree(assets: SchematicAsset[]): DirectoryNode[] {
     if (!asset.relativePath) continue;
     const identity = treeIdentity(asset);
     if (!identity) continue;
+    if (HIDDEN_SINGLETON_BRANDS.has(identity.brand)) continue;
     const dirParts = identity.family ? [identity.brand, identity.family, identity.model, identity.category] : [identity.brand, identity.model, identity.category];
 
     let current = root;
