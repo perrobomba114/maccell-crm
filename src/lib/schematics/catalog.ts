@@ -10,6 +10,7 @@ import { sameDevice } from "./catalog-types";
 import type { SearchablePage } from "./search";
 import { discoverPhysicalAssets } from "./physical-inventory";
 import { schematicCatalogCache } from './catalog-cache';
+import { reconcilePublishedAssets } from "./published-assets";
 
 export function libraryRoot(): string {
   return path.resolve(process.env.SCHEMATICS_ROOT ?? path.join(process.cwd(), "upload/schematics"));
@@ -36,7 +37,9 @@ async function loadCatalog(): Promise<SchematicCatalog> {
     // rewritten. Use both persisted sources so a bulk upload is immediately
     // visible without recursively scanning thousands of files on every request.
     const physical = result.inventoryComplete ? result.assets : await discoverPhysicalAssets(libraryRoot(), result.assets);
-    return { ...result, assets: mergeCatalogAssets(physical, databaseAssets ?? []) };
+    const merged = mergeCatalogAssets(physical, databaseAssets ?? []);
+    const physicalPaths = new Set(physical.map((asset) => asset.relativePath));
+    return { ...result, assets: reconcilePublishedAssets(merged, physicalPaths) };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { version: 1, importedAt: "", assets: await discoverPhysicalAssets(libraryRoot(), databaseAssets ?? []) };
