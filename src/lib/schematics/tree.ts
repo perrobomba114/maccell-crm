@@ -1,5 +1,6 @@
 import type { SchematicAsset } from "./catalog-types";
 import { documentRole } from "./pairing";
+import { consoleIdentityFromCanonicalPath, isNoiseModel } from "./tree-identity";
 
 export interface DirectoryNode {
   name: string;
@@ -95,15 +96,19 @@ function commercialModel(asset: SchematicAsset, brand: string, fallback: string)
   return normalized || "Modelo sin clasificar";
 }
 
-function treeIdentity(asset: SchematicAsset): { brand: string; model: string; category: string } {
+function treeIdentity(asset: SchematicAsset): { brand: string; family?: string; model: string; category: string } | null {
   const raw = (asset.relativePath || "").replace(/\\/g, "/").split("/").filter(Boolean).slice(0, -1);
   const parts = raw.filter(part => !TECHNICAL_FOLDERS.has(part.toLowerCase()));
   const brand = canonicalBrand(asset, parts);
+  const consoleIdentity = consoleIdentityFromCanonicalPath(asset.relativePath);
+  const role = documentRole(asset);
+  const category = role === "board" ? "Placas" : role === "schematic" ? "Esquemáticos" : role === "manual" ? "Manuales técnicos" : role === "repair" ? "Casos de reparación" : role === "accessory" ? "Accesorios" : "Documentos";
+  if (consoleIdentity) return { brand: "Consolas", family: consoleIdentity.family, model: consoleIdentity.model, category };
   const brandIndex = parts.findIndex((part) => brandLabel(part) === brand);
   const modelParts = (brandIndex >= 0 ? parts.slice(brandIndex + 1) : parts).filter(part => cleanLabel(part).toLowerCase() !== brand.toLowerCase());
   const model = commercialModel(asset, brand, modelParts.at(-1) ?? "Modelo sin clasificar");
-  const role = documentRole(asset);
-  const category = role === "board" ? "Placas" : role === "schematic" ? "Esquemáticos" : role === "manual" ? "Manuales técnicos" : role === "repair" ? "Casos de reparación" : role === "accessory" ? "Accesorios" : "Documentos";
+  const genericModel = [brand, "iPhone", "iPad", "iPod"].some((value) => value.localeCompare(model, "en", { sensitivity: "accent" }) === 0);
+  if (isNoiseModel(model) || genericModel) return null;
   return { brand, model, category };
 }
 
@@ -114,7 +119,8 @@ export function buildDirectoryTree(assets: SchematicAsset[]): DirectoryNode[] {
   for (const asset of assets) {
     if (!asset.relativePath) continue;
     const identity = treeIdentity(asset);
-    const dirParts = [identity.brand, identity.model, identity.category];
+    if (!identity) continue;
+    const dirParts = identity.family ? [identity.brand, identity.family, identity.model, identity.category] : [identity.brand, identity.model, identity.category];
 
     let current = root;
     let pathAcc = "";

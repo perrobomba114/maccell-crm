@@ -68,10 +68,10 @@ test("nodeContainsAsset finds asset recursively", () => {
 
 test("directory tree groups consoles and removes source labels", () => {
   const tree = buildDirectoryTree([
-    mockAsset("console-board", "pcbe/PlayStation(Official)/PlayStation 4/board.pcbe", "board.pcbe", "pcbe"),
-    mockAsset("console-pdf", "pdf/PlayStation(Official)/PlayStation 4/PS4 schematic.pdf", "PS4 schematic.pdf", "pdf"),
+    mockAsset("console-board", "pcbe/Consolas/PlayStation/PlayStation 4/board.pcbe", "board.pcbe", "pcbe"),
+    mockAsset("console-pdf", "pdf/Consolas/PlayStation/PlayStation 4/PS4 schematic.pdf", "PS4 schematic.pdf", "pdf"),
   ]);
-  const consoleNode = tree.find((node) => node.name === "PlayStation");
+  const consoleNode = tree.find((node) => node.name === "Consolas")?.subfolders.get("PlayStation");
   assert.ok(consoleNode);
   assert.ok(consoleNode.subfolders.has("PlayStation 4"));
 });
@@ -95,4 +95,22 @@ test("directory tree turns noisy brand-prefixed folders into manufacturer groups
   assert.ok(tree.some((node) => node.name === "Otros"));
   assert.equal(tree.some((node) => node.name.includes("RedMi G Ryzen")), false);
   assert.equal(tree.some((node) => node.name.includes("2、PC Motherboard")), false);
+});
+
+test("rejects file and role labels as Apple models", () => {
+  const tree = buildDirectoryTree([
+    Object.assign(mockAsset("noisy-file", "pdf/iPhone(VIP)/A10 pcb layer.pdf", "A10 pcb layer.pdf", "pdf"), { brand: "Apple", model: "A10 pcb layer.pdf" }),
+    Object.assign(mockAsset("noisy-role", "pdf/iPhone(VIP)/General/file.pdf", "file.pdf", "pdf"), { brand: "Apple", model: "General" }),
+  ]);
+
+  assert.equal(tree.find((node) => node.name === "Apple")?.totalFiles ?? 0, 0);
+});
+
+test("creates PlayStation only from canonical console paths", () => {
+  const tree = buildDirectoryTree([
+    mockAsset("ps5", "pcbe/Consolas/PlayStation/PS5/board.pcbe", "board.pcbe"),
+    mockAsset("noise", "pdf/SONY/DA0PS3MB6D0/manual.pdf", "manual.pdf", "pdf"),
+  ]);
+
+  assert.equal(tree.find((node) => node.name === "Consolas")?.subfolders.get("PlayStation")?.totalFiles, 1);
 });
