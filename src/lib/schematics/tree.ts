@@ -86,6 +86,28 @@ function samsungCommercialModel(value: string): string {
   return note?.replace(/\s+/g, " ").trim() ?? code[0].replace(/-/g, "-");
 }
 
+function appleCommercialModel(value: string, fallback: string): string {
+  const source = `${value} ${fallback}`.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  const match = source.match(/\biphone\s*(\d{1,2}|x(?:r|s)?|se)\s*(?:([a-z]+))?/i);
+  if (!match) return cleanLabel(value) || cleanLabel(fallback);
+
+  const generation = match[1]!.toUpperCase();
+  const suffix = source.slice((match.index ?? 0) + match[0].length).toLowerCase();
+  const token = match[2]?.toLowerCase() ?? "";
+  const hasProMax = token === "promax" || /\bpro\s*max\b|\bpromax\b/.test(suffix);
+  const hasPlus = token === "plus" || token === "p" || /\bplus\b/.test(suffix);
+  const hasMini = token === "mini" || /\bmini\b/.test(suffix);
+  const hasPro = token === "pro" || /\bpro\b/.test(suffix);
+
+  const edition = hasProMax ? " Pro Max" : hasPlus ? " Plus" : hasMini ? " mini" : hasPro ? " Pro" : "";
+  return `iPhone ${generation}${edition}`;
+}
+
+function inferredPhoneBrand(asset: SchematicAsset, fallback: string, detectedBrand: string): string | null {
+  const source = `${asset.name} ${asset.model} ${asset.relativePath} ${fallback}`;
+  return detectedBrand === "Otros" && /\biphone(?=\s|[-_]|\d|x|se)|\bipad(?=\s|[-_]|\d|air|pro|mini)/i.test(source) ? "Apple" : null;
+}
+
 function commercialModel(asset: SchematicAsset, brand: string, fallback: string): string {
   const declared = removeBrandPrefix(cleanLabel(asset.model || ""), brand);
   // Old catalog rows may not have a brand and can carry a model from the
@@ -93,14 +115,19 @@ function commercialModel(asset: SchematicAsset, brand: string, fallback: string)
   // safer source for the tree grouping.
   const fallbackLabel = asset.brand ? removeBrandPrefix(cleanLabel(fallback), brand) : cleanLabel(fallback);
   const candidate = (asset.brand ? declared : "") || fallbackLabel || declared;
-  const normalized = brand === "Samsung" ? samsungCommercialModel(candidate) : candidate;
+  const normalized = brand === "Samsung"
+    ? samsungCommercialModel(candidate)
+    : brand === "Apple"
+      ? appleCommercialModel(declared, `${fallbackLabel} ${asset.name}`)
+      : candidate;
   return normalized || "Modelo sin clasificar";
 }
 
 function treeIdentity(asset: SchematicAsset): { brand: string; family?: string; model: string; category: string } | null {
   const raw = (asset.relativePath || "").replace(/\\/g, "/").split("/").filter(Boolean).slice(0, -1);
   const parts = raw.filter(part => !TECHNICAL_FOLDERS.has(part.toLowerCase()));
-  const brand = canonicalBrand(asset, parts);
+  const detectedBrand = canonicalBrand(asset, parts);
+  const brand = inferredPhoneBrand(asset, parts.at(-1) ?? "", detectedBrand) ?? detectedBrand;
   const consoleIdentity = consoleIdentityFromCanonicalPath(asset.relativePath);
   const role = documentRole(asset);
   const category = role === "board" ? "Placas" : role === "schematic" ? "Esquemáticos" : role === "manual" ? "Manuales técnicos" : role === "repair" ? "Casos de reparación" : role === "accessory" ? "Accesorios" : "Documentos";

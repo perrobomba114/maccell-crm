@@ -26,17 +26,12 @@ test("buildDirectoryTree constructs canonical brand/model/type folders", () => {
   ];
 
   const tree = buildDirectoryTree(assets);
-  assert.equal(tree.length, 2); // Apple and Otros
-  const bulkNode = tree.find((n) => n.name === "Otros");
-  assert.ok(bulkNode);
-  assert.equal(bulkNode?.totalFiles, 1);
-
   const vipNode = tree.find((n) => n.name === "Apple");
   assert.ok(vipNode);
-  assert.equal(vipNode.totalFiles, 3);
-  assert.equal(vipNode.subfolders.size, 1); // 'iPhone11'
+  assert.equal(vipNode.totalFiles, 4);
+  assert.equal(vipNode.subfolders.size, 1);
 
-  const iphone11Node = vipNode.subfolders.get("iPhone11");
+  const iphone11Node = vipNode.subfolders.get("iPhone 11");
   assert.ok(iphone11Node);
   assert.equal(iphone11Node.subfolders.has("Placas"), true);
   assert.equal(iphone11Node.subfolders.has("Esquemáticos"), true);
@@ -120,4 +115,30 @@ test("does not publish the singleton Acer folder", () => {
     Object.assign(mockAsset("acer", "pdf/Acer/Aspire/service.pdf", "service.pdf", "pdf"), { brand: "Acer", model: "Aspire" }),
   ]);
   assert.equal(tree.some((node) => node.name === "Acer"), false);
+});
+
+test("groups Apple chipset and location-map variants under their commercial model", () => {
+  const tree = buildDirectoryTree([
+    Object.assign(mockAsset("iphone7-intel", "sources/Iphone/iPhone7-Intel/Pdf/intel.pdf", "iPhone7 Intel schematic.pdf", "pdf"), { brand: "APPLE", model: "iPhone7-Intel" }),
+    Object.assign(mockAsset("iphone7-qualcomm", "sources/Iphone/iPhone7-Qualcomm/Pdf/qualcomm.pdf", "iPhone7 Qualcomm schematic.pdf", "pdf"), { brand: "APPLE", model: "iPhone7-Qualcomm" }),
+    Object.assign(mockAsset("iphone7-location", "sources/Iphone/iPhone7 Location map/Pdf/location.pdf", "iPhone7 Location map.pdf", "pdf"), { brand: "APPLE", model: "iPhone7 Location map" }),
+    Object.assign(mockAsset("iphone7-plus", "sources/Iphone/iPhone7P Intel/Pdf/plus.pdf", "iPhone7P Intel schematic.pdf", "pdf"), { brand: "APPLE", model: "iPhone7P Intel" }),
+  ]);
+
+  const apple = tree.find((node) => node.name === "Apple");
+  assert.ok(apple);
+  assert.equal(apple.subfolders.get("iPhone 7")?.totalFiles, 3);
+  assert.equal(apple.subfolders.get("iPhone 7 Plus")?.totalFiles, 1);
+  assert.equal(apple.subfolders.has("iPhone7-Intel"), false);
+  assert.equal(apple.subfolders.has("iPhone7 Location map"), false);
+});
+
+test("moves iPhone assets with an unclassified source brand into Apple", () => {
+  const tree = buildDirectoryTree([
+    Object.assign(mockAsset("bulk-iphone", "sources/bulk/iPhone14ProMax-boardview.pcbe", "iPhone14ProMax-boardview.pcbe"), { brand: "bulk", model: "bulk" }),
+  ]);
+
+  const apple = tree.find((node) => node.name === "Apple");
+  assert.equal(apple?.subfolders.get("iPhone 14 Pro Max")?.totalFiles, 1);
+  assert.equal(tree.some((node) => node.name === "Otros"), false);
 });
