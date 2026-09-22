@@ -22,6 +22,21 @@ export async function readCatalog(): Promise<SchematicCatalog> {
   return schematicCatalogCache.read(`${root}:${file?.size}:${file?.mtimeMs}`,loadCatalog);
 }
 
+async function readMountedCanonicalCatalog(root: string): Promise<SchematicCatalog | null> {
+  const catalogPath = path.join(root, "sources", "Pcbe", "Catalog.json");
+  try {
+    const catalog = JSON.parse(await readFile(catalogPath, "utf8")) as SchematicCatalog;
+    if (catalog.version !== 1 || !Array.isArray(catalog.assets)) return null;
+    return {
+      ...catalog,
+      assets: catalog.assets.map((asset) => ({ ...asset, relativePath: path.posix.join("sources", asset.relativePath.replace(/\\/g, "/")) })),
+    };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+}
+
 async function loadCatalog(): Promise<SchematicCatalog> {
   let databaseAssets: SchematicAsset[] | null = null;
   try {
@@ -31,6 +46,8 @@ async function loadCatalog(): Promise<SchematicCatalog> {
   }
 
   try {
+    const mounted = await readMountedCanonicalCatalog(libraryRoot());
+    if (mounted) return mounted;
     const result = JSON.parse(await readFile(path.join(libraryRoot(), "catalog.json"), "utf8")) as SchematicCatalog;
     if (result.version !== 1 || !Array.isArray(result.assets)) throw new Error("Catálogo de esquemáticos inválido");
     // The technical worker can discover new files before the JSON snapshot is
