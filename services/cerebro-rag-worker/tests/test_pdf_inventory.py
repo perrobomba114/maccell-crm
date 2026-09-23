@@ -99,6 +99,18 @@ class PdfInventoryTest(unittest.TestCase):
         self.assertEqual(image.model, "IPHONE 17 PRO MAX")
         self.assertEqual(image.document_type, "TECHNICAL_DOCUMENT")
 
+    def test_parses_compact_iphone_bulk_variants_before_underscore(self) -> None:
+        cases = (
+            ("iPhone/iPhone12mini_BB 820-01969-11 PCB layer.pdf", "IPHONE 12 MINI"),
+            ("iPhone/iPhone14Plus_front_camera.pdf", "IPHONE 14 PLUS"),
+            ("iPhone/iPhone15ProMax_AP boardview.pdf", "IPHONE 15 PRO MAX"),
+        )
+        for relative_path, expected_model in cases:
+            with self.subTest(relative_path=relative_path):
+                identity = parse_pdf_identity(Path(relative_path))
+                self.assertEqual(identity.brand, "APPLE")
+                self.assertEqual(identity.model, expected_model)
+
     def test_parses_moto_g13_without_xt_in_filename(self) -> None:
         identity = parse_pdf_identity(
             Path("Motorola/Moto g13/Pdf/Manual de servicio.pdf")

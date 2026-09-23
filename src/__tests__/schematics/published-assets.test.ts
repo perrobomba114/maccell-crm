@@ -37,3 +37,13 @@ test("keeps equal names when hashes differ", () => {
 
   assert.equal(result.length, 2);
 });
+
+test("keeps an equal hash when it belongs to a different commercial model", () => {
+  const sha256 = "a".repeat(64);
+  const result = reconcilePublishedAssets([
+    asset("iphone-12", { sha256, brand: "APPLE", model: "iPhone 12", modelKey: "iphone12", relativePath: "sources/Iphone/iPhone 12/Pcbe/shared.pcbe" }),
+    asset("iphone-12-mini", { sha256, brand: "APPLE", model: "iPhone 12 mini", modelKey: "iphone12mini", relativePath: "sources/Iphone/iPhone 12 mini/Pcbe/shared.pcbe" }),
+  ], new Set(["sources/Iphone/iPhone 12/Pcbe/shared.pcbe", "sources/Iphone/iPhone 12 mini/Pcbe/shared.pcbe"]));
+
+  assert.deepEqual(result.map(item => item.id).sort(), ["iphone-12", "iphone-12-mini"]);
+});

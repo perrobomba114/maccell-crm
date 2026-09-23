@@ -8,9 +8,9 @@ import { databaseCatalog, databaseSearchablePages } from "./database";
 import { mergeCatalogAssets } from "./catalog-merge";
 import { sameDevice } from "./catalog-types";
 import type { SearchablePage } from "./search";
-import { discoverPhysicalAssets } from "./physical-inventory";
+import { declaredIdentity, discoverPhysicalAssets } from "./physical-inventory";
 import { schematicCatalogCache } from './catalog-cache';
-import { reconcilePublishedAssets } from "./published-assets";
+import { publishedAssetIdentityKey, reconcilePublishedAssets } from "./published-assets";
 
 export function libraryRoot(): string {
   return path.resolve(process.env.SCHEMATICS_ROOT ?? path.join(process.cwd(), "upload/schematics"));
@@ -27,12 +27,11 @@ async function readMountedCanonicalCatalog(root: string): Promise<SchematicCatal
   try {
     const catalog = JSON.parse(await readFile(catalogPath, "utf8")) as SchematicCatalog;
     if (catalog.version !== 1 || !Array.isArray(catalog.assets)) return null;
-    const assets = (await Promise.all(catalog.assets.map(async (source) => {
+    const candidates = await Promise.all(catalog.assets.map(async (source): Promise<SchematicAsset | null> => {
       const relativePath = source.relativePath.replace(/\\/g, "/");
       const kind = /\.pdf$/i.test(relativePath) ? "pdf" : /\.(?:pcbe|pcb)$/i.test(relativePath) ? "pcbe" : null;
       if (!kind) return null;
       const parts = relativePath.split("/").filter(Boolean);
-      const model = source.model || parts.at(-2) || "Sin identidad";
       const declaredPath = path.posix.join("sources", relativePath);
       const flatConsolePath = parts.length >= 5 && parts[1]?.toLowerCase() === "consolas"
         ? path.posix.join("sources", parts[0]!, parts[1]!, parts[2]!, parts.at(-1)!)
@@ -40,16 +39,21 @@ async function readMountedCanonicalCatalog(root: string): Promise<SchematicCatal
       const resolvedPath = await stat(path.join(root, declaredPath)).then(() => declaredPath).catch(async () =>
         stat(path.join(root, flatConsolePath)).then(() => flatConsolePath).catch(() => null));
       if (!resolvedPath) return null;
+      const identity = declaredIdentity(resolvedPath, source.name || parts.at(-1) || "asset");
+      const model = identity.model || source.model || parts.at(-2) || "Sin identidad";
+      const brand = identity.brand ?? source.brand;
       return {
         ...source,
         kind,
+        ...(brand ? { brand } : {}),
         model,
-        modelKey: source.modelKey || modelKey(model),
+        modelKey: modelKey(model),
         status: source.status || "ready",
         sha256: source.sha256 || source.id,
         relativePath: resolvedPath,
-      } satisfies SchematicAsset;
-    }))).filter((asset): asset is SchematicAsset => asset !== null);
+      };
+    }));
+    const assets = candidates.filter((asset): asset is SchematicAsset => asset !== null);
     return {
       ...catalog,
       assets,
@@ -80,8 +84,9 @@ async function loadCatalog(): Promise<SchematicCatalog> {
     const localAssets = reconcilePublishedAssets(merged, physicalPaths);
     const mounted = await readMountedCanonicalCatalog(libraryRoot());
     if (!mounted) return { ...result, assets: localAssets };
-    const knownHashes = new Set(mounted.assets.map((asset) => asset.sha256));
-    return { ...mounted, assets: [...mounted.assets, ...localAssets.filter((asset) => !knownHashes.has(asset.sha256))] };
+    const mountedAssets = reconcilePublishedAssets(mounted.assets, new Set(mounted.assets.map((asset) => asset.relativePath)));
+    const knownIdentities = new Set(mountedAssets.map(publishedAssetIdentityKey));
+    return { ...mounted, assets: [...mountedAssets, ...localAssets.filter((asset) => !knownIdentities.has(publishedAssetIdentityKey(asset)))] };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { version: 1, importedAt: "", assets: await discoverPhysicalAssets(libraryRoot(), databaseAssets ?? []) };

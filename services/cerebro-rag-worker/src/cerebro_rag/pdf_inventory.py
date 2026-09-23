@@ -78,14 +78,22 @@ def parse_pdf_identity(relative_path: Path) -> PdfIdentity:
     elif motorola:
         model = motorola.group(0)
     elif brand == "APPLE" and "IPHONE" in searchable:
-        model_match = re.search(r"\bIPHONE\s*(?:SE\s*)?\d{1,2}(?:\s*(?:PRO\s*MAX|PRO|PLUS|MINI))?\b", searchable)
+        # A bulk filename may put an underscore immediately after the model
+        # (for example, `iPhone12mini_BB...`). Python's `\b` treats underscore
+        # as a word character and drops the variant; require a non-alphanumeric
+        # boundary so compact Apple names retain mini/Plus/Pro/Pro Max.
+        apple_model_pattern = (
+            r"(?<![A-Z0-9])IPHONE\s*(?:SE\s*)?\d{1,2}"
+            r"(?:\s*(?:PRO\s*MAX|PRO|PLUS|MINI))?(?=$|[^A-Z0-9])"
+        )
+        model_match = re.search(apple_model_pattern, searchable)
         if model_match:
             model = model_match.group(0)
         else:
             # Check parent folder names for iPhone model
             parent_match = None
             for part in reversed(relative_path.parts[:-1]):
-                m = re.search(r"\bIPHONE\s*(?:SE\s*)?\d{1,2}(?:\s*(?:PRO\s*MAX|PRO|PLUS|MINI))?\b", _searchable(part))
+                m = re.search(apple_model_pattern, _searchable(part))
                 if m:
                     parent_match = m.group(0)
                     break

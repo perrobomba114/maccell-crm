@@ -1,4 +1,9 @@
 import type { SchematicAsset } from "./catalog-types";
+import { modelKey } from "./catalog-types";
+
+export function publishedAssetIdentityKey(asset: Pick<SchematicAsset, "sha256" | "brand" | "model">): string {
+  return `${asset.sha256}:${modelKey(asset.brand ?? "")}:${modelKey(asset.model)}`;
+}
 
 function normalize(relativePath: string): string {
   return relativePath.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
@@ -21,8 +26,13 @@ export function reconcilePublishedAssets(assets: readonly SchematicAsset[], exis
 
   for (const asset of assets) {
     if (asset.status !== "ready" || !normalizedPaths.has(normalize(asset.relativePath))) continue;
-    const previous = best.get(asset.sha256);
-    if (!previous || comparePriority(asset, previous) < 0) best.set(asset.sha256, asset);
+    // One byte-identical document can legitimately be filed under more than
+    // one device (for example, a shared iPhone 12/12 Pro boardview). A global
+    // SHA key erased every other model from the technician tree. Collapse
+    // duplicate download paths only within the same declared device.
+    const identity = publishedAssetIdentityKey(asset);
+    const previous = best.get(identity);
+    if (!previous || comparePriority(asset, previous) < 0) best.set(identity, asset);
   }
 
   return [...best.values()];

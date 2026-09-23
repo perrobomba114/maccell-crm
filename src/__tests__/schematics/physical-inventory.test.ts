@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { discoverPhysicalAssets } from "../../lib/schematics/physical-inventory";
+import { declaredIdentity, discoverPhysicalAssets } from "../../lib/schematics/physical-inventory";
 import { sameDevice } from "../../lib/schematics/catalog-types";
 
 test("physical inventory counts mounted files and drops stale catalog paths", async () => {
@@ -74,6 +74,15 @@ test("commercial Samsung normalization keeps A03 and A03s separate", async () =>
     const assets = await discoverPhysicalAssets(root, []);
     assert.deepEqual(assets.map((asset) => asset.modelKey), ["a03", "a03s"]);
     assert.equal(sameDevice(assets[0]!, assets[1]!), false);
+});
+
+test("bulk Apple file and folder names retain full iPhone model variants", () => {
+    assert.deepEqual(declaredIdentity("sources/bulk/iPhone12mini_BB.pcbe", "iPhone12mini_BB.pcbe"), {
+        brand: "APPLE", model: "iPhone 12 mini",
+    });
+    assert.deepEqual(declaredIdentity("sources/bulk/iPhone14ProMax/board.pcbe", "board.pcbe"), {
+        brand: "APPLE", model: "iPhone 14 Pro Max",
+    });
 });
 
 test("console identity keeps model folders and ignores document roles", async () => {

@@ -55,6 +55,19 @@ function isBrandOnly(value: string): boolean {
  */
 export function commercialModel(value: string, brand?: string): string {
     let clean = cleanIdentityPart(value).replace(/[_]+/g, " ").trim();
+    if (brand === "APPLE") {
+        const appleModel = clean.match(/\biphone\s*(\d{1,2}|se\s*\d?)\s*(pro\s*max|pro|max|plus|mini)?\b/i);
+        if (appleModel) {
+            const [, generation, variant] = appleModel;
+            const variantKey = variant?.replace(/\s+/g, "").toLowerCase();
+            const normalizedVariant = variantKey === "promax" ? "Pro Max"
+                : variantKey === "pro" ? "Pro"
+                    : variantKey === "max" ? "Max"
+                        : variantKey === "plus" ? "Plus"
+                            : variantKey === "mini" ? "mini" : undefined;
+            return `iPhone ${generation!.toLowerCase().startsWith("se") ? generation!.replace(/\s+/g, " ").toUpperCase() : generation} ${normalizedVariant ?? ""}`.trim();
+        }
+    }
     if (brand === "SAMSUNG") {
         clean = clean.replace(/^samsung\b[\s_-]*/i, "");
         const match = clean.match(/\b(?:A|M|S|J|F|N|E|C|G|Z|X)\s*\d{1,3}[a-z]?(?:\s+(?:5G|4G|LTE|FE|PLUS|PRO|CORE|LITE|ULTRA|EDGE|ACTIVE|NEO|PRIME))?/i);
@@ -72,8 +85,20 @@ export function declaredIdentity(relativePath: string, name: string): { brand?: 
     const modelFolders = folders.filter((folder) => !technicalFolder.test(folder));
     const brandIndex = modelFolders.findIndex(folder => BRAND_PREFIXES.some(({ pattern }) => pattern.test(folder)));
     if (brandIndex > 0) modelFolders.splice(0, brandIndex);
-    const firstFolder = modelFolders[0];
     const fallbackModel = path.basename(name, path.extname(name));
+
+    // Bulk imports do not always have a brand/model directory. Recover compact
+    // Apple identities from the full filename or an intermediate model folder
+    // before falling back to the generic `bulk` directory label.
+    if (brandIndex < 0) {
+        const appleCandidate = [fallbackModel, ...modelFolders.slice().reverse()].find((candidate) =>
+            /\biphone\s*(?:se\s*)?\d{1,2}/i.test(cleanIdentityPart(candidate)));
+        if (appleCandidate) {
+            return { brand: "APPLE", model: commercialModel(appleCandidate, "APPLE") };
+        }
+    }
+
+    const firstFolder = modelFolders[0];
 
     if (!firstFolder) return { model: fallbackModel };
 
