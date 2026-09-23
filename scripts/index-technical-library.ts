@@ -98,7 +98,18 @@ async function cycle(client: pg.PoolClient, pool: pg.Pool, signal: AbortSignal) 
   }
   const summary = { indexed: 0, cached: 0, failed: 0, unsupported: 0, skippedFailed: 0 };
   try {
-    const assets = selectIndexAssets(await catalog(client), process.argv.slice(2));
+    const currentAssets = await catalog(client);
+    if (process.argv.includes('--sync-only')) {
+      process.stdout.write(JSON.stringify({
+        syncOnly: true,
+        assets: currentAssets.length,
+        pdf: currentAssets.filter(asset => asset.kind === 'pdf').length,
+        pcbe: currentAssets.filter(asset => asset.kind === 'pcbe').length,
+        unsupported: currentAssets.filter(asset => asset.status !== 'ready').length,
+      }) + '\n');
+      return;
+    }
+    const assets = selectIndexAssets(currentAssets, process.argv.slice(2));
     await mkdir(path.join(root, '.technical'), { recursive: true });
     await mkdir(path.join(root, '.index'), { recursive: true });
     const outcomes = await runBounded(assets, concurrency, async (asset) => {

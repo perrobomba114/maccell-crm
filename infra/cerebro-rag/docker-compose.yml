@@ -46,7 +46,7 @@ services:
     restart: on-failure
     user: "1000:1000"
     working_dir: /app
-    command: ["node", "scripts/start-isolated-technical-worker.mjs", "--retry-failed"]
+    command: ["node", "scripts/start-isolated-technical-worker.mjs", "--sync-only"]
     environment:
       SCHEMATICS_ROOT: /app/upload/schematics
       SCHEMATICS_INDEX_CONCURRENCY: "1"
