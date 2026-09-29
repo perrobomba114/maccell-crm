@@ -3,10 +3,13 @@ export type AdminRepairBranch = {
     name: string;
 };
 
+export type AdminRepairStatus = { id: number; name: string; color: string | null };
+
 export type AdminRepairsQuery = {
     query?: string;
     branchId?: string;
     warrantyOnly?: boolean;
+    statusId?: number;
     technician?: string;
     technicianId?: string;
     date?: string;

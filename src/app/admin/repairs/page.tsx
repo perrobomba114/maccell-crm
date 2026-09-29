@@ -1,3 +1,5 @@
+import { db } from "@/lib/db";
+import { normalizeAdminRepairStatusId } from "@/lib/admin-repairs-status-filter";
 import { getUserData } from "@/actions/get-user";
 import { getAllRepairsForAdminAction } from "@/lib/actions/repairs";
 import { getAllBranches } from "@/actions/get-branches";
@@ -35,15 +37,17 @@ export default async function AdminRepairsPage(
     const statsDate = repairsDate;
     const selectedDate = resolveAdminRepairDateSelection(rawDate);
     const page = typeof searchParams?.page === "string" ? Number(searchParams.page) : 1;
+    const statusId = normalizeAdminRepairStatusId(searchParams?.status);
     const warrantyOnly = searchParams?.warranty === "1";
 
     const user = await getUserData();
     if (!user || user.role !== "ADMIN") redirect("/");
 
-    const [repairsData, branches, statsRes] = await Promise.all([
-        getAllRepairsForAdminAction({ query, branchId, technician, technicianId, date: repairsDate, page, warrantyOnly }),
+    const [repairsData, branches, statsRes, statuses] = await Promise.all([
+        getAllRepairsForAdminAction({ query, branchId, technician, technicianId, date: repairsDate, page, warrantyOnly, statusId }),
         getAllBranches(),
-        getTechnicianPerformance({ branchId, date: statsDate, warrantyOnly, query })
+        getTechnicianPerformance({ branchId, date: statsDate, warrantyOnly, query, statusId }),
+        db.repairStatus.findMany({ select: { id: true, name: true, color: true }, orderBy: { id: "asc" } })
     ]);
 
     const initialStats = statsRes.success && statsRes.data ? [...statsRes.data].sort((a, b) => b.seenCount - a.seenCount) : [];
@@ -63,7 +67,8 @@ export default async function AdminRepairsPage(
             {/* Performance Cards */}
             <TechnicianStatsCards 
                 selectedDate={selectedDate}
-                initialData={initialStats} 
+                initialData={initialStats}
+                statusName={statuses.find(status => status.id === statusId)?.name}
             />
 
             <Card>
@@ -71,7 +76,7 @@ export default async function AdminRepairsPage(
                     <CardTitle>Todas las Reparaciones</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <AdminRepairsTable repairsData={repairsData} branches={branches} />
+                    <AdminRepairsTable repairsData={repairsData} branches={branches} statuses={statuses} />
                 </CardContent>
             </Card>
         </div>

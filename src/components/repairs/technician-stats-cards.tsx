@@ -5,11 +5,12 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Clock, Trophy, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { TechnicianPerformance } from "@/actions/repair-actions-extra";
+import { TechnicianPerformanceCard } from "./technician-performance-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
@@ -24,9 +25,10 @@ import {
 type TechnicianStatsCardsProps = {
     selectedDate?: string;
     initialData?: TechnicianPerformance[];
+    statusName?: string;
 };
 
-export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianStatsCardsProps) {
+export function TechnicianStatsCards({ selectedDate, initialData, statusName }: TechnicianStatsCardsProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
@@ -41,12 +43,6 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const isInitialLoading = !initialData;
-
-    const getCardStyles = (index: number) => {
-        if (index === 0) return "bg-purple-600 text-white border-none shadow-xl transform hover:brightness-110 transition-all duration-300 cursor-pointer hover:ring-4 hover:ring-purple-300/50";
-        if (index === 1) return "bg-blue-600 text-white border-none shadow-lg cursor-pointer transition-all duration-300 hover:brightness-110 hover:ring-4 hover:ring-blue-300/50";
-        return "bg-orange-500 text-white border-none shadow-md cursor-pointer transition-all duration-300 hover:brightness-110 hover:ring-4 hover:ring-orange-300/50";
-    };
 
     const replaceParams = (updates: Record<string, string | null>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -172,66 +168,19 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
                         </Card>
                     ))
                 ) : stats.length > 0 ? (
-                    stats.map((tech, index) => {
-                        const isActive = searchParams.get("techId") === tech.id;
-                        return (
-                            <Card
-                                key={tech.id}
-                                role="button"
-                                tabIndex={isPending ? -1 : 0}
-                                aria-pressed={isActive}
-                                onKeyDown={(event) => {
-                                    if (!isPending && (event.key === "Enter" || event.key === " ")) {
-                                        event.preventDefault();
-                                        handleTechClick(tech);
-                                    }
-                                }}
-                                onClick={() => {
-                                    if (!isPending) handleTechClick(tech);
-                                }}
-                                className={cn(
-                                    "relative overflow-hidden min-w-0",
-                                    getCardStyles(index),
-                                    isActive && "ring-4 ring-offset-2 ring-foreground/50",
-                                    isPending && "pointer-events-none",
-                                )}
-                            >
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4 px-4">
-                                    <CardTitle className="text-lg font-bold flex items-center gap-1.5 leading-none">
-                                        {index === 0 && <Trophy className="h-5 w-5 text-yellow-300 animate-pulse" />}
-                                        <span className="truncate">{tech.name}</span>
-                                        {isActive && <span className="ml-2 w-2 h-2 rounded-full bg-white animate-pulse" />}
-                                    </CardTitle>
-                                    <div className={cn("p-1.5 rounded-full", index === 0 ? "bg-white/20" : "bg-white/10")}>
-                                        <Wrench className="h-4 w-4 text-white" />
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="px-4 pb-4">
-                                    <div className="text-xs font-medium text-white/80 mt-2">Finalizadas en el período</div>
-                                    <div className="text-5xl font-extrabold my-2 tracking-tighter shadow-sm">{tech.seenCount}</div>
-                                    <div className="flex items-center gap-2 bg-black/20 w-fit px-2 py-1.5 rounded-md backdrop-blur-sm">
-                                        <Clock className="h-4 w-4 opacity-90" />
-                                        <div className="flex flex-col leading-none">
-                                            <span className="text-[10px] opacity-80 font-medium uppercase tracking-wider">Promedio</span>
-                                            <span className="text-sm font-bold">{tech.avgTime}</span>
-                                        </div>
-                                    </div>
-                                    <div className="mt-3 grid grid-cols-2 gap-1.5 border-t border-white/20 pt-3">
-                                        {tech.outcomes.map((outcome) => (
-                                            <div key={outcome.id} className="flex items-center justify-between gap-2 rounded-md bg-black/20 px-2 py-1.5 text-xs">
-                                                <span className="min-w-0 break-words">{outcome.name}</span>
-                                                <span className="font-bold tabular-nums">{outcome.count}</span>
-                                            </div>
-                                        ))}
-                                        {tech.outcomes.length === 0 && <span className="col-span-2 text-xs text-white/80">Sin finalizaciones en este período</span>}
-                                    </div>
-                                </CardContent>
-                                <div className="absolute -bottom-4 -right-4 bg-white/10 w-20 h-20 rounded-full blur-2xl pointer-events-none" />
-                            </Card>
-                        );
-                    })
+                    stats.map((tech, index) => (
+                        <TechnicianPerformanceCard
+                            key={tech.id}
+                            tech={tech}
+                            index={index}
+                            active={searchParams.get("techId") === tech.id}
+                            disabled={isPending}
+                            statusName={statusName}
+                            onSelect={() => handleTechClick(tech)}
+                        />
+                    ))
                 ) : (
-                    <div className="col-span-3 text-center text-muted-foreground py-8 text-sm bg-muted/20 rounded-xl border-2 border-dashed flex flex-col items-center gap-2">
+                    <div className="col-span-full text-center text-muted-foreground py-8 text-sm bg-muted/20 rounded-xl border-2 border-dashed flex flex-col items-center gap-2">
                         <Wrench className="h-8 w-8 opacity-20" />
                         <p>No hay registro de reparaciones para esta fecha.</p>
                     </div>

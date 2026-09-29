@@ -13,7 +13,7 @@ import { AdminRepairsFilters } from "./components/AdminRepairsFilters";
 import { AdminRepairsList } from "./components/AdminRepairsList";
 import { AdminRepairsPagination } from "./components/AdminRepairsPagination";
 import { AdminRepairsDeleteDialog } from "./components/AdminRepairsDeleteDialog";
-import type { AdminRepairBranch, AdminRepairsResult } from "@/types/admin-repairs";
+import type { AdminRepairBranch, AdminRepairStatus, AdminRepairsResult } from "@/types/admin-repairs";
 import type { RepairDetails } from "./repair-details-dialog";
 import type { LoadingRepairAction } from "./components/AdminRepairRowActions";
 import { shouldPauseAdminRepairsAutoRefresh } from "@/lib/admin-repairs-refresh";
@@ -21,7 +21,7 @@ import { usePolling } from "@/hooks/use-polling";
 import { buildAdminRepairSearchParamUpdates } from "@/lib/admin-repairs-filter-updates";
 import { removeRepairDetailsParam } from "@/lib/repair-chat/navigation";
 
-export function AdminRepairsTable({ repairsData, branches }: { repairsData: AdminRepairsResult, branches: AdminRepairBranch[] }) {
+export function AdminRepairsTable({ repairsData, branches, statuses }: { repairsData: AdminRepairsResult, branches: AdminRepairBranch[], statuses: AdminRepairStatus[] }) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const router = useRouter();
@@ -165,6 +165,7 @@ export function AdminRepairsTable({ repairsData, branches }: { repairsData: Admi
                 setLocalSearchTerm={setLocalSearchTerm}
                 selectedBranchId={selectedBranchId}
                 branches={branches}
+                statuses={statuses}
                 showOnlyWarranty={showOnlyWarranty}
                 setShowOnlyWarranty={(show) => updateParams({ warranty: show ? "1" : null })}
                 updateParams={updateParams}

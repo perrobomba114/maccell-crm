@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ReadonlyURLSearchParams } from "next/navigation";
-import type { AdminRepairBranch } from "@/types/admin-repairs";
+import type { AdminRepairBranch, AdminRepairStatus } from "@/types/admin-repairs";
 
 interface AdminRepairsFiltersProps {
     localSearchTerm: string;
     setLocalSearchTerm: (term: string) => void;
     selectedBranchId: string;
     branches: AdminRepairBranch[];
+    statuses: AdminRepairStatus[];
     showOnlyWarranty: boolean;
     setShowOnlyWarranty: (show: boolean) => void;
     updateParams: (updates: Record<string, string | null>) => void;
@@ -25,6 +26,7 @@ export function AdminRepairsFilters({
     setLocalSearchTerm,
     selectedBranchId,
     branches,
+    statuses,
     showOnlyWarranty,
     setShowOnlyWarranty,
     updateParams,
@@ -39,7 +41,8 @@ export function AdminRepairsFilters({
         || activeDate !== todayStr
         || Boolean(searchParams.get('techId'))
         || selectedBranchId !== "ALL"
-        || showOnlyWarranty;
+        || showOnlyWarranty
+        || Boolean(searchParams.get("status"));
 
     return (
         <div className="bg-background border rounded-xl p-3 sm:p-4 shadow-sm space-y-3">
@@ -149,7 +152,17 @@ export function AdminRepairsFilters({
                         <Filter className="h-3.5 w-3.5" />
                         Opciones
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <label className="sr-only" htmlFor="repair-status-filter">Estado de reparación</label>
+                        <select
+                            id="repair-status-filter"
+                            value={searchParams.get("status") || "ALL"}
+                            onChange={(event) => updateParams({ status: event.target.value })}
+                            className="h-9 w-full sm:w-52 rounded-md border border-input bg-background px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                            <option value="ALL">Todos los estados</option>
+                            {statuses.map(status => <option key={status.id} value={status.id}>{status.name}</option>)}
+                        </select>
                         <Button
                             variant={showOnlyWarranty ? "default" : "outline"}
                             size="sm"
@@ -169,7 +182,7 @@ export function AdminRepairsFilters({
                                 size="sm"
                                 onClick={() => {
                                     setLocalSearchTerm("");
-                                    updateParams({ q: null, date: todayStr, techId: null, tech: null, warranty: null, branch: "ALL" });
+                                    updateParams({ q: null, date: todayStr, techId: null, tech: null, warranty: null, status: null, branch: "ALL" });
                                 }}
                                 className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50 font-bold justify-start gap-2"
                             >

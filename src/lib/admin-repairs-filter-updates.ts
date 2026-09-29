@@ -7,6 +7,7 @@ export type AdminRepairSearchParamUpdates = {
     techId?: null;
     tech?: null;
     warranty?: null;
+    status?: null;
 };
 
 export function buildAdminRepairSearchParamUpdates(searchTerm: string): AdminRepairSearchParamUpdates {
@@ -24,5 +25,6 @@ export function buildAdminRepairSearchParamUpdates(searchTerm: string): AdminRep
         techId: null,
         tech: null,
         warranty: null,
+        status: null,
     };
 }

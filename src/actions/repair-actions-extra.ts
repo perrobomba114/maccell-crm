@@ -1,9 +1,10 @@
 "use server";
 
 import { summarizeTechnicianOutcomes, type TechnicianOutcome } from "@/lib/technician-outcomes";
+import { buildAdminRepairsWhere, normalizeAdminRepairsQuery } from "@/lib/admin-repairs-query";
 import { db } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
-import { getRepairDateFilterRange } from "@/lib/repair-date-filter";
+import { getRepairDateFilterRange, normalizeRepairDateFilter } from "@/lib/repair-date-filter";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { buildAdminRepairSearchFilters } from "@/lib/admin-repairs-search";
 import {
@@ -26,6 +27,7 @@ type TechnicianPerformanceFilters = {
     query?: string;
     branchId?: string;
     warrantyOnly?: boolean;
+    statusId?: number;
 };
 
 function buildPerformanceRepairWhere(filters: TechnicianPerformanceFilters): Prisma.RepairWhereInput {
@@ -57,6 +59,23 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
         const caller = await getCurrentUser();
         if (!caller || caller.role !== "ADMIN") {
             return { success: false, error: "Unauthorized", data: [] };
+        }
+
+        if (filters.statusId) {
+            const [techs, repairs] = await Promise.all([
+                db.user.findMany({ where: { role: "TECHNICIAN" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+                db.repair.findMany({
+                    where: buildAdminRepairsWhere(normalizeAdminRepairsQuery({ ...filters, date: normalizeRepairDateFilter(filters.date) })),
+                    select: { id: true, assignedUserId: true, status: { select: { id: true, name: true } }, startedAt: true, finishedAt: true },
+                }),
+            ]);
+            const summary = summarizeTechnicianOutcomes(repairs.map(repair => ({ repairId: repair.id, userId: repair.assignedUserId, toStatus: repair.status })));
+            return { success: true, data: techs.map(tech => {
+                const ownRepairs = repairs.filter(repair => repair.assignedUserId === tech.id);
+                const completed = ownRepairs.filter(repair => repair.finishedAt !== null);
+                return { ...tech, seenCount: summary.get(tech.id)?.total ?? 0, outcomes: summary.get(tech.id)?.outcomes ?? [],
+                    avgTime: completed.length ? formatRepairTimeMinutes(getAverageRepairTimeMinutes(completed)) : "-" };
+            }) };
         }
 
         const dateRange = getRepairDateFilterRange(filters.date);

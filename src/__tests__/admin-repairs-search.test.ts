@@ -42,6 +42,7 @@ test("clears scoped admin repair filters when searching by ticket", () => {
         techId: null,
         tech: null,
         warranty: null,
+        status: null,
     });
     assert.deepEqual(buildAdminRepairSearchParamUpdates(" samsung "), { q: "samsung" });
     assert.deepEqual(buildAdminRepairSearchParamUpdates(" "), { q: null });
