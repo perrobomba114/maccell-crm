@@ -42,16 +42,16 @@ export function AdminRepairsFilters({
         || showOnlyWarranty;
 
     return (
-        <div className="bg-background border rounded-xl p-6 shadow-sm space-y-6">
+        <div className="bg-background border rounded-xl p-3 sm:p-4 shadow-sm space-y-3">
             {/* Header / Search Area */}
-            <div className="flex flex-col md:flex-row gap-4 items-start">
+            <div className="flex flex-col md:flex-row gap-2 items-start">
                 <div className="relative flex-1 w-full group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input
                         placeholder="Buscar por ticket, cliente, teléfono, modelo, técnico o falla..."
                         value={localSearchTerm}
                         onChange={(e) => setLocalSearchTerm(e.target.value)}
-                        className="pl-10 h-11 bg-muted/30 border-muted-foreground/20 focus:bg-background transition-all"
+                        className="pl-10 h-9 bg-muted/30 border-muted-foreground/20 focus:bg-background transition-all"
                     />
                     {isSearchWithoutExplicitDate && (
                         <Badge variant="secondary" className="mt-2 w-fit border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300">
@@ -71,7 +71,7 @@ export function AdminRepairsFilters({
                             size="sm"
                             onClick={() => updateParams({ date: period.value })}
                             className={cn(
-                                "h-11 px-4 font-bold flex-1 md:flex-none transition-all",
+                                "h-9 px-4 font-bold flex-1 md:flex-none transition-all",
                                 period.active && period.label === "Hoy" && "bg-blue-600 hover:bg-blue-700 text-white shadow-md border-blue-600",
                                 period.active && period.label === "Este Mes" && "bg-purple-600 hover:bg-purple-700 text-white shadow-md border-purple-600"
                             )}
@@ -82,12 +82,12 @@ export function AdminRepairsFilters({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-6 border-t">
+            <div className="flex flex-wrap items-end gap-x-4 gap-y-3 pt-3 border-t">
                 {/* Branch Selection */}
-                <div className="lg:col-span-9 space-y-3">
+                <div className="min-w-0 space-y-2">
                     <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
                         <Building2 className="h-3.5 w-3.5" />
-                        Filtrar por Sucursal
+                        Sucursal
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <Button
@@ -95,7 +95,7 @@ export function AdminRepairsFilters({
                             size="sm"
                             onClick={() => updateParams({ branch: "ALL" })}
                             className={cn(
-                                "h-10 px-4 font-bold transition-all border-2",
+                                "h-8 px-3 font-bold transition-all border-2",
                                 selectedBranchId === "ALL" 
                                     ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800 shadow-md" 
                                     : "text-muted-foreground border-dashed hover:border-solid"
@@ -132,7 +132,7 @@ export function AdminRepairsFilters({
                                         size="sm"
                                         onClick={() => updateParams({ branch: b.id })}
                                         className={cn(
-                                            "h-10 px-4 font-bold transition-all border",
+                                            "h-8 px-3 font-bold transition-all border",
                                             isSelected ? activeColors[index % activeColors.length] : colors[index % colors.length]
                                         )}
                                     >
@@ -144,18 +144,18 @@ export function AdminRepairsFilters({
                 </div>
 
                 {/* Special Filters */}
-                <div className="lg:col-span-3 space-y-3">
+                <div className="space-y-2">
                     <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
                         <Filter className="h-3.5 w-3.5" />
                         Opciones
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Button
                             variant={showOnlyWarranty ? "default" : "outline"}
                             size="sm"
                             onClick={() => setShowOnlyWarranty(!showOnlyWarranty)}
                             className={cn(
-                                "h-10 font-bold justify-start gap-2",
+                                "h-8 font-bold justify-start gap-2",
                                 showOnlyWarranty ? "bg-yellow-500 hover:bg-yellow-600 text-white shadow-md border-yellow-600" : "text-yellow-600 border-yellow-500/30 hover:bg-yellow-50"
                             )}
                         >
@@ -171,7 +171,7 @@ export function AdminRepairsFilters({
                                     setLocalSearchTerm("");
                                     updateParams({ q: null, date: todayStr, techId: null, tech: null, warranty: null, branch: "ALL" });
                                 }}
-                                className="h-10 text-red-500 hover:text-red-600 hover:bg-red-50 font-bold justify-start gap-2"
+                                className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50 font-bold justify-start gap-2"
                             >
                                 <X className="h-4 w-4" />
                                 Limpiar Filtros
@@ -183,7 +183,7 @@ export function AdminRepairsFilters({
 
             {/* Active Tech Indicator */}
             {searchParams.get('techId') && (
-                <div className="pt-4 border-t flex items-center gap-2">
+                <div className="pt-3 border-t flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Técnico:</span>
                     <Badge variant="secondary" className="px-3 py-1.5 text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800 flex items-center gap-2">
                         <Smartphone className="h-3.5 w-3.5" />

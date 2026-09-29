@@ -1,5 +1,6 @@
 "use server";
 
+import { summarizeTechnicianOutcomes, type TechnicianOutcome } from "@/lib/technician-outcomes";
 import { db } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 import { getRepairDateFilterRange } from "@/lib/repair-date-filter";
@@ -17,6 +18,7 @@ export interface TechnicianPerformance {
     name: string;
     seenCount: number;
     avgTime: string;
+    outcomes: TechnicianOutcome[];
 }
 
 type TechnicianPerformanceFilters = {
@@ -75,9 +77,11 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
             }),
             db.repairStatusHistory.findMany({
                 where: historyWhere,
+                orderBy: [{ createdAt: "desc" }, { id: "desc" }],
                 select: {
                     repairId: true,
                     userId: true,
+                    toStatus: { select: { id: true, name: true } },
                 },
             }),
         ]);
@@ -117,33 +121,18 @@ export async function getTechnicianPerformance(filters: TechnicianPerformanceFil
             ]),
         );
 
-        const performanceByTech = new Map<string, {
-            repairIds: Set<string>;
-        }>();
-
-        for (const entry of historyEntries) {
-            if (!entry.userId) continue;
-
-            const techPerformance = performanceByTech.get(entry.userId) ?? {
-                repairIds: new Set<string>(),
-            };
-
-            if (!techPerformance.repairIds.has(entry.repairId)) {
-                techPerformance.repairIds.add(entry.repairId);
-            }
-
-            performanceByTech.set(entry.userId, techPerformance);
-        }
+        const performanceByTech = summarizeTechnicianOutcomes(historyEntries);
 
         const stats: TechnicianPerformance[] = techs.map((tech) => {
             const techPerformance = performanceByTech.get(tech.id);
-            const seenCount = techPerformance?.repairIds.size ?? 0;
+            const seenCount = techPerformance?.total ?? 0;
 
             return {
                 id: tech.id,
                 name: tech.name,
                 seenCount,
                 avgTime: averageTimeByTech.get(tech.id) ?? "-",
+                outcomes: techPerformance?.outcomes ?? [],
             };
         });
 

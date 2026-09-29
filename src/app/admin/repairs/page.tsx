@@ -11,7 +11,6 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Metadata } from "next";
 import {
-    resolveAdminRepairDateFilter,
     resolveAdminRepairDateFilterForSearch,
     resolveAdminRepairDateSelection,
 } from "@/lib/admin-repairs-date-filter";
@@ -33,7 +32,7 @@ export default async function AdminRepairsPage(
     const technicianId = typeof searchParams?.techId === "string" ? searchParams.techId : "";
     const rawDate = typeof searchParams?.date === "string" ? searchParams.date : undefined;
     const repairsDate = resolveAdminRepairDateFilterForSearch(rawDate, query);
-    const statsDate = resolveAdminRepairDateFilter(rawDate);
+    const statsDate = repairsDate;
     const selectedDate = resolveAdminRepairDateSelection(rawDate);
     const page = typeof searchParams?.page === "string" ? Number(searchParams.page) : 1;
     const warrantyOnly = searchParams?.warranty === "1";
@@ -44,15 +43,15 @@ export default async function AdminRepairsPage(
     const [repairsData, branches, statsRes] = await Promise.all([
         getAllRepairsForAdminAction({ query, branchId, technician, technicianId, date: repairsDate, page, warrantyOnly }),
         getAllBranches(),
-        getTechnicianPerformance({ branchId, date: statsDate, warrantyOnly })
+        getTechnicianPerformance({ branchId, date: statsDate, warrantyOnly, query })
     ]);
 
     const initialStats = statsRes.success && statsRes.data ? [...statsRes.data].sort((a, b) => b.seenCount - a.seenCount) : [];
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-bold tracking-tight">Gestión de Reparaciones</h2>
+            <div className="flex flex-wrap justify-between items-center gap-3">
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Gestión de Reparaciones</h2>
                 <Link href="/admin/repairs/create">
                     <Button>
                         <Plus className="mr-2 h-4 w-4" />

@@ -99,8 +99,8 @@ export const adminGroups = [
     {
         label: "Servicio Técnico",
         items: [
-            { href: "/technician/schematics", label: "Esquemáticos", icon: "FileText" },
             { href: "/admin/repairs", label: "Reparaciones", icon: "Wrench" },
+            { href: "/technician/schematics", label: "Esquemáticos", icon: "FileText" },
             { href: "/admin/returns", label: "Devoluciones", icon: "RotateCcw" },
             { href: "/admin/imei", label: "Consulta IMEI", icon: "ShieldCheck" },
         ]

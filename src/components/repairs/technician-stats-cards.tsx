@@ -43,9 +43,9 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
     const isInitialLoading = !initialData;
 
     const getCardStyles = (index: number) => {
-        if (index === 0) return "bg-purple-600 text-white border-none shadow-xl transform hover:scale-105 transition-all duration-300 cursor-pointer hover:ring-4 hover:ring-purple-300/50";
-        if (index === 1) return "bg-blue-600 text-white border-none shadow-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:ring-4 hover:ring-blue-300/50";
-        return "bg-orange-500 text-white border-none shadow-md cursor-pointer transition-all duration-300 hover:scale-105 hover:ring-4 hover:ring-orange-300/50";
+        if (index === 0) return "bg-purple-600 text-white border-none shadow-xl transform hover:brightness-110 transition-all duration-300 cursor-pointer hover:ring-4 hover:ring-purple-300/50";
+        if (index === 1) return "bg-blue-600 text-white border-none shadow-lg cursor-pointer transition-all duration-300 hover:brightness-110 hover:ring-4 hover:ring-blue-300/50";
+        return "bg-orange-500 text-white border-none shadow-md cursor-pointer transition-all duration-300 hover:brightness-110 hover:ring-4 hover:ring-orange-300/50";
     };
 
     const replaceParams = (updates: Record<string, string | null>) => {
@@ -92,8 +92,8 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
             : getTodayRepairDateFilter();
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-2 bg-muted/30 p-2 rounded-lg w-fit">
+        <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2 bg-muted/30 p-2 rounded-lg w-full sm:w-fit">
                 <span className="text-sm font-medium text-muted-foreground pl-2">Filtrar rendimiento por fecha:</span>
                 {!isMonthFilter && (
                     <>
@@ -126,7 +126,7 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
                             size="sm"
                             disabled={isPending}
                             className={cn(
-                                "w-[240px] justify-start text-left font-normal bg-background hover:bg-background/90",
+                                "w-full sm:w-[240px] justify-start text-left font-normal bg-background hover:bg-background/90",
                                 !selectedCalendarDate && "text-muted-foreground"
                             )}
                         >
@@ -151,7 +151,7 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
             </div>
 
             <div
-                className={cn("grid gap-6 md:grid-cols-3 transition-opacity", isPending && "opacity-60")}
+                className={cn("grid gap-3 md:grid-cols-3 transition-opacity", isPending && "opacity-60")}
                 aria-busy={isPending}
             >
                 {isInitialLoading ? (
@@ -172,18 +172,27 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
                         </Card>
                     ))
                 ) : stats.length > 0 ? (
-                    stats.slice(0, 3).map((tech, index) => {
+                    stats.map((tech, index) => {
                         const isActive = searchParams.get("techId") === tech.id;
                         return (
                             <Card
                                 key={tech.id}
+                                role="button"
+                                tabIndex={isPending ? -1 : 0}
+                                aria-pressed={isActive}
+                                onKeyDown={(event) => {
+                                    if (!isPending && (event.key === "Enter" || event.key === " ")) {
+                                        event.preventDefault();
+                                        handleTechClick(tech);
+                                    }
+                                }}
                                 onClick={() => {
                                     if (!isPending) handleTechClick(tech);
                                 }}
                                 className={cn(
-                                    "relative overflow-hidden",
+                                    "relative overflow-hidden min-w-0",
                                     getCardStyles(index),
-                                    isActive && "ring-4 ring-offset-2 ring-foreground/50 scale-105",
+                                    isActive && "ring-4 ring-offset-2 ring-foreground/50",
                                     isPending && "pointer-events-none",
                                 )}
                             >
@@ -198,6 +207,7 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
                                     </div>
                                 </CardHeader>
                                 <CardContent className="px-4 pb-4">
+                                    <div className="text-xs font-medium text-white/80 mt-2">Finalizadas en el período</div>
                                     <div className="text-5xl font-extrabold my-2 tracking-tighter shadow-sm">{tech.seenCount}</div>
                                     <div className="flex items-center gap-2 bg-black/20 w-fit px-2 py-1.5 rounded-md backdrop-blur-sm">
                                         <Clock className="h-4 w-4 opacity-90" />
@@ -205,6 +215,15 @@ export function TechnicianStatsCards({ selectedDate, initialData }: TechnicianSt
                                             <span className="text-[10px] opacity-80 font-medium uppercase tracking-wider">Promedio</span>
                                             <span className="text-sm font-bold">{tech.avgTime}</span>
                                         </div>
+                                    </div>
+                                    <div className="mt-3 grid grid-cols-2 gap-1.5 border-t border-white/20 pt-3">
+                                        {tech.outcomes.map((outcome) => (
+                                            <div key={outcome.id} className="flex items-center justify-between gap-2 rounded-md bg-black/20 px-2 py-1.5 text-xs">
+                                                <span className="min-w-0 break-words">{outcome.name}</span>
+                                                <span className="font-bold tabular-nums">{outcome.count}</span>
+                                            </div>
+                                        ))}
+                                        {tech.outcomes.length === 0 && <span className="col-span-2 text-xs text-white/80">Sin finalizaciones en este período</span>}
                                     </div>
                                 </CardContent>
                                 <div className="absolute -bottom-4 -right-4 bg-white/10 w-20 h-20 rounded-full blur-2xl pointer-events-none" />
