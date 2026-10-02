@@ -15,12 +15,49 @@ Cerebro V2 es un asistente exclusivamente técnico para usuarios `ADMIN` y `TECH
 
 No guardar contraseñas, tokens ni certificados en este documento.
 
-## Servicios
+## Servicios y código responsable
 
-- `worker`: API interna de salud, embeddings BGE-M3 y render autenticado de páginas PDF.
-- `ingestion`: reconstruye el histórico y luego indexa todo el inventario PDF. Es idempotente; después de un reinicio omite versiones `READY` con el mismo SHA-256.
-- `repair-sync`: consulta la base principal en modo solo lectura cada cinco minutos y versiona reparaciones nuevas o modificadas mediante cursor `(effective_updated_at, id)`.
-- `maccell-rag-db`: almacena documentos, páginas, chunks, embeddings de 1.024 dimensiones, jobs, chats V2 y feedback.
+| Capa | Función | Código/configuración |
+| --- | --- | --- |
+| CRM Next.js | Permisos, chat, recuperación híbrida, consultas RAG y proxy PDF | `src/lib/cerebro-v2`, `src/app/api/cerebro-v2` |
+| PostgreSQL principal `maccell` | Operación comercial y reparaciones; fuente del lector RAG | `prisma/schema.prisma`, `prisma/migrations` |
+| PostgreSQL `maccell-rag-db` | Documentos, versiones, páginas, chunks/vector, jobs, alias, chats y feedback | `services/cerebro-rag-worker/src/cerebro_rag/schema.sql`, `migrations.py`; migraciones adicionales en ese servicio |
+| `worker` Python/FastAPI | API interna de embeddings BGE-M3 y PDF/páginas, puerto 8080 | `services/cerebro-rag-worker/src/cerebro_rag/server.py`, `embeddings.py`, `page_renderer.py` |
+| `ingestion-sequential` | Inventario PDF, extracción/OCR, chunks, versiones por SHA e indexación | `cli.py`, `pdf_inventory.py`, `indexer.py`, `document_versions.py` |
+| `repair-sync` | Lee reparaciones incrementales, evalúa calidad e indexa versiones RAG cada 300 segundos | `repair_sync.py`, `repair_cursor.py`, `repair_indexer.py`, `repair_quality.py` |
+| Índice técnico Node | Catálogo físico, PCBE, componentes/redes y jobs técnicos; separado del embedding PDF | `scripts/index-technical-library.ts`, `technical-worker-queue.ts`, `src/lib/schematics` |
+| MinIO | Destino S3 local de backups Dokploy; no almacena embeddings ni sustituye la biblioteca | recurso `maccell-backup-minio` |
+
+Compose CPU: `infra/cerebro-rag/docker-compose.yml`. El perfil `maintenance-indexing` declara `ingestion-0` a `ingestion-8`; su presencia en el archivo no significa que estén ejecutándose. `technical-indexer` también está declarado y debe verificarse separadamente. Las variantes GPU y de inferencia local están en `infra/cerebro-rag-gpu` y `infra/cerebro-local-ai`; su existencia en Git no acredita que estén activas.
+
+### Conexiones y almacenamiento
+
+- CRM: `DATABASE_URL` para Prisma; `RAG_DATABASE_URL` para el pool `pg` de `rag-db.ts`; `RAG_WORKER_URL` (default interno `http://maccell-rag-worker:8080`) y `RAG_INTERNAL_API_SECRET` para el worker.
+- Python: `SOURCE_DATABASE_URL` para lectura de reparaciones, `RAG_DATABASE_URL` para persistencia RAG y `INTERNAL_API_SECRET` para endpoints internos. No intercambiar secretos o URLs por el parecido de los nombres.
+- Worker: `/mnt/data2` → `/library:ro`; `/var/lib/maccell/rag-pages` → `/page-cache`; `/var/lib/maccell/rag-models` → `/model-cache`.
+- CRM: `/var/lib/maccell/upload` → `/app/upload`; `/mnt/data2` → `/app/upload/schematics/sources`.
+- RAG: volumen `postgres-copy-open-source-pixel-9km3at-data` → `/var/lib/postgresql/data`. Principal: bind `/var/lib/maccell/postgres_data` → `/var/lib/postgresql/data`.
+
+### Flujo de consulta
+
+Next.js autoriza al usuario, solicita un embedding de 1.024 dimensiones por `/internal/embed`, consulta RAG con búsqueda vectorial/keyword y filtros de marca/modelo/alias, selecciona evidencia y usa el routing de generación. El modelo de embeddings y el modelo que redacta la respuesta son funciones diferentes. Los PDFs/páginas se entregan por el proxy autorizado del CRM y los endpoints internos del worker.
+
+Los originales PDF, catálogo, índices técnicos y documentos RAG no son intercambiables. Una corrección de identidad/catálogo no exige automáticamente reextraer PDFs o reconstruir embeddings.
+
+### Snapshot de lectura MCP — 2026-09-29
+
+Verificado mediante `dokploy_maccell`, sin cambios en producción:
+
+- Los cinco recursos del proyecto aparecen en estado Dokploy `done`.
+- Contenedores Compose activos: `worker`, `ingestion-sequential`, `repair-sync` (Up 6 days). CRM y PostgreSQL RAG tienen una tarea Swarm actual `running`; las tareas antiguas `shutdown` son historial.
+- Docker inspect confirma montaje `/library` de solo lectura en worker e ingesta, cachés persistentes y cero reinicios de esos dos contenedores.
+- Logs de repair-sync muestran ciclos recientes `REPAIR_SYNC indexed=... skipped=...`, con registros nuevos indexados y sin fallo en la muestra de 15 líneas. No acredita el estado de toda la historia ni los permisos efectivos de cada tabla.
+- Última muestra de ingesta: `FAILED 5762 type=RuntimeError ready=5600 failed=162` a las 21:33 UTC. Son contadores de esa ejecución, no conteos de documentos únicos en DB. No se observó `SUMMARY` en la muestra y no se comprobó cobertura completa.
+- Worker: arranque Uvicorn en puerto 8080 y `ALIASES cataloged=793` en logs del 23 de septiembre; no se ejecutó una consulta autenticada de diagnóstico en esta auditoría.
+- PostgreSQL principal tiene backup Dokploy habilitado hacia MinIO, retención configurada de 1 y ejecución del 29 de septiembre `done`. No se probó restauración ni se verificaron objetos S3. PostgreSQL RAG devuelve `backups: []`; no presupongas respaldo de chats/feedback por el backup del CRM.
+- MCP oculta `env` y `composeFile`. Se verificaron servicios declarados en cache, procesos/mounts vía Docker y configuración local; URLs efectivas de DB, proveedores remotos/GPU y permisos SQL no quedaron verificados en vivo.
+
+Revalidá el snapshot antes de operar. No uses los IDs efímeros de contenedor como instrucciones permanentes: resolvelos desde el appName/compose actual.
 
 ### Permisos de `repair-sync`
 
@@ -38,8 +75,8 @@ obligatoria, cursor, escritura RAG o embeddings.
 
 ## Comprobaciones
 
-1. Confirmar que `worker`, `ingestion` y `repair-sync` estén activos en el Compose.
-2. Consultar logs de `ingestion`: cada PDF informa `INDEXED`; el final informa `SUMMARY`.
+1. Resolver los contenedores actuales del Compose y confirmar `worker`, `ingestion-sequential` y `repair-sync`; distinguir los shards de mantenimiento declarados de los activos.
+2. Consultar logs de la ingesta activa: `INDEXED`/`FAILED` informan avance y `SUMMARY` el final; investigar fallos sin confundir esos contadores con cobertura única de DB.
 3. Verificar en RAG que todos los embeddings tengan `vector_dims(embedding) = 1024`.
 4. Verificar que las reparaciones se clasifiquen como `CONFIRMED_SUCCESS`, `INCOMPLETE` o `FAILED`.
 5. Verificar el job `REPAIR_SYNC/main`: estado `READY`, cursor creciente y sin `error_message`. Un `REPAIR_SYNC_DEGRADED` opcional debe quedar explicado; no debe repetirse un `REPAIR_SYNC_FAILED` por `InsufficientPrivilege`.
@@ -57,7 +94,7 @@ obligatoria, cursor, escritura RAG o embeddings.
 
 - La base principal no recibe escrituras del worker; su rol tiene `default_transaction_read_only=on` y permisos `SELECT` acotados.
 - Detener `ingestion` o `repair-sync` no afecta al CRM ni elimina lo ya indexado.
-- Para rollback, desplegar el commit estable anterior desde `main`. La base RAG aislada puede permanecer encendida.
+- Para rollback, desplegar el commit estable anterior desde `main`. La base RAG aislada puede permanecer encendida. Conservá chats y feedback; una reconstrucción documental no justifica borrar toda la base.
 - Antes de cambios de esquema, generar un backup nuevo. No restaurar sobre la base principal para resolver problemas del RAG.
 
 ## Rotación de secretos

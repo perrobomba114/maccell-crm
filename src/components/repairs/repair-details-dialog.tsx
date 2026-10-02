@@ -1,5 +1,7 @@
 "use client";
 
+import { ExternalPurchasesSummary } from "./external-purchases-summary";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -539,6 +541,8 @@ export function RepairDetailsDialog({ repair: initialRepair, isOpen, onClose, cu
                                         </div>
                                     )}
                                 </div>
+
+                                {isOpen && <ExternalPurchasesSummary key={activeRepair.id} repairId={activeRepair.id} />}
 
                                 {/* Photographic Evidence */}
                                 {images.length > 0 && (

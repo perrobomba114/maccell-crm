@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ExternalPurchaseEditor } from "./external-purchase-editor";
+import type { ExternalPurchaseInput } from "@/lib/repairs/external-purchases";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, Box, Wrench, AlertTriangle, Image } from "lucide-react";
@@ -44,6 +46,8 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
     const promisedDate = repair ? new Date(repair.promisedAt) : null;
     const isOverdue = promisedDate ? promisedDate < new Date() : false;
     const [isLoading, setIsLoading] = useState(false);
+    const [editingPurchase, setEditingPurchase] = useState(false);
+    const [externalPurchases, setExternalPurchases] = useState<ExternalPurchaseInput[]>([]);
     const [selectedParts, setSelectedParts] = useState<SparePartItem[]>([]);
     const [extendTime, setExtendTime] = useState(isOverdue);
     const [viewerOpen, setViewerOpen] = useState(false);
@@ -60,7 +64,8 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
                 repair.id,
                 currentUserId,
                 selectedParts,
-                (isOverdue && extendTime) ? 60 : undefined // Pass extension time if overdue and checked
+                (isOverdue && extendTime) ? 60 : undefined,
+                externalPurchases
             );
 
             if (result.success) {
@@ -78,8 +83,8 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[600px] p-0 flex flex-col overflow-hidden">
+        <Dialog open={isOpen} onOpenChange={(open) => !open && !isLoading && onClose()}>
+            <DialogContent showCloseButton={!isLoading} className="sm:max-w-[600px] max-h-[92dvh] p-0 flex flex-col overflow-hidden">
                 <div className="p-6 border-b bg-background shrink-0">
                     <DialogHeader className="text-left">
                         <DialogTitle className="flex items-center gap-2">
@@ -213,6 +218,7 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
                             onPartsChange={setSelectedParts}
                             hidePrice={true}
                         />
+                        <ExternalPurchaseEditor purchases={externalPurchases} onChange={setExternalPurchases} onEditingChange={setEditingPurchase} disabled={isLoading} />
                     </div>
                 </div>
 
@@ -223,7 +229,7 @@ export function TakeRepairDialog({ repair, isOpen, onClose, currentUserId }: Tak
                         </Button>
                         <Button
                             onClick={handleConfirm}
-                            disabled={isLoading || (isOverdue && !extendTime)}
+                            disabled={isLoading || editingPurchase || (isOverdue && !extendTime)}
                             className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 sm:h-10"
                         >
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -59,6 +59,7 @@ model User {
   resolvedReturns       ReturnRequest[]        @relation("AdminResolvedReturns")
   technicianReturns     ReturnRequest[]        @relation("TechnicianReturns")
   sales                 Sale[]
+  externalRepairPurchases RepairExternalPurchase[]
   sparePartHistory      SparePartHistory[]
   stockTransfersCreated StockTransfer[]
   repairStatusHistory   RepairStatusHistory[]
@@ -373,6 +374,7 @@ model Repair {
   diagnosisEnriched  String?
   diagnosticJson     Json?
   observations       RepairObservation[]
+  externalPurchases  RepairExternalPurchase[]
   parts              RepairPart[]
   statusHistory      RepairStatusHistory[]
   assignedTo         User?                 @relation("AssignedRepairs", fields: [assignedUserId], references: [id])
@@ -435,6 +437,29 @@ model RepairObservation {
 
   @@index([repairId])
   @@map("repair_observations")
+}
+
+// Compras para una reparación: no ingresan al stock ni representan un pago de caja.
+model RepairExternalPurchase {
+  id           String   @id @default(cuid())
+  requestId    String
+  repairId     String
+  userId       String
+  description  String
+  supplier     String
+  quantity     Int
+  unitCost     Decimal  @db.Decimal(14, 2)
+  totalCost    Decimal  @db.Decimal(16, 2)
+  purchasedAt  DateTime @db.Date
+  receipt      String?
+  createdAt    DateTime @default(now())
+  repair       Repair   @relation(fields: [repairId], references: [id], onDelete: Restrict)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([repairId, requestId])
+  @@index([purchasedAt])
+  @@index([userId])
+  @@map("repair_external_purchases")
 }
 
 model RepairPart {

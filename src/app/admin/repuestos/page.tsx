@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 import { Suspense } from "react";
 import { getSpareParts } from "@/actions/spare-parts";
@@ -29,13 +31,14 @@ export default async function SparePartsPage({ searchParams }: PageProps) {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap gap-3 items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Repuestos</h1>
                     <p className="text-muted-foreground">
                         Gestiona el inventario de repuestos, precios y reposición.
                     </p>
                 </div>
+                <Button asChild variant="outline"><Link href="/admin/repuestos/compras-externas">Compras externas</Link></Button>
             </div>
 
             <Suspense fallback={<div>Cargando repuestos...</div>}>

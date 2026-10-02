@@ -11,11 +11,15 @@ import { getCurrentUser } from "@/actions/auth-actions";
 import { REPAIR_STATUS } from "@/lib/repairs/status";
 import { consumeRepairParts } from "@/lib/repairs/consume-repair-parts";
 
+import { recordExternalPurchases } from "@/lib/repairs/record-external-purchases";
+import { canAccessExternalPurchases, externalPurchasesSchema, type ExternalPurchaseInput } from "@/lib/repairs/external-purchases";
+
 export async function takeRepairAction(
     repairId: string,
     userId: string,
     parts: { id: string, name: string }[],
-    extendMinutes?: number
+    extendMinutes?: number,
+    externalPurchases: ExternalPurchaseInput[] = [],
 ) {
     if (!repairId || !userId) return { success: false, error: "Datos incompletos" };
 
@@ -38,6 +42,11 @@ export async function takeRepairAction(
         const isOwnTechnicianAction = currentUser?.role === "TECHNICIAN" && currentUser.id === userId;
         if (!currentUser || (currentUser.role !== "ADMIN" && !isOwnTechnicianAction)) {
             return { success: false, error: "No autorizado" };
+        }
+        const parsed = externalPurchasesSchema.safeParse(externalPurchases);
+        if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+        if (parsed.data.length && !canAccessExternalPurchases(currentUser, { ...repair, assignedUserId: null })) {
+            return { success: false, error: "No tenés acceso a las compras de esta sucursal." };
         }
         const actorUserId = currentUser.id;
 
@@ -85,6 +94,8 @@ export async function takeRepairAction(
                 reason: "Retiro técnico",
             });
 
+            await recordExternalPurchases(tx, repairId, actorUserId, parsed.data);
+
             let obsContent = `Reparación retirada por técnico. Pendiente de asignación.`;
             if (extendMinutes && newPromisedAt) {
                 obsContent += ` Fecha prometida actualizada a ${formatInTimeZone(newPromisedAt, TIMEZONE, "dd/MM HH:mm", { locale: es })}.`;
@@ -113,6 +124,7 @@ export async function takeRepairAction(
             });
         }
 
+        revalidatePath("/admin/repuestos/compras-externas");
         revalidatePath("/technician/tickets");
         revalidatePath("/technician/repairs");
         revalidatePath("/technician/dashboard");

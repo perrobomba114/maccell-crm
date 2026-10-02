@@ -1,302 +1,58 @@
 # MACCELL CRM
 
-Sistema integral para operaciones de MACCELL: ventas, caja, reparaciones, stock multi-sucursal, facturación AFIP/ARCA, reportes y asistencia técnica con Cerebro AI.
+ERP/CRM para ventas, caja, reparaciones, stock por sucursal, facturación AFIP/ARCA y asistencia técnica Cerebro.
 
-Este README es la entrada rápida del proyecto. Las reglas obligatorias para agentes y desarrollo diario viven en:
+Next.js 15 App Router, React 19, TypeScript, Tailwind 4/shadcn, PostgreSQL y Prisma 6. La lógica de servidor vive en Server Actions y rutas API del mismo proyecto. Docker genera una aplicación standalone.
 
-- [AGENTS.md](./AGENTS.md): contrato operativo resumido.
-- [AGENT.md](./AGENT.md): contexto histórico y patrones del repo.
-- [.claude/claude.md](./.claude/claude.md): guía equivalente para Claude.
-- [.agents/skills/maccell/SKILL.md](./.agents/skills/maccell/SKILL.md): skill activa para agentes.
-- [.agents/skills/schematic-library-ingestion/SKILL.md](./.agents/skills/schematic-library-ingestion/SKILL.md): ingesta segura de PDF/PCBE, deduplicación, catálogo, índice técnico y RAG.
-- [docs/schematics-ingestion-runbook.md](./docs/schematics-ingestion-runbook.md): runbook para subir y acomodar nuevas tandas desde SCRAPING.
-- [docs/schematics-architecture.md](./docs/schematics-architecture.md): mapa de vínculos entre archivos físicos, catálogo, índice técnico, RAG V2 y Workbench.
-- [docs/superpowers/specs/2026-09-08-biblioteca-esquematicos-estructura-canonica-design.md](./docs/superpowers/specs/2026-09-08-biblioteca-esquematicos-estructura-canonica-design.md): contrato canónico de carpetas, catálogo, vinculación y migración.
-- [docs/agent-tooling.md](./docs/agent-tooling.md): Codex, Claude, skills y MCP recomendados.
-- [docs/technical-debt-roadmap.md](./docs/technical-debt-roadmap.md): checklist vivo de deuda técnica.
+## Empezar
 
-## Estado Actual
-
-MACCELL CRM es un producto en producción con ritmo de iteración alto. El sistema funciona como ERP/CRM operativo, pero tiene deuda técnica conocida en seguridad de rutas API, TypeScript, tests críticos, polling, estados mágicos de reparación, AFIP y Cerebro AI.
-
-Antes de sumar features grandes, priorizar el roadmap de deuda:
+Requisitos: Node >=20, npm y PostgreSQL de desarrollo configurado mediante `DATABASE_URL`. Prepará las variables locales sin publicar credenciales.
 
 ```bash
-open docs/technical-debt-roadmap.md
-```
-
-## Stack
-
-| Área | Tecnología |
-| --- | --- |
-| Framework | Next.js 15 App Router, React 19 |
-| Lenguaje | TypeScript |
-| Base de datos | PostgreSQL con Prisma ORM |
-| UI | Tailwind CSS v4, shadcn/ui, Recharts, Lucide |
-| Formularios | React Hook Form, Zod |
-| AI | Groq, OpenRouter fallback, Vercel AI SDK |
-| RAG | BGE-M3 embeddings 1.024 dims, PostgreSQL/pgvector |
-| Facturación | AFIP/ARCA |
-| Impresión | Tickets térmicos, Zebra/ZPL |
-| Infra | Docker, Dokploy, `output: "standalone"` |
-
-## Módulos
-
-| Módulo | Ruta principal | Responsabilidad |
-| --- | --- | --- |
-| Admin | `src/app/admin` | KPIs, caja, gastos, facturas, usuarios, backups, reportes |
-| Vendor | `src/app/vendor` | POS, ventas, recepción de equipos, stock de sucursal |
-| Technician | `src/app/technician` | Cola de trabajo, diagnóstico, repuestos, historial técnico |
-| Repairs | `src/actions/repairs`, `src/components/repairs` | Ciclo completo de reparación y trazabilidad |
-| Stock | `src/actions/stock*`, `src/actions/transfers` | Inventario, repuestos, transferencias multi-sucursal |
-| Cerebro | `src/lib/cerebro*`, `src/app/api/cerebro` | Asistente AI, RAG, wiki técnica, schemáticos |
-| Public | `src/app/estado`, `src/app/api/public` | Seguimiento público por QR y pantallas digitales |
-
-## Requisitos
-
-- Node.js 20 recomendado.
-- npm.
-- PostgreSQL accesible por `DATABASE_URL`.
-- Variables de entorno de AFIP/ARCA si se prueba facturación.
-- Usar `--legacy-peer-deps` si npm encuentra conflictos por React 19.
-
-## Instalación Local
-
-```bash
-npm install --legacy-peer-deps
+npm ci --legacy-peer-deps
 npx prisma generate
-npx prisma db push
 npm run dev
 ```
 
-El script `dev` usa HTTP local para evitar errores de certificado en navegadores de desarrollo:
+El servidor usa HTTP en el puerto 3000. `npm run dev:https` es una alternativa para pruebas que requieren certificados locales.
 
-```bash
-npm run dev
-```
-
-Si una prueba puntual requiere HTTPS local, usar `npm run dev:https`. No usar certificados locales ni `NODE_TLS_REJECT_UNAUTHORIZED=0` como referencia para producción.
-
-## Variables de Entorno
-
-Mínimas para levantar el sistema:
-
-```env
-DATABASE_URL="postgresql://usuario:password@host:5432/maccell"
-NEXTAUTH_SECRET="cambiar-en-produccion"
-NEXTAUTH_URL="http://localhost:3000"
-CRON_SECRET="secreto-para-crons"
-```
-
-AFIP/ARCA:
-
-```env
-AFIP_CERT="certificado-base64-o-path"
-AFIP_KEY="clave-privada-base64-o-path"
-AFIP_CUIT="CUIT"
-AFIP_PRODUCTION="false"
-
-# Opcional para entidad 8BIT
-AFIP_CERT_8BIT="..."
-AFIP_KEY_8BIT="..."
-AFIP_CUIT_8BIT="..."
-```
-
-AI:
-
-```env
-GROQ_API_KEY_1="..."
-GROQ_API_KEY_2="..."
-OPENROUTER_API_KEY="..."
-```
+No sincronices esquema ni ejecutes seeds automáticamente: confirmá que la base sea la de desarrollo y elegí la operación correspondiente. El contenedor de producción aplica las migraciones existentes al iniciar.
 
 ## Comandos
 
 | Comando | Uso |
 | --- | --- |
-| `npm run dev` | Servidor local con HTTPS experimental |
-| `npm run dev:clean` | Limpia `.next` y levanta dev |
-| `npm run build` | Build standalone de Next |
-| `npm run start` | Ejecuta `.next/standalone/server.js` |
-| `npm run lint` | ESLint completo |
-| `npx tsc --noEmit` | Type-check real |
-| `npx prisma generate` | Genera Prisma Client |
-| `npx prisma db push` | Sincroniza schema en desarrollo |
-| `npm run wiki:sync` | Seed/sync de wiki desde reparaciones |
-| `npm run wiki:reindex` | Reindex de reparaciones para RAG |
+| `npm test` | Tests de `src/__tests__` con Node test runner + tsx |
+| `node --import tsx --test src/__tests__/<archivo>.test.ts` | Prueba puntual |
+| `npx tsc --noEmit` | Type-check |
+| `npx eslint <archivos>` | Lint acotado |
+| `npm run lint` | Lint del proyecto |
+| `npm run build` | Build; actualiza `public/version.txt` |
+| `npm run start` | Servidor standalone ya generado |
+| `npx prisma generate` | Prisma Client |
 
-Importante: hoy `npm test` no existe en `package.json`. Agregar Vitest es una deuda P0 documentada.
+El build omite errores de tipos y ESLint por configuración actual. Verificación de código, UI y despliegue: [AGENTS.md](AGENTS.md).
 
-## Verificación Antes de Cerrar Cambios
+## Navegación
 
-`npm run build` no alcanza como señal de producción porque `next.config.ts` todavía ignora errores de TypeScript y ESLint. Usar:
+| Tema | Entrada |
+| --- | --- |
+| Estructura, reglas, comandos y verificación | [AGENTS.md](AGENTS.md) |
+| Uso de agentes, referencias actuales e históricas | [Agent tooling](docs/agent-tooling.md) |
+| Biblioteca PDF/PCBE e índices | [Arquitectura](docs/schematics-architecture.md) |
+| Nuevas tandas de esquemáticos | [Ingesta](docs/schematics-ingestion-runbook.md) |
+| Workbench del técnico | [Esquemáticos](docs/schematics-technician.md) |
+| Cerebro RAG V2 | [Runbook](docs/cerebro-rag-runbook.md) |
+| Inferencia local y visión | [Inferencia](docs/cerebro-local-inference.md) |
+| Uploads persistentes | [Almacenamiento](docs/uploads-storage.md) |
+| Pendientes para corroborar | [Deuda técnica](docs/technical-debt-roadmap.md) |
 
-```bash
-.agents/skills/maccell/scripts/verify-production-safety.sh --with-build
-```
+Los runbooks incluyen snapshots e incidentes fechados; verificá en vivo los servicios, montajes y proveedores antes de operar. Las variables de facturación, IA, workers y almacenamiento deben revisarse en el módulo correspondiente y en la configuración del entorno.
 
-Si el script no se puede usar, correr como mínimo:
+## Infraestructura
 
-```bash
-npx tsc --noEmit
-git diff --check
-CHANGED_TS="$( { git diff --name-only --diff-filter=ACMR; git ls-files --others --exclude-standard; } | sort -u | grep -E '\.(ts|tsx)$' || true )"
-if [ -n "$CHANGED_TS" ]; then
-  printf '%s\n' "$CHANGED_TS" | xargs npx eslint --quiet
-fi
-npm run build
-```
+`Dockerfile`: Node 20 slim, generación de Prisma y worker técnico durante build. `scripts/start-with-technical-worker.sh`: migraciones, importación complementaria, worker opcional y servidor. Las imágenes usan `upload/`; la biblioteca técnica usa el montaje operativo documentado en su runbook.
 
-Si existe `npm test`, correrlo antes y después de tocar código crítico.
+El deploy del CRM se gestiona mediante `dokploy_maccell`; la guía antigua de Easypanel es histórica.
 
-## Agentes, Skills y MCP
-
-Este proyecto incluye tooling para trabajar con Codex y Claude sin duplicar reglas:
-
-- Codex usa las skills versionadas en `.agents/skills/`.
-- Claude usa `.claude/claude.md`, que apunta a la misma skill principal de MACCELL.
-- MCPs recomendados y plantillas locales están documentados en [docs/agent-tooling.md](./docs/agent-tooling.md).
-
-Skills principales:
-
-| Skill | Ruta | Uso |
-| --- | --- | --- |
-| `maccell` | `.agents/skills/maccell/SKILL.md` | Reglas del proyecto |
-| `frontend-design` | `.agents/skills/frontend-design/SKILL.md` | UI y experiencia visual |
-| `vercel-react-best-practices` | `.agents/skills/vercel-react-best-practices/SKILL.md` | React/Next.js |
-| `vercel-react-view-transitions` | `.agents/skills/vercel-react-view-transitions/SKILL.md` | Animaciones/transiciones |
-| `find-skills` | `.agents/skills/find-skills/SKILL.md` | Descubrir skills extra |
-
-No commitear configs MCP con secretos. Usar variables de entorno locales para tokens.
-
-## Reglas De Oro
-
-1. No agregar `console.log` en `src/actions`, `src/lib` ni backend.
-2. Toda API privada debe validar sesión antes de leer body, DB, AI keys o archivos.
-3. No usar `any` ni `as any` en archivos tocados salvo frontera inevitable con `TECH_DEBT`.
-4. Usar `src/lib/date-utils.ts` para Argentina UTC-3. No reimplementar offsets.
-5. No usar números mágicos para estados de reparación. Crear/usar constantes.
-6. Stock concurrente siempre con transacciones y verificación optimista.
-7. Fire-and-forget siempre loggea errores. Prohibido `.catch(() => {})`.
-8. No agregar código a archivos de más de 300 líneas sin dividir responsabilidad.
-9. Tests obligatorios para dinero, fechas, estados, stock, AFIP, AI fallback e impresoras.
-10. Cerebro AI no debe mezclar marcas ni exponer precios internos.
-
-## Estados De Reparación
-
-Usar constantes compartidas, no números directos:
-
-```ts
-export const REPAIR_STATUS = {
-  PENDING: 1,
-  CLAIMED: 2,
-  IN_PROGRESS: 3,
-  PAUSED: 4,
-  OK: 5,
-  DELIVERED: 6,
-  NO_REPAIR: 7,
-  INVOICED: 10,
-} as const;
-```
-
-Nota crítica: `PAUSED` es `4`. No tratarlo como listo o entregado.
-
-## Arquitectura De Datos
-
-Entidades principales:
-
-- `Branch`: sucursales, prefijos de tickets, aislamiento operativo.
-- `User`: roles `ADMIN`, `VENDOR`, `TECHNICIAN`.
-- `Customer`: clientes asociados a ventas/reparaciones.
-- `Repair`: dispositivo, diagnóstico, estado, técnico, garantía e historial.
-- `RepairStatusHistory`: auditoría de transición de estados.
-- `Product`, `ProductStock`: productos y stock por sucursal.
-- `SparePart`, `SparePartHistory`: repuestos e historial de movimientos.
-- `Sale`, `SaleItem`, `SalePayment`, `SaleInvoice`: ventas, pagos, factura.
-- `CashShift`, `Expense`: caja, cierres y gastos.
-- `RepairKnowledge`, `RepairEmbedding`: wiki y RAG de Cerebro.
-
-## Cerebro AI
-
-Cerebro combina:
-
-- Chat técnico con Groq.
-- Fallback por OpenRouter.
-- Wiki técnica colaborativa.
-- RAG con embeddings Xenova.
-- Búsqueda híbrida semántica + keyword.
-- Schemáticos con límite de contexto.
-
-Reglas críticas:
-
-- Priorizar wiki/RAG sobre conocimiento general.
-- No mezclar contexto entre marcas/plataformas.
-- Detectar iOS/Android antes de mencionar ICs específicos.
-- No mencionar precios internos.
-- No usar `maxRetries` con Groq free tier.
-- Procesar lotes con límites pequeños para evitar 429/OOM.
-
-## POS, Caja y AFIP
-
-Las áreas de dinero son críticas:
-
-- Checkout debe mantener venta, pagos, stock y factura consistentes.
-- AFIP debe fallar de forma visible, sin secretos en logs.
-- Cierres de caja deben calcular gastos, efectivo, digital, ventas modificadas y premios con tests.
-- Facturas A/B/C y consumidor final deben salir de datos reales, no hardcode.
-
-## Stock y Reparaciones
-
-Reglas de consistencia:
-
-- Transferencias multi-sucursal con `$transaction`.
-- Consumo y devolución de repuestos con historial.
-- Nada de autorización por nombre de sucursal. Usar `branchId` y permisos.
-- Toda transición de reparación registra historial.
-
-## Frontend y UX
-
-El sistema se usa en mostrador y taller, muchas veces desde celular. La UI debe ser densa, clara y operativa.
-
-- Tablas grandes necesitan alternativa mobile.
-- KPIs admin deben usar patrón visual uniforme.
-- Recharts debe montarse con guard de cliente y contenedores con tamaño mínimo.
-- No agregar polling manual si puede resolverse con SWR o un `usePolling` reutilizable.
-- Componentes con muchos estados deben migrar a `useReducer` o dividirse.
-
-## Deploy
-
-- Docker debe usar `node:20-slim`, no Alpine.
-- Prisma Client se genera en build time.
-- Migraciones o `db push` corren en runtime según estrategia de deploy.
-- Build Next usa `output: "standalone"`.
-- Backups viven en filesystem con volumen persistente en Dokploy.
-
-## Roadmap Funcional
-
-Pendiente funcional declarado en README histórico:
-
-- Integración con transportistas para seguimiento de envíos entre sucursales.
-- Exportación avanzada a PDF/Excel con plantillas.
-- Cámara/OCR para escaneo directo de piezas.
-
-Antes de avanzar con eso, revisar [docs/technical-debt-roadmap.md](./docs/technical-debt-roadmap.md), especialmente P0.
-
-## Contribución
-
-Formato de commits preferido:
-
-```bash
-fix(cerebro): descripcion corta en minusculas
-feat(pos): descripcion corta en minusculas
-refactor(repairs): descripcion corta en minusculas
-perf(admin): descripcion corta en minusculas
-```
-
-Scopes comunes: `cerebro`, `admin`, `repairs`, `pos`, `vendor`, `technician`, `statistics`, `deploy`.
-
-La regla práctica: cambios chicos, verificables y con causa clara. Si se arregla deuda del roadmap, marcar el item correspondiente.
-
-## Licencia
-
-Software privado de MACCELL. Uso y redistribución no autorizados están prohibidos.
+Software privado de MACCELL.

@@ -1,47 +1,52 @@
 "use client";
 
 import { useState } from "react";
+import { ExternalPurchaseEditor } from "./external-purchase-editor";
+import type { ExternalPurchaseInput } from "@/lib/repairs/external-purchases";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Box, Plus } from "lucide-react";
+import { Loader2, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { addPartToRepairAction } from "@/lib/actions/repairs";
 import { SparePartSelector, SparePartItem } from "./spare-part-selector";
 
 interface AddPartDialogProps {
-    repair: any;
+    repair: { id: string; ticketNumber: string } | null;
     currentUserId: string;
     isOpen: boolean;
     onClose: () => void;
 }
 
 export function AddPartDialog({ repair, currentUserId, isOpen, onClose }: AddPartDialogProps) {
-    if (!repair) return null;
-
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [editingPurchase, setEditingPurchase] = useState(false);
+    const [externalPurchases, setExternalPurchases] = useState<ExternalPurchaseInput[]>([]);
     const [selectedParts, setSelectedParts] = useState<SparePartItem[]>([]);
 
+    if (!repair) return null;
+
     const handleConfirm = async () => {
-        if (selectedParts.length === 0) {
+        if (selectedParts.length === 0 && externalPurchases.length === 0) {
             toast.error("Seleccione al menos un repuesto.");
             return;
         }
 
         setIsLoading(true);
         try {
-            const result = await addPartToRepairAction(repair.id, currentUserId, selectedParts);
+            const result = await addPartToRepairAction(repair.id, currentUserId, selectedParts, externalPurchases);
 
             if (result.success) {
                 toast.success("Repuestos agregados correctamente.");
                 router.refresh();
                 onClose();
                 setSelectedParts([]);
+                setExternalPurchases([]);
             } else {
                 toast.error(result.error);
             }
-        } catch (error) {
+        } catch {
             toast.error("Error inesperado.");
         } finally {
             setIsLoading(false);
@@ -49,8 +54,8 @@ export function AddPartDialog({ repair, currentUserId, isOpen, onClose }: AddPar
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[425px]">
+        <Dialog open={isOpen} onOpenChange={(open) => !open && !isLoading && onClose()}>
+            <DialogContent showCloseButton={!isLoading} className="sm:max-w-[500px] max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-lg flex items-center gap-2">
                         <Box className="w-5 h-5 text-primary" />
@@ -67,6 +72,7 @@ export function AddPartDialog({ repair, currentUserId, isOpen, onClose }: AddPar
                         onPartsChange={setSelectedParts}
                         hidePrice={true}
                     />
+                    <ExternalPurchaseEditor purchases={externalPurchases} onChange={setExternalPurchases} onEditingChange={setEditingPurchase} disabled={isLoading} />
                 </div>
 
                 <DialogFooter className="flex flex-row gap-2">
@@ -75,7 +81,7 @@ export function AddPartDialog({ repair, currentUserId, isOpen, onClose }: AddPar
                     </Button>
                     <Button
                         onClick={handleConfirm}
-                        disabled={isLoading || selectedParts.length === 0}
+                        disabled={isLoading || editingPurchase || (selectedParts.length === 0 && externalPurchases.length === 0)}
                         className="flex-1 font-bold"
                     >
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

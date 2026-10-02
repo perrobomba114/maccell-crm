@@ -91,6 +91,7 @@ export const adminGroups = [
             { href: "/admin/products", label: "Productos", icon: "Package" },
             { href: "/admin/categories", label: "Categorías", icon: "Tags" },
             { href: "/admin/repuestos", label: "Repuestos", icon: "Settings" },
+            { href: "/admin/repuestos/compras-externas", label: "Compras externas", icon: "ShoppingCart" },
             { href: "/admin/repuestos/historial", label: "Historial Repuestos", icon: "ListChecks" },
             { href: "/admin/transfers", label: "Transferencias", icon: "ArrowLeftRight" },
             { href: "/admin/discounts", label: "Descuentos", icon: "Percent" },

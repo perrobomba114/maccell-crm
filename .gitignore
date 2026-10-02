@@ -93,6 +93,7 @@ afip-certs/
 !.agents/skills/schematic-library-ingestion/
 !.agents/skills/schematic-library-ingestion/**
 AGENT.md
+!/AGENT.md
 GEMINI.md
 .claude/
 .kiro/
@@ -104,7 +105,6 @@ GEMINI.md
 docs/agent-tooling.md
 docs/technical-debt-roadmap.md
 
-/AGENTS.md
 
 # Generated technical index worker bundle
 /scripts/technical-worker.cjs

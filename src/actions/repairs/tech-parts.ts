@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth-actions";
+import { recordExternalPurchases } from "@/lib/repairs/record-external-purchases";
+import { externalPurchasesSchema, EXTERNAL_PURCHASE_EDITABLE_STATUSES, type ExternalPurchaseInput } from "@/lib/repairs/external-purchases";
 import { consumeRepairParts } from "@/lib/repairs/consume-repair-parts";
 
 export async function createSinglePartReturnAction(repairPartId: string, technicianId: string) {
@@ -103,9 +105,9 @@ export async function createSinglePartReturnAction(repairPartId: string, technic
     }
 }
 
-export async function addPartToRepairAction(repairId: string, technicianId: string, parts: { id: string, name: string }[]) {
+export async function addPartToRepairAction(repairId: string, technicianId: string, parts: { id: string, name: string }[], externalPurchases: ExternalPurchaseInput[] = []) {
     try {
-        if (!parts || parts.length === 0) {
+        if ((!parts || parts.length === 0) && externalPurchases.length === 0) {
             return { success: false, error: "No se seleccionaron repuestos." };
         }
 
@@ -116,7 +118,7 @@ export async function addPartToRepairAction(repairId: string, technicianId: stri
 
         const repair = await db.repair.findUnique({
             where: { id: repairId },
-            select: { assignedUserId: true, branchId: true, ticketNumber: true }
+            select: { assignedUserId: true, branchId: true, ticketNumber: true, statusId: true }
         });
 
         if (!repair) return { success: false, error: "Reparación no encontrada" };
@@ -125,7 +127,16 @@ export async function addPartToRepairAction(repairId: string, technicianId: stri
             return { success: false, error: "No tienes asignada esta reparación" };
         }
 
+        const parsed = externalPurchasesSchema.safeParse(externalPurchases);
+        if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+
         await db.$transaction(async (tx) => {
+            const locked = await tx.repair.updateMany({
+                where: { id: repairId, assignedUserId: currentUser.id, statusId: { in: EXTERNAL_PURCHASE_EDITABLE_STATUSES } },
+                data: { updatedAt: new Date() },
+            });
+            if (locked.count !== 1) throw new Error("La reparación ya está cerrada o cambió de técnico.");
+            await recordExternalPurchases(tx, repairId, currentUser.id, parsed.data);
             await consumeRepairParts(tx, {
                 repairId,
                 ticketNumber: repair.ticketNumber,
@@ -138,6 +149,7 @@ export async function addPartToRepairAction(repairId: string, technicianId: stri
 
         revalidatePath("/technician/repairs");
         revalidatePath("/technician/dashboard");
+        revalidatePath("/admin/repuestos/compras-externas");
         return { success: true };
 
     } catch (error) {
