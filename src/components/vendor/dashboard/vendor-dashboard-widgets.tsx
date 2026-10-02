@@ -48,7 +48,7 @@ export function MetricCard({
 }) {
     return (
         <Link href={href} className={cn(
-            "group relative flex min-h-60 min-w-0 flex-col overflow-hidden rounded-2xl border-2 p-5 text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white motion-reduce:transform-none",
+            "@container group relative flex min-h-60 min-w-0 flex-col overflow-hidden rounded-2xl border-2 p-5 text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white motion-reduce:transform-none",
             toneClasses[tone]
         )}>
             <Icon aria-hidden="true" className="pointer-events-none absolute -right-5 -top-4 h-32 w-32 text-white/10" />
@@ -58,10 +58,10 @@ export function MetricCard({
                 </span>
                 <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-white/80" />
             </div>
-            <p className="relative break-words text-[clamp(1.75rem,2.2vw,2.5rem)] font-black leading-tight tracking-tight tabular-nums">{value}</p>
+            <p className="relative break-words text-[clamp(1.125rem,15cqw,2.25rem)] font-black leading-tight tracking-tight tabular-nums">{value}</p>
             <h2 className="relative mt-1 text-xs font-black uppercase tracking-[0.16em]">{title}</h2>
             <div className="relative mt-auto pt-5">
-                <p className="border-t border-white/20 pt-3 text-xs font-semibold leading-relaxed text-white">{detail}</p>
+                <p className="min-h-16 border-t border-white/20 pt-3 text-xs font-semibold leading-relaxed text-white">{detail}</p>
             </div>
         </Link>
     );

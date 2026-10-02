@@ -51,7 +51,7 @@ export function UnifiedVendorDashboard({ stats, user }: { stats: VendorStats; us
                     </div>
                 </section>
 
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                     <MetricCard
                         title="Ventas del mes"
                         value={formatMoney(stats.salesMonthTotal)}
@@ -87,9 +87,9 @@ export function UnifiedVendorDashboard({ stats, user }: { stats: VendorStats; us
                     <MetricCard
                         title="PREMIO"
                         value={!prize ? "No disponible" : prize.remainingPercent == null ? "Sin base histórica" : `${prize.remainingPercent.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`}
-                        detail={!prize ? "No se pudo consultar el objetivo de la sucursal." : prize.monthlyAverage == null
-                            ? "Sin promedio de ventas positivo en los 12 meses completos anteriores."
-                            : `${prize.achieved ? "Meta alcanzada" : "Por alcanzar"} · Sucursal: ${formatMoney(prize.currentMonthTotal)} este mes / ${formatMoney(prize.monthlyAverage)} de promedio mensual (12 meses).`}
+                        detail={!prize ? "No disponible" : prize.monthlyAverage == null
+                            ? "Sin base histórica"
+                            : prize.achieved ? "Meta alcanzada" : "Por alcanzar"}
                         href="/vendor/sales"
                         icon={Trophy}
                         tone="violet"
