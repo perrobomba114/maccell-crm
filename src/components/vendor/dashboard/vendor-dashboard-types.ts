@@ -1,4 +1,7 @@
+import type { VendorPrize } from "@/lib/vendor-prize";
+
 export type VendorStats = {
+    prize?: VendorPrize;
     salesMonthCount?: number;
     salesMonthTotal?: number;
     salesMonthGrowth?: number;
@@ -48,4 +51,4 @@ export type RecentActivity = {
     time: string;
 };
 
-export type MetricTone = "emerald" | "cyan" | "amber" | "rose";
+export type MetricTone = "emerald" | "cyan" | "amber" | "rose" | "violet";

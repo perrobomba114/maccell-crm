@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, DollarSign, Plus, Smartphone, Store, Wrench } from "lucide-react";
+import { CheckCircle2, DollarSign, Plus, Smartphone, Store, Trophy, Wrench } from "lucide-react";
 import Link from "next/link";
 import {
     ActivityFeed,
@@ -21,6 +21,7 @@ export function UnifiedVendorDashboard({ stats, user }: { stats: VendorStats; us
     const deliveredCount = stats.deliveredCount ?? 0;
     const okCount = stats.okCount ?? 0;
     const efficiency = deliveredCount > 0 ? Math.round((okCount / deliveredCount) * 100) : 0;
+    const prize = stats.prize;
     const growth = stats.salesMonthGrowth ?? 0;
 
     return (
@@ -50,7 +51,7 @@ export function UnifiedVendorDashboard({ stats, user }: { stats: VendorStats; us
                     </div>
                 </section>
 
-                <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
                     <MetricCard
                         title="Ventas del mes"
                         value={formatMoney(stats.salesMonthTotal)}
@@ -82,6 +83,16 @@ export function UnifiedVendorDashboard({ stats, user }: { stats: VendorStats; us
                         href="/vendor/repairs/history"
                         icon={CheckCircle2}
                         tone="rose"
+                    />
+                    <MetricCard
+                        title="PREMIO"
+                        value={!prize ? "No disponible" : prize.remainingPercent == null ? "Sin base histórica" : `${prize.remainingPercent.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`}
+                        detail={!prize ? "No se pudo consultar el objetivo de la sucursal." : prize.monthlyAverage == null
+                            ? "Sin promedio de ventas positivo en los 12 meses completos anteriores."
+                            : `${prize.achieved ? "Meta alcanzada" : "Por alcanzar"} · Sucursal: ${formatMoney(prize.currentMonthTotal)} este mes / ${formatMoney(prize.monthlyAverage)} de promedio mensual (12 meses).`}
+                        href="/vendor/sales"
+                        icon={Trophy}
+                        tone="violet"
                     />
                 </section>
 

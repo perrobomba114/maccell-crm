@@ -2,11 +2,19 @@
 
 import { db as prisma } from "@/lib/db";
 import { getDailyRange, getMonthlyRange, getLastDaysRange, getArgentinaDate } from "@/lib/date-utils";
+import { calculateVendorPrize, getVendorPrizeRange } from "@/lib/vendor-prize";
 import { getCurrentUser } from "@/actions/auth-actions";
 
 
 // Vendor and Technician Stats - RESTORED
 export async function getVendorStats(vendorId: string, branchId?: string) {
+    const caller = await getCurrentUser();
+    if (!caller || !["ADMIN", "VENDOR"].includes(caller.role)) throw new Error("No autorizado");
+    if (caller.role === "VENDOR") {
+        vendorId = caller.id;
+        branchId = caller.branch?.id;
+    }
+    if (!branchId) throw new Error("La sucursal es obligatoria");
     try {
         // Use Argentina Time Ranges
         const { start: todayStart } = getDailyRange();
@@ -23,7 +31,16 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
         // The user asked for "Vendor Role" dashboard. Usually vendors want to see their own sales.
         // Let's filter by vendorId for sales.
 
+        const prizeRange = getVendorPrizeRange();
         const salesPromise = Promise.all([
+            prisma.sale.aggregate({
+                where: { branchId, createdAt: { gte: prizeRange.start, lt: prizeRange.endExclusive } },
+                _sum: { total: true },
+            }),
+            prisma.sale.aggregate({
+                where: { branchId, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
+                _sum: { total: true },
+            }),
             // Sales Count (Month)
             prisma.sale.count({
                 where: {
@@ -77,7 +94,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
             })
         ]);
 
-        const [salesMonthCount, salesMonthTotal, salesTodayCount, salesLastMonthTotalAgg, deliveredHistory] = await salesPromise;
+        const [previousTwelveMonths, branchMonthSales, salesMonthCount, salesMonthTotal, , salesLastMonthTotalAgg, deliveredHistory] = await salesPromise;
 
         const currentMonthRevenue = salesMonthTotal._sum.total || 0;
         const lastMonthRevenue = salesLastMonthTotalAgg._sum.total || 0;
@@ -278,7 +295,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
             _count: { _all: true }
         });
 
-        const branchUndeliveredDataPoint: any = { name: "Mi Sucursal" };
+        const branchUndeliveredDataPoint: Record<string, string | number> = { name: "Mi Sucursal" };
         const presentUndeliveredIds = new Set<number>();
 
         branchUndeliveredRaw.forEach(item => {
@@ -295,6 +312,7 @@ export async function getVendorStats(vendorId: string, branchId?: string) {
 
 
         return {
+            prize: calculateVendorPrize(branchMonthSales._sum.total ?? 0, previousTwelveMonths._sum.total ?? 0),
             salesMonthCount: salesMonthCount,
             salesMonthTotal: salesMonthTotal._sum.total || 0,
             salesMonthGrowth,

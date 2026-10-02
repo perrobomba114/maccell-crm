@@ -5,31 +5,12 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { type BestSeller, type MetricTone, type ReadyForPickup, type RecentActivity, type SalesDay } from "./vendor-dashboard-types";
 
-const toneClasses: Record<MetricTone, { card: string; icon: string; text: string; rail: string }> = {
-    emerald: {
-        card: "border-emerald-300/20 bg-emerald-300/10",
-        icon: "border-emerald-200/30 bg-emerald-300 text-emerald-950",
-        text: "text-emerald-200",
-        rail: "bg-emerald-300"
-    },
-    cyan: {
-        card: "border-cyan-300/20 bg-cyan-300/10",
-        icon: "border-cyan-200/30 bg-cyan-300 text-cyan-950",
-        text: "text-cyan-200",
-        rail: "bg-cyan-300"
-    },
-    amber: {
-        card: "border-amber-300/20 bg-amber-300/10",
-        icon: "border-amber-200/30 bg-amber-300 text-amber-950",
-        text: "text-amber-200",
-        rail: "bg-amber-300"
-    },
-    rose: {
-        card: "border-rose-300/20 bg-rose-300/10",
-        icon: "border-rose-200/30 bg-rose-300 text-rose-950",
-        text: "text-rose-200",
-        rail: "bg-rose-300"
-    }
+const toneClasses: Record<MetricTone, string> = {
+    emerald: "border-emerald-400 bg-emerald-600",
+    cyan: "border-blue-400 bg-blue-600",
+    amber: "border-orange-400 bg-orange-600",
+    rose: "border-fuchsia-400 bg-fuchsia-600",
+    violet: "border-violet-400 bg-violet-600",
 };
 
 export const moneyFormatter = new Intl.NumberFormat("es-AR", {
@@ -65,31 +46,22 @@ export function MetricCard({
     icon: React.ComponentType<{ className?: string }>;
     tone: MetricTone;
 }) {
-    const styles = toneClasses[tone];
-
     return (
-        <Link
-            href={href}
-            className={cn(
-                "group relative min-h-[8.5rem] overflow-hidden rounded-xl border p-4 shadow-xl shadow-black/15 transition-all hover:-translate-y-0.5 hover:shadow-black/25",
-                styles.card
-            )}
-        >
-            <span className={cn("absolute inset-y-4 left-0 w-1 rounded-r-full", styles.rail)} />
-            <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                    <p className="text-[11px] font-black uppercase tracking-normal text-zinc-500">{title}</p>
-                    <p className="mt-3 truncate font-mono text-3xl font-black leading-none tracking-normal text-white tabular-nums">
-                        {value}
-                    </p>
-                </div>
-                <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border shadow-lg", styles.icon)}>
-                    <Icon className="h-5 w-5" />
-                </div>
+        <Link href={href} className={cn(
+            "group relative flex min-h-60 min-w-0 flex-col overflow-hidden rounded-2xl border-2 p-5 text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white motion-reduce:transform-none",
+            toneClasses[tone]
+        )}>
+            <Icon aria-hidden="true" className="pointer-events-none absolute -right-5 -top-4 h-32 w-32 text-white/10" />
+            <div className="relative mb-5 flex items-center justify-between">
+                <span className="rounded-full border border-white/30 bg-white/15 p-2.5">
+                    <Icon aria-hidden="true" className="h-5 w-5" />
+                </span>
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-white/80" />
             </div>
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
-                <p className={cn("truncate text-xs font-bold", styles.text)}>{detail}</p>
-                <ArrowUpRight className="h-4 w-4 shrink-0 text-zinc-500 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            <p className="relative break-words text-[clamp(1.75rem,2.2vw,2.5rem)] font-black leading-tight tracking-tight tabular-nums">{value}</p>
+            <h2 className="relative mt-1 text-xs font-black uppercase tracking-[0.16em]">{title}</h2>
+            <div className="relative mt-auto pt-5">
+                <p className="border-t border-white/20 pt-3 text-xs font-semibold leading-relaxed text-white">{detail}</p>
             </div>
         </Link>
     );
