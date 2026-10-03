@@ -58,6 +58,7 @@ export function PriceOverrideDialog({
                                 name="override-price"
                                 id="override-price-input"
                                 type="number"
+                                step={1000}
                                 placeholder="0.00"
                                 className="pl-10 h-12 bg-zinc-900/50 border-zinc-800 text-white text-lg font-black focus:border-amber-500/50 focus:ring-amber-500/20 transition-all"
                                 value={overridePrice}
