@@ -131,3 +131,8 @@ test("bounds untrusted reports before sending them to Groq", () => {
     assert.equal(prompt.includes("D".repeat(4001)), false);
     assert.equal(prompt.includes("V".repeat(1501)), false);
 });
+
+test("an observed fault can be restated without claiming a measurement", () => {
+    assert.equal(validateEnhancedDiagnosis("placa sulfatada sin arreglo", "Se detectó sulfatación en la placa. El equipo quedó sin arreglo.").ok, true);
+    assert.equal(validateEnhancedDiagnosis("placa sulfatada", "Se midió la placa y se verificó el funcionamiento.").ok, false);
+});

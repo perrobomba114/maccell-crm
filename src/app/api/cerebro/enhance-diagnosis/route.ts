@@ -14,12 +14,13 @@ import {
     buildRepairDiagnosisPrompt,
     REPAIR_DIAGNOSIS_ENHANCEMENT_SYSTEM_PROMPT,
     resolveEnhancedDiagnosis,
+    MAX_TECHNICIAN_REPORT_CHARS,
 } from "@/lib/repair-diagnosis-enhancement";
 
 export const dynamic = "force-dynamic";
 
 const requestSchema = z.object({
-    diagnosis: z.string().trim().min(1),
+    diagnosis: z.string().trim().min(1).max(MAX_TECHNICIAN_REPORT_CHARS),
     deviceBrand: z.string().nullish(),
     deviceModel: z.string().nullish(),
     problemDescription: z.string().nullish(),
@@ -106,7 +107,23 @@ export async function POST(req: NextRequest) {
         }
 
         if (text) {
-            const resolved = resolveEnhancedDiagnosis(diagnosis, text);
+            let resolved = resolveEnhancedDiagnosis(diagnosis, text);
+            if (resolved.preservedOriginal || resolved.improved === diagnosis) {
+                try {
+                    const retry = await generateText({
+                        model: createFallbackModel(configurations, selected => { selection.current = selected; }) as unknown as LanguageModel,
+                        system: REPAIR_DIAGNOSIS_ENHANCEMENT_SYSTEM_PROMPT,
+                        prompt: `${prompt}\n\nLa propuesta anterior fue descartada. Reescribí con cambios de ortografía y redacción solamente. No agregues acciones ni pruebas. Conservá todas las negaciones. Familias de acciones no respaldadas: ${resolved.unsupportedActions.join(", ") || "ninguna; evitá copiar literalmente si hay errores"}.`,
+                        temperature: 0,
+                        maxOutputTokens: 2048,
+                        maxRetries: 0,
+                    });
+                    if (retry.text.trim()) resolved = resolveEnhancedDiagnosis(diagnosis, retry.text);
+                } catch {
+                    // El original sigue disponible si el reintento no produce una respuesta segura.
+                    return NextResponse.json({ error: "No se pudo obtener una mejora segura. Conservamos tu informe; intentá nuevamente.", modelUnavailable: true }, { status: 503 });
+                }
+            }
 
             return NextResponse.json({
                 improved: resolved.improved,

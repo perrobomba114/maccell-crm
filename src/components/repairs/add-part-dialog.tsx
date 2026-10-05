@@ -16,9 +16,10 @@ interface AddPartDialogProps {
     currentUserId: string;
     isOpen: boolean;
     onClose: () => void;
+    onSaved?: () => void;
 }
 
-export function AddPartDialog({ repair, currentUserId, isOpen, onClose }: AddPartDialogProps) {
+export function AddPartDialog({ repair, currentUserId, isOpen, onClose, onSaved }: AddPartDialogProps) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [editingPurchase, setEditingPurchase] = useState(false);
@@ -39,6 +40,7 @@ export function AddPartDialog({ repair, currentUserId, isOpen, onClose }: AddPar
 
             if (result.success) {
                 toast.success("Repuestos agregados correctamente.");
+                onSaved?.();
                 router.refresh();
                 onClose();
                 setSelectedParts([]);

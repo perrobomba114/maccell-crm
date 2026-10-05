@@ -114,3 +114,14 @@
 
 .sch-library-index{padding:10px 12px;border-top:1px solid #ffffff14;font-size:11px;color:#a1a1aa}.sch-library-index summary{cursor:pointer;color:#e4e4e7}.sch-library-index p{margin:8px 0;line-height:1.5}.sch-library-index button{padding:6px 8px;margin:3px 4px 0 0;border:1px solid #ffffff20;border-radius:6px;color:#e4e4e7}
 .sch-asset-badge{flex-shrink:0;border:1px solid currentColor;border-radius:999px;padding:2px 5px;font-size:9px;font-style:normal;font-weight:700;line-height:1.2;white-space:nowrap}.sch-asset-badge.is-ready{color:#a7ff64}.sch-asset-badge.is-review{color:#f6cc65}.sch-asset-badge.is-diode{color:#5ee7ff}
+
+/* Animate only the selection bitmap; the board is not redrawn per frame. */
+.sch-canvas-wrap canvas.sch-selection-overlay{pointer-events:none}
+.sch-selection-pulse{animation:sch-selection-pulse 1.4s ease-in-out infinite}
+@keyframes sch-selection-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.sch-selection-pulse{animation:none}}
+.sch-focus .sch-board-appearance{display:none}
+.sch-canvas-hint{bottom:44px}
+.sch-canvas-hud{flex-wrap:wrap}
+
+.sch-pad-tooltip{position:absolute;z-index:7;pointer-events:none;display:flex;flex-direction:column;gap:5px;width:220px;padding:10px;border:1px solid #94a3b855;border-radius:8px;background:#101827ed;color:#f1f5f9;font:12px monospace;box-shadow:0 5px 20px #0006;overflow-wrap:anywhere}.sch-pad-tooltip small{color:#a8bacb}

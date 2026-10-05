@@ -5,13 +5,17 @@ import { initialLayer, workshopGeometry, type BoardDetail } from "@/lib/schemati
 import { BoardSearch } from "./board-search";
 import { LayerControls } from "./layer-controls";
 import { Maximize, Minus, Plus, RotateCcw } from "lucide-react";
-import { hitTestCandidates, selectionCandidateDescription, type SelectionCandidate } from "@/lib/schematics/boardview";
+import { buildSpatialIndex, hitTestCandidates, selectionCandidateDescription, type SelectionCandidate } from "@/lib/schematics/boardview";
 import { clickSelections } from "@/lib/schematics/click-selection";
 import type { PcbeDocument } from "@/lib/schematics/types";
-import { boundsFor, renderBoard, transformFor, type View } from "./board-renderer";
+import { boundsFor, renderBoard, transformFor, type View, type BoardTheme } from "./board-renderer";
 
 type Props = { board: PcbeDocument; component: string | null; net: number | null; onSelect(component: string | null, net: number | null): void; focusToken: number };
 export default function BoardCanvas({ board, component, net, onSelect, focusToken }: Props) {
+  const highlightCanvas = useRef<HTMLCanvasElement>(null);
+  const [theme, setTheme] = useState<BoardTheme>("blue");
+  const [color, setColor] = useState("#00e676");
+  const [blink, setBlink] = useState(true);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [view, setView] = useState<View>({ zoom: 1, x: 0, y: 0 });
   const [size, setSize] = useState(0);
@@ -22,7 +26,10 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
   const [overlay, setOverlay] = useState(false);
   const [candidates, setCandidates] = useState<SelectionCandidate[]>([]);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<{ candidate: SelectionCandidate; x: number; y: number } | null>(null);
   const visibleGeometry = useMemo(() => workshopGeometry(board.geometry, layers, detail, vias), [board, layers, detail, vias]);
+  const spatialIndex = useMemo(() => buildSpatialIndex(visibleGeometry), [visibleGeometry]);
+  const visibleLayerIds = useMemo(() => new Set(visibleGeometry.map(item => item.layer)), [visibleGeometry]);
   const drag = useRef<{ x: number; y: number; view: View; moved: boolean } | null>(null);
   const bounds = useMemo(() => boundsFor(board.geometry), [board]);
   useEffect(() => {
@@ -42,7 +49,10 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
     });
     observer.observe(canvas.current); return () => observer.disconnect();
   }, [bounds]);
-  useEffect(() => { if (canvas.current) renderBoard(canvas.current, board, bounds, view, layers, component, net, detail, vias); }, [board, bounds, view, layers, component, net, size, detail, vias]);
+  useEffect(() => {
+    if (canvas.current) renderBoard(canvas.current, board, bounds, view, layers, component, net, detail, vias, { theme, color, pass: "base" });
+    if (highlightCanvas.current) renderBoard(highlightCanvas.current, board, bounds, view, layers, component, net, detail, vias, { theme, color, pass: "selection" });
+  }, [board, bounds, view, layers, component, net, size, detail, vias, theme, color]);
   useEffect(() => {
     const element = canvas.current;
     if (!element) return;
@@ -125,19 +135,32 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
       onPointerDown={(event) => { if(event.button!==0 && event.button!==1)return; event.preventDefault(); event.currentTarget.focus(); drag.current = { x: event.clientX, y: event.clientY, view, moved: false }; event.currentTarget.setPointerCapture(event.pointerId); }}
       onPointerMove={(event) => {
         const rect = event.currentTarget.getBoundingClientRect();
-        setCursor(transformFor(rect.width, rect.height, bounds, view).inverse(event.clientX - rect.left, event.clientY - rect.top));
+        const transform = transformFor(rect.width, rect.height, bounds, view);
+        const point = transform.inverse(event.clientX - rect.left, event.clientY - rect.top);
+        setCursor(point);
+        if (!drag.current) {
+          const candidate = hitTestCandidates(visibleGeometry, point, { tolerance: 4 / transform.scale, visibleLayerIds }, spatialIndex)[0];
+          setHover(candidate ? { candidate, x: Math.max(8, Math.min(rect.width - 230, event.clientX - rect.left + 16)), y: Math.max(30, Math.min(rect.height - 155, event.clientY - rect.top + 16)) } : null);
+        } else setHover(null);
         const d = drag.current; if (!d) return; const dx = event.clientX - d.x, dy = event.clientY - d.y; if (Math.hypot(dx, dy) > 4) d.moved = true; if (d.moved) setView({ ...d.view, x: d.view.x + dx, y: d.view.y + dy });
       }}
       onPointerUp={(event) => {
         if (event.button === 0 && drag.current && !drag.current.moved) {
           const rect = event.currentTarget.getBoundingClientRect(), t = transformFor(rect.width, rect.height, bounds, view);
           const p = t.inverse(event.clientX - rect.left, event.clientY - rect.top);
-          const hits = clickSelections(hitTestCandidates(visibleGeometry, p, { tolerance: 7 / t.scale, visibleLayerIds: new Set(visibleGeometry.map(item => item.layer)) }));
+          const hits = clickSelections(hitTestCandidates(visibleGeometry, p, { tolerance: 7 / t.scale, visibleLayerIds }, spatialIndex));
           if (hits[0]) { chooseCandidate(hits[0]); setCandidates(hits.slice(0,8)); }
           else { setCandidates([]); onSelect(null, null); }
         }
         drag.current = null; event.currentTarget.releasePointerCapture(event.pointerId);
-      }} onPointerCancel={() => { drag.current = null; }} onPointerLeave={() => setCursor(null)} />
+      }} onPointerCancel={() => { drag.current = null; }} onPointerLeave={() => { setCursor(null); setHover(null); }} />
+      <canvas ref={highlightCanvas} aria-hidden="true" className={`sch-selection-overlay${blink && (component !== null || net !== null) ? " sch-selection-pulse" : ""}`} />
+      {hover && <div className="sch-pad-tooltip" style={{ left: hover.x, top: hover.y }}>
+        <strong>{hover.candidate.componentId ? board.components.find(item => item.id === hover.candidate.componentId)?.name ?? hover.candidate.componentId : "Conexión"}</strong>
+        <span>{selectionCandidateDescription(hover.candidate)}</span>
+        <span>Red: {hover.candidate.netId === null ? "Sin red informada" : board.netCatalog.find(item => item.id === hover.candidate.netId)?.name ?? `Net ${hover.candidate.netId}`}</span>
+        <small>Datos del archivo · {board.name}</small>
+      </div>}
       {!board.geometry.length && <div className="sch-overlay">Este PCBE todavía no tiene geometría compatible.</div>}
       {candidates.length > 1 && <details key={candidates.map(c=>c.primitiveIndex).join(':')} className="sch-candidate-menu">
         <summary>Otros elementos en esta zona ({candidates.length - 1})</summary>
@@ -150,6 +173,16 @@ export default function BoardCanvas({ board, component, net, onSelect, focusToke
         <span>Modo: {component ? "componente" : net !== null ? "net" : "selección"}</span>
       </div>
       <div className="sch-canvas-hint">Arrastrar: mover · Rueda: zoom · + / − · 0: ajustar · Flechas: mover · F: centrar</div>
+    </div>
+    <div className="sch-board-appearance flex flex-wrap items-center gap-3 border-t px-3 py-2 text-xs">
+      <label className="flex items-center gap-2">Fondo
+        <select aria-label="Fondo de la placa" className="rounded border bg-background p-1" value={theme} onChange={e => setTheme(e.target.value as BoardTheme)}>
+          <option value="blue">Azul técnico</option><option value="light">Claro</option><option value="dark">Negro</option>
+        </select>
+      </label>
+      <label className="flex items-center gap-2">Red seleccionada <select aria-label="Color de la red seleccionada" value={color} onChange={e => setColor(e.target.value)} className="rounded border bg-background p-1"><option value="#00e676">Verde</option><option value="#0066ff">Azul</option><option value="#f97316">Naranja</option><option value="#a855f7">Violeta</option></select></label>
+      <button type="button" className="rounded border px-2 py-1" aria-pressed={blink} onClick={() => setBlink(v => !v)}>Titilar: {blink ? "sí" : "no"}</button>
+      <span className="text-muted-foreground">Clic en pad o pista: resaltar red · F: centrar</span>
     </div>
     <LayerControls catalog={board.layerCatalog} layers={layers} detail={detail} vias={vias} overlay={overlay} onDetail={setDetail} onVias={() => setVias(value => !value)} onOverlay={() => { setOverlay(value => !value); setLayers(current => new Set([[...current][0] ?? initialLayer(board.geometry)])); }} onLayer={id => { setLayers(current => overlay ? new Set([...current, id]) : new Set([id])); }} />
   </div>;

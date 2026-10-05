@@ -22,31 +22,41 @@ export function transformFor(width: number, height: number, bounds: Bounds, view
   return { scale, x: (x: number) => ox + (x - bounds.minX) * scale, y: (y: number) => oy + (bounds.maxY - y) * scale,
     inverse: (x: number, y: number) => ({ x: bounds.minX + (x - ox) / scale, y: bounds.maxY - (y - oy) / scale }) };
 }
+export type BoardTheme = "dark" | "light" | "blue";
+export type BoardAppearance = { theme?: BoardTheme; color?: string; pass?: "base" | "selection" };
+const themes = {
+  dark: { background: "#09090b", grid: "#202027", ink: "#e4e4e7", pad: "#e1bc77", muted: "#90b8bd" },
+  light: { background: "#f1f5f9", grid: "#cbd5e1", ink: "#172554", pad: "#78551a", muted: "#475569" },
+  blue: { background: "#102536", grid: "#294457", ink: "#e0f2fe", pad: "#f1d394", muted: "#a2c4cf" },
+};
 const palette = ["#90b8bd", "#d9ac65", "#86afa0", "#8b9ac1", "#b78b96", "#b3be87"];
-export function renderBoard(canvas: HTMLCanvasElement, document: PcbeDocument, bounds: Bounds, view: View, layers: Set<number>, component: string | null, net: number | null, detail: BoardDetail = "clean", vias = false) {
+export function renderBoard(canvas: HTMLCanvasElement, document: PcbeDocument, bounds: Bounds, view: View, layers: Set<number>, component: string | null, net: number | null, detail: BoardDetail = "clean", vias = false, appearance: BoardAppearance = {}) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const width = canvas.clientWidth, height = canvas.clientHeight;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#09090b"; ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = "#202027";
-  for (let x = 12; x < width; x += 24) for (let y = 12; y < height; y += 24) ctx.fillRect(x, y, 1, 1);
+  const theme = themes[appearance.theme ?? "dark"];
+  if (appearance.pass !== "selection") {
+    ctx.fillStyle = theme.background; ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = theme.grid;
+    for (let x = 12; x < width; x += 24) for (let y = 12; y < height; y += 24) ctx.fillRect(x, y, 1, 1);
+  }
   const t = transformFor(width, height, bounds, view);
   const connections = connectionsFor(document.components, component, net);
   const netNames = new Map(document.netCatalog.map(item => [item.id, item.name]));
   const relatedIds = new Set(connections.components.map(part => part.id));
   const isOrigin = (p: GeometryPrimitive) => component !== null && "componentId" in p && p.componentId === component;
   const onNet = (p: GeometryPrimitive) => "netIndex" in p && p.netIndex !== null && connections.nets.has(p.netIndex);
-  const selected = (p: GeometryPrimitive) => isOrigin(p) || onNet(p) || (p.kind === "outline" && !!p.componentId && relatedIds.has(p.componentId));
+  const selected = (p: GeometryPrimitive) => (isOrigin(p) && (net === null || p.kind === "outline")) || onNet(p) || (p.kind === "outline" && !!p.componentId && relatedIds.has(p.componentId));
   const visibleItems = new Set(workshopGeometry(document.geometry, layers, detail, vias));
   const visible = (p: GeometryPrimitive) => visibleItems.has(p);
   const draw = (p: GeometryPrimitive, active: boolean) => {
-    ctx.globalAlpha = active ? 1 : net !== null || component !== null ? .45 : .9;
-    ctx.strokeStyle = ctx.fillStyle = active ? (onNet(p) ? netColor("netIndex" in p ? netNames.get(p.netIndex ?? -1) ?? "" : "") : isOrigin(p) ? "#fbbf24" : "#60a5fa") : p.kind === "pin" || p.kind === "outline" ? "#e1bc77" : palette[p.layer % palette.length];
+    ctx.globalAlpha = active ? 1 : net !== null || component !== null ? .3 : .95;
+    ctx.strokeStyle = ctx.fillStyle = active ? (onNet(p) ? appearance.color ?? netColor("netIndex" in p ? netNames.get(p.netIndex ?? -1) ?? "" : "") : "#e6008d") : p.kind === "pin" || p.kind === "outline" ? theme.pad : appearance.theme === "light" ? theme.muted : palette[p.layer % palette.length];
     if (p.kind === "segment" || p.kind === "outline") {
-      ctx.lineWidth = Math.max(active ? 1.2 : .65, Math.min(10, p.width * t.scale * .35));
+      ctx.lineWidth = Math.max(active ? 2.5 : .8, Math.min(10, p.width * t.scale * .35));
       ctx.beginPath(); ctx.moveTo(t.x(p.x1), t.y(p.y1)); ctx.lineTo(t.x(p.x2), t.y(p.y2)); ctx.stroke();
     } else if (p.kind === "pin" || p.kind === "via" || p.kind === "arc") {
       const x = t.x(p.x), y = t.y(p.y), r = Math.max(.75, (p.kind === "via" ? p.outerRadius : p.radius) * t.scale);
@@ -58,14 +68,19 @@ export function renderBoard(canvas: HTMLCanvasElement, document: PcbeDocument, b
       ctx.font = "10px monospace"; ctx.fillText(p.text, t.x(p.x), t.y(p.y));
     }
   };
-  for (const p of document.geometry) if (!selected(p) && visible(p)) draw(p, false);
+  if (appearance.pass !== "selection") for (const p of document.geometry) if (!selected(p) && visible(p)) draw(p, false);
   const tracks = physicalTracks(document.geometry, connections.nets);
   // Reveal only this net's real copper, not all copper on its layers.
-  for (const track of tracks) draw(track, true);
-  for (const p of document.geometry) if (p.kind !== "segment" && selected(p) && visible(p)) draw(p, true);
+  if (appearance.pass !== "base") for (const track of tracks) draw(track, true);
+  for (const p of document.geometry) {
+    if (p.kind === "segment" || !selected(p) || !visible(p)) continue;
+    // Component outlines stay steady; only the electrical selection pulses.
+    if (p.kind === "outline" ? appearance.pass !== "selection" : appearance.pass !== "base") draw(p, true);
+  }
+  if (appearance.pass === "selection") return;
   if (connections.nets.size) {
     const trackLayers = [...new Set(tracks.map(track => track.layer))].sort((a, b) => a - b);
-    ctx.globalAlpha = 1; ctx.fillStyle = "#e4e4e7"; ctx.font = "12px sans-serif";
+    ctx.globalAlpha = 1; ctx.fillStyle = theme.ink; ctx.font = "12px sans-serif";
     ctx.fillText(tracks.length ? `Pistas del archivo · ${trackLayers.map(id => "L" + id).join(", ")} · pueden incluir capas internas` : "Sin recorrido de pista decodificado para esta selección; solo pads conectados.", 12, 20);
   }
   const part = document.components.find((p) => p.id === component);
@@ -79,16 +94,33 @@ export function renderBoard(canvas: HTMLCanvasElement, document: PcbeDocument, b
       const x = t.x(item.x), y = t.y(item.y);
       if (x < 0 || y < 0 || x > width || y > height) continue;
       const label = item.text.trim();
-      ctx.fillStyle = "#09090be6";
+      ctx.fillStyle = theme.background;
       ctx.fillRect(x - 2, y - 12, ctx.measureText(label).width + 4, 15);
-      ctx.fillStyle = "#f0abfc";
+      ctx.fillStyle = appearance.theme === "light" ? "#86198f" : "#f0abfc";
       ctx.fillText(label, x, y);
     }
-    ctx.fillStyle = "#f0abfc";
+    ctx.fillStyle = appearance.theme === "light" ? "#86198f" : "#f0abfc";
     ctx.fillText("Valores de diodo: anotaciones originales · unidad/polaridad no verificadas", 12, 38);
   }
   const pad = part?.pads.find(item => layers.has(item.layer));
-  if (part && pad) { ctx.globalAlpha = 1; ctx.fillStyle = "#e5f6d8"; ctx.font = "bold 12px monospace"; ctx.fillText(part.name, t.x(pad.x) + 8, t.y(pad.y) - 10);
+  if (part && pad) { ctx.globalAlpha = 1; ctx.fillStyle = theme.ink; ctx.font = "bold 12px monospace"; ctx.fillText(part.name, t.x(pad.x) + 8, t.y(pad.y) - 10);
+  }
+  if (view.zoom > 2) {
+    ctx.globalAlpha = 1; ctx.font = "bold 11px monospace";
+    const occupied = new Set<string>();
+    for (const item of document.components) {
+      if (item.id === component) continue;
+      const anchor = item.pads.find(p => layers.has(p.layer));
+      if (!anchor) continue;
+      const x = t.x(anchor.x), y = t.y(anchor.y) - 10;
+      if (x < 0 || y < 40 || x > width - 45 || y > height - 60) continue;
+      const cell = `${Math.floor(x / 65)}:${Math.floor(y / 18)}`;
+      if (occupied.has(cell)) continue;
+      occupied.add(cell);
+      ctx.fillStyle = theme.background;
+      ctx.fillRect(x - 2, y - 11, ctx.measureText(item.name).width + 4, 14);
+      ctx.fillStyle = theme.ink; ctx.fillText(item.name, x, y);
+    }
   }
   ctx.globalAlpha = 1;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,9 +21,7 @@ import {
     FileText,
     Sparkles,
     Smartphone,
-    User,
-    ShieldCheck,
-    RotateCcw
+    User
 } from "lucide-react";
 import { toast } from "sonner";
 import { finishRepairAction } from "@/lib/actions/repairs";
@@ -32,6 +30,10 @@ import { isValidImg, cn } from "@/lib/utils";
 import { FinishRepairIntakeCheck } from "./finish-repair-intake-check";
 import { FinishRepairEvidence } from "./finish-repair-evidence";
 import type { RepairAccessType } from "@/lib/repairs/intake";
+
+import { AddPartDialog } from "./add-part-dialog";
+import { getFinishRepairParts } from "@/actions/repairs/finish-parts";
+import { validateFinishParts } from "@/lib/repairs/finish-parts-policy";
 
 type FinishRepairPart = {
     id: string;
@@ -88,6 +90,24 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const [wasEnhanced, setWasEnhanced] = useState(false);
     const [showAiWarning, setShowAiWarning] = useState(false);
 
+    const [showAddPart, setShowAddPart] = useState(false);
+    const [partsRequired, setPartsRequired] = useState(true);
+    const [partsRevision, setPartsRevision] = useState(0);
+    const [partsState, setPartsState] = useState<Awaited<ReturnType<typeof getFinishRepairParts>> | null>(null);
+    const [partsError, setPartsError] = useState(false);
+    useEffect(() => { if (isOpen) setPartsRequired(true); }, [isOpen, repair.id]);
+    useEffect(() => {
+        if (!isOpen) return;
+        let active = true;
+        setPartsState(null);
+        setPartsError(false);
+        getFinishRepairParts(repair.id).then(result => {
+            if (active) setPartsState(result);
+        }).catch(() => { if (active) setPartsError(true); });
+        return () => { active = false; };
+    }, [isOpen, repair.id, partsRevision]);
+    const assignedParts = partsState?.parts ?? repair.parts ?? [];
+
     const images = (repair.deviceImages || []).filter(isValidImg);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,10 +157,16 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                 }
                 return;
             }
+            if (data.preservedOriginal || !data.improved?.trim() || data.improved.trim() === trimmed) {
+                setEnhanceError(data.preservedOriginal
+                    ? "La IA propuso información no respaldada por tu informe. Conservamos el original; podés precisar el texto e intentar nuevamente."
+                    : "La IA no propuso cambios al informe. Se conservó el texto original.");
+                return;
+            }
             setDiagnosis(data.improved);
             setWasEnhanced(true);
             toast.success("Informe mejorado con Cerebro IA.");
-        } catch (e) {
+        } catch {
             toast.error("Error de conexión al mejorar el diagnóstico.");
         } finally {
             setIsEnhancing(false);
@@ -150,6 +176,11 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const submitRepair = async (forceNoAi: boolean = false) => {
         if (!statusId) return toast.error("Selecciona un estado de cierre.");
         if (!diagnosis.trim()) return toast.error("El informe técnico es obligatorio.");
+
+        if (!partsState) return toast.error("No se pudieron verificar los repuestos. Reintentá la carga.");
+        const partsValidation = validateFinishParts(Number(statusId), String(partsRequired),
+            assignedParts.filter(part => statusId !== "6" && !partsToReturn.has(part.id)).length + partsState.externalPurchases.length);
+        if (partsValidation) return toast.error(partsValidation);
 
         // 🧠 ADVERTENCIA: ¿Confirmar sin IA? (Se activa para cualquier estado excepto PAUSADO)
         if (!wasEnhanced && !forceNoAi && diagnosis.length > 2 && [5, 6, 7, 8, 9].includes(parseInt(statusId))) {
@@ -164,6 +195,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             formData.append("technicianId", currentUserId);
             formData.append("statusId", statusId);
             formData.append("diagnosis", diagnosis);
+            formData.append("partsRequired", String(partsRequired));
             formData.append("isWet", isWet.toString());
             formData.append("hasSimCard", hasSimCard.toString());
             formData.append("hasMemoryCard", hasMemoryCard.toString());
@@ -177,7 +209,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             } else {
                 toast.error(result.error);
             }
-        } catch (error) {
+        } catch {
             toast.error("Error inesperado.");
         } finally {
             setIsLoading(false);
@@ -348,9 +380,11 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                     <Textarea
                                         id="diagnosis"
                                         value={diagnosis}
+                                        disabled={isEnhancing || isLoading}
                                         onChange={(e) => {
                                             setDiagnosis(e.target.value);
                                             setWasEnhanced(false);
+                                            setEnhanceError(null);
                                         }}
                                         placeholder="Detalla el trabajo realizado, cambios de componentes, pruebas de funcionamiento..."
                                         className="h-28 min-h-[110px] resize-none rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs font-bold text-white transition-all placeholder:text-slate-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30"
@@ -417,14 +451,30 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                                     </div>
                                 </div>
 
+                                <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 space-y-3">
+                                    <label className="flex items-center gap-2 text-sm font-bold text-slate-200">
+                                        <Checkbox checked={partsRequired} onCheckedChange={value => setPartsRequired(value === true)} disabled={isLoading} />
+                                        Repuesto asignado
+                                    </label>
+                                    <p className="text-xs text-slate-400">Activado: debés tener un repuesto del local o de proveedor externo. Desactivalo únicamente si este cierre no requiere repuestos.</p>
+                                    {!partsRequired && <p className="text-xs text-amber-300">Confirmás que este cierre no requiere repuestos.</p>}
+                                    {partsState ? <ul className="text-xs text-slate-300 space-y-1">
+                                        {assignedParts.map(part => <li key={part.id}>Local: {part.sparePart?.name}</li>)}
+                                        {partsState.externalPurchases.map(part => <li key={part.id}>Externo: {part.description} · {part.supplier}</li>)}
+                                        {assignedParts.length + partsState.externalPurchases.length === 0 && <li>Sin repuestos asignados.</li>}
+                                    </ul> : <p className="text-xs text-amber-300">{partsError ? "No se pudieron cargar los repuestos." : "Verificando repuestos…"}</p>}
+                                    {partsError && <Button variant="outline" onClick={() => setPartsRevision(value => value + 1)}>Reintentar</Button>}
+                                    <Button type="button" variant="outline" disabled={isLoading || isEnhancing} onClick={() => setShowAddPart(true)}>Agregar repuesto del local o externo</Button>
+                                </div>
+
                                 {/* Spare Parts Return Checklist (if parts are assigned) */}
-                                {repair.parts && repair.parts.length > 0 && (
+                                {assignedParts.length > 0 && (
                                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 space-y-1.5">
                                         <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 block">
                                             Devolución de Repuestos
                                         </span>
                                         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
-                                            {repair.parts.map((part) => {
+                                            {assignedParts.map((part) => {
                                                 const isReturned = partsToReturn.has(part.id) || statusId === "6";
                                                 return (
                                                     <label
@@ -485,7 +535,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                             <Button
                                 type="button"
                                 onClick={() => submitRepair()}
-                                disabled={isLoading || isEnhancing || !statusId}
+                                disabled={isLoading || isEnhancing || !statusId || !partsState}
                                 className={cn(
                                     "flex-1 h-11 font-black uppercase tracking-wider rounded-xl text-xs transition-all active:scale-95 flex items-center justify-center gap-2",
                                     activeStatus
@@ -560,6 +610,11 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
                 </DialogContent>
             </Dialog>
 
+            {showAddPart && <AddPartDialog repair={repair} currentUserId={currentUserId} isOpen onClose={() => setShowAddPart(false)} onSaved={() => {
+                setPartsState(null);
+                setPartsRequired(true);
+                setPartsRevision(value => value + 1);
+            }} />}
             <style jsx global>{`
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 6px;

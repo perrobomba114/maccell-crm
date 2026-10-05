@@ -1,5 +1,8 @@
 "use server";
 
+import { getCurrentUser } from "@/actions/auth-actions";
+import { validateFinishParts } from "@/lib/repairs/finish-parts-policy";
+import { EXTERNAL_PURCHASE_EDITABLE_STATUSES } from "@/lib/repairs/external-purchases";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { createNotificationAction } from "@/lib/actions/notifications";
@@ -9,13 +12,20 @@ import { isReactivatableRepair } from "@/lib/repairs/reactivation-policy";
 import { REPAIR_STATUS } from "@/lib/repairs/status";
 import { VENDOR_REACTIVATABLE_STATUS_IDS } from "@/lib/repairs/status-sets";
 
+class FinishValidationError extends Error {}
+
 export async function finishRepairAction(formData: FormData) {
     try {
         const repairId = formData.get("repairId") as string;
         const technicianId = formData.get("technicianId") as string;
         const statusIdRaw = formData.get("statusId");
         const diagnosis = formData.get("diagnosis") as string;
-        const createReturnRequest = formData.get("createReturnRequest") === "true";
+        const actor = await getCurrentUser();
+        if (!actor || actor.role !== "TECHNICIAN" || actor.id !== technicianId) return { success: false, error: "No autorizado" };
+        if (!diagnosis?.trim()) return { success: false, error: "El informe técnico es obligatorio" };
+        const rawReturns: unknown = JSON.parse(String(formData.get("returnPartIds") || "[]"));
+        if (!Array.isArray(rawReturns) || !rawReturns.every(id => typeof id === "string")) return { success: false, error: "Devoluciones inválidas" };
+        const excludedParts = new Set<string>(rawReturns);
         const isWet = formData.get("isWet") === "true";
         const hasSimCard = formData.get("hasSimCard") === "true";
         const hasMemoryCard = formData.get("hasMemoryCard") === "true";
@@ -105,9 +115,28 @@ export async function finishRepairAction(formData: FormData) {
         dataToUpdate.hasSimCard = hasSimCard;
         dataToUpdate.hasMemoryCard = hasMemoryCard;
 
-        await db.repair.update({
-            where: { id: repairId },
-            data: dataToUpdate
+        await db.$transaction(async tx => {
+            const locked = await tx.repair.updateMany({
+                where: { id: repairId, assignedUserId: actor.id, statusId: repair.statusId,
+                    AND: { statusId: { in: EXTERNAL_PURCHASE_EDITABLE_STATUSES } } },
+                data: { updatedAt: new Date() },
+            });
+            if (locked.count !== 1) throw new FinishValidationError("La reparación cambió o ya fue cerrada. Actualizá la pantalla.");
+            const [localCount, externalCount] = await Promise.all([
+                tx.repairPart.count({ where: { repairId, id: { notIn: [...excludedParts] } } }),
+                tx.repairExternalPurchase.count({ where: { repairId } }),
+            ]);
+            const partsError = validateFinishParts(statusId, formData.get("partsRequired"), (statusId === REPAIR_STATUS.NO_REPAIR ? 0 : localCount) + externalCount);
+            if (partsError) throw new FinishValidationError(partsError);
+            await tx.repair.update({ where: { id: repairId }, data: dataToUpdate });
+            if (statusId !== REPAIR_STATUS.PAUSED) {
+                await tx.repairObservation.create({ data: {
+                    repairId, userId: actor.id,
+                    content: formData.get("partsRequired") === "false"
+                        ? "Control de cierre: el técnico confirmó que este cierre no requiere repuestos."
+                        : "Control de cierre: repuestos asignados verificados.",
+                } });
+            }
         });
 
         try {
@@ -210,6 +239,6 @@ export async function finishRepairAction(formData: FormData) {
 
     } catch (error) {
         console.error("Error finishing repair (CRITICAL):", error);
-        return { success: false, error: "Error al finalizar reparación (Ver consola)" };
+        return { success: false, error: error instanceof FinishValidationError ? error.message : "Error al finalizar reparación" };
     }
 }

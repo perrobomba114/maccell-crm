@@ -66,3 +66,12 @@ node scripts/technical-worker.cjs --retry-failed
 El modo continuo usa `--watch`. Para generar el ejecutable local: `node scripts/build-technical-worker.mjs`; luego ejecutar con `node --env-file=.env scripts/technical-worker.cjs`. No usar `--force` salvo que se desee volver a extraer toda la biblioteca.
 
 Verificaciones de esta integración: 358 pruebas unitarias iniciales finales, TypeScript, ESLint, build aislado, fixture OCR con coordenadas, APIs autenticadas/aislamiento, recuperación SQL real BOARD/PDF y navegación navegador desktop/móvil (390 px sin overflow). Las identidades de las fixtures son sintéticas y no certifican compatibilidad de documentos reales.
+
+## Resaltado y lectura de PCBE
+
+- Fondo configurable: azul técnico, claro o negro. La red puede resaltarse en verde, azul, naranja o violeta.
+- «Titilar» pulsa únicamente los pads y pistas seleccionados. Los contornos fucsia quedan fijos. La preferencia de movimiento reducido del sistema desactiva la animación.
+- Pasar el cursor muestra componente, pad o pista, red y archivo de origen. Seleccionar un pad aísla su red, sin colorear los otros pads del mismo componente como conectados.
+- Al acercar aparecen referencias de componentes, con densidad limitada para reducir superposiciones.
+- Las pistas resaltadas provienen de la geometría decodificada. Si falta el recorrido, el visor lo informa; no dibuja puentes que aparenten cobre real.
+- Estos controles no incorporan mediciones de diodo o tensión ausentes en el archivo. Las anotaciones originales de archivos de diodos conservan su contexto y no se convierten automáticamente en mediciones de un pad.

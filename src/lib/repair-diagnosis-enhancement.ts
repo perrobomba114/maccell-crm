@@ -23,7 +23,7 @@ const ACTION_FAMILIES: readonly ActionFamily[] = [
     { name: "replacement", pattern: /\b(?:cambi\w*|reemplaz\w*|sustitu\w*|instal\w*)\b/g },
     { name: "repair", pattern: /\b(?:repar\w*|reconstru\w*|arregl\w*|solucion\w*)\b/g },
     { name: "cleaning", pattern: /\b(?:limpi\w*|mantenim\w*|bano\s+quimic\w*)\b/g },
-    { name: "verification", pattern: /\b(?:medi\w*|medic\w*|prob\w*|verific\w*|comprob\w*|diagnostic\w*|detect\w*|constat\w*)\b/g },
+    { name: "verification", pattern: /\b(?:medi\w*|medic\w*|prob\w*|verific\w*|comprob\w*|diagnostic\w*)\b/g },
 ];
 
 export const REPAIR_DIAGNOSIS_ENHANCEMENT_SYSTEM_PROMPT = `Sos el redactor técnico profesional de un taller especializado en reparación de celulares (MACCELL).
@@ -45,18 +45,19 @@ REGLAS ABSOLUTAS E INQUEBRANTABLES:
 - Si el equipo no tiene solución, redáctalo con claridad técnica (ej: "No fue posible restablecer el funcionamiento del equipo debido a...").
 
 4. FORMATO:
+- Corregí errores y abreviaturas; no copies literalmente un informe informal. Un estado observado no autoriza a agregar pruebas ni verificaciones.
 - Respondé ÚNICAMENTE con el informe técnico profesional en texto plano.
 - Prohibido incluir saludos, introducciones, firmas, viñetas decorativas, precios o recomendaciones comerciales.
 
 EJEMPLOS DE REFERENCIA:
 - Entrada técnico: "no se cambio el modulo se probo otro y no dio imagen placa en corto"
-  Salida correcta: "No se realizó el cambio de módulo. Se efectuaron pruebas con una pantalla nueva constatando que la placa principal no emite imagen por cortocircuito."
+  Salida correcta: "No se realizó el cambio de módulo. Se probó otro módulo, sin obtener imagen. El técnico informa un cortocircuito en la placa."
 - Entrada técnico: "no se cambio pin placa sulfatada sin arreglo"
-  Salida correcta: "No se realizó el cambio de pin de carga. Se constató sulfatación severa en placa principal sin posibilidad de reparación."
+  Salida correcta: "No se realizó el cambio de pin de carga. La placa presenta sulfatación y el equipo quedó sin reparar."
 - Entrada técnico: "se pego modulo marco doblado"
   Salida correcta: "Se realizó la fijación del módulo. Se observa el marco doblado."
 - Entrada técnico: "cambie bateria y limpie pin quedo ok"
-  Salida correcta: "Se realizó el cambio de batería, se efectuó la limpieza del pin de carga y se verificó el correcto funcionamiento general del equipo."`;
+  Salida correcta: "Se realizó el cambio de batería, se efectuó la limpieza del pin de carga y el equipo quedó funcionando."`;
 
 const normalize = (value: string): string => value
     .normalize("NFD")
