@@ -34,11 +34,13 @@ function updatedMetadata(original, item) {
   const relativePath = 'sources/' + item.target;
   const parts = item.target.split('/');
   const brand = parts.at(-3);
-  const model = parts.at(-2);
+  const folderModel = parts.at(-2);
+  const product = ['iPhone', 'iPad'].includes(brand) ? brand : null;
+  const model = product && !['General', 'Por revisar'].includes(folderModel) ? product + ' ' + folderModel : folderModel;
   // Folder normalization does not verify electrical identity. Preserve the old
   // searchable identity for unresolved/general material rather than invent one.
-  const normalizedBrand = ({ Apple: 'APPLE', Honor: 'HUAWEI', 'Steam Deck': 'VALVE' })[brand] || brand.toUpperCase();
-  const identity = item.review ? { brand: normalizedBrand } : {
+  const normalizedBrand = ({ Apple: 'APPLE', iPhone: 'APPLE', iPad: 'APPLE', Honor: 'HUAWEI', 'Steam Deck': 'VALVE' })[brand] || brand.toUpperCase();
+  const identity = item.review && !item.resetIdentity ? { brand: normalizedBrand } : {
     brand: normalizedBrand,
     model,
     modelKey: model.normalize('NFKC').toLowerCase().replace(/[^a-z0-9]/g, ''),

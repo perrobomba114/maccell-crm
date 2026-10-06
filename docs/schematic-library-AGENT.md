@@ -26,15 +26,23 @@ resolver a ese disco, nunca al RAID `/`. No usar `/mnt/data2` para cargas nuevas
   AGENTS.md
 ```
 
-Las carpetas de marca existentes son canónicas: `Apple`, `Samsung`, `Motorola`,
-`Xiaomi`, `Huawei`, `Honor`, `LG`, `Realme`, etc. No crear `Iphone`, `iPhone(VIP)`,
-`SAMSUNG`, `Redmi(VIP)` ni otra variante como raíz paralela. Dentro de Apple se
-conserva `iPhone`/`iPad` en el modelo; dentro de Xiaomi, `Redmi`/`Poco`/`Mi`.
-La familia de archivo siempre es `pdf` o `pcbe` en minúscula.
+Las familias Apple se muestran separadas: `pdf/iPhone/14 Pro Max/` y
+`pcbe/iPhone/14 Pro Max/`; para tabletas `pdf/iPad/<Modelo>/`. No repetir
+`iPhone` dentro del nombre de la carpeta del modelo ni recrear `Apple/iPhone`.
+El catálogo conserva fabricante `APPLE` y modelo completo `iPhone 14 Pro Max`.
+`Apple/General` o `Apple/Por revisar` sólo contienen material transversal cuya
+familia no está demostrada. Samsung, Motorola, Xiaomi, Huawei, Honor, LG y
+Realme mantienen sus raíces. La familia de archivo es `pdf` o `pcbe`.
+No crear variantes `Iphone`, `iPhone(VIP)`, `SAMSUNG` o `Redmi(VIP)`.
+
+Antes de inferir un modelo del archivo, consultar la carpeta original registrada
+en `sourceRelativePath`. Los números de capítulo o páginas (`95-101`,
+`184-193`) no son modelos. NAND es una función de placa y se conserva en el
+archivo; Intel/Qualcomm y región USA siguen distinguiendo variantes.
 
 No hay un modelo por proveedor, `VIP`, `FREE`, serie de descarga o carpeta de
 reparaciones. Un modelo compartido se nombra explícitamente, por ejemplo
-`iPhone 11 Pro + Pro Max`; no se adjudica el documento a uno solo.
+`11 Pro + Pro Max`; no se adjudica el documento a uno solo.
 Las variantes Core/s/Plus/Pro/Ultra/4G/5G y generaciones no se fusionan.
 `General` se reserva para material sin un dispositivo único y nunca implica
 compatibilidad entre archivos.

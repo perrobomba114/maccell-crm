@@ -128,3 +128,9 @@ test("reviewed paths retain searchable historical identity without auto-pairing"
     assert.equal(sameDevice(updated!, { ...updated!, id: 'another' }), false);
     assert.equal(sameDevice({ ...updated!, normalizationReview: false, model: 'General' }, { ...updated!, model: 'General' }), false);
 });
+
+test("product family paths retain the full database identity", () => {
+    assert.deepEqual(declaredIdentity('sources/pcbe/iPhone/14 Pro Max/board.pcbe', 'board.pcbe'), { brand: 'APPLE', model: 'iPhone 14 Pro Max' });
+    assert.deepEqual(declaredIdentity('sources/pdf/iPhone/7-Intel/manual.pdf', 'manual.pdf'), { brand: 'APPLE', model: 'iPhone 7-Intel' });
+    assert.deepEqual(declaredIdentity('sources/pdf/iPhone/General/manual.pdf', 'manual.pdf'), { brand: 'APPLE', model: 'General' });
+});

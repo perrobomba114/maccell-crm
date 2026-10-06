@@ -16,7 +16,7 @@ class OrganizationTests(unittest.TestCase):
 
     def test_apple_shared_board_not_single_device(self):
         result = organizer.classify('bulk/iPhone11pro&promax-boardview.pcbe')
-        self.assertEqual(result[2], 'iPhone 11 Pro + Pro Max')
+        self.assertEqual(result[2], '11 Pro + Pro Max')
 
     def test_compact_apple_normalization_is_idempotent(self):
         for value in ['iPhone13ProMax', 'iPhone 13pro Max', 'iPhone 14_14Plus']:
@@ -72,12 +72,21 @@ class OrganizationTests(unittest.TestCase):
                        'pdf/Apple/iPhone 13 Pro Max/connector.jpg']:
             row = {'path': source, 'size': 12, 'mtime_ns': 1}
             result = organizer.plan([row], {}, 'media-layout')['entries'][0]
-            self.assertEqual(result['target'], 'pdf/Apple/iPhone 13 Pro Max/Connector.jpg')
+            self.assertEqual(result['target'], 'pdf/iPhone/13 Pro Max/Connector.jpg')
             self.assertFalse(result['review'])
 
     def test_course_uploads_are_not_reorganized(self):
         result = organizer.plan([{'path': 'CURSO/Electronica/clase.mp4', 'size': 12}], {}, 'batch')
         self.assertEqual(result['entries'], [])
+
+    def test_page_ranges_are_not_iphone_models(self):
+        for name in ['Chapter6 maintenance example of iPhone 184-193', 'Chapter3 error code analysis of recovery iPhone 95-101']:
+            self.assertEqual(organizer.model_from_name(name, 'Apple'), '')
+        self.assertEqual(organizer.model_from_name('iPhone184 schematic', 'Apple'), '')
+
+    def test_product_folder_is_stable_and_preserves_platform(self):
+        for source in ['pcbe/Apple/iPhone 7-Intel/board.pcbe', 'pcbe/iPhone/7-Intel/board.pcbe']:
+            self.assertEqual(organizer.classify(source), ('pcbe', 'iPhone', '7-Intel', False))
 
     def test_path_traversal_rejected(self):
         with tempfile.TemporaryDirectory() as d:

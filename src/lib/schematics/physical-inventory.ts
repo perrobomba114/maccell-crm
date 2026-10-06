@@ -91,7 +91,9 @@ export function declaredIdentity(relativePath: string, name: string): { brand?: 
             const brandFolder = folders[platform ? 2 : 1]!;
             const brand = BRAND_PREFIXES.find(({ pattern }) => pattern.test(brandFolder))?.value;
             if (brand || brandFolder === "Por revisar") {
-                return { brand, model: cleanIdentityPart(folders.at(-1)!) };
+                const folderModel = cleanIdentityPart(folders.at(-1)!);
+                const product = /^(?:iPhone|iPad)$/.test(brandFolder) ? brandFolder : undefined;
+                return { brand, model: product && !/^(?:General|Por revisar)$/.test(folderModel) ? `${product} ${folderModel}` : folderModel };
             }
         }
     }

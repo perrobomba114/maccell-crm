@@ -30,7 +30,7 @@ La regla vigente está en [`docs/schematic-library-AGENT.md`](../../../docs/sche
 /mnt/ESQUEMATICO/pdf/<Marca>/<Modelo>/<imagen-o-video>
 ```
 
-Consolas y Laptop-PC conservan su nivel de plataforma y fabricante. No crear árboles históricos `Samsung/<modelo>/Pdf`, `Iphone` ni carpetas `VIP/FREE`. Respetar los nombres canónicos existentes, variantes y modelos compartidos. Conservar códigos técnicos del origen en el archivo; no inventar un modelo por un código.
+Consolas y Laptop-PC conservan su nivel de plataforma y fabricante. Para Apple usar `pdf/iPhone/14 Pro Max/` y `pcbe/iPhone/14 Pro Max/`, con modelo completo y marca APPLE en el catálogo; iPad tiene su raíz propia. No crear árboles históricos `Samsung/<modelo>/Pdf`, `Apple/iPhone` ni carpetas `VIP/FREE`. Respetar los nombres canónicos existentes, variantes y modelos compartidos. Conservar códigos técnicos del origen en el archivo; no inventar un modelo por un código.
 
 Para reorganización usar `scripts/organize-schematic-library.py` y `scripts/reconcile-schematic-paths.mjs`, con manifiesto SHA-256 y respaldo previo. Los scripts `normalize-schematic-library.py` y `rewrite-schematic-catalog-after-normalization.mjs` son históricos: no usar; no reconcilian las referencias RAG V2.
 

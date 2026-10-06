@@ -142,3 +142,11 @@ test("moves iPhone assets with an unclassified source brand into Apple", () => {
   assert.equal(apple?.subfolders.get("iPhone 14 Pro Max")?.totalFiles, 1);
   assert.equal(tree.some((node) => node.name === "Otros"), false);
 });
+
+test("canonical iPhone tree agrees with Filebrowser without truncating variants", () => {
+  const tree = buildDirectoryTree(['14 Pro Max', '14 Pro + Pro Max', '7-Intel', '7-Qualcomm', 'General'].map((model, i) =>
+    Object.assign(mockAsset(String(i), `sources/pcbe/iPhone/${model}/board.pcbe`, 'board.pcbe'), { brand: 'APPLE', model: `iPhone ${model}` })));
+  assert.equal(tree.length, 1);
+  assert.equal(tree[0]!.name, 'iPhone');
+  assert.deepEqual([...tree[0]!.subfolders.keys()], ['14 Pro Max', '14 Pro + Pro Max', '7-Intel', '7-Qualcomm', 'General']);
+});

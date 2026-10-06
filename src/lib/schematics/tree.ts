@@ -132,6 +132,10 @@ function treeIdentity(asset: SchematicAsset): { brand: string; family?: string; 
   const role = documentRole(asset);
   const category = role === "board" ? "Placas" : role === "schematic" ? "Esquemáticos" : role === "manual" ? "Manuales técnicos" : role === "repair" ? "Casos de reparación" : role === "accessory" ? "Accesorios" : "Documentos";
   if (consoleIdentity) return { brand: "Consolas", family: consoleIdentity.family, model: consoleIdentity.model, category };
+  const canonical = asset.relativePath.replace(/^sources\//, "").split("/");
+  if (/^(?:pdf|pcbe)$/.test(canonical[0] ?? "") && /^(?:iPhone|iPad)$/.test(canonical[1] ?? "") && canonical.length === 4) {
+    return { brand: canonical[1]!, model: cleanLabel(canonical[2]!), category };
+  }
   const brandIndex = parts.findIndex((part) => brandLabel(part) === brand);
   const modelParts = (brandIndex >= 0 ? parts.slice(brandIndex + 1) : parts).filter(part => cleanLabel(part).toLowerCase() !== brand.toLowerCase());
   const model = commercialModel(asset, brand, modelParts.at(-1) ?? "Modelo sin clasificar");

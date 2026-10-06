@@ -31,7 +31,7 @@ TECHNICAL = re.compile(r'^(?:pdf|pcbe|pcb|sch|schematics?|schematic and (?:board
                        r'several reference schematics|machine dismant course|'
                        r'faqs|faceid|route map|(?:second|third) edition|'
                        r'maintenance ways|trobleshoot ways|trouble-shooting ways|'
-                       r'.* sharing|iphone repair manual|iphone、ipad)$', re.I)
+                       r'.* sharing|iphone repair manual|iphone\s*、\s*ipad)$', re.I)
 
 
 def label(value: str) -> str:
@@ -50,7 +50,7 @@ def generic(value: str) -> bool:
 
 def apple_model(value: str) -> str:
     value = label(value)
-    value = re.sub(r'(?i)iphone\s*', 'iPhone ', value)
+    value = re.sub(r'(?i)iphone[ -]*', 'iPhone ', value)
     value = re.sub(r'(?i)ipad\s*', 'iPad ', value)
     value = re.sub(r'(?i)(\d[sce]?)(plus|pro|mini)(?=\b|max)', r'\1 \2', value)
     value = re.sub(r'(?i)(\d)(pro|plus|mini|air|se)(?=\b|max)', r'\1 \2', value)
@@ -100,7 +100,7 @@ def model_from_name(value: str, brand: str) -> str:
         'Motorola': r'\b(?:moto|motorola)\s+(?:edge|razr|one|[cegmpxz]\s*\d*)(?:\s+(?:\d+|5g|4g|plus|pro|power|play|stylus|fusion|macro|action|vision|ace|zoom|hyper|style|force|202\d|201\d))*',
         'Huawei': r'\b(?:honor\s+)?(?:enjoy|mate|nova|honor|[pygv])\s*\d+[a-z]?(?:\s+(?:plus|pro\+?|lite|prime|\d{4}))*',
         'Xiaomi': r'\b(?:redmi\s+note|redmi\s*[ak]?|poco\s*[fmxc]|mi\s+(?:mix|note)?|xiaomi)\s*\d+[a-z]?(?:\s+(?:pro\+?|plus|lite|ultra|5g|4g|prime|max|se))*',
-        'Apple': r'\biPhone[ -]*(?:\d{1,2}[sce]?|XS|XR|X|SE\s*\d?)(?:\s*(?:pro\s*max|pro|plus|mini|max))?(?:[ &_]+(?:\d{1,2}\s*)?(?:pro\s*max|pro|plus))*',
+        'Apple': r'\biPhone[ -]*(?:\d{1,2}[sce]?(?!\d)|XS|XR|X|SE\s*\d?)(?:\s*(?:pro\s*max|pro|plus|mini|max))?(?:[ &_]+(?:\d{1,2}\s*)?(?:pro\s*max|pro|plus))*',
     }
     if brand == 'Samsung':
         code = re.search(r'(?i)\b(?:SM|GT|SCH|SGH)[- ]?[a-z]?\d{3,5}[a-z0-9-]*', value)
@@ -113,6 +113,8 @@ def model_from_name(value: str, brand: str) -> str:
         if model: return model[1]
         model = re.search(r'(?i)\b(?:LG[ -]?)?(?:LM-)?[a-z]{1,3}\d{2,4}[a-z0-9-]*', value)
         return model[0] if model else ''
+    if brand == 'Apple' and re.search(r'(?i)\bchapter\s*\d|\biphone\s+\d+\s*-\s*\d+', value):
+        return ''
     match = re.search(patterns.get(brand, r'(?!)'), value, re.I)
     return match[0] if match else ''
 
@@ -125,7 +127,7 @@ def filename(value: str) -> str:
     return stem + p.suffix.lower()
 
 
-def classify(relative: str) -> tuple[str, str, str, bool]:
+def classify_legacy(relative: str) -> tuple[str, str, str, bool]:
     parts = Path(relative).parts
     ext = Path(relative).suffix.lower()
     family = 'pcbe' if ext in BOARDS else 'pdf'
@@ -190,6 +192,26 @@ def classify(relative: str) -> tuple[str, str, str, bool]:
     # Keep device revision/platform context out of generic source directories.
     if is_laptop: brand = 'Laptop-PC/' + brand
     return family, brand, model, model == 'Por revisar' or brand.endswith('Por revisar')
+
+
+def classify(relative: str) -> tuple[str, str, str, bool]:
+    """Product families have one physical root; database brand remains APPLE."""
+    parts = Path(relative).parts
+    if len(parts) == 4 and parts[0] in {'pdf', 'pcbe', 'media'} and parts[1] in {'iPhone', 'iPad'}:
+        family = 'pcbe' if Path(relative).suffix.lower() in BOARDS else 'pdf'
+        return family, parts[1], label(parts[2]), parts[2] == 'Por revisar'
+    family, brand, model, review = classify_legacy(relative)
+    if brand != 'Apple':
+        return family, brand, model, review
+    for product in ('iPhone', 'iPad'):
+        if model.startswith(product + ' '):
+            # Full model folders keep revision/platform qualifiers. A filename
+            # disguised as a model folder must be parsed before publication.
+            model = model[len(product) + 1:].strip()
+            if product == 'iPhone' and re.search(r'(?i)bc surface', model):
+                model = re.sub(r'(?i)-?bc surface', '', model).strip(' -')
+            return family, product, model, review
+    return family, brand, model, review
 
 
 def safe(root: Path, relative: str) -> Path:
