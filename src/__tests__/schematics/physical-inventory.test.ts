@@ -6,6 +6,7 @@ import path from "node:path";
 
 import { declaredIdentity, discoverPhysicalAssets } from "../../lib/schematics/physical-inventory";
 import { sameDevice } from "../../lib/schematics/catalog-types";
+import { mergeCatalogAssets } from "../../lib/schematics/catalog-merge";
 
 test("physical inventory counts mounted files and drops stale catalog paths", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "maccell-inventory-"));
@@ -99,4 +100,31 @@ test("same-size file replacement invalidates the inventory hash", async () => {
     await writeFile(path.join(root, 'test.pdf'), '%PDF-two');
     const [updated] = await discoverPhysicalAssets(root, [{ ...old, fileMtimeMs: 0 }]);
     assert.notEqual(updated.sha256, old.sha256);
+});
+
+test("canonical folders preserve full variants and shared models on rescans", () => {
+    assert.deepEqual(declaredIdentity('sources/pdf/Samsung/Note 20 ultra 5G/service.pdf', 'service.pdf'), {
+        brand: 'SAMSUNG', model: 'Note 20 ultra 5G',
+    });
+    assert.deepEqual(declaredIdentity('sources/pcbe/Apple/iPhone 12 + 12 Pro/board.pcbe', 'board.pcbe'), {
+        brand: 'APPLE', model: 'iPhone 12 + 12 Pro',
+    });
+    assert.deepEqual(declaredIdentity('sources/pcbe/Consolas/Steam Deck/Steamdeck/board.pcbe', 'board.pcbe'), {
+        brand: 'VALVE', model: 'Steamdeck',
+    });
+});
+
+test("reviewed paths retain searchable historical identity without auto-pairing", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'inventory-review-'));
+    const file = 'sources/pdf/Apple/Por revisar/service.pdf';
+    await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+    await writeFile(path.join(root, file), '%PDF-1.7');
+    const [initial] = await discoverPhysicalAssets(root, []);
+    const previous = { ...initial!, brand: 'APPLE', model: 'A10 board', modelKey: 'a10board', normalizationReview: true };
+    const [updated] = await discoverPhysicalAssets(root, [previous]);
+    assert.equal(updated!.model, 'A10 board');
+    assert.equal(updated!.id, initial!.id);
+    assert.equal(mergeCatalogAssets([updated!], [updated!])[0]!.model, 'A10 board');
+    assert.equal(sameDevice(updated!, { ...updated!, id: 'another' }), false);
+    assert.equal(sameDevice({ ...updated!, normalizationReview: false, model: 'General' }, { ...updated!, model: 'General' }), false);
 });

@@ -1,5 +1,7 @@
 # Biblioteca de esquemáticos, PCBE y Cerebro RAG
 
+> Regla vigente desde 2026-10-06: [AGENT de la biblioteca compartida](schematic-library-AGENT.md). Prevalece sobre estructuras y comandos históricos de esta guía. Usa `pdf/<Marca>/<Modelo>` y `pcbe/<Marca>/<Modelo>`, con reconciliación de catálogo, PostgreSQL y RAG V2 por manifiesto.
+
 Este documento describe el flujo real de los archivos técnicos en MACCELL. La
 biblioteca no tiene una única fuente lógica: el archivo físico, el catálogo, el
 índice técnico y el RAG cumplen funciones diferentes y deben reconciliarse por
@@ -33,7 +35,7 @@ Cerebro AI
 
 El worker publica `SCHEMATICS_ROOT/catalog.json` después de completar el inventario físico, con `inventoryComplete: true`. El CRM usa ese snapshot para determinar qué archivos existen y la base para enriquecerlos. Nunca se elige una fuente por tener más registros. Los registros históricos de DB no visibles en el snapshot se conservan para trazabilidad.
 
-`/mnt/data2/Pcbe/Catalog.json` es un manifiesto de adquisición con otra raíz relativa. No se consume directamente como catálogo del CRM. La recuperación y las inconsistencias verificadas están en [el reporte del 8 de septiembre](schematics-recovery-2026-09-08.md).
+`/mnt/data2/Pcbe/Catalog.json` era un manifiesto histórico que el lector aceptaba como override opcional. Se archivó en `.library-history/2026-10-06-normalization/auxiliary/Pcbe/Catalog.json` durante la normalización: el snapshot publicado vigente es `SCHEMATICS_ROOT/catalog.json`. No restaurar ese override sin reconciliar sus rutas. La recuperación anterior está en [el reporte del 8 de septiembre](schematics-recovery-2026-09-08.md).
 
 ## Responsabilidad de cada capa
 

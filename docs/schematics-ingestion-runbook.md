@@ -1,5 +1,7 @@
 # Runbook: subir y sincronizar PDF/PCBE desde SCRAPING
 
+> Regla vigente desde 2026-10-06: [AGENT de la biblioteca compartida](schematic-library-AGENT.md). Prevalece sobre estructuras y comandos históricos de esta guía. Usa `pdf/<Marca>/<Modelo>` y `pcbe/<Marca>/<Modelo>`, con reconciliación de catálogo, PostgreSQL y RAG V2 por manifiesto.
+
 Este runbook es la guía humana de la skill [`schematic-library-ingestion`](../.agents/skills/schematic-library-ingestion/SKILL.md). Aplica a las tandas nuevas de PDF, PCBE y PCB descargadas desde SCRAPING.
 
 ## Fuentes y destinos confirmados
@@ -38,7 +40,7 @@ La forma canónica para Samsung es:
 /mnt/data2/pcbe/SAMSUNG/<modelo-comercial>/<archivo>.pcbe
 ```
 
-Durante la transición, el lector acepta las rutas históricas y conserva el origen en `sourceRelativePath`; no se deben crear nuevas tandas con el formato histórico. En el incidente del 05/09/2026 una normalización inicial calculó destinos `Samsung ...` relativos a `/mnt/data2` y dejó cientos de carpetas sueltas visibles en FileBrowser. Se detuvo el worker, se movieron únicamente esas carpetas con reporte SHA-256 y se verificaron propietario `1000:1000`, directorios `755` y archivos `644`. Para futuras tandas, ejecutar y conservar el reporte de `scripts/normalize-schematic-library.py`; luego usar `scripts/rewrite-schematic-catalog-after-normalization.mjs`. No corregirlo con renombrados manuales sin reporte.
+Durante la transición, el lector acepta las rutas históricas y conserva el origen en `sourceRelativePath`; no se deben crear nuevas tandas con el formato histórico. En el incidente del 05/09/2026 una normalización inicial calculó destinos `Samsung ...` relativos a `/mnt/data2` y dejó cientos de carpetas sueltas visibles en FileBrowser. Se detuvo el worker, se movieron únicamente esas carpetas con reporte SHA-256 y se verificaron propietario `1000:1000`, directorios `755` y archivos `644`. Para futuras tandas, usar `scripts/organize-schematic-library.py` y `scripts/reconcile-schematic-paths.mjs` con manifiesto y backups; los dos scripts anteriores quedan retirados. No corregirlo con renombrados manuales sin reporte.
 
 ## Diagnóstico de `202 Accepted` al abrir un PDF
 

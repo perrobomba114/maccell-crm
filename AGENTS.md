@@ -70,7 +70,7 @@ No ejecutes `prisma db push`, migraciones, seeds o scripts de reparación de dat
 | Si el pedido trata de… | Consultá |
 | --- | --- |
 | PDF/PCBE, catálogo, vínculos o Workbench | `docs/schematics-architecture.md`; para uso del técnico, `docs/schematics-technician.md` |
-| Ingesta o normalización de biblioteca | `.agents/skills/schematic-library-ingestion/SKILL.md`, `docs/schematics-ingestion-runbook.md` |
+| Ingesta o normalización de biblioteca | `docs/schematic-library-AGENT.md` (regla vigente), `.agents/skills/schematic-library-ingestion/SKILL.md`, `docs/schematics-ingestion-runbook.md` |
 | RAG V2, sincronización, chat o recuperación | `docs/cerebro-rag-runbook.md` |
 | Inferencia local o visión | `docs/cerebro-local-inference.md` |
 | Conducta del diagnóstico técnico | `.agents/skills/cerebro-diagnostic-engine/SKILL.md` |

@@ -29,6 +29,7 @@ const BRAND_PREFIXES: Array<{ pattern: RegExp; value: string }> = [
     { pattern: /^(?:huawei|honor)\b/i, value: "HUAWEI" },
     { pattern: /^motorola\b/i, value: "MOTOROLA" },
     { pattern: /^lg\b/i, value: "LG" },
+    { pattern: /^steam\s*deck$/i, value: "VALVE" },
     { pattern: /^oppo\b/i, value: "OPPO" },
     { pattern: /^vivo\b/i, value: "VIVO" },
     { pattern: /^realme\b/i, value: "REALME" },
@@ -81,6 +82,19 @@ export function declaredIdentity(relativePath: string, name: string): { brand?: 
     const parts = relativePath.split("/").filter(Boolean);
     const sourceIndex = parts[0]?.toLowerCase() === "sources" ? 1 : 0;
     const folders = parts.slice(sourceIndex, -1);
+    // Published canonical folders already carry the reviewed, complete model.
+    // Legacy heuristics can truncate "Note 20 ultra 5G" or shared iPhone models;
+    // only use them for older/deeper supplier layouts.
+    if (folders[0] === "pdf" || folders[0] === "pcbe") {
+        const platform = folders[1] === "Consolas" || folders[1] === "Laptop-PC";
+        if (folders.length === (platform ? 4 : 3)) {
+            const brandFolder = folders[platform ? 2 : 1]!;
+            const brand = BRAND_PREFIXES.find(({ pattern }) => pattern.test(brandFolder))?.value;
+            if (brand || brandFolder === "Por revisar") {
+                return { brand, model: cleanIdentityPart(folders.at(-1)!) };
+            }
+        }
+    }
     const technicalFolder = /^(?:pdf|pcbe|pcb|schematic|schematics|schematic and boardview|repair cases?|diode value|block diagram|boardview|pcb layer|images?|documents?|manuals?|troubleshooting|sch)$/i;
     const modelFolders = folders.filter((folder) => !technicalFolder.test(folder));
     const brandIndex = modelFolders.findIndex(folder => BRAND_PREFIXES.some(({ pattern }) => pattern.test(folder)));
@@ -127,7 +141,10 @@ export async function discoverPhysicalAssets(root: string, previous: readonly Sc
         const facts = await stat(absolute);
         const name = path.basename(relativePath);
         const kind = path.extname(name).toLowerCase() === ".pdf" ? "pdf" : "pcbe";
-        const identity = declaredIdentity(relativePath, name);
+        const declared = declaredIdentity(relativePath, name);
+        const pendingReview = previousAsset?.normalizationReview
+            && /\/(?:Por revisar|General)\//.test(relativePath);
+        const identity = pendingReview ? { brand: previousAsset.brand, model: previousAsset.model } : declared;
         if (previousAsset && previousAsset.size === facts.size && previousAsset.fileMtimeMs === facts.mtimeMs) {
             // Physical folder identity is authoritative. Keep technical metadata from the
             // catalog, but never keep stale brand/model values after the folder layout changes.
@@ -160,6 +177,7 @@ export async function discoverPhysicalAssets(root: string, previous: readonly Sc
         const after = await stat(absolute);
         if (after.size !== facts.size || after.mtimeMs !== facts.mtimeMs) throw new Error(`INVENTORY_CHANGED: ${relativePath}`);
         const sha256 = createHash("sha256").update(bytes).digest("hex");
+        const currentIdentity = pendingReview && previousAsset.sha256 !== sha256 ? declared : identity;
         const problem = inventoryFormatProblem(bytes, kind);
         discovered.push({
             ...previousAsset,
@@ -168,9 +186,9 @@ export async function discoverPhysicalAssets(root: string, previous: readonly Sc
             id: previousAsset?.id ?? createHash("sha256").update(relativePath).digest("hex"),
             name,
             kind,
-            brand: identity.brand,
-            model: identity.model,
-            modelKey: modelKey(identity.model),
+            brand: currentIdentity.brand,
+            model: currentIdentity.model,
+            modelKey: modelKey(currentIdentity.model),
             relativePath,
             size: bytes.length,
             fileMtimeMs: facts.mtimeMs,

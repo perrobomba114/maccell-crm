@@ -14,6 +14,9 @@ export type SchematicAsset = {
   documentLinks?: Array<{ assetId: string; sha256: string; sourceSha256: string; confirmedBy: string; confirmedAt: string }>;
   identityVerificationHistory?: Array<{ verifiedBy: string; verifiedAt: string; brand: string; model: string; boardCode: string; revision: string; aliases: string[] }>;
   relativePath: string;
+  sourceRelativePath?: string;
+  normalizationBatch?: string;
+  normalizationReview?: boolean;
   size: number;
   fileMtimeMs?: number;
   inventoryVersion?: number;
@@ -38,6 +41,8 @@ function modelIdentities(asset: SchematicAsset): Set<string> {
 }
 
 export function sameDevice(a: SchematicAsset, b: SchematicAsset): boolean {
+  if ([a, b].some(asset => /^(?:general|por revisar)$/i.test(asset.model)
+    || (asset.normalizationReview && !asset.identityVerified))) return false;
   const brandsMatch = !a.brand || !b.brand || identityKey(a.brand) === identityKey(b.brand);
   if (!brandsMatch) return false;
   const modelsMatch = [...modelIdentities(a)].some((value) => modelIdentities(b).has(value));

@@ -3,6 +3,9 @@ import { modelKey } from "./catalog-types";
 import { declaredIdentity } from "./physical-inventory";
 
 function applyPhysicalIdentity(asset: SchematicAsset): SchematicAsset {
+  // Review/general folders describe organization, not a new device identity.
+  // Keep the recorded searchable identity until an operator verifies it.
+  if (asset.normalizationReview && /\/(?:Por revisar|General)\//.test(asset.relativePath)) return asset;
   const identity = declaredIdentity(asset.relativePath, asset.name);
   return {
     ...asset,

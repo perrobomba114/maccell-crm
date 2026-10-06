@@ -22,28 +22,17 @@ Usar esta skill cuando haya nuevos archivos de esquemáticos, boardviews o PCBE 
 
 ## Estructura canónica
 
-La biblioteca física se organiza así:
+La regla vigente está en [`docs/schematic-library-AGENT.md`](../../../docs/schematic-library-AGENT.md), instalada también como `/mnt/data2/AGENT.md` y referenciada por `/mnt/data2/AGENTS.md`.
 
 ```text
-/mnt/data2/
-  Iphone/
-    Iphone 17 pro max/
-      Pdf/
-      Pcbe/
-  Samsung/
-    Samsung s23 ultra/
-      Pdf/
-      Pcbe/
-  ...
+/mnt/data2/pdf/<Marca>/<Modelo>/<archivo>.pdf
+/mnt/data2/pcbe/<Marca>/<Modelo>/<archivo>.pcbe
+/mnt/data2/media/<Marca>/<Modelo>/<imagen-o-video>
 ```
 
-#### Regla crítica para Samsung
+Consolas y Laptop-PC conservan su nivel de plataforma y fabricante. No crear árboles históricos `Samsung/<modelo>/Pdf`, `Iphone` ni carpetas `VIP/FREE`. Respetar los nombres canónicos existentes, variantes y modelos compartidos. Conservar códigos técnicos del origen en el archivo; no inventar un modelo por un código.
 
-Toda carpeta de modelo Samsung debe quedar debajo de `/mnt/data2/Samsung/<modelo>`. Nunca se debe construir el destino como `/mnt/data2/<modelo>`: eso deja carpetas `Samsung ...` sueltas en la raíz y FileBrowser las muestra como modelos separados. En el catálogo, la ruta equivalente siempre empieza por `sources/Samsung/<modelo>/`.
-
-Para una reorganización masiva ya auditada se usan los scripts versionados `scripts/normalize-schematic-library.py` y `scripts/rewrite-schematic-catalog-after-normalization.mjs`. El primero calcula SHA-256, evita sobrescrituras, conserva variantes y genera un reporte; el segundo actualiza catálogo/DB desde ese reporte. No repetir un `mv` manual ni regenerar el catálogo desde cero.
-
-La normalización solicitada por MACCELL es: primera letra del nombre en mayúscula y resto en minúscula, conservando números, guiones y la información técnica necesaria. No convertir automáticamente nombres técnicos a un modelo inventado. Los nombres de archivos deben mantener componentes, board-code y revisión cuando existan; sólo se normaliza la presentación, no se elimina información.
+Para reorganización usar `scripts/organize-schematic-library.py` y `scripts/reconcile-schematic-paths.mjs`, con manifiesto SHA-256 y respaldo previo. Los scripts `normalize-schematic-library.py` y `rewrite-schematic-catalog-after-normalization.mjs` son históricos: no usar; no reconcilian las referencias RAG V2.
 
 ## Flujo obligatorio
 
@@ -148,7 +137,7 @@ Para cada archivo nuevo:
 
 1. Resolver marca y modelo sólo cuando el nombre, el contenido o el catálogo fuente lo sustentan.
 2. Crear o reutilizar una única carpeta canónica de marca/modelo.
-3. Colocar PDF en `Pdf` y PCBE/PCB en `Pcbe`.
+3. Colocar PDF en `pdf/<Marca>/<Modelo>` y PCBE/PCB en `pcbe/<Marca>/<Modelo>`.
 4. Mantener board-code, AP/BB, revisión y región en el nombre si aportan identidad.
 5. No crear carpetas repetidas por mayúsculas, espacios, `VIP`, `FREE` o fuentes de descarga; esas etiquetas son metadatos o alias, no otro modelo.
 6. Si la identidad es ambigua, dejar el archivo en staging o en una carpeta `Review` de la tanda y reportarlo; no adivinar.
@@ -191,15 +180,11 @@ Verificar por cada asset:
 
 Archivos modificados físicamente deben recatalogarse. El worker invalida la identidad verificada cuando cambia el SHA; nunca se conserva una asociación antigua por comodidad.
 
-### 7. Sincronizar embeddings del RAG
+### 7. Sincronizar RAG V2
 
-Después de que las páginas estén indexadas y sus SHA sean actuales, ejecutar el proceso semántico con las variables `DATABASE_URL`, `RAG_DATABASE_URL`, `RAG_INTERNAL_API_SECRET` y `SCHEMATICS_EMBEDDING_VERSION` reales:
+Consultar `docs/cerebro-rag-runbook.md`. El proceso vigente es `ingestion-sequential` de `maccell-rag-worker`, con `rag_documents`, `rag_pages` y `rag_chunks` en la base aislada. No usar `scripts/index-schematics-vectors.mjs`: corresponde al índice legado.
 
-```sh
-node scripts/index-schematics-vectors.mjs
-```
-
-El proceso es idempotente por modelo, asset, SHA, página y fragmento. No borrar la tabla completa para incorporar una tanda. Si falla el worker de embeddings, dejar los documentos en búsqueda textual y reintentar; no declarar el RAG sincronizado sólo porque el catálogo físico existe.
+Para un cambio de nombre sin cambios de contenido, reconciliar `relative_path`, `source_id` y alias manteniendo IDs, SHA, páginas y vectores; no reextraer ni borrar documentos. Para una tanda nueva, usar la ingesta incremental existente sin iniciar shards adicionales ni reiniciar cursores.
 
 ### 8. Verificación final
 
