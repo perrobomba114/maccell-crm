@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {mkdtemp,mkdir,readFile,writeFile,rm,readdir,symlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {workerCyclePauseMs} from '../../../scripts/technical-worker-queue';
 import {processIntake,validateIntakeTarget,validateIntakeContent} from '../../../scripts/schematic-intake';
 import {discoverPhysicalAssets} from '../../lib/schematics/physical-inventory';
 
@@ -52,4 +53,10 @@ test('intake refuses source symlinks and false board downloads',async()=>{
   await writeFile(path.join(batch,'PUBLICAR.json'),JSON.stringify({version:1,reviewedBy:'test',entries:[{source:'linked.pdf',target:'pdf/iPhone/14 Pro Max/a.pdf',evidence:'test',size:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')}]}));
   assert.equal((await processIntake(root,[],async()=>{})).published,0);
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('continuous worker pause stays bounded under invalid configuration',()=>{
+ assert.equal(workerCyclePauseMs('300000'),300000);
+ for(const value of [undefined,'invalid','0','-1'])assert.equal(workerCyclePauseMs(value),15000);
+ assert.equal(workerCyclePauseMs('9000000'),900000);
 });

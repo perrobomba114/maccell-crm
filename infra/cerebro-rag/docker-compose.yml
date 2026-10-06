@@ -58,6 +58,7 @@ services:
       SCHEMATICS_ROOT: /app/upload/schematics
       SCHEMATICS_INDEX_CONCURRENCY: "1"
       SCHEMATICS_INVENTORY_REFRESH_MS: "300000"
+      SCHEMATICS_CYCLE_INTERVAL_MS: "300000"
       OMP_THREAD_LIMIT: "1"
     volumes:
       - /var/lib/maccell/upload:/app/upload

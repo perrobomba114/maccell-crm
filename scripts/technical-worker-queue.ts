@@ -71,3 +71,9 @@ export function selectIndexAssets<T extends { id: string }>(assets: readonly T[]
   return assets.filter(asset => !selected.size || selected.has(asset.id)).sort((left, right) =>
     (priorityOrder.get(left.id) ?? priorities.length) - (priorityOrder.get(right.id) ?? priorities.length));
 }
+
+/** Production intake scans in bounded cycles, not a hot loop over every SQL row. */
+export function workerCyclePauseMs(value: string | undefined): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 15_000 ? Math.min(parsed, 15 * 60_000) : 15_000;
+}

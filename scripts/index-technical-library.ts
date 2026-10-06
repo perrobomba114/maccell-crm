@@ -7,7 +7,7 @@ import { indexFileIsCurrent, indexIsCurrent, type TechnicalIndex } from '../src/
 import type { SchematicAsset, SchematicCatalog } from '../src/lib/schematics/catalog-types';
 import { mergeCatalogAssets } from '../src/lib/schematics/catalog-merge';
 import { persistTechnicalIndex } from './technical-index-database';
-import { physicalInventoryRefreshMs, runBounded, workerConcurrency, withIndexConnection, selectIndexAssets } from './technical-worker-queue';
+import { workerCyclePauseMs, physicalInventoryRefreshMs, runBounded, workerConcurrency, withIndexConnection, selectIndexAssets } from './technical-worker-queue';
 import { discoverPhysicalAssets } from '../src/lib/schematics/physical-inventory';
 
 import { processIntake } from './schematic-intake';
@@ -181,7 +181,7 @@ async function main() {
       }
       catch (error) { if (!process.argv.includes('--watch')) throw error; process.stderr.write(`[TECHNICAL INDEX] ${error instanceof Error ? error.message : 'Fallo de ciclo'}\n`); }
       if (!process.argv.includes('--watch') || stop.signal.aborted) break;
-      try { await pause(15_000,undefined,{signal:stop.signal}); } catch (error) { if (!stop.signal.aborted) throw error; }
+      try { await pause(workerCyclePauseMs(process.env.SCHEMATICS_CYCLE_INTERVAL_MS),undefined,{signal:stop.signal}); } catch (error) { if (!stop.signal.aborted) throw error; }
     } while (!stop.signal.aborted);
   } finally { await pool.end(); }
 }
