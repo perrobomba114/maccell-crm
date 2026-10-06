@@ -98,7 +98,7 @@ def model_from_name(value: str, brand: str) -> str:
     """Extract only explicit labels; no board-code to commercial-name lookup."""
     value = label(value)
     patterns = {
-        'Motorola': r'\b(?:moto|motorola)\s+(?:edge|razr|one|[cegmpxz]\s*\d*)(?:\s+(?:\d+|5g|4g|plus|pro|power|play|stylus|fusion|macro|action|vision|ace|zoom|hyper|style|force|202\d|201\d))*',
+        'Motorola': r'\b(?:moto|motorola)\s+(?:edge|razr|one|[cegmpxz](?:\s*\d+)?)(?:\s+(?:\d+|5g|4g|plus|pro|power|play|stylus|fusion|macro|action|vision|ace|zoom|hyper|style|force|202\d|201\d))*',
         'Huawei': r'\b(?:honor\s+)?(?:enjoy|mate|nova|honor|[pygv])\s*\d+[a-z]?(?:\s+(?:plus|pro\+?|lite|prime|\d{4}))*',
         'Xiaomi': r'\b(?:redmi\s+note|redmi\s*[ak]?|poco\s*[fmxc]|mi\s+(?:mix|note)?|xiaomi)\s*\d+[a-z]?(?:\s+(?:pro\+?|plus|lite|ultra|5g|4g|prime|max|se))*',
         'Apple': r'\biPhone[ -]*(?:\d{1,2}[sce]?(?!\d)|XS|XR|X|SE\s*\d?)(?:\s*(?:pro\s*max|pro|plus|mini|max))?(?:[ &_]+(?:\d{1,2}\s*)?(?:pro\s*max|pro|plus))*',
@@ -117,6 +117,9 @@ def model_from_name(value: str, brand: str) -> str:
     if brand == 'Apple' and re.search(r'(?i)\bchapter\s*\d|\biphone\s+\d+\s*-\s*\d+', value):
         return ''
     match = re.search(patterns.get(brand, r'(?!)'), value, re.I)
+    if match and brand == 'Motorola':
+        codes = list(dict.fromkeys(c.upper() for c in re.findall(r'(?i)\bXT\d{4,5}(?:-\d+)?', value)))
+        return match[0] + (' ' + ' + '.join(codes) if codes else '')
     return match[0] if match else ''
 
 

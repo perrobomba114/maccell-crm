@@ -20,6 +20,7 @@ resolver a ese disco, nunca al RAID `/`. No usar `/mnt/data2` para cargas nuevas
   pcbe/Laptop-PC/<Marca>/<Modelo o placa>/...
   pdf/<Marca>/<Modelo>/<imagen o video>
   CURSO/<material de cursos>/...
+  CATALOGO/<inventarios y referencia de la última tanda>
   .incoming-scraping/<lote>/...
   .library-history/<lote>/...
   AGENT.md
@@ -45,7 +46,8 @@ Para Samsung, usar nombre comercial y código completo: `Samsung/A02 SM-A022F`,
 códigos regionales quedan separados. No deducir M/F/G cuando el documento sólo
 identifica la familia SM-A022: esa evidencia queda en `A02 SM-A022`.
 El mapa auditable es `scripts/data/schematic-samsung-reference.json`, obtenido
-con los catálogos de SCRAPING y la procedencia original. Si el catálogo contradice
+con los catálogos de SCRAPING y la procedencia original; en el servidor se conserva
+como `CATALOGO/REFERENCIA-SAMSUNG.json`. Si el catálogo contradice
 el contenido o el fabricante, conservar el conflicto para revisión. En particular,
 SM-A025 es A02s, aunque una carpeta de DZKJ diga A02. Un código sin nombre comercial
 comprobado se conserva como código; no inventar el nombre de un teléfono.
@@ -66,6 +68,13 @@ acceso y búsqueda; no declara identidad ni compatibilidad eléctrica.
 `CURSO` es una carpeta de cargas del usuario, visible en Filebrowser. No mover,
 renombrar ni normalizar sus archivos como parte de una tanda de esquemáticos,
 y no interrumpir subidas activas al reiniciar Filebrowser.
+
+`CATALOGO/ARCHIVOS.csv` describe lo realmente publicado; `REFERENCIA-SCRAPING.csv`
+describe el catálogo del proveedor y no acredita disponibilidad. Actualizar los
+inventarios al cerrar cada tanda. Los PDF sin identidad comprobable quedan en
+`pdf/Por revisar/Identidad pendiente`, con `normalizationReview=true`, fuera de la
+ingesta RAG y sin emparejamientos automáticos. Los PCBE sin geometría permanecen
+en staging: no publicarlos como placas utilizables.
 
 ## Nombres, duplicados y nuevas entradas
 

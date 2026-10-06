@@ -12,10 +12,9 @@ Este runbook es la guía humana de la skill [`schematic-library-ingestion`](../.
 - Aplicación CRM: `sistema.maccell.com.ar`.
 - Montaje conocido en la aplicación: `/mnt/ESQUEMATICO` se monta como `/app/upload/schematics/sources`.
 - Manifiesto de adquisición histórico: `.library-history/2026-10-06-normalization/auxiliary/Pcbe/Catalog.json`. Estructura publicada:
-  `/mnt/ESQUEMATICO/pdf/<MARCA>/<MODELO COMERCIAL>/` y
-  `/mnt/ESQUEMATICO/pcbe/<MARCA>/<MODELO COMERCIAL>/`.
-- La especificación completa está en
-  [`docs/superpowers/specs/2026-09-08-biblioteca-esquematicos-estructura-canonica-design.md`](superpowers/specs/2026-09-08-biblioteca-esquematicos-estructura-canonica-design.md).
+  `/mnt/ESQUEMATICO/pdf/<Marca>/<Modelo y código completo>/` y
+  `/mnt/ESQUEMATICO/pcbe/<Marca>/<Modelo y código completo>/`.
+- La regla vigente está en [AGENT de la biblioteca](schematic-library-AGENT.md); la especificación de septiembre es un antecedente histórico.
 - El catálogo y los índices técnicos se resuelven mediante `SCHEMATICS_ROOT` y PostgreSQL. Comprobar la variable y los mounts actuales antes de modificar datos.
 
 ## Orden correcto
@@ -23,7 +22,7 @@ Este runbook es la guía humana de la skill [`schematic-library-ingestion`](../.
 1. Subir a `.incoming-scraping/<lote>`.
 2. Calcular SHA-256 y generar manifiesto.
 3. Comparar contra toda la biblioteca.
-4. Normalizar una única carpeta por marca/modelo bajo `pdf/` y `pcbe/`.
+4. Normalizar por marca, modelo y código completo bajo `pdf/` y `pcbe/`, manteniendo separadas las variantes regionales.
 5. Mover sólo archivos nuevos y conservar colisiones con variante.
 6. Actualizar catálogo.
 7. Ejecutar/revisar worker técnico.
@@ -36,9 +35,11 @@ Este runbook es la guía humana de la skill [`schematic-library-ingestion`](../.
 La forma canónica para Samsung es:
 
 ```text
-/mnt/ESQUEMATICO/pdf/SAMSUNG/<modelo-comercial>/<archivo>.pdf
-/mnt/ESQUEMATICO/pcbe/SAMSUNG/<modelo-comercial>/<archivo>.pcbe
+/mnt/ESQUEMATICO/pdf/Samsung/A02 SM-A022F/<archivo>.pdf
+/mnt/ESQUEMATICO/pcbe/Samsung/A02 SM-A022F/<archivo>.pcbe
 ```
+
+Los códigos F/M/G no se fusionan ni se completan por suposición. Si el origen sólo declara `SM-A022`, conserva ese código sin sufijo. A025 pertenece a A02s. El diccionario auditado está en `scripts/data/schematic-samsung-reference.json`; usarlo con `scripts/schematic-reference.py`. Contrastar las descargas con su contenido: el catálogo SCRAPING describe referencias y puede contener descargas repetidas o mal rotuladas. En Filebrowser, `CATALOGO` contiene el inventario de la tanda y la referencia completa, con su disponibilidad aclarada. `pdf/Por revisar/Identidad pendiente` es visible para revisión y se excluye del RAG.
 
 Durante la transición, el lector acepta las rutas históricas y conserva el origen en `sourceRelativePath`; no se deben crear nuevas tandas con el formato histórico. En el incidente del 05/09/2026 una normalización inicial calculó destinos `Samsung ...` relativos a `/mnt/ESQUEMATICO` y dejó cientos de carpetas sueltas visibles en FileBrowser. Se detuvo el worker, se movieron únicamente esas carpetas con reporte SHA-256 y se verificaron propietario `1000:1000`, directorios `755` y archivos `644`. Para futuras tandas, usar `scripts/organize-schematic-library.py` y `scripts/reconcile-schematic-paths.mjs` con manifiesto y backups; los dos scripts anteriores quedan retirados. No corregirlo con renombrados manuales sin reporte.
 

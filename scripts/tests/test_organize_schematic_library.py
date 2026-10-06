@@ -9,6 +9,10 @@ spec.loader.exec_module(organizer)
 
 
 class OrganizationTests(unittest.TestCase):
+    def test_motorola_plus_and_full_xt_variant_survive_filename_recovery(self):
+        self.assertEqual(organizer.model_from_name('Esquematico XT1725 (Moto C Plus)', 'Motorola'), 'Moto C Plus XT1725')
+        self.assertEqual(organizer.model_from_name('Moto G7 Power XT1955-2 schematic', 'Motorola'), 'Moto G7 Power XT1955-2')
+
     def test_samsung_stays_under_brand_and_preserves_variant(self):
         family, brand, model, review = organizer.classify('Samsung/Samsung A03 core SM-A032F/Pdf/image.pdf')
         self.assertEqual((family, brand, model, review), ('pdf', 'Samsung', 'A03 core', False))
