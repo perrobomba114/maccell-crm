@@ -8,6 +8,12 @@ from cerebro_rag.pdf_inventory import iter_pdf_inventory, parse_pdf_identity, sh
 
 
 class PdfInventoryTest(unittest.TestCase):
+    def test_canonical_product_models_preserve_shared_and_review_identity(self) -> None:
+        for folder in ("14 Pro Max", "14 Pro + Pro Max", "7-Intel", "17 Air", "General", "Por revisar"):
+            identity = parse_pdf_identity(Path(f"pdf/iPhone/{folder}/Chapter3 iphone 95-101.pdf"))
+            self.assertEqual(identity.brand, "APPLE")
+            self.assertEqual(identity.model, "IPHONE " + folder.upper().replace("-", " "))
+
     def test_parses_samsung_manual_path(self) -> None:
         identity = parse_pdf_identity(
             Path("SAMSUNG/Serie A/SM-A405FN/SM-A405FN_Manual de Servicio.pdf")

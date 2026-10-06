@@ -199,6 +199,13 @@ def classify(relative: str) -> tuple[str, str, str, bool]:
     parts = Path(relative).parts
     if len(parts) == 4 and parts[0] in {'pdf', 'pcbe', 'media'} and parts[1] in {'iPhone', 'iPad'}:
         family = 'pcbe' if Path(relative).suffix.lower() in BOARDS else 'pdf'
+        if parts[1] == 'iPhone' and parts[2] not in {'General', 'Por revisar'} and '+' not in parts[2]:
+            explicit = re.match(r'(?i)^iphone[ -]*(\d{1,2}[sce]?(?!\d)|xs|xr|x|se\s*\d?)(?:[ _-]*(pro[ _-]*max|pro|plus|mini|max|air))?(?![a-z0-9])', Path(relative).stem)
+            if explicit:
+                named = re.sub(r'[^a-z0-9]', '', ' '.join(x for x in explicit.groups() if x).lower())
+                folder = re.sub(r'[^a-z0-9]', '', re.split(r'-|\(', parts[2])[0].lower())
+                if named != folder:
+                    raise ValueError('Conflicting iPhone identities require provenance/hash review: ' + relative)
         return family, parts[1], label(parts[2]), parts[2] == 'Por revisar'
     family, brand, model, review = classify_legacy(relative)
     if brand != 'Apple':

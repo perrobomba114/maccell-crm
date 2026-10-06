@@ -104,6 +104,13 @@ def parse_pdf_identity(relative_path: Path) -> PdfIdentity:
         meaningful_parts = [part for part in reversed(folders) if part.lower() not in generic_folders]
         model = meaningful_parts[0] if meaningful_parts else relative_path.stem
 
+    # Product-family folders are the reviewed physical identity. Do not let
+    # a component name, page range or Pro suffix override the full folder.
+    parts = relative_path.parts
+    if len(parts) == 4 and parts[0] == "pdf" and parts[1] in {"iPhone", "iPad"}:
+        brand = "APPLE"
+        model = f"{parts[1]} {parts[2]}"
+
     if any(term in searchable for term in ("REPAIR CASE", "FAULT", "FAILURE", "COMMON PROBLEMS", "FLYING WIRE", "FLY LINE")):
         document_type = "REPAIR_CASE"
     elif any(term in searchable for term in ("DIODE VALUE", "DIODE", "RESISTANCE DIAGRAM", "MIDDLE LEVEL DIODE")):

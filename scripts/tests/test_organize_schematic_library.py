@@ -88,6 +88,10 @@ class OrganizationTests(unittest.TestCase):
         for source in ['pcbe/Apple/iPhone 7-Intel/board.pcbe', 'pcbe/iPhone/7-Intel/board.pcbe']:
             self.assertEqual(organizer.classify(source), ('pcbe', 'iPhone', '7-Intel', False))
 
+    def test_conflicting_iphone_filename_cannot_silently_publish(self):
+        with self.assertRaises(ValueError):
+            organizer.classify('pcbe/iPhone/14 Pro Max/iPhone14pro faceid.pcbe')
+
     def test_path_traversal_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             for bad in ['../outside', '/etc/passwd']:
