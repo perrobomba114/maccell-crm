@@ -39,13 +39,15 @@ function updatedMetadata(original, item) {
   const model = product && !['General', 'Por revisar'].includes(folderModel) ? product + ' ' + folderModel : folderModel;
   // Folder normalization does not verify electrical identity. Preserve the old
   // searchable identity for unresolved/general material rather than invent one.
-  const normalizedBrand = ({ Apple: 'APPLE', iPhone: 'APPLE', iPad: 'APPLE', Honor: 'HUAWEI', 'Steam Deck': 'VALVE' })[brand] || brand.toUpperCase();
+  const normalizedBrand = brand === 'Por revisar' ? undefined : ({ Apple: 'APPLE', iPhone: 'APPLE', iPad: 'APPLE', Honor: 'HUAWEI', 'Steam Deck': 'VALVE' })[brand] || brand.toUpperCase();
   const identity = item.review && !item.resetIdentity ? { brand: normalizedBrand } : {
     brand: normalizedBrand,
     model,
     modelKey: model.normalize('NFKC').toLowerCase().replace(/[^a-z0-9]/g, ''),
   };
-  return { ...original, ...identity, relativePath, name: path.basename(relativePath),
+  return { ...original, ...identity,
+    ...(item.resetIdentity ? { identityVerified: false, boardCode: undefined, revision: undefined, aliases: [] } : {}),
+    relativePath, name: path.basename(relativePath),
     sourceRelativePath: original.sourceRelativePath || 'sources/' + item.source,
     normalizationBatch: manifest.batch, normalizationReview: item.review };
 }
