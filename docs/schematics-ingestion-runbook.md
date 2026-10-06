@@ -7,13 +7,13 @@ Este runbook es la guía humana de la skill [`schematic-library-ingestion`](../.
 ## Fuentes y destinos confirmados
 
 - Fuente: carpeta local de descargas de SCRAPING, que debe descubrirse en cada tanda.
-- Almacenamiento físico del servidor: `/mnt/data2`.
+- Almacenamiento físico del servidor: `/mnt/ESQUEMATICO`.
 - FileBrowser: publica ese mismo almacenamiento; no es otra copia.
 - Aplicación CRM: `sistema.maccell.com.ar`.
-- Montaje conocido en la aplicación: `/mnt/data2` se monta como `/app/upload/schematics/sources`.
-- Manifiesto de adquisición: `/mnt/data2/Pcbe/Catalog.json` (no es el snapshot consumido por el CRM),
-  `/mnt/data2/pdf/<MARCA>/<MODELO COMERCIAL>/` y
-  `/mnt/data2/pcbe/<MARCA>/<MODELO COMERCIAL>/`.
+- Montaje conocido en la aplicación: `/mnt/ESQUEMATICO` se monta como `/app/upload/schematics/sources`.
+- Manifiesto de adquisición histórico: `.library-history/2026-10-06-normalization/auxiliary/Pcbe/Catalog.json`. Estructura publicada:
+  `/mnt/ESQUEMATICO/pdf/<MARCA>/<MODELO COMERCIAL>/` y
+  `/mnt/ESQUEMATICO/pcbe/<MARCA>/<MODELO COMERCIAL>/`.
 - La especificación completa está en
   [`docs/superpowers/specs/2026-09-08-biblioteca-esquematicos-estructura-canonica-design.md`](superpowers/specs/2026-09-08-biblioteca-esquematicos-estructura-canonica-design.md).
 - El catálogo y los índices técnicos se resuelven mediante `SCHEMATICS_ROOT` y PostgreSQL. Comprobar la variable y los mounts actuales antes de modificar datos.
@@ -36,15 +36,15 @@ Este runbook es la guía humana de la skill [`schematic-library-ingestion`](../.
 La forma canónica para Samsung es:
 
 ```text
-/mnt/data2/pdf/SAMSUNG/<modelo-comercial>/<archivo>.pdf
-/mnt/data2/pcbe/SAMSUNG/<modelo-comercial>/<archivo>.pcbe
+/mnt/ESQUEMATICO/pdf/SAMSUNG/<modelo-comercial>/<archivo>.pdf
+/mnt/ESQUEMATICO/pcbe/SAMSUNG/<modelo-comercial>/<archivo>.pcbe
 ```
 
-Durante la transición, el lector acepta las rutas históricas y conserva el origen en `sourceRelativePath`; no se deben crear nuevas tandas con el formato histórico. En el incidente del 05/09/2026 una normalización inicial calculó destinos `Samsung ...` relativos a `/mnt/data2` y dejó cientos de carpetas sueltas visibles en FileBrowser. Se detuvo el worker, se movieron únicamente esas carpetas con reporte SHA-256 y se verificaron propietario `1000:1000`, directorios `755` y archivos `644`. Para futuras tandas, usar `scripts/organize-schematic-library.py` y `scripts/reconcile-schematic-paths.mjs` con manifiesto y backups; los dos scripts anteriores quedan retirados. No corregirlo con renombrados manuales sin reporte.
+Durante la transición, el lector acepta las rutas históricas y conserva el origen en `sourceRelativePath`; no se deben crear nuevas tandas con el formato histórico. En el incidente del 05/09/2026 una normalización inicial calculó destinos `Samsung ...` relativos a `/mnt/ESQUEMATICO` y dejó cientos de carpetas sueltas visibles en FileBrowser. Se detuvo el worker, se movieron únicamente esas carpetas con reporte SHA-256 y se verificaron propietario `1000:1000`, directorios `755` y archivos `644`. Para futuras tandas, usar `scripts/organize-schematic-library.py` y `scripts/reconcile-schematic-paths.mjs` con manifiesto y backups; los dos scripts anteriores quedan retirados. No corregirlo con renombrados manuales sin reporte.
 
 ## Diagnóstico de `202 Accepted` al abrir un PDF
 
-FileBrowser puede devolver `202 Accepted` en `/api/raw` cuando el usuario tiene permiso para listar pero no para descargar/servir el archivo inline. La corrección aplicada fue habilitar `download` y `share` para el usuario operativo mediante la CLI del mismo contenedor, reiniciar el servicio y validar el PDF desde la vista web. Si vuelve a ocurrir, comprobar en este orden: permiso efectivo del usuario, propietario/UID de la ruta, permisos `755/644`, montaje `/mnt/data2` y recién después el catálogo. No volver a subir el PDF por este síntoma.
+FileBrowser puede devolver `202 Accepted` en `/api/raw` cuando el usuario tiene permiso para listar pero no para descargar/servir el archivo inline. La corrección aplicada fue habilitar `download` y `share` para el usuario operativo mediante la CLI del mismo contenedor, reiniciar el servicio y validar el PDF desde la vista web. Si vuelve a ocurrir, comprobar en este orden: permiso efectivo del usuario, propietario/UID de la ruta, permisos `755/644`, montaje `/mnt/ESQUEMATICO` y recién después el catálogo. No volver a subir el PDF por este síntoma.
 
 ## Auditoría incremental realizada sobre SCRAPING/downloads
 
@@ -75,25 +75,25 @@ Si no se puede obtener el manifiesto remoto o comparar hashes, la operación que
 
 ## Incidente conocido: archivos invisibles por propietario `root`
 
-En la tanda de `Iphone 17 pro max`, los archivos sí estaban físicamente en `/mnt/data2`, pero habían sido creados como `root:root`. FileBrowser usa otro usuario —en la corrección realizada, UID/GID `1000:1000`— y por eso no podía listarlos aunque la ruta existiera. No se solucionó subiendo una segunda copia: se corrigió propietario y permisos sobre las carpetas afectadas.
+En la tanda de `Iphone 17 pro max`, los archivos sí estaban físicamente en `/mnt/ESQUEMATICO`, pero habían sido creados como `root:root`. FileBrowser usa otro usuario —en la corrección realizada, UID/GID `1000:1000`— y por eso no podía listarlos aunque la ruta existiera. No se solucionó subiendo una segunda copia: se corrigió propietario y permisos sobre las carpetas afectadas.
 
 Antes de repetir una carga:
 
 ```sh
 docker ps --format '{{.Names}}\t{{.Image}}' | grep -i filebrowser
 docker exec <contenedor-filebrowser> id
-find /mnt/data2/<marca>/<modelo> -printf '%u:%g %m %p\n' | head -100
+find /mnt/ESQUEMATICO/<marca>/<modelo> -printf '%u:%g %m %p\n' | head -100
 ```
 
 Si el UID/GID real confirmado es `1000:1000`, corregir sólo la tanda o modelo afectado:
 
 ```sh
-chown -R 1000:1000 /mnt/data2/<marca>/<modelo>
-find /mnt/data2/<marca>/<modelo> -type d -exec chmod 755 {} +
-find /mnt/data2/<marca>/<modelo> -type f -exec chmod 644 {} +
+chown -R 1000:1000 /mnt/ESQUEMATICO/<marca>/<modelo>
+find /mnt/ESQUEMATICO/<marca>/<modelo> -type d -exec chmod 755 {} +
+find /mnt/ESQUEMATICO/<marca>/<modelo> -type f -exec chmod 644 {} +
 ```
 
-No usar `chmod 777`, no hacer `chown -R` sobre todo `/mnt/data2` y no tocar carpetas ajenas a la tanda. El cierre exige comprobar que FileBrowser muestra `Pdf` y `Pcbe`, que el contenedor del CRM lee un PDF y un PCBE, y que el catálogo/indexador sigue viendo las mismas rutas. Si la carpeta aparece en FileBrowser pero el CRM no la puede leer, revisar primero el mount del contenedor antes de volver a transferir archivos.
+No usar `chmod 777`, no hacer `chown -R` sobre todo `/mnt/ESQUEMATICO` y no tocar carpetas ajenas a la tanda. El cierre exige comprobar que FileBrowser muestra `Pdf` y `Pcbe`, que el contenedor del CRM lee un PDF y un PCBE, y que el catálogo/indexador sigue viendo las mismas rutas. Si la carpeta aparece en FileBrowser pero el CRM no la puede leer, revisar primero el mount del contenedor antes de volver a transferir archivos.
 
 ## Criterio de duplicado
 
@@ -103,7 +103,7 @@ El hash SHA-256 del contenido es la regla principal. El nombre, tamaño, modelo 
 
 | Etapa | Fuente de verdad | Herramienta |
 | --- | --- | --- |
-| Archivos | `/mnt/data2` | FileBrowser/SSH |
+| Archivos | `/mnt/ESQUEMATICO` | FileBrowser/SSH |
 | Catálogo | `SCHEMATICS_ROOT/catalog.json` (inventario completo) y enriquecimiento en `schematics.assets` | worker técnico / `scripts/reconcile-schematic-library.ts` |
 | Texto PDF | `schematics.pages` y `.index` | importador/worker |
 | PCBE y referencias | `schematics.technical_indexes` y `.technical` | `scripts/technical-worker.cjs` |
@@ -111,7 +111,7 @@ El hash SHA-256 del contenido es la regla principal. El nombre, tamaño, modelo 
 
 ## Diagnóstico rápido
 
-- FileBrowser no muestra una carpeta: comprobar que se creó bajo `/mnt/data2`, que el mount apunta al mismo volumen y que el usuario del contenedor tiene permisos. No volver a subirla a otra ruta.
+- FileBrowser no muestra una carpeta: comprobar que se creó bajo `/mnt/ESQUEMATICO`, que el mount apunta al mismo volumen y que el usuario del contenedor tiene permisos. No volver a subirla a otra ruta.
 - El catálogo ve el archivo pero el visor no: comprobar `relativePath`, `SCHEMATICS_ROOT`, existencia física y SHA.
 - PDF visible pero sin búsqueda: comprobar `schematics.pages`, `.index` y el estado del worker.
 - PCBE visible pero sin componentes: revisar que el parser reconozca el encabezado/geometría; renombrar `.pcb` a `.pcbe` no lo hace válido.
@@ -140,4 +140,4 @@ Los manuales `Troubleshooting` y de servicio se ofrecen como manuales técnicos 
 El worker aislado lee la conexión de escritura desde `/app/upload/.technical-indexer.env`, propiedad de UID 1000 y modo 600. Ese archivo se provisiona en el volumen existente desde la configuración efectiva del CRM, nunca en Git. No usar `SOURCE_DATABASE_URL`, que es una conexión de lectura para exportar datos al RAG. El bootstrap interpreta el archivo como datos, sin ejecutarlo como shell.
 # Fuente del árbol publicado
 
-Antes de publicar, verificar que `SCHEMATICS_ROOT` resuelva al montaje canónico con su `catalog.json`. El rollback sólo cambia la fuente activa o desactiva la reconciliación de presentación; no elimina ni mueve activos en `/mnt/data2`.
+Antes de publicar, verificar que `SCHEMATICS_ROOT` resuelva al montaje canónico con su `catalog.json`. El rollback sólo cambia la fuente activa o desactiva la reconciliación de presentación; no elimina ni mueve activos en `/mnt/ESQUEMATICO`.

@@ -21,7 +21,12 @@ x-ingestion-base: &ingestion-base
     OMP_NUM_THREADS: "1"
     MKL_NUM_THREADS: "1"
   volumes:
-    - /mnt/data2:/library:ro
+    - type: bind
+      source: /mnt/ESQUEMATICO
+      target: /library
+      read_only: true
+      bind:
+        create_host_path: false
     - /var/lib/maccell/rag-pages:/page-cache
     - /var/lib/maccell/rag-models:/model-cache
   networks:
@@ -53,7 +58,12 @@ services:
       OMP_THREAD_LIMIT: "1"
     volumes:
       - /var/lib/maccell/upload:/app/upload
-      - /mnt/data2:/app/upload/schematics/sources:ro
+      - type: bind
+        source: /mnt/ESQUEMATICO
+        target: /app/upload/schematics/sources
+        read_only: true
+        bind:
+          create_host_path: false
     networks:
       - dokploy-network
     deploy:
@@ -85,7 +95,12 @@ services:
       OMP_NUM_THREADS: "12"
       MKL_NUM_THREADS: "12"
     volumes:
-      - /mnt/data2:/library:ro
+      - type: bind
+        source: /mnt/ESQUEMATICO
+        target: /library
+        read_only: true
+        bind:
+          create_host_path: false
       - /var/lib/maccell/rag-pages:/page-cache
       - /var/lib/maccell/rag-models:/model-cache
     networks:
@@ -157,7 +172,12 @@ services:
       OMP_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
     volumes:
-      - /mnt/data2:/library:ro
+      - type: bind
+        source: /mnt/ESQUEMATICO
+        target: /library
+        read_only: true
+        bind:
+          create_host_path: false
       - /var/lib/maccell/rag-pages:/page-cache
       - /var/lib/maccell/rag-models:/model-cache
     networks:

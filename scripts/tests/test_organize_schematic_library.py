@@ -67,6 +67,18 @@ class OrganizationTests(unittest.TestCase):
             organizer.rollback(root, manifest)
             self.assertEqual(source.read_bytes(), b'%PDF-data')
 
+    def test_images_publish_beside_model_pdfs(self):
+        for source in ['media/Apple/iPhone 13 Pro Max/connector.jpg',
+                       'pdf/Apple/iPhone 13 Pro Max/connector.jpg']:
+            row = {'path': source, 'size': 12, 'mtime_ns': 1}
+            result = organizer.plan([row], {}, 'media-layout')['entries'][0]
+            self.assertEqual(result['target'], 'pdf/Apple/iPhone 13 Pro Max/Connector.jpg')
+            self.assertFalse(result['review'])
+
+    def test_course_uploads_are_not_reorganized(self):
+        result = organizer.plan([{'path': 'CURSO/Electronica/clase.mp4', 'size': 12}], {}, 'batch')
+        self.assertEqual(result['entries'], [])
+
     def test_path_traversal_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             for bad in ['../outside', '/etc/passwd']:

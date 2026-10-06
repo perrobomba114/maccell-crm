@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Cerebro V2 es un asistente exclusivamente técnico para usuarios `ADMIN` y `TECHNICIAN`. Usa una base PostgreSQL/pgvector aislada, el histórico de reparaciones en modo solo lectura y la biblioteca PDF montada como solo lectura desde `/mnt/data2`.
+Cerebro V2 es un asistente exclusivamente técnico para usuarios `ADMIN` y `TECHNICIAN`. Usa una base PostgreSQL/pgvector aislada, el histórico de reparaciones en modo solo lectura y la biblioteca PDF montada como solo lectura desde `/mnt/ESQUEMATICO`.
 
 ## Recursos Dokploy
 
@@ -34,8 +34,8 @@ Compose CPU: `infra/cerebro-rag/docker-compose.yml`. El perfil `maintenance-inde
 
 - CRM: `DATABASE_URL` para Prisma; `RAG_DATABASE_URL` para el pool `pg` de `rag-db.ts`; `RAG_WORKER_URL` (default interno `http://maccell-rag-worker:8080`) y `RAG_INTERNAL_API_SECRET` para el worker.
 - Python: `SOURCE_DATABASE_URL` para lectura de reparaciones, `RAG_DATABASE_URL` para persistencia RAG y `INTERNAL_API_SECRET` para endpoints internos. No intercambiar secretos o URLs por el parecido de los nombres.
-- Worker: `/mnt/data2` → `/library:ro`; `/var/lib/maccell/rag-pages` → `/page-cache`; `/var/lib/maccell/rag-models` → `/model-cache`.
-- CRM: `/var/lib/maccell/upload` → `/app/upload`; `/mnt/data2` → `/app/upload/schematics/sources`.
+- Worker: `/mnt/ESQUEMATICO` → `/library:ro`; `/var/lib/maccell/rag-pages` → `/page-cache`; `/var/lib/maccell/rag-models` → `/model-cache`.
+- CRM: `/var/lib/maccell/upload` → `/app/upload`; `/mnt/ESQUEMATICO` → `/app/upload/schematics/sources`.
 - RAG: volumen `postgres-copy-open-source-pixel-9km3at-data` → `/var/lib/postgresql/data`. Principal: bind `/var/lib/maccell/postgres_data` → `/var/lib/postgresql/data`.
 
 ### Flujo de consulta

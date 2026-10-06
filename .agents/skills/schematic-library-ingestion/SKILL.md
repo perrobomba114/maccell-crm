@@ -1,16 +1,16 @@
 ---
 name: schematic-library-ingestion
-description: Ingesta segura de PDF, PCBE y PCB descargados desde SCRAPING hacia la biblioteca MACCELL en /mnt/data2, con deduplicación por SHA-256, normalización, catálogo, índice técnico y sincronización RAG.
+description: Ingesta segura de PDF, PCBE y PCB descargados desde SCRAPING hacia la biblioteca MACCELL en /mnt/ESQUEMATICO, con deduplicación por SHA-256, normalización, catálogo, índice técnico y sincronización RAG.
 ---
 
 # Ingesta de PDF y PCBE de MACCELL
 
-Usar esta skill cuando haya nuevos archivos de esquemáticos, boardviews o PCBE en SCRAPING/SCRAPING DOWNLOADS, cuando se deba ordenar `/mnt/data2`, o cuando haya que comprobar que el índice técnico y el RAG los procesaron.
+Usar esta skill cuando haya nuevos archivos de esquemáticos, boardviews o PCBE en SCRAPING/SCRAPING DOWNLOADS, cuando se deba ordenar `/mnt/ESQUEMATICO`, o cuando haya que comprobar que el índice técnico y el RAG los procesaron.
 
 ## Invariantes
 
-- La biblioteca física existente es `/mnt/data2` en el servidor MACCELL. No inventar otra carpeta ni cambiar el volumen.
-- El lugar lógico de publicación debe verificarse con Dokploy y `SCHEMATICS_ROOT` antes de importar. En la configuración actual, el volumen de `/mnt/data2` se monta en el contenedor como `/app/upload/schematics/sources`; el catálogo y sus índices pueden vivir fuera del volumen físico. No asumir rutas: comprobarlas.
+- La biblioteca física existente es `/mnt/ESQUEMATICO` en el servidor MACCELL. No inventar otra carpeta ni cambiar el volumen.
+- El lugar lógico de publicación debe verificarse con Dokploy y `SCHEMATICS_ROOT` antes de importar. En la configuración actual, el volumen de `/mnt/ESQUEMATICO` se monta en el contenedor como `/app/upload/schematics/sources`; el catálogo y sus índices pueden vivir fuera del volumen físico. No asumir rutas: comprobarlas.
 - FileBrowser expone el mismo almacenamiento. Si una carpeta no aparece, verificar montaje y permisos antes de copiar de nuevo.
 - Los archivos de `Iphone 17 pro max` ya quedaron invisibles una vez porque la transferencia los dejó como `root:root`; FileBrowser corre con otro UID y no podía listarlos. Toda tanda debe cerrar con una auditoría de propietario, grupo y permisos.
 - `.incoming-scraping` es staging, no biblioteca publicada. No borrarlo hasta cerrar la auditoría de la tanda.
@@ -22,12 +22,12 @@ Usar esta skill cuando haya nuevos archivos de esquemáticos, boardviews o PCBE 
 
 ## Estructura canónica
 
-La regla vigente está en [`docs/schematic-library-AGENT.md`](../../../docs/schematic-library-AGENT.md), instalada también como `/mnt/data2/AGENT.md` y referenciada por `/mnt/data2/AGENTS.md`.
+La regla vigente está en [`docs/schematic-library-AGENT.md`](../../../docs/schematic-library-AGENT.md), instalada también como `/mnt/ESQUEMATICO/AGENT.md` y referenciada por `/mnt/ESQUEMATICO/AGENTS.md`.
 
 ```text
-/mnt/data2/pdf/<Marca>/<Modelo>/<archivo>.pdf
-/mnt/data2/pcbe/<Marca>/<Modelo>/<archivo>.pcbe
-/mnt/data2/media/<Marca>/<Modelo>/<imagen-o-video>
+/mnt/ESQUEMATICO/pdf/<Marca>/<Modelo>/<archivo>.pdf
+/mnt/ESQUEMATICO/pcbe/<Marca>/<Modelo>/<archivo>.pcbe
+/mnt/ESQUEMATICO/pdf/<Marca>/<Modelo>/<imagen-o-video>
 ```
 
 Consolas y Laptop-PC conservan su nivel de plataforma y fabricante. No crear árboles históricos `Samsung/<modelo>/Pdf`, `Iphone` ni carpetas `VIP/FREE`. Respetar los nombres canónicos existentes, variantes y modelos compartidos. Conservar códigos técnicos del origen en el archivo; no inventar un modelo por un código.
@@ -42,8 +42,8 @@ Nunca se debe ejecutar `rsync` sobre todo `downloads/` como primera acción. La 
 
 | Resultado del hash | Acción |
 | --- | --- |
-| Ya publicado en `/mnt/data2` | Omitir; no copiar ni recatalogar por segunda vez |
-| Ya presente en `/mnt/data2/.incoming-scraping` | Omitir la transferencia; continuar desde ese staging y completar su proceso |
+| Ya publicado en `/mnt/ESQUEMATICO` | Omitir; no copiar ni recatalogar por segunda vez |
+| Ya presente en `/mnt/ESQUEMATICO/.incoming-scraping` | Omitir la transferencia; continuar desde ese staging y completar su proceso |
 | No existe en publicado ni staging | Candidato nuevo; subir sólo este archivo |
 | Hash repetido dentro de la fuente local | Conservar una sola copia y registrar todas las rutas de origen |
 | Mismo nombre con hash distinto | No sobrescribir; crear variante y revisión |
@@ -62,10 +62,10 @@ En el servidor usar el acceso autorizado por el usuario:
 
 ```sh
 ssh maccell@100.127.204.5
-find /mnt/data2 -maxdepth 2 -type d -print | sort | head -200
+find /mnt/ESQUEMATICO -maxdepth 2 -type d -print | sort | head -200
 ```
 
-Antes de copiar, comprobar en Dokploy que el servicio `MACCELL CRM` conserve el volumen de `/mnt/data2` y obtener `SCHEMATICS_ROOT` del contenedor. Si el volumen o la variable cambiaron, detenerse y documentar el cambio; no crear un destino alternativo.
+Antes de copiar, comprobar en Dokploy que el servicio `MACCELL CRM` conserve el volumen de `/mnt/ESQUEMATICO` y obtener `SCHEMATICS_ROOT` del contenedor. Si el volumen o la variable cambiaron, detenerse y documentar el cambio; no crear un destino alternativo.
 
 ### Permisos y visibilidad en FileBrowser
 
@@ -79,20 +79,20 @@ docker exec <contenedor-filebrowser> id
 Auditar sólo las rutas nuevas o reorganizadas, no aplicar permisos indiscriminadamente a todo el servidor:
 
 ```sh
-find /mnt/data2/Iphone/'Iphone 17 pro max' \( ! -user 1000 -o ! -group 1000 \) -print
-find /mnt/data2/Iphone/'Iphone 17 pro max' -type d -printf '%u:%g %m %p\n'
-find /mnt/data2/Iphone/'Iphone 17 pro max' -type f -printf '%u:%g %m %p\n'
+find /mnt/ESQUEMATICO/Iphone/'Iphone 17 pro max' \( ! -user 1000 -o ! -group 1000 \) -print
+find /mnt/ESQUEMATICO/Iphone/'Iphone 17 pro max' -type d -printf '%u:%g %m %p\n'
+find /mnt/ESQUEMATICO/Iphone/'Iphone 17 pro max' -type f -printf '%u:%g %m %p\n'
 ```
 
 Si la auditoría confirma que la tanda es propiedad incorrecta y el UID/GID verificado de FileBrowser es `1000:1000`, corregir sólo las rutas afectadas:
 
 ```sh
-chown -R 1000:1000 /mnt/data2/Iphone/'Iphone 17 pro max'
-find /mnt/data2/Iphone/'Iphone 17 pro max' -type d -exec chmod 755 {} +
-find /mnt/data2/Iphone/'Iphone 17 pro max' -type f -exec chmod 644 {} +
+chown -R 1000:1000 /mnt/ESQUEMATICO/Iphone/'Iphone 17 pro max'
+find /mnt/ESQUEMATICO/Iphone/'Iphone 17 pro max' -type d -exec chmod 755 {} +
+find /mnt/ESQUEMATICO/Iphone/'Iphone 17 pro max' -type f -exec chmod 644 {} +
 ```
 
-No usar `chmod 777`, no cambiar permisos de `/mnt/data2` completo y no hacer `chown` sobre carpetas no pertenecientes a la tanda. Luego comprobar desde FileBrowser que aparecen `Pdf` y `Pcbe`, y comprobar desde el contenedor de la aplicación que puede leer un archivo de cada carpeta.
+No usar `chmod 777`, no cambiar permisos de `/mnt/ESQUEMATICO` completo y no hacer `chown` sobre carpetas no pertenecientes a la tanda. Luego comprobar desde FileBrowser que aparecen `Pdf` y `Pcbe`, y comprobar desde el contenedor de la aplicación que puede leer un archivo de cada carpeta.
 
 Si el visor de FileBrowser muestra `202 Accepted` al abrir un PDF, no es una respuesta de indexación: en FileBrowser suele significar que el usuario puede listar pero no tiene permiso de descarga/lectura inline. Verificar el permiso efectivo del usuario con la CLI del mismo contenedor y activar `download` para el usuario autorizado; después recargar el visor y comprobar que aparecen `Cerrar`, `Descargar` e `Info`. Mantener además propietario `1000:1000`, directorios `755` y archivos `644` cuando ese sea el UID/GID confirmado del contenedor.
 
@@ -103,7 +103,7 @@ La tanda se sube primero a un directorio temporal dentro de la biblioteca, por e
 ```sh
 rsync -rlt --partial --progress --ignore-existing \
   "<SCRAPING_DOWNLOADS>/" \
-  "maccell@100.127.204.5:/mnt/data2/.incoming-scraping/<lote>/"
+  "maccell@100.127.204.5:/mnt/ESQUEMATICO/.incoming-scraping/<lote>/"
 ```
 
 `--ignore-existing` sólo evita una copia repetida durante la transferencia; no reemplaza la auditoría por hash. Para archivos con el mismo nombre se debe comparar SHA-256 en el servidor. Si la auditoría generó una lista diferencial, `rsync` debe recibir esa lista o un directorio temporal que contenga únicamente los candidatos `new`; nunca se vuelve a transferir la carpeta completa.
@@ -122,9 +122,9 @@ Generar un manifiesto de la tanda con ruta relativa, tamaño, SHA-256 y tipo. Co
 No se permite decidir duplicados con `basename` solamente. Para comparar una tanda ya subida se puede usar:
 
 ```sh
-find /mnt/data2/.incoming-scraping/<lote> -type f \
+find /mnt/ESQUEMATICO/.incoming-scraping/<lote> -type f \
   \( -iname '*.pdf' -o -iname '*.pcbe' -o -iname '*.pcb' \) \
-  -print0 | xargs -0 sha256sum > /mnt/data2/.incoming-scraping/<lote>.sha256
+  -print0 | xargs -0 sha256sum > /mnt/ESQUEMATICO/.incoming-scraping/<lote>.sha256
 ```
 
 El manifiesto se conserva hasta terminar la indexación.

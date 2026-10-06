@@ -47,7 +47,7 @@ async function resolveAssetPath(relativePath) {
     const candidates = [
         path.join(libraryRoot, relativePath),
         path.join(libraryRoot, 'sources', relativePath),
-        path.join('/mnt/data2', relativePath.replace(/^sources\//, '')),
+        path.join('/mnt/ESQUEMATICO', relativePath.replace(/^sources\//, '')),
     ];
     for (const candidate of candidates) {
         const fileStat = await stat(candidate).catch(() => null);

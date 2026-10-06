@@ -1,12 +1,16 @@
 # AGENT.md — biblioteca compartida de MACCELL y Filebrowser
 
 Regla operativa desde el 6 de octubre de 2026. Esta guía corresponde al
-almacenamiento físico `/mnt/data2`; no es una base nueva ni otro catálogo.
+almacenamiento físico `/mnt/ESQUEMATICO`; no es una base nueva ni otro catálogo.
+
+El disco es `/dev/sdb1`, UUID `fa0a1b6a-f35b-49ab-820d-49d86c4d1d17`.
+Antes de escribir, comprobar `findmnt -T /mnt/ESQUEMATICO`: debe
+resolver a ese disco, nunca al RAID `/`. No usar `/mnt/data2` para cargas nuevas.
 
 ## Una biblioteca, una estructura
 
 ```text
-/mnt/data2/
+/mnt/ESQUEMATICO/
   pdf/<Marca>/<Modelo>/<nombre técnico>.pdf
   pcbe/<Marca>/<Modelo>/<nombre técnico>.pcbe
   pcbe/<Marca>/<Modelo>/<nombre técnico>.pcb
@@ -14,7 +18,8 @@ almacenamiento físico `/mnt/data2`; no es una base nueva ni otro catálogo.
   pcbe/Consolas/<Fabricante>/<Modelo>/...
   pdf/Laptop-PC/<Marca>/<Modelo o placa>/...
   pcbe/Laptop-PC/<Marca>/<Modelo o placa>/...
-  media/<Marca>/<Modelo>/<imagen o video>
+  pdf/<Marca>/<Modelo>/<imagen o video>
+  CURSO/<material de cursos>/...
   .incoming-scraping/<lote>/...
   .library-history/<lote>/...
   AGENT.md
@@ -40,6 +45,10 @@ modelo comercial. Si faltan pruebas, conservar el nombre técnico completo en
 `Por revisar` bajo la marca o plataforma comprobada. Esa categoría conserva
 acceso y búsqueda; no declara identidad ni compatibilidad eléctrica.
 
+`CURSO` es una carpeta de cargas del usuario, visible en Filebrowser. No mover,
+renombrar ni normalizar sus archivos como parte de una tanda de esquemáticos,
+y no interrumpir subidas activas al reiniciar Filebrowser.
+
 ## Nombres, duplicados y nuevas entradas
 
 1. Toda tanda entra en `.incoming-scraping/<fecha-lote>`.
@@ -58,14 +67,15 @@ acceso y búsqueda; no declara identidad ni compatibilidad eléctrica.
 6. Conservar todos los IDs y vínculos existentes. Las copias históricas con
    sufijo `[origen <identificador>]` preservan referencias; no borrarlas a mano.
 7. Los manifiestos, temporales y respaldos van en `.library-history`; las
-   capturas y videos van en `media`. No mezclarlos con PDF y placas.
+   capturas y videos van en `pdf/<Marca>/<Modelo>/`, junto a los PDF del
+   mismo modelo. No crear una raíz `media` ni mezclar imágenes con placas.
 8. Verificar UID/GID real de Filebrowser y acceso desde CRM. En el snapshot
    verificado ambos usan UID/GID 1000. Carpetas nuevas 755 y archivos nuevos
    644; no hacer `chmod/chown -R` sobre el disco entero.
 
 ## Contratos que deben seguir coincidiendo
 
-- Filebrowser monta `/mnt/data2` en `/srv/disco-1-8tb-B`.
+- Filebrowser monta `/mnt/ESQUEMATICO` en `/srv/esquematicos`.
 - CRM monta lo mismo en `/app/upload/schematics/sources` y usa
   `SCHEMATICS_ROOT=/app/upload/schematics`.
 - `SCHEMATICS_ROOT/catalog.json` contiene el inventario publicado.
@@ -76,7 +86,7 @@ acceso y búsqueda; no declara identidad ni compatibilidad eléctrica.
 
 Verificar siempre los mounts y las variables efectivas antes de operar: los
 nombres e IDs de contenedores cambian. Una ruta del catálogo comienza con
-`sources/`; una ruta RAG es relativa a `/mnt/data2`, sin ese prefijo.
+`sources/`; una ruta RAG es relativa a `/mnt/ESQUEMATICO`, sin ese prefijo.
 
 Para renombrar un archivo existente: actualizar su ruta en catálogo y
 `schematics.assets`, y las referencias `relative_path/source_id` del documento

@@ -128,9 +128,9 @@ def filename(value: str) -> str:
 def classify(relative: str) -> tuple[str, str, str, bool]:
     parts = Path(relative).parts
     ext = Path(relative).suffix.lower()
-    family = 'pdf' if ext == '.pdf' else 'pcbe' if ext in BOARDS else 'media'
+    family = 'pcbe' if ext in BOARDS else 'pdf'
     folders = list(parts[:-1])
-    if folders and folders[0].lower() in {'pdf', 'pcbe'}:
+    if folders and folders[0].lower() in {'pdf', 'pcbe', 'media'}:
         folders.pop(0)
     is_laptop = any(re.search(r'laptop|graphics card|pc motherboard', s, re.I) for s in folders)
     # Some historical "Consolas" folders contain laptop repair cases because
@@ -212,6 +212,9 @@ def plan(rows: list, catalog: dict, batch: str) -> dict:
     out = []
     for row in sorted(rows, key=lambda r: r['path']):
         source = row['path']; ext = Path(source).suffix.lower()
+        # User course uploads are not a schematic normalization batch.
+        if Path(source).parts[0].casefold() == 'curso':
+            continue
         if row.get('link'): raise ValueError('Symlink requires review: ' + source)
         if ext not in ASSETS | BOARDS | MEDIA:
             target = f'.library-history/{batch}/auxiliary/{source}'
@@ -309,7 +312,7 @@ def main():
     parser.add_argument('--inventory', type=Path)
     parser.add_argument('--catalog', type=Path)
     parser.add_argument('--batch')
-    parser.add_argument('--root', type=Path, default=Path('/mnt/data2'))
+    parser.add_argument('--root', type=Path, default=Path('/mnt/ESQUEMATICO'))
     parser.add_argument('--references-reconciled', type=Path)
     args = parser.parse_args()
     if args.mode == 'plan':

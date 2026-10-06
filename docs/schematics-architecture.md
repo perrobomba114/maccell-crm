@@ -12,7 +12,7 @@ están documentadas en
 ## Flujo de datos
 
 ```text
-/mnt/data2 (producción)
+/mnt/ESQUEMATICO (producción)
         │ montaje: /app/upload/schematics/sources
         ▼
 discoverPhysicalAssets()
@@ -35,13 +35,13 @@ Cerebro AI
 
 El worker publica `SCHEMATICS_ROOT/catalog.json` después de completar el inventario físico, con `inventoryComplete: true`. El CRM usa ese snapshot para determinar qué archivos existen y la base para enriquecerlos. Nunca se elige una fuente por tener más registros. Los registros históricos de DB no visibles en el snapshot se conservan para trazabilidad.
 
-`/mnt/data2/Pcbe/Catalog.json` era un manifiesto histórico que el lector aceptaba como override opcional. Se archivó en `.library-history/2026-10-06-normalization/auxiliary/Pcbe/Catalog.json` durante la normalización: el snapshot publicado vigente es `SCHEMATICS_ROOT/catalog.json`. No restaurar ese override sin reconciliar sus rutas. La recuperación anterior está en [el reporte del 8 de septiembre](schematics-recovery-2026-09-08.md).
+`/mnt/ESQUEMATICO/Pcbe/Catalog.json` era un manifiesto histórico que el lector aceptaba como override opcional. Se archivó en `.library-history/2026-10-06-normalization/auxiliary/Pcbe/Catalog.json` durante la normalización: el snapshot publicado vigente es `SCHEMATICS_ROOT/catalog.json`. No restaurar ese override sin reconciliar sus rutas. La recuperación anterior está en [el reporte del 8 de septiembre](schematics-recovery-2026-09-08.md).
 
 ## Responsabilidad de cada capa
 
 | Capa | Fuente de verdad | Qué puede hacer | Qué no debe hacer |
 | --- | --- | --- | --- |
-| Archivos físicos | `/mnt/data2` | Conservar PDF, PCBE y PCB reales | No mover, borrar ni sobrescribir durante una ingesta normal |
+| Archivos físicos | `/mnt/ESQUEMATICO` | Conservar PDF, PCBE y PCB reales | No mover, borrar ni sobrescribir durante una ingesta normal |
 | Catálogo | `catalog.json` y `schematics.assets` | Exponer identidad, tipo, tamaño, hash y estado | No inventar archivos que no existen en el montaje |
 | Índice técnico | `schematics.pages`, `technical_indexes`, `index_jobs` | Extraer texto, OCR, componentes y redes | No conservar una entrada como vigente si cambia la ruta o el SHA |
 | RAG V2 | `rag_documents`, `rag_pages`, `rag_chunks` | Recuperar evidencia textual por marca/modelo y hash | No mezclar marcas ni aceptar documentos con SHA obsoleto |
@@ -97,7 +97,7 @@ los documentos RAG antes de declarar la biblioteca operativa.
 ## Estado conocido al 2026-09-08
 
 - Producción usa el servicio `MACCELL CRM` y un worker RAG separado en
-  Dokploy; el montaje operativo esperado es `/mnt/data2`.
+  Dokploy; el montaje operativo esperado es `/mnt/ESQUEMATICO`.
 - Antes de `7078034`, la página mostraba `492 placas`, `3314 PDF` y `3806
   archivos`, aunque el índice técnico ya reportaba `1215/21561`.
 - `7078034` hizo visibles los activos del inventario técnico; la corrección
@@ -111,4 +111,4 @@ los documentos RAG antes de declarar la biblioteca operativa.
   terminadas sólo porque el contenedor esté verde.
 # Catálogo publicado y rollback
 
-`SCHEMATICS_ROOT` debe apuntar al root montado que contiene `catalog.json`. El snapshot de despliegue es una copia de trabajo y no una segunda autoridad. Si la reconciliación requiere rollback, se restaura la configuración de fuente anterior o se desactiva la capa de presentación; nunca se borran archivos de `/mnt/data2`.
+`SCHEMATICS_ROOT` debe apuntar al root montado que contiene `catalog.json`. El snapshot de despliegue es una copia de trabajo y no una segunda autoridad. Si la reconciliación requiere rollback, se restaura la configuración de fuente anterior o se desactiva la capa de presentación; nunca se borran archivos de `/mnt/ESQUEMATICO`.
