@@ -100,6 +100,8 @@ class PdfIndexer:
             (document_id,),
         ).fetchone()
         if not force and document_metadata_current(status, schema_version):
+            # A reviewed document may return to publication with unchanged content.
+            self.versions.mark_ready(document_id)
             self.connection.commit()
             return document_id, 0, 0, True
 

@@ -22,7 +22,7 @@ Usar esta skill cuando haya nuevos archivos de esquemáticos, boardviews o PCBE 
 
 ## Estructura canónica
 
-La regla vigente está en [`docs/schematic-library-AGENT.md`](../../../docs/schematic-library-AGENT.md), instalada también como `/mnt/ESQUEMATICO/AGENT.md` y referenciada por `/mnt/ESQUEMATICO/AGENTS.md`.
+La regla vigente está en [`docs/schematic-library-AGENT.md`](../../../docs/schematic-library-AGENT.md), instalada también como único `/mnt/ESQUEMATICO/AGENTS.md`.
 
 ```text
 /mnt/ESQUEMATICO/pdf/<Marca>/<Modelo>/<archivo>.pdf
@@ -146,32 +146,28 @@ Para cada archivo nuevo:
 
 El movimiento final se hace sólo después de que el manifiesto confirme que el destino no contiene otro hash. Si el hash ya existe, se registra como duplicado y se conserva una sola copia física.
 
-### 5. Actualizar el catálogo de la aplicación
+### 5. Publicar la tanda revisada
 
-El importador de referencia es:
+Usar el contrato `PUBLICAR.json` documentado en `docs/schematic-library-AGENT.md`.
+Crear el manifiesto al final de la subida, por escritura temporal y rename;
+incluir responsable, evidencia real de identidad, origen, destino canónico,
+SHA-256 y tamaño. No habilitar una tanda sólo por el nombre de sus archivos.
 
-```sh
-npx tsx scripts/import-schematics.ts <origen-de-la-tanda> <SCHEMATICS_ROOT>
-```
+El worker `technical-indexer --watch --intake` publica sin sobrescribir, conserva
+el staging y deja `resultado-<SHA>.json`. Sólo las entradas publicadas o ya
+publicadas por un manifiesto se admiten como nuevos archivos del catálogo.
+Los conflictos quedan `review`; corregir el manifiesto con evidencia antes de
+reintentar. La descarga local no se transfiere automáticamente al servidor.
 
-El comando debe ejecutarse desde el checkout de MACCELL con sus dependencias y variables reales. Antes de ejecutarlo:
+`import-schematics.ts` es una herramienta histórica de importación directa:
+no usarla para saltar este circuito en producción. No editar `catalog.json` a mano.
 
-- confirmar que el origen está fuera del destino lógico;
-- comprobar que la función de catálogo produce rutas relativas bajo la biblioteca;
-- hacer una copia/backup del `catalog.json` y del estado de la base;
-- no usar `--force` ni borrar el catálogo para "empezar de cero".
+### 6. Verificar el índice técnico
 
-El importador calcula SHA-256, preserva identidades verificadas cuando el hash no cambia, genera `.index/<asset-id>.json` para PDF legibles y deja como `locked` o `unsupported` lo que no puede interpretar. El catálogo se escribe mediante archivo temporal y rename; no editar `catalog.json` a mano.
-
-### 6. Indexar el índice técnico
-
-El worker usa el catálogo y la base PostgreSQL. La operación normal es idempotente:
-
-```sh
-node scripts/technical-worker.cjs --retry-failed
-```
-
-En producción el worker continuo se inicia con `scripts/start-with-technical-worker.sh` y usa `--watch`. No lanzar dos workers manuales: el advisory lock de PostgreSQL evita escritores simultáneos, pero un segundo proceso sólo agrega ruido y puede dejar trabajos reintentables.
+El único worker continuo de producción es `technical-indexer` del Compose RAG,
+con `--watch --intake`, concurrencia 1 y advisory lock. El worker embebido del CRM
+permanece desactivado. No iniciar otro worker ni un `--retry-failed` global como
+preparación rutinaria. El escaneo se repite cada cinco minutos después del ciclo.
 
 Verificar por cada asset:
 

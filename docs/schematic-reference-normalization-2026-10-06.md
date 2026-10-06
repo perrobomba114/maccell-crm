@@ -31,8 +31,16 @@ A022 corresponde a A02 y A025 a A02s, contrastado con [Samsung A02](https://www.
 
 Estado operativo y backups: `/var/lib/maccell/upload/.library-maintenance/2026-10-06-reference-normalization`. Se conservan el manifiesto original, tres fases de reconciliación complementarias, `effective-manifest.json`, recibos, hashes y backups de metadatos. Las correcciones finales de nueve archivos se reflejan en el manifiesto efectivo; no se debe interpretar una fase intermedia como el estado final.
 
-`CATALOGO` en Filebrowser contiene `ARCHIVOS.csv`, `RECUPERADOS.csv`, `PENDIENTES.csv`, `REFERENCIA-SCRAPING.csv`, `REFERENCIA-SAMSUNG.json` y `DESCARGAS-REPETIDAS.csv`. `AGENT.md` y su entrada `AGENTS.md` quedan instalados en la biblioteca, con normas para nuevas incorporaciones. Estos índices son una fotografía de la tanda y deben actualizarse en la siguiente.
+`.CATALOGO` en Filebrowser contiene `ARCHIVOS.csv`, `RECUPERADOS.csv`, `PENDIENTES.csv`, `REFERENCIA-SCRAPING.csv`, `REFERENCIA-SAMSUNG.json` y `DESCARGAS-REPETIDAS.csv`. Las instrucciones quedan unificadas en `AGENTS.md` en la biblioteca, con normas para nuevas incorporaciones. Estos índices son una fotografía de la tanda y deben actualizarse en la siguiente.
 
 Comprobaciones realizadas: SHA de los 5.385 movimientos y 276 incorporaciones; ninguna identidad original perdida; ningún archivo del catálogo ausente; permisos del lote compatibles con UID/GID 1000. Filebrowser mostró CURSO y CATALOGO, y abrió y mostró el PDF de 11 páginas A02 SM-A022F. La prueba dentro del contenedor confirmó búsqueda por código completo, variantes separadas en el árbol, lectura de los 189 PDF y geometría de los 87 PCBE nuevos. No se contó como validación del visor autenticado del CRM: no había sesión de navegador disponible.
 
 Validaciones de código: build, TypeScript, ESLint puntual, 23 tests Node de árbol/inventario, 16 tests del organizador, 18 tests de inventario RAG más tres funciones adicionales y ocho tests de alias. La indexación técnica terminó con los 276 activos recuperados en `indexed`, sin fallos. Los PDF recuperados suman 1.407 páginas. La indexación técnica y RAG se registran separadamente en los logs y auditorías de esta tanda; no inferir su finalización por la presencia física de archivos.
+
+## Cierre operativo verificado
+
+CRM y Compose RAG desplegados en `082ca02b23b06470d2fc62ca26ffd015e8ea9869`; el CRM sirve la versión `1791310702`. La auditoría final encontró 9.781 entradas coincidentes entre catálogo y SQL, ninguna ruta ausente y ninguna página técnica con hash desactualizado. Se conservaron las 9.505 identidades previas.
+
+Los 98 PDF recuperados con identidad confirmada están `READY` en RAG, con 374 fragmentos y sus 374 embeddings; los 91 pendientes de identidad están excluidos. Se abrieron dos PDF por el endpoint del worker con respuesta parcial válida. Una consulta real de embeddings y recuperación devolvió diez resultados para SM-A022F, sin A025/A02s, y diez para SM-J200F. La ingesta secuencial habitual volvió a funcionar y mostró procesamiento sin fallos en la comprobación posterior al despliegue.
+
+`.CATALOGO/ESTADO-INDEXACION.json` conserva estas verificaciones y `.library-history/2026-10-06-reference-normalization` contiene las auditorías finales y el manifiesto efectivo. La finalización de esta tanda no acredita que estén descargadas todas las referencias del proveedor ni resuelve los archivos señalados para revisión.

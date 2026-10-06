@@ -11,6 +11,7 @@ x-ingestion-base: &ingestion-base
     RAG_DATABASE_URL: ${RAG_DATABASE_URL}
     INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     LIBRARY_ROOT: /library
+    PUBLISHED_CATALOG_ROOT: /published-catalog
     PAGE_CACHE_ROOT: /page-cache
     EMBEDDING_MODEL: BAAI/bge-m3
     BATCH_SIZE: "32"
@@ -27,6 +28,7 @@ x-ingestion-base: &ingestion-base
       read_only: true
       bind:
         create_host_path: false
+    - /var/lib/maccell/upload/schematics:/published-catalog:ro
     - /var/lib/maccell/rag-pages:/page-cache
     - /var/lib/maccell/rag-models:/model-cache
   networks:
@@ -44,24 +46,25 @@ services:
   ingestion-sequential:
     <<: *ingestion-base
     profiles: []
-    command: ["sh", "-lc", "cerebro-rag migrate && exec cerebro-rag index-pdfs"]
+    command: ["sh", "-lc", "cerebro-rag migrate && exec cerebro-rag index-pdfs --watch --interval 300"]
 
   technical-indexer:
     image: maccell-fhexow:latest
     restart: on-failure
     user: "1000:1000"
     working_dir: /app
-    command: ["node", "scripts/start-isolated-technical-worker.mjs", "--sync-only"]
+    command: ["node", "scripts/start-isolated-technical-worker.mjs", "--watch", "--intake"]
     environment:
       SCHEMATICS_ROOT: /app/upload/schematics
       SCHEMATICS_INDEX_CONCURRENCY: "1"
+      SCHEMATICS_INVENTORY_REFRESH_MS: "300000"
       OMP_THREAD_LIMIT: "1"
     volumes:
       - /var/lib/maccell/upload:/app/upload
       - type: bind
         source: /mnt/ESQUEMATICO
         target: /app/upload/schematics/sources
-        read_only: true
+        read_only: false
         bind:
           create_host_path: false
     networks:
@@ -85,6 +88,7 @@ services:
       RAG_DATABASE_URL: ${RAG_DATABASE_URL}
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       LIBRARY_ROOT: /library
+      PUBLISHED_CATALOG_ROOT: /published-catalog
       PAGE_CACHE_ROOT: /page-cache
       EMBEDDING_MODEL: BAAI/bge-m3
       BATCH_SIZE: "32"
@@ -101,6 +105,7 @@ services:
         read_only: true
         bind:
           create_host_path: false
+      - /var/lib/maccell/upload/schematics:/published-catalog:ro
       - /var/lib/maccell/rag-pages:/page-cache
       - /var/lib/maccell/rag-models:/model-cache
     networks:

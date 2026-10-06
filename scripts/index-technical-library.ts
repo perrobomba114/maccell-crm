@@ -10,6 +10,8 @@ import { persistTechnicalIndex } from './technical-index-database';
 import { physicalInventoryRefreshMs, runBounded, workerConcurrency, withIndexConnection, selectIndexAssets } from './technical-worker-queue';
 import { discoverPhysicalAssets } from '../src/lib/schematics/physical-inventory';
 
+import { processIntake } from './schematic-intake';
+
 import { publishInventory } from './publish-schematic-inventory';
 
 const concurrency = workerConcurrency(process.env.SCHEMATICS_INDEX_CONCURRENCY);
@@ -59,11 +61,12 @@ async function catalog(client: pg.PoolClient): Promise<SchematicAsset[]> {
     } }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
   const inventoryExpired = Date.now() - physicalAssetsScannedAt >= inventoryRefreshMs;
+  const intake = process.argv.includes('--intake') && (!physicalAssets.length || inventoryExpired) ? await processIntake(root, local) : undefined;
   // A catalog update is cheap metadata churn during bulk uploads. It must not
   // turn into a full recursive walk every 15 seconds; the bounded refresh
   // still discovers all new files after the upload settles.
-  if (!physicalAssets.length || inventoryExpired) {
-    physicalAssets = await discoverPhysicalAssets(root, local);
+  if (!physicalAssets.length || inventoryExpired || intake?.published) {
+    physicalAssets = await discoverPhysicalAssets(root, local, intake?.approved);
     await publishInventory(root, physicalAssets);
     physicalAssetsScannedAt = Date.now();
   }

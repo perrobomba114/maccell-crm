@@ -1,4 +1,4 @@
-# AGENT.md — biblioteca compartida de MACCELL y Filebrowser
+# AGENTS.md — biblioteca compartida de MACCELL y Filebrowser
 
 Regla operativa desde el 6 de octubre de 2026. Esta guía corresponde al
 almacenamiento físico `/mnt/ESQUEMATICO`; no es una base nueva ni otro catálogo.
@@ -20,10 +20,9 @@ resolver a ese disco, nunca al RAID `/`. No usar `/mnt/data2` para cargas nuevas
   pcbe/Laptop-PC/<Marca>/<Modelo o placa>/...
   pdf/<Marca>/<Modelo>/<imagen o video>
   CURSO/<material de cursos>/...
-  CATALOGO/<inventarios y referencia de la última tanda>
+  .CATALOGO/<inventarios y referencia de la última tanda>
   .incoming-scraping/<lote>/...
   .library-history/<lote>/...
-  AGENT.md
   AGENTS.md
 ```
 
@@ -47,7 +46,7 @@ códigos regionales quedan separados. No deducir M/F/G cuando el documento sólo
 identifica la familia SM-A022: esa evidencia queda en `A02 SM-A022`.
 El mapa auditable es `scripts/data/schematic-samsung-reference.json`, obtenido
 con los catálogos de SCRAPING y la procedencia original; en el servidor se conserva
-como `CATALOGO/REFERENCIA-SAMSUNG.json`. Si el catálogo contradice
+como `.CATALOGO/REFERENCIA-SAMSUNG.json`. Si el catálogo contradice
 el contenido o el fabricante, conservar el conflicto para revisión. En particular,
 SM-A025 es A02s, aunque una carpeta de DZKJ diga A02. Un código sin nombre comercial
 comprobado se conserva como código; no inventar el nombre de un teléfono.
@@ -69,7 +68,7 @@ acceso y búsqueda; no declara identidad ni compatibilidad eléctrica.
 renombrar ni normalizar sus archivos como parte de una tanda de esquemáticos,
 y no interrumpir subidas activas al reiniciar Filebrowser.
 
-`CATALOGO/ARCHIVOS.csv` describe lo realmente publicado; `REFERENCIA-SCRAPING.csv`
+`.CATALOGO/ARCHIVOS.csv` se actualiza con el inventario publicado; `REFERENCIA-SCRAPING.csv`
 describe el catálogo del proveedor y no acredita disponibilidad. Actualizar los
 inventarios al cerrar cada tanda. Los PDF sin identidad comprobable quedan en
 `pdf/Por revisar/Identidad pendiente`, con `normalizationReview=true`, fuera de la
@@ -164,3 +163,75 @@ inventan ni se eliminan.
 
 No borrar staging, backups, originales únicos, bases, chats, feedback ni
 historial como forma de ordenar. No usar `rsync --delete`. No guardar secretos.
+
+## Incorporaciones continuas: contrato vigente
+
+El único archivo de instrucciones visible en la raíz es `AGENTS.md`. No recrear
+`AGENT.md`, `agend.md` ni una segunda guía. La copia versionada de este contenido
+es `docs/schematic-library-AGENT.md`. `.CATALOGO` y `.library-history` son carpetas
+ocultas de operación; no recrear una raíz visible `CATALOGO`.
+
+El servicio `technical-indexer` ejecuta `--watch --intake`, con un escritor y
+advisory lock PostgreSQL. Revisa tandas cada cinco minutos después de completar
+el ciclo anterior. El worker embebido del CRM sigue desactivado para no duplicar
+procesamiento. `.CATALOGO/ARCHIVOS.csv` e `INVENTARIO-ACTUAL.json` se actualizan
+al publicar el inventario; los informes de tandas anteriores son históricos.
+
+Las descargas del escritorio NO se transfieren solas. El agente debe comparar
+SHA con biblioteca y staging, validar identidad contra contenido/referencia y
+subir sólo los faltantes. No copiar directamente a `pdf` o `pcbe`: un archivo
+nuevo fuera del circuito no se admite automáticamente al CRM ni al RAG.
+
+Una tanda revisada se habilita escribiendo **al final de la subida**, por rename
+atómico, `.incoming-scraping/<lote>/PUBLICAR.json`:
+
+```json
+{
+  "version": 1,
+  "reviewedBy": "responsable de la revisión",
+  "entries": [{
+    "source": "archivos/manual.pdf",
+    "target": "pdf/Samsung/A02 SM-A022M/Manual de servicio.pdf",
+    "sha256": "SHA-256 real de 64 caracteres hexadecimales",
+    "size": 123456,
+    "evidence": "Origen y página donde se comprobó el modelo/código"
+  }]
+}
+```
+
+Máximo 500 entradas por manifiesto. `source` es relativo a la tanda y `target`
+a la biblioteca. El ejemplo no es una tanda utilizable. Nunca inventar evidencia
+ni crear `PUBLICAR.json` hasta comprobar el modelo. Samsung requiere asociación
+canónica en el diccionario auditado y conserva el código regional completo.
+Un modelo nuevo exige evidencia y, si corresponde, actualizar el diccionario.
+
+El publicador comprueba rutas sin enlaces simbólicos, tamaño y SHA estables,
+PDF legible/no cifrado o PCBE con geometría, modelo canónico y colisiones.
+Reutiliza la escritura de carpetas existentes cuando sólo difiere la caja.
+Publica por copia temporal y enlace atómico; no sobrescribe ni borra el origen.
+Igual contenido e identidad se registra como duplicado. Igual contenido entre
+modelos distintos no demuestra compatibilidad. No crea parejas PDF/PCBE.
+
+Cada manifiesto deja `resultado-<SHA del manifiesto>.json` dentro de su tanda,
+con `published`, `already_published`, `duplicate_exact` o `review`. Los errores
+no se reintentan indefinidamente: corregir fuente/evidencia/manifiesto y registrar
+una revisión nueva. Publicado no significa indexado: comprobar jobs y páginas.
+
+`ingestion-sequential` usa `index-pdfs --watch --interval 300`: tandas incrementales
+de hasta 25 PDF, prioriza archivos recientes, conserva READY con el mismo SHA y
+no repite automáticamente FAILED con ese SHA. Los fallos requieren diagnóstico
+antes de un reintento puntual. No usar `--force` global ni arrancar shards.
+
+RAG lee el catálogo publicado mediante `PUBLISHED_CATALOG_ROOT`; sólo admite PDF
+ready sin `normalizationReview`. `CURSO`, carpetas ocultas y pendientes de
+identidad quedan excluidos. La cola técnica y RAG son independientes; su demora
+depende de OCR, tamaño de los documentos y carga del servidor.
+
+## Pendientes que no deben ocultarse
+
+La tanda de normalización recuperó 87 PCBE utilizables y 189 PDF. Hay 91 PDF
+sin identidad demostrada y formatos de placa sin geometría que requieren
+revisión. No declararlos resueltos ni fabricar modelos para reducir el contador.
+Las 10.664 descargas que repetían tres catálogos no equivalen a 10.664 placas.
+Los vínculos entre PDF y PCBE requieren evidencia técnica además de compartir
+carpeta. Las auditorías detalladas se conservan en `.CATALOGO`.

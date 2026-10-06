@@ -39,7 +39,7 @@ La forma canónica para Samsung es:
 /mnt/ESQUEMATICO/pcbe/Samsung/A02 SM-A022F/<archivo>.pcbe
 ```
 
-Los códigos F/M/G no se fusionan ni se completan por suposición. Si el origen sólo declara `SM-A022`, conserva ese código sin sufijo. A025 pertenece a A02s. El diccionario auditado está en `scripts/data/schematic-samsung-reference.json`; usarlo con `scripts/schematic-reference.py`. Contrastar las descargas con su contenido: el catálogo SCRAPING describe referencias y puede contener descargas repetidas o mal rotuladas. En Filebrowser, `CATALOGO` contiene el inventario de la tanda y la referencia completa, con su disponibilidad aclarada. `pdf/Por revisar/Identidad pendiente` es visible para revisión y se excluye del RAG.
+Los códigos F/M/G no se fusionan ni se completan por suposición. Si el origen sólo declara `SM-A022`, conserva ese código sin sufijo. A025 pertenece a A02s. El diccionario auditado está en `scripts/data/schematic-samsung-reference.json`; usarlo con `scripts/schematic-reference.py`. Contrastar las descargas con su contenido: el catálogo SCRAPING describe referencias y puede contener descargas repetidas o mal rotuladas. En Filebrowser, `.CATALOGO` contiene el inventario de la tanda y la referencia completa, con su disponibilidad aclarada. `pdf/Por revisar/Identidad pendiente` es visible para revisión y se excluye del RAG.
 
 Durante la transición, el lector acepta las rutas históricas y conserva el origen en `sourceRelativePath`; no se deben crear nuevas tandas con el formato histórico. En el incidente del 05/09/2026 una normalización inicial calculó destinos `Samsung ...` relativos a `/mnt/ESQUEMATICO` y dejó cientos de carpetas sueltas visibles en FileBrowser. Se detuvo el worker, se movieron únicamente esas carpetas con reporte SHA-256 y se verificaron propietario `1000:1000`, directorios `755` y archivos `644`. Para futuras tandas, usar `scripts/organize-schematic-library.py` y `scripts/reconcile-schematic-paths.mjs` con manifiesto y backups; los dos scripts anteriores quedan retirados. No corregirlo con renombrados manuales sin reporte.
 
@@ -142,3 +142,16 @@ El worker aislado lee la conexión de escritura desde `/app/upload/.technical-in
 # Fuente del árbol publicado
 
 Antes de publicar, verificar que `SCHEMATICS_ROOT` resuelva al montaje canónico con su `catalog.json`. El rollback sólo cambia la fuente activa o desactiva la reconciliación de presentación; no elimina ni mueve activos en `/mnt/ESQUEMATICO`.
+
+
+## Entrada continua vigente
+
+En producción, seguir el contrato de `PUBLICAR.json` del único
+`/mnt/ESQUEMATICO/AGENTS.md` (fuente: `docs/schematic-library-AGENT.md`). El
+publicador corre en `technical-indexer --watch --intake`; no requiere ejecutar
+el importador directo ni reiniciar CRM. RAG observa sólo el catálogo publicado
+con `index-pdfs --watch --interval 300`. La carpeta operativa es `.CATALOGO`,
+oculta por pedido del usuario. `CURSO` permanece fuera de ambos índices.
+
+No confundir el recibo de publicación con el estado final de indexación. Los
+PDF ambiguos y placas no interpretables continúan como pendientes explícitos.

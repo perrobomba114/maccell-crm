@@ -13,7 +13,7 @@ async function walk(root: string): Promise<string[]> {
     const entries = await readdir(root, { withFileTypes: true });
     const files: string[] = [];
     for (const entry of entries) {
-        if (entry.name.startsWith(".")) continue;
+        if (entry.name.startsWith(".") || entry.name.toUpperCase() === "CURSO") continue;
         const absolute = path.join(root, entry.name);
         if (entry.isDirectory()) files.push(...await walk(absolute));
         else if (entry.isFile() && FILE_PATTERN.test(entry.name)) files.push(absolute);
@@ -134,12 +134,13 @@ export function declaredIdentity(relativePath: string, name: string): { brand?: 
 }
 
 /** Reconciles the catalog with files that really exist in the mounted library. */
-export async function discoverPhysicalAssets(root: string, previous: readonly SchematicAsset[]): Promise<SchematicAsset[]> {
+export async function discoverPhysicalAssets(root: string, previous: readonly SchematicAsset[], admitted?: ReadonlySet<string>): Promise<SchematicAsset[]> {
     const byPath = new Map(previous.map((asset) => [asset.relativePath, asset]));
     const discovered: SchematicAsset[] = [];
     for (const absolute of await walk(root)) {
         const relativePath = path.relative(root, absolute).split(path.sep).join("/");
         const previousAsset = byPath.get(relativePath);
+        if (admitted && !previousAsset && !admitted.has(relativePath)) continue;
         const facts = await stat(absolute);
         const name = path.basename(relativePath);
         const kind = path.extname(name).toLowerCase() === ".pdf" ? "pdf" : "pcbe";

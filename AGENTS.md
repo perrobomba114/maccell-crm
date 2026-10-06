@@ -63,6 +63,7 @@ No ejecutes `prisma db push`, migraciones, seeds o scripts de reparación de dat
 - Cerebro conserva aislamiento por marca/modelo, evidencia verificable y privacidad de precios internos. No inventes mediciones ni procedimientos al mejorar la redacción de un diagnóstico.
 - Conservá la prioridad Qwen/Groq del flujo de diagnóstico y sus fallbacks; chat, visión e inferencia local tienen routing propio. Verificá el flujo concreto, no asumas un proveedor universal.
 - La biblioteca física operativa es `/mnt/ESQUEMATICO` (disco de 4 TB, UUID `fa0a1b6a-f35b-49ab-820d-49d86c4d1d17`), montada en el contenedor como sources; verificá el montaje en vivo antes de operar. No crees otro destino ni elimines originales. Catálogo, índice técnico, RAG y visor son capas distintas.
+- La biblioteca mantiene un único `/mnt/ESQUEMATICO/AGENTS.md`; `.CATALOGO` es oculto. Nuevas tandas: staging + `PUBLICAR.json` revisado; `technical-indexer --watch --intake` y RAG incremental. `CURSO` queda fuera de los índices. Consultá `docs/schematic-library-AGENT.md` antes de incorporar archivos.
 - No expongas secretos ni agregues logs de datos sensibles, errores silenciados o casts para ocultar fallas de tipos. Limitá el cambio al pedido; el tamaño de un archivo por sí solo no obliga a refactorizarlo.
 
 ## Documentación por tarea

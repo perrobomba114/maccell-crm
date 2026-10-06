@@ -7,7 +7,7 @@ test("technical worker catalog scope follows the mounted physical inventory", ()
     const source = readFileSync(resolve(process.cwd(), "scripts/index-technical-library.ts"), "utf8");
 
     assert.match(source, /WHERE id = ANY\(\$1::text\[\]\)/);
-    assert.match(source, /discoverPhysicalAssets\(root, local\)/);
+    assert.match(source, /discoverPhysicalAssets\(root, local, intake\?\.approved\)/);
     assert.match(source, /return mergeCatalogAssets\(physical, stored\)/);
     assert.match(source, /reconcileAssetIdForPath\(client, asset\)/);
     assert.match(source, /INSERT INTO schematics\.assets\(id,relative_path,sha256,kind,model_key,metadata\)/);

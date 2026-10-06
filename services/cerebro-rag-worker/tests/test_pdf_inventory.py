@@ -211,3 +211,26 @@ def test_flat_playstation_source_uses_document_identity():
     result = parse_pdf_identity(Path('pdf/SONY PlayStation/PS4 Power Supply Schematic ADP-240AR.pdf'))
     assert result.brand == 'PLAYSTATION'
     assert result.model.startswith('PS4 POWER SUPPLY')
+
+class PublishedCatalogGateTest(unittest.TestCase):
+    def test_only_published_ready_identity_enters_rag_and_courses_stay_out(self):
+        import json
+        from unittest.mock import patch
+        from cerebro_rag.pdf_inventory import published_pdf_paths
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            catalog = root / '.catalog'
+            catalog.mkdir()
+            paths = ['pdf/Samsung/A02 SM-A022M/service.pdf', 'pdf/Samsung/A02 SM-A022M/unreviewed.pdf', 'CURSO/course.pdf', 'pdf/Por revisar/Identidad pendiente/unknown.pdf']
+            for name in paths:
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(b'%PDF')
+            (catalog / 'catalog.json').write_text(json.dumps({'assets': [
+                {'relativePath':'sources/'+name, 'kind':'pdf','status':'ready'} for name in [paths[0],paths[2],paths[3]]
+            ]}))
+            with patch.dict('os.environ', {'PUBLISHED_CATALOG_ROOT':str(catalog)}):
+                self.assertEqual(published_pdf_paths(root), [root / paths[0]])
+                with self.assertRaises(FileNotFoundError):
+                    (catalog/'catalog.json').unlink()
+                    published_pdf_paths(root)

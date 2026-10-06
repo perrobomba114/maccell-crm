@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -140,22 +142,32 @@ def sha256_file(path: Path) -> str:
 
 def published_pdf_paths(library_root: Path) -> list[Path]:
     root = library_root.resolve(strict=True)
+    catalog_root = os.environ.get("PUBLISHED_CATALOG_ROOT")
+    admitted = None
+    if catalog_root:
+        catalog = json.loads((Path(catalog_root) / "catalog.json").read_text())
+        admitted = {item["relativePath"].removeprefix("sources/") for item in catalog["assets"]
+                    if item["kind"] == "pdf" and item["status"] == "ready" and not item.get("normalizationReview")}
     return sorted(candidate for candidate in root.rglob("*")
-        if candidate.suffix.casefold() == ".pdf" and candidate.is_file() and not candidate.is_symlink()
+        if (admitted is None or candidate.relative_to(root).as_posix() in admitted)
+        and candidate.suffix.casefold() == ".pdf" and candidate.is_file() and not candidate.is_symlink()
         # Visible for manual review, but its supplier filename is not a device identity.
         and candidate.relative_to(root).parts[:2] != ("pdf", "Por revisar")
-        and not any(part.startswith(".") or part.casefold() == "backups" for part in candidate.relative_to(root).parts))
+        and not any(part.startswith(".") or part.casefold() in {"backups", "curso"} for part in candidate.relative_to(root).parts))
 
 
 def iter_pdf_inventory(
     library_root: Path,
     shard_index: int = 0,
     shard_count: int = 1,
+    newest_first: bool = False,
 ) -> Iterator[PdfInventoryEntry]:
     if shard_count < 1 or shard_index < 0 or shard_index >= shard_count:
         raise ValueError("invalid inventory shard")
     root = library_root.resolve(strict=True)
     pdf_candidates = published_pdf_paths(root)
+    if newest_first:
+        pdf_candidates.sort(key=lambda p: p.stat().st_mtime_ns, reverse=True)
     for position, candidate in enumerate(pdf_candidates):
         if position % shard_count != shard_index:
             continue
