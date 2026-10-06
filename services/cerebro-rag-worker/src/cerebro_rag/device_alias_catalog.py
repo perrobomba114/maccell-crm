@@ -14,6 +14,7 @@ from cerebro_rag.normalize import (
     normalize_brand,
     normalize_model,
 )
+from cerebro_rag.pdf_inventory import parse_pdf_identity, published_pdf_paths
 
 SAMSUNG_CODE_PATTERN = re.compile(
     r"(?<![A-Z0-9])(?:SM|GT)[\s_-]*([A-Z]?\d{3,5}[A-Z]{0,3})(?![A-Z0-9])",
@@ -53,7 +54,7 @@ def _samsung_commercial_names(relative_path: Path) -> tuple[str, ...]:
             sub = commercial.removeprefix("GALAXY ").strip()
             if sub:
                 names.add(sub)
-        elif re.match(r"^[AMSJZF]\d{1,2}(?:\s*(?:5G|4G|PRO|CORE|PLUS|ULTRA|FE))?$", commercial):
+        elif re.match(r"^[AMSJZF]\d{1,2}[A-Z]?(?:\s*(?:5G|4G|PRO|CORE|PLUS|ULTRA|FE))?$", commercial):
             names.add(commercial)
             names.add(f"GALAXY {commercial}")
         elif re.match(r"^NOTE\s*\d{1,2}", commercial):
@@ -107,7 +108,9 @@ def _generic_commercial_names(brand: str, relative_path: Path) -> tuple[str, ...
 
 
 def aliases_from_pdf_path(relative_path: Path) -> tuple[DeviceAlias, ...]:
-    brand = normalize_brand(relative_path.parts[0] if relative_path.parts else "")
+    parts = relative_path.parts
+    brand_index = 1 if parts and parts[0] == "pdf" else 0
+    brand = normalize_brand(parts[brand_index] if len(parts) > brand_index else "")
     path_text = " ".join(relative_path.parts)
     aliases: tuple[str, ...] = ()
     codes: set[str] = set()
@@ -143,7 +146,7 @@ def aliases_from_pdf_path(relative_path: Path) -> tuple[DeviceAlias, ...]:
         aliases = _lg_commercial_names(relative_path)
     elif brand in ("HUAWEI", "XIAOMI", "APPLE"):
         aliases = _generic_commercial_names(brand, relative_path)
-        codes = {aliases[0]} if aliases else set()
+        codes = {parse_pdf_identity(relative_path).model} if brand == "APPLE" else {aliases[0]} if aliases else set()
     else:
         return ()
 
@@ -169,8 +172,7 @@ def catalog_pdf_aliases(library_root: Path, connection: "Connection[object]") ->
     root = library_root.resolve(strict=True)
     aliases = {
         (alias.brand, alias.canonical_model, alias.alias): alias
-        for path in root.rglob("*")
-        if path.is_file() and path.suffix.casefold() == ".pdf"
+        for path in published_pdf_paths(root)
         for alias in aliases_from_pdf_path(path.relative_to(root))
     }
     for alias in aliases.values():

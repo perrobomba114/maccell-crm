@@ -1,12 +1,39 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
 from pathlib import Path
+from unittest.mock import Mock
 
-from cerebro_rag.device_alias_catalog import aliases_from_pdf_path
+from cerebro_rag.device_alias_catalog import aliases_from_pdf_path, catalog_pdf_aliases
 
 
 class DeviceAliasCatalogTest(unittest.TestCase):
+    def test_canonical_folders_keep_a02s_distinct_and_iphone_family(self) -> None:
+        samsung = aliases_from_pdf_path(Path("pdf/Samsung/A02s SM-A025F/schematic.pdf"))
+        self.assertIn(("SM-A025F", "A02S"), {(a.canonical_model, a.alias) for a in samsung})
+        self.assertNotIn("A02", {a.alias for a in samsung})
+        iphone = aliases_from_pdf_path(Path("pdf/iPhone/14 Pro Max/schematic.pdf"))
+        self.assertTrue(iphone)
+        self.assertEqual({a.canonical_model for a in iphone}, {"IPHONE 14 PRO MAX"})
+
+    def test_catalog_ignores_unpublished_and_unidentified_documents(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for name in (
+                "pdf/Samsung/A02 SM-A022F/SM-A022F schematic.pdf",
+                ".incoming-scraping/Samsung/A02 SM-A022M/SM-A022M.pdf",
+                "pdf/Por revisar/Identidad pendiente/SM-A025F.pdf",
+            ):
+                file = root / name
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_bytes(b"%PDF-1.7")
+            connection = Mock()
+            count = catalog_pdf_aliases(root, connection)
+            self.assertGreater(count, 0)
+            for call in connection.execute.call_args_list:
+                self.assertEqual(call.args[1][3], "pdf/Samsung/A02 SM-A022F/SM-A022F schematic.pdf")
+
     def test_extracts_commercial_and_technical_samsung_names_from_real_layout(self) -> None:
         aliases = aliases_from_pdf_path(
             Path(
@@ -84,4 +111,3 @@ class DeviceAliasCatalogTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

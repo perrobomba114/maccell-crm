@@ -68,6 +68,12 @@ async function snapshot() {
 async function preflight(backup) {
   if (backup.assets.length !== moves.length) throw new Error(`Catalog/DB mismatch: ${moves.length} catalog assets vs ${backup.assets.length} database assets`);
   const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+  const catalogByPath = new Map(catalog.assets.map(a => [a.relativePath, a]));
+  for (const item of manifest.entries) {
+    if (item.source === item.target) continue;
+    const asset = catalogByPath.get('sources/' + item.source);
+    if (asset && item.asset_id !== asset.id) throw new Error('Manifest omits catalog identity: ' + item.source);
+  }
   const affectedCatalog = catalog.assets.filter(a => byOld.has(a.relativePath));
   if (affectedCatalog.length !== moves.length) throw new Error('Catalog changed after inventory');
   for (const asset of [...backup.assets.map(a => ({ ...a.metadata, id: a.id, relativePath: a.relative_path, sha256: a.sha256.trim() })), ...affectedCatalog]) {
