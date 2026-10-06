@@ -34,6 +34,8 @@ Consolas y Laptop-PC conservan su nivel de plataforma y fabricante. Para Apple u
 
 Para reorganización usar `scripts/organize-schematic-library.py` y `scripts/reconcile-schematic-paths.mjs`, con manifiesto SHA-256 y respaldo previo. Los scripts `normalize-schematic-library.py` y `rewrite-schematic-catalog-after-normalization.mjs` son históricos: no usar; no reconcilian las referencias RAG V2.
 
+Para Samsung usar el diccionario auditado `scripts/data/schematic-samsung-reference.json` mediante `scripts/schematic-reference.py`: modelo comercial más código completo, con carpetas separadas por variante regional (`A02 SM-A022F`, `A02 SM-A022M`). No completar sufijos desconocidos. A025 corresponde a A02s; A022 a A02. La referencia de SCRAPING sirve para resolver nombres, pero sus descargas pueden contener otro documento: validar contenido y hash antes de publicar. Los PDF sin identidad comprobable van a `pdf/Por revisar/Identidad pendiente`, visibles para revisión y excluidos de ingesta RAG; los boardviews sin geometría permanecen en staging.
+
 ## Flujo obligatorio
 
 ### Regla incremental: comparar antes de transferir

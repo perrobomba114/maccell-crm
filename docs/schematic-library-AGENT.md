@@ -40,6 +40,16 @@ en `sourceRelativePath`. Los números de capítulo o páginas (`95-101`,
 `184-193`) no son modelos. NAND es una función de placa y se conserva en el
 archivo; Intel/Qualcomm y región USA siguen distinguiendo variantes.
 
+Para Samsung, usar nombre comercial y código completo: `Samsung/A02 SM-A022F`,
+`Samsung/A02 SM-A022M` y `Samsung/A02s SM-A025F`. Por decisión del usuario, los
+códigos regionales quedan separados. No deducir M/F/G cuando el documento sólo
+identifica la familia SM-A022: esa evidencia queda en `A02 SM-A022`.
+El mapa auditable es `scripts/data/schematic-samsung-reference.json`, obtenido
+con los catálogos de SCRAPING y la procedencia original. Si el catálogo contradice
+el contenido o el fabricante, conservar el conflicto para revisión. En particular,
+SM-A025 es A02s, aunque una carpeta de DZKJ diga A02. Un código sin nombre comercial
+comprobado se conserva como código; no inventar el nombre de un teléfono.
+
 No hay un modelo por proveedor, `VIP`, `FREE`, serie de descarga o carpeta de
 reparaciones. Un modelo compartido se nombra explícitamente, por ejemplo
 `11 Pro + Pro Max`; no se adjudica el documento a uno solo.

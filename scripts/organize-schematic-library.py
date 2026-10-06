@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import collections
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -23,10 +24,11 @@ BRANDS = {'samsung': 'Samsung', 'iphone': 'Apple', 'ipad': 'Apple', 'apple': 'Ap
           'huawei': 'Huawei', 'honor': 'Honor', 'xiaomi': 'Xiaomi', 'redmi': 'Xiaomi',
           'motorola': 'Motorola', 'lg': 'LG', 'oppo': 'Oppo', 'vivo': 'Vivo',
           'realme': 'Realme', 'acer': 'Acer', 'asus': 'Asus', 'lenovo': 'Lenovo',
-          'dell': 'Dell', 'hp': 'HP', 'msi': 'MSI'}
+          'dell': 'Dell', 'hp': 'HP', 'msi': 'MSI', 'oneplus': 'OnePlus',
+          'infinix': 'Infinix', 'tecno': 'Tecno'}
 TECHNICAL = re.compile(r'^(?:pdf|pcbe|pcb|sch|schematics?|schematic and (?:boardview|silk)|'
                        r'repair cases?|trouble\s*shooting|diode values?|block diagram|'
-                       r'boardview|pcb layers?|images?|documents?|manuals?|'
+                       r'boardview|pcb layers?(?:\s*\(old\))?|images?|documents?|manuals?|'
                        r'component (?:explain|location|notes)|repair flowchart|'
                        r'several reference schematics|machine dismant course|'
                        r'faqs|faceid|route map|(?:second|third) edition|'
@@ -87,8 +89,7 @@ def model_label(value: str, brand: str) -> str:
         value = re.sub(r'(?i)red mi', 'Redmi', value)
     if brand == 'Motorola' and re.match(r'(?i)^(edge|one|razr)\b', value): value = 'Moto ' + value.lower()
     if brand == 'Motorola':
-        # Codes remain in filenames; they are not separate commercial models.
-        value = re.split(r'\s+XT\d', value)[0].strip()
+        # Full XT variants remain part of the declared folder identity.
         value = re.sub(r'\b[45]g\b', lambda m: m[0].upper(), value)
     return value or 'Por revisar'
 
@@ -104,7 +105,7 @@ def model_from_name(value: str, brand: str) -> str:
     }
     if brand == 'Samsung':
         code = re.search(r'(?i)\b(?:SM|GT|SCH|SGH)[- ]?[a-z]?\d{3,5}[a-z0-9-]*', value)
-        model = re.search(r'(?i)(?<![a-z0-9-])(?:z\s*(?:fold|flip)\s*\d+|(?:galaxy\s+)?note\s*\d+\+?|[asmjfnwzceg]\s*\d{1,3}[a-z]?\+?)(?:\s+(?:ultra|edge\+?|plus|pro|max|core|prime|neo|lite|active|fe|4g|5g|lte|(?:19|20)\d{2}))*', value)
+        model = re.search(r'(?i)(?<![a-z0-9-])(?:z\s*(?:fold|flip)\s*\d+|(?:galaxy\s+)?note\s*\d+\+?|[asmjfnwzceg]\s*\d{1,3}[a-z]?\+?)(?:\s+(?:ultra|edge\+?|plus|pro|max|mini|duos|core|prime|neo|lite|active|fe|4g|5g|lte|(?:19|20)\d{2}))*', value)
         if model:
             return model[0]
         return code[0] if code else ''
@@ -207,6 +208,8 @@ def classify(relative: str) -> tuple[str, str, str, bool]:
                 if named != folder:
                     raise ValueError('Conflicting iPhone identities require provenance/hash review: ' + relative)
         return family, parts[1], label(parts[2]), parts[2] == 'Por revisar'
+    if len(parts) == 4 and parts[0] in {'pdf', 'pcbe', 'media'} and parts[1] in {'Samsung', 'Motorola', 'Huawei', 'Honor', 'Xiaomi', 'LG', 'Realme', 'Vivo', 'Oppo', 'OnePlus', 'Infinix', 'Tecno', 'Por revisar'}:
+        return ('pcbe' if Path(relative).suffix.lower() in BOARDS else 'pdf'), parts[1], label(parts[2]), 'Por revisar' in parts[1:3]
     family, brand, model, review = classify_legacy(relative)
     if brand != 'Apple':
         return family, brand, model, review
@@ -250,11 +253,16 @@ def plan(rows: list, catalog: dict, batch: str) -> dict:
             review = False
         else:
             family, brand, model, review = classify(source)
+            if brand == 'Samsung':
+                spec = importlib.util.spec_from_file_location('schematic_reference', Path(__file__).with_name('schematic-reference.py'))
+                reference = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(reference)
+                model = reference.samsung_reference_model(model, Path(source).name, source)
             name = filename(Path(source).name)
             # A removed source-folder board code must remain searchable in the
             # filename even if the original name was just "image.pdf".
             codes = re.findall(r'(?i)\b(?:SM|GT|SCH|SGH)-[a-z]?\d{3,5}[a-z0-9-]*|\bXT\d+[a-z0-9-]*', str(Path(source).parent))
-            missing = sorted({c.lower() for c in codes if c.lower() not in name.lower()})
+            missing = sorted({c.lower() for c in codes if c.lower() not in name.lower() and c.lower() not in model.lower()})
             if missing:
                 p = Path(name); name = p.stem + ' [' + ', '.join(missing) + ']' + p.suffix
             target = f'{family}/{brand}/{model}/{name}'

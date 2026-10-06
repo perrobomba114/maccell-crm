@@ -150,3 +150,9 @@ test("canonical iPhone tree agrees with Filebrowser without truncating variants"
   assert.equal(tree[0]!.name, 'iPhone');
   assert.deepEqual([...tree[0]!.subfolders.keys()], ['14 Pro Max', '14 Pro + Pro Max', '7-Intel', '7-Qualcomm', 'General']);
 });
+
+test("Samsung canonical tree keeps commercial names and full regional codes", () => {
+  const tree = buildDirectoryTree(['A02 SM-A022F', 'A02 SM-A022M', 'A02s SM-A025F'].map((model, i) =>
+    Object.assign(mockAsset(`sam${i}`, `sources/pdf/Samsung/${model}/service.pdf`, 'service.pdf', 'pdf'), { brand: 'SAMSUNG', model })));
+  assert.deepEqual([...tree[0]!.subfolders.keys()], ['A02 SM-A022F', 'A02 SM-A022M', 'A02s SM-A025F']);
+});

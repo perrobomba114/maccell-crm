@@ -133,7 +133,7 @@ function treeIdentity(asset: SchematicAsset): { brand: string; family?: string; 
   const category = role === "board" ? "Placas" : role === "schematic" ? "Esquemáticos" : role === "manual" ? "Manuales técnicos" : role === "repair" ? "Casos de reparación" : role === "accessory" ? "Accesorios" : "Documentos";
   if (consoleIdentity) return { brand: "Consolas", family: consoleIdentity.family, model: consoleIdentity.model, category };
   const canonical = asset.relativePath.replace(/^sources\//, "").split("/");
-  if (/^(?:pdf|pcbe)$/.test(canonical[0] ?? "") && /^(?:iPhone|iPad)$/.test(canonical[1] ?? "") && canonical.length === 4) {
+  if (/^(?:pdf|pcbe)$/.test(canonical[0] ?? "") && /^(?:iPhone|iPad|Samsung|Motorola|Huawei|Honor|Xiaomi|LG|Realme|Vivo|Oppo|OnePlus|Infinix|Tecno|Por revisar)$/.test(canonical[1] ?? "") && canonical.length === 4) {
     return { brand: canonical[1]!, model: cleanLabel(canonical[2]!), category };
   }
   const brandIndex = parts.findIndex((part) => brandLabel(part) === brand);

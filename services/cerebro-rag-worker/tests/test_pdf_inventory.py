@@ -198,7 +198,8 @@ def test_console_brands_under_pdf_root_and_document_subfolders():
 
 def test_inventory_excludes_staging_backups_and_directories_with_pdf_suffix(tmp_path):
     from cerebro_rag.pdf_inventory import published_pdf_paths
-    for name in ['pdf/Nintendo/Switch/valid.pdf', '.incoming-scraping/test.pdf', 'Backups/old.pdf']:
+    for name in ['pdf/Nintendo/Switch/valid.pdf', '.incoming-scraping/test.pdf', 'Backups/old.pdf',
+                 'pdf/Por revisar/Identidad pendiente/Samsung SM-A022M.pdf']:
         p = tmp_path / name
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(b'%PDF-1.7')

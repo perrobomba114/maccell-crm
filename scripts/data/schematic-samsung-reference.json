@@ -1,0 +1,2537 @@
+{
+  "codeModels": {
+    "SM-A013": [
+      "A01 Core"
+    ],
+    "SM-A015": [
+      "A01"
+    ],
+    "SM-A022": [
+      "A02"
+    ],
+    "SM-A025F": [
+      "A02s"
+    ],
+    "SM-A037": [
+      "A03s"
+    ],
+    "SM-A045": [
+      "A04"
+    ],
+    "SM-A042": [
+      "A04e"
+    ],
+    "SM-A047": [
+      "A04s"
+    ],
+    "SM-A055": [
+      "A05"
+    ],
+    "SM-A065": [
+      "A06"
+    ],
+    "SM-A075F": [
+      "A07 m"
+    ],
+    "SM-A105": [
+      "A10"
+    ],
+    "SM-A102": [
+      "A10e"
+    ],
+    "SM-A107": [
+      "A10s"
+    ],
+    "SM-A115": [
+      "A11"
+    ],
+    "SM-A127": [
+      "A12 nacho"
+    ],
+    "SM-A125": [
+      "A12"
+    ],
+    "SM-A136": [
+      "A13 5G"
+    ],
+    "SM-A135": [
+      "A13"
+    ],
+    "SM-A137F": [
+      "A13"
+    ],
+    "SM-A146": [
+      "A14 5G"
+    ],
+    "SM-A145": [
+      "A14"
+    ],
+    "SM-A156": [
+      "A15 5G"
+    ],
+    "SM-A155": [
+      "A15"
+    ],
+    "SM-A166": [
+      "A16 5G"
+    ],
+    "SM-A165": [
+      "A16"
+    ],
+    "SM-A176B": [
+      "A17 5G"
+    ],
+    "SM-A175F": [
+      "A17"
+    ],
+    "SM-A260": [
+      "A2 Core"
+    ],
+    "SM-A205": [
+      "A20"
+    ],
+    "SM-A202": [
+      "A20e"
+    ],
+    "SM-A207": [
+      "A20s"
+    ],
+    "SM-A215": [
+      "A21"
+    ],
+    "SM-A217": [
+      "A21s"
+    ],
+    "SM-A226": [
+      "A22 5G"
+    ],
+    "SM-A225": [
+      "A22"
+    ],
+    "SM-A236": [
+      "A23 5G"
+    ],
+    "SM-A235": [
+      "A23"
+    ],
+    "SM-A245": [
+      "A24"
+    ],
+    "SM-A256": [
+      "A25 5G"
+    ],
+    "SM-A266B": [
+      "A26 5G"
+    ],
+    "SM-A300": [
+      "A3"
+    ],
+    "SM-A310": [
+      "A3"
+    ],
+    "SM-A320": [
+      "A3"
+    ],
+    "SM-A305": [
+      "A30",
+      "A40s"
+    ],
+    "SM-A307": [
+      "A30s"
+    ],
+    "SM-A315": [
+      "A31"
+    ],
+    "SM-A326": [
+      "A32 5G"
+    ],
+    "SM-A325": [
+      "A32"
+    ],
+    "SM-A336": [
+      "A33 5G"
+    ],
+    "SM-A346": [
+      "A34 5G"
+    ],
+    "SM-A356": [
+      "A35 5G"
+    ],
+    "SM-A405": [
+      "A40"
+    ],
+    "SM-A415": [
+      "A41"
+    ],
+    "SM-A426": [
+      "A42 5G"
+    ],
+    "SM-A500": [
+      "A5"
+    ],
+    "SM-A510": [
+      "A5"
+    ],
+    "SM-A520": [
+      "A5"
+    ],
+    "SM-A505": [
+      "A50"
+    ],
+    "SM-A507": [
+      "A50s"
+    ],
+    "SM-A516": [
+      "A51 5G"
+    ],
+    "SM-A515": [
+      "A51"
+    ],
+    "SM-A526": [
+      "A52 5G"
+    ],
+    "SM-A525": [
+      "A52"
+    ],
+    "SM-A528": [
+      "A52s 5G"
+    ],
+    "SM-A536": [
+      "A53 5G"
+    ],
+    "SM-A546": [
+      "A54 5G"
+    ],
+    "SM-A556": [
+      "A55 5G"
+    ],
+    "SM-A600": [
+      "A6"
+    ],
+    "SM-A605": [
+      "A6 Plus"
+    ],
+    "SM-A606": [
+      "A60"
+    ],
+    "SM-A700": [
+      "A7"
+    ],
+    "SM-A710": [
+      "A7"
+    ],
+    "SM-A720": [
+      "A7"
+    ],
+    "SM-A750": [
+      "A7"
+    ],
+    "SM-A705": [
+      "A70"
+    ],
+    "SM-A707": [
+      "A70s"
+    ],
+    "SM-A716": [
+      "A71 5G"
+    ],
+    "SM-A715": [
+      "A71"
+    ],
+    "SM-A725": [
+      "A72"
+    ],
+    "SM-A736": [
+      "A73 5G"
+    ],
+    "SM-A530": [
+      "A8"
+    ],
+    "SM-A800": [
+      "A8"
+    ],
+    "SM-A810": [
+      "A8"
+    ],
+    "SM-G885": [
+      "A8 star"
+    ],
+    "SM-A730": [
+      "A8 Plus"
+    ],
+    "SM-A805": [
+      "A80"
+    ],
+    "SM-A826": [
+      "A82 5G"
+    ],
+    "SM-G8870": [
+      "A8s"
+    ],
+    "SM-A900": [
+      "A9"
+    ],
+    "SM-A910": [
+      "A9",
+      "A91"
+    ],
+    "SM-A908": [
+      "A90 5G"
+    ],
+    "SM-A905": [
+      "A90"
+    ],
+    "SM-A920": [
+      "A9s"
+    ],
+    "SM-F731": [
+      "Z Flip 5"
+    ],
+    "SM-F721": [
+      "Z Flip 4"
+    ],
+    "SM-F711": [
+      "Z Flip 3 5G"
+    ],
+    "SM-F707": [
+      "Z Flip 5G"
+    ],
+    "SM-F700": [
+      "Z Flip"
+    ],
+    "SM-F946": [
+      "Z Fold 5"
+    ],
+    "SM-F936": [
+      "Z Fold 4 5G"
+    ],
+    "SM-F926": [
+      "Z Fold 3 5G"
+    ],
+    "SM-F916": [
+      "Z Fold 2 5G"
+    ],
+    "SM-F415": [
+      "Z Fold Lite"
+    ],
+    "SM-F741": [
+      "Z Flip 6 5G"
+    ],
+    "SM-F956": [
+      "Z Fold 6 5G"
+    ],
+    "SM-S948": [
+      "S26 Ultra"
+    ],
+    "SM-S936": [
+      "S25 Plus"
+    ],
+    "SM-S938": [
+      "S25 Ultra"
+    ],
+    "SM-S931": [
+      "S25"
+    ],
+    "SM-S926U": [
+      "S24 Plus 5G"
+    ],
+    "SM-S928": [
+      "S24 Ultra"
+    ],
+    "SM-S921": [
+      "S24"
+    ],
+    "SM-S916": [
+      "S23 Plus 5G"
+    ],
+    "SM-S918": [
+      "S23 Ultra 5G"
+    ],
+    "SM-S911": [
+      "S23"
+    ],
+    "SM-S906": [
+      "S22 Plus 5G"
+    ],
+    "SM-S908": [
+      "S22 Ultra"
+    ],
+    "SM-S901": [
+      "S22 5G"
+    ],
+    "SM-G998": [
+      "S21 Ultra"
+    ],
+    "SM-G996": [
+      "S21 Plus"
+    ],
+    "SM-G991": [
+      "S21 5G"
+    ],
+    "SM-G990": [
+      "S21 fe 5G"
+    ],
+    "SM-G988": [
+      "S20 Ultra"
+    ],
+    "SM-G986": [
+      "S20 Plus 5G"
+    ],
+    "SM-G985": [
+      "S20 Plus"
+    ],
+    "SM-G981": [
+      "S20 5G"
+    ],
+    "SM-G980": [
+      "S20"
+    ],
+    "SM-G781": [
+      "S20 fe"
+    ],
+    "SM-G780": [
+      "S20 fe"
+    ],
+    "SM-G970": [
+      "S10e"
+    ],
+    "SM-G975": [
+      "S10 Plus"
+    ],
+    "SM-G977": [
+      "S10 5G"
+    ],
+    "SM-G973": [
+      "S10"
+    ],
+    "SM-G965": [
+      "S9 Plus"
+    ],
+    "SM-G960": [
+      "S9"
+    ],
+    "SM-G955": [
+      "S8 Plus"
+    ],
+    "SM-G950": [
+      "S8"
+    ],
+    "SM-G935": [
+      "S7 Edge"
+    ],
+    "SM-G930": [
+      "S7"
+    ],
+    "SM-G928": [
+      "S6 Edge Plus"
+    ],
+    "SM-G925": [
+      "S6 Edge"
+    ],
+    "SM-G920": [
+      "S6"
+    ],
+    "SM-G901": [
+      "S5 Plus"
+    ],
+    "SM-G900": [
+      "S5"
+    ],
+    "SM-W9023": [
+      "W23 5G"
+    ],
+    "SM-W2022": [
+      "W22 5G"
+    ],
+    "SM-W2021": [
+      "W21 5G"
+    ],
+    "SM-W2020": [
+      "W20 5G"
+    ],
+    "SM-W2019": [
+      "W2019"
+    ],
+    "SM-W2018": [
+      "W2018"
+    ],
+    "SM-W2017": [
+      "W2017"
+    ],
+    "SM-E025": [
+      "F02s"
+    ],
+    "SM-E135": [
+      "F13"
+    ],
+    "SM-E146": [
+      "F14 5G"
+    ],
+    "SM-E156": [
+      "F15 5G"
+    ],
+    "SM-E225": [
+      "F22"
+    ],
+    "SM-E236": [
+      "F23 5G"
+    ],
+    "SM-E346": [
+      "F34 5G"
+    ],
+    "SM-E546": [
+      "F54 5G"
+    ],
+    "SM-E556": [
+      "F55 5G"
+    ],
+    "SM-E625": [
+      "F62"
+    ],
+    "SM-F907": [
+      "Fold 5G"
+    ],
+    "SM-F900": [
+      "Fold"
+    ],
+    "SM-M156": [
+      "M15 5G"
+    ],
+    "SM-M546": [
+      "M54 5G"
+    ],
+    "SM-M556": [
+      "M55 5G"
+    ],
+    "SM-M558": [
+      "M55s"
+    ],
+    "SM-M625": [
+      "M62"
+    ],
+    "SM-N935": [
+      "Note fe"
+    ],
+    "SM-N986": [
+      "Note 20 Ultra 5G"
+    ],
+    "SM-N985": [
+      "Note 20 Ultra"
+    ],
+    "SM-N981": [
+      "Note 20 5G"
+    ],
+    "SM-N980": [
+      "Note 20"
+    ],
+    "SM-N976": [
+      "Note 10 Plus 5G"
+    ],
+    "SM-N975": [
+      "Note 10 Plus"
+    ],
+    "SM-N770": [
+      "Note 10 Lite"
+    ],
+    "SM-N971": [
+      "Note 10 5G"
+    ],
+    "SM-N970": [
+      "Note 10"
+    ],
+    "SM-N960": [
+      "Note 9"
+    ],
+    "SM-N950": [
+      "Note 8"
+    ],
+    "SM-N930": [
+      "Note 7"
+    ],
+    "SM-C5010": [
+      "C5 Pro"
+    ],
+    "SM-C710": [
+      "J7"
+    ],
+    "SM-C7100": [
+      "C8"
+    ],
+    "SM-C7108": [
+      "C8"
+    ],
+    "SM-G532": [
+      "J2 Prime"
+    ],
+    "SM-G570": [
+      "J5 Prime"
+    ],
+    "SM-G610": [
+      "J7 Prime"
+    ],
+    "SM-G611": [
+      "J7 Prime 2"
+    ],
+    "SM-G8850": [
+      "A8 star"
+    ],
+    "SM-J106F": [
+      "J1 mini Prime"
+    ],
+    "SM-J111F": [
+      "J1 ace Neo"
+    ],
+    "SM-J530F": [
+      "J5"
+    ],
+    "SM-J700": [
+      "J7"
+    ],
+    "SM-J7109": [
+      "J7"
+    ],
+    "SM-J720F": [
+      "J7 Prime 2"
+    ],
+    "SM-J720M": [
+      "J7 2018"
+    ],
+    "SM-J730G": [
+      "J7 Pro"
+    ],
+    "SM-J810F": [
+      "J8"
+    ],
+    "SM-M015": [
+      "M01"
+    ],
+    "SM-M405": [
+      "M40"
+    ],
+    "SM-M515": [
+      "M51"
+    ],
+    "SM-N920S": [
+      "N920k n920l"
+    ],
+    "SM-R360": [
+      "Gear fit 2"
+    ],
+    "SM-R600": [
+      "Gear sport"
+    ],
+    "SM-R765": [
+      "Gear s3"
+    ],
+    "SM-T819Y": [
+      "Tab s2 9.7 lte"
+    ],
+    "SM-T865": [
+      "Tab s6 4G"
+    ],
+    "SM-W700": [
+      "W703"
+    ],
+    "SM-A042F": [
+      "M04"
+    ],
+    "SM-A125F": [
+      "A12"
+    ],
+    "SM-A136U": [
+      "A13"
+    ],
+    "SM-A156U": [
+      "A15"
+    ],
+    "SM-A205S": [
+      "A20"
+    ],
+    "SM-A202K": [
+      "A20e"
+    ],
+    "SM-A225M": [
+      "A22"
+    ],
+    "SM-A307FN": [
+      "A30s"
+    ],
+    "SM-A315F": [
+      "A31"
+    ],
+    "SM-A326B": [
+      "A32"
+    ],
+    "SM-A3050": [
+      "A40s"
+    ],
+    "SM-A500F": [
+      "A5"
+    ],
+    "SM-A505N": [
+      "A50"
+    ],
+    "SM-A507FN": [
+      "A50s"
+    ],
+    "SM-A516N": [
+      "A51 5G"
+    ],
+    "SM-A526U": [
+      "A52 5G"
+    ],
+    "SM-A525M": [
+      "A52"
+    ],
+    "SM-A546B": [
+      "A54"
+    ],
+    "SM-A700K": [
+      "A7"
+    ],
+    "SM-A750FN": [
+      "A7"
+    ],
+    "SM-A705F": [
+      "A70"
+    ],
+    "SM-A7050": [
+      "A70"
+    ],
+    "SM-A716U": [
+      "A71"
+    ],
+    "SM-A530D": [
+      "A8 2018"
+    ],
+    "SM-A530F": [
+      "A8 2018"
+    ],
+    "SM-A810F": [
+      "A8 2016"
+    ],
+    "SM-A810S": [
+      "A8 2016"
+    ],
+    "SM-A730F": [
+      "A8 Plus"
+    ],
+    "SM-A805F": [
+      "A80"
+    ],
+    "SM-A826S": [
+      "A82 5G"
+    ],
+    "SM-A9080": [
+      "A90"
+    ],
+    "SM-F7310U": [
+      "Z Flip 5"
+    ],
+    "SM-F721U": [
+      "Z Flip 4"
+    ],
+    "SM-F711U": [
+      "Z Flip 3 5G"
+    ],
+    "SM-F707B": [
+      "Z Flip 5"
+    ],
+    "SM-F946U": [
+      "Z Fold 5"
+    ],
+    "SM-F936U": [
+      "Z Fold 4 5G"
+    ],
+    "SM-F926B": [
+      "Z Fold 3"
+    ],
+    "SM-F926U": [
+      "Z Fold 3"
+    ],
+    "SM-F9560": [
+      "Z Fold 6"
+    ],
+    "SM-S931U": [
+      "S25"
+    ],
+    "SM-S916U": [
+      "S23 Plus"
+    ],
+    "SM-S918B": [
+      "S23 Ultra"
+    ],
+    "SM-S918U": [
+      "S23 Ultra"
+    ],
+    "SM-S908B": [
+      "S22 Ultra"
+    ],
+    "SM-S908U": [
+      "S22 Ultra"
+    ],
+    "SM-G998B": [
+      "S21 Ultra"
+    ],
+    "SM-G998U": [
+      "S21 Ultra"
+    ],
+    "SM-G998W": [
+      "S21 Ultra"
+    ],
+    "SM-G988U": [
+      "S20u"
+    ],
+    "SM-G986U": [
+      "S20 Plus"
+    ],
+    "SM-G981U": [
+      "S20 5G"
+    ],
+    "SM-G781B": [
+      "S20 fe"
+    ],
+    "SM-G780F": [
+      "S20f"
+    ],
+    "SM-G977N": [
+      "S10 5G"
+    ],
+    "SM-G973U": [
+      "S10"
+    ],
+    "SM-G973F": [
+      "N07a"
+    ],
+    "SM-G965D": [
+      "S9 Plus"
+    ],
+    "SM-G965N": [
+      "S9 Plus"
+    ],
+    "SM-G965U": [
+      "S9 Plus"
+    ],
+    "SM-G960F": [
+      "W47"
+    ],
+    "SM-G960U": [
+      "S9"
+    ],
+    "SM-G955U": [
+      "W1"
+    ],
+    "SM-G930FD": [
+      "S7"
+    ],
+    "SM-F9460": [
+      "W24"
+    ],
+    "SM-N9860": [
+      "Note 20"
+    ],
+    "SM-N986B": [
+      "Note 20"
+    ],
+    "SM-N986BR": [
+      "Note 20"
+    ],
+    "SM-N986U": [
+      "Note 20"
+    ],
+    "SM-N986XU": [
+      "Note 20"
+    ],
+    "SM-N976B": [
+      "Note 10 Plus 5G"
+    ],
+    "SM-N976V": [
+      "Note 10 Plus 5G"
+    ],
+    "SM-N971N": [
+      "Note 10"
+    ],
+    "SM-N950F": [
+      "Note 8"
+    ],
+    "GT-N5100": [
+      "Note 8"
+    ],
+    "GT-I9305": [
+      "S3"
+    ],
+    "SM-C710F": [
+      "J7 Plus"
+    ],
+    "SM-G611F": [
+      "J7 Prime"
+    ],
+    "SM-I9103": [
+      "F99a"
+    ],
+    "SM-J410F": [
+      "J4 Core"
+    ],
+    "SM-J700M": [
+      "J7"
+    ],
+    "SM-J701F": [
+      "J7o"
+    ],
+    "SM-J727A": [
+      "J7"
+    ],
+    "SM-M105F": [
+      "M10"
+    ],
+    "SM-M205F": [
+      "M20"
+    ],
+    "SM-M515F": [
+      "M51"
+    ],
+    "SM-N910C": [
+      "Note 4"
+    ],
+    "SM-P6800": [
+      "F12f"
+    ],
+    "SM-S120VL": [
+      "A3l"
+    ],
+    "SM-W689": [
+      "W689"
+    ],
+    "SM-W727V": [
+      "W720"
+    ],
+    "SM-W799": [
+      "W799"
+    ],
+    "SM-W899": [
+      "W899"
+    ],
+    "SM-W998": [
+      "W998"
+    ],
+    "SM-W999": [
+      "W999"
+    ],
+    "SM-A105F": [
+      "A10"
+    ],
+    "SM-A3051": [
+      "A30"
+    ],
+    "SM-A605F": [
+      "A6 Plus"
+    ],
+    "SM-F7310": [
+      "Z Flip 5"
+    ],
+    "SM-S938M": [
+      "S25 Ultra"
+    ],
+    "SM-S928U": [
+      "S24 Ultra"
+    ],
+    "SM-G965F": [
+      "S9 Plus"
+    ],
+    "SM-G955F": [
+      "S8 Plus"
+    ],
+    "SM-G9500": [
+      "S8"
+    ],
+    "SM-G950F": [
+      "S8"
+    ],
+    "SM-G950U": [
+      "S8"
+    ],
+    "SM-G935A": [
+      "S7"
+    ],
+    "SM-G935D": [
+      "S7"
+    ],
+    "SM-G935F": [
+      "S7"
+    ],
+    "SM-G930F": [
+      "S7"
+    ],
+    "SM-G9200": [
+      "S6"
+    ],
+    "SM-G920V": [
+      "S6"
+    ],
+    "SM-W9024": [
+      "W24"
+    ],
+    "SM-N935F": [
+      "Note 7"
+    ],
+    "SM-N9500": [
+      "Note 8"
+    ],
+    "SM-J100H": [
+      "J1"
+    ],
+    "SM-J415F": [
+      "J4 Plus"
+    ],
+    "GT-N7100": [
+      "Note 2"
+    ],
+    "SM-N7100": [
+      "Note 2"
+    ],
+    "SM-J100": [
+      "J1"
+    ],
+    "SM-J415": [
+      "J4 Plus"
+    ],
+    "SM-A032F": [
+      "A03 Core"
+    ],
+    "SM-A032": [
+      "A03"
+    ],
+    "SM-A035": [
+      "A03"
+    ],
+    "SM-J111": [
+      "J1"
+    ],
+    "SM-J105H": [
+      "J1 mini"
+    ],
+    "SM-J106B": [
+      "J1 mini Prime"
+    ],
+    "SM-J110F": [
+      "J1"
+    ],
+    "SM-J120H": [
+      "J1"
+    ],
+    "SM-J260": [
+      "J2 Core"
+    ],
+    "SM-J250N": [
+      "J2 Pro"
+    ],
+    "SM-J200": [
+      "J2"
+    ],
+    "SM-J320A": [
+      "J3"
+    ],
+    "SM-J320F": [
+      "J3"
+    ],
+    "SM-J330F": [
+      "J3"
+    ],
+    "SM-J400F": [
+      "J4"
+    ],
+    "SM-J500F": [
+      "J5"
+    ],
+    "SM-J510FN": [
+      "J5"
+    ],
+    "SM-J530": [
+      "J5"
+    ],
+    "SM-J500M": [
+      "J5"
+    ],
+    "SM-J510F": [
+      "J5"
+    ],
+    "SM-J610F": [
+      "J6 Plus"
+    ],
+    "SM-J600F": [
+      "J6"
+    ],
+    "SM-J720": [
+      "J7 2018"
+    ],
+    "SM-J730F": [
+      "J7 Pro"
+    ],
+    "SM-J730": [
+      "J7 Pro"
+    ],
+    "SM-J710F": [
+      "J7"
+    ],
+    "SM-J810": [
+      "J8"
+    ],
+    "SM-M017F": [
+      "M01s"
+    ],
+    "SM-M017": [
+      "M01s"
+    ],
+    "SM-M022F": [
+      "M02"
+    ],
+    "SM-M022M": [
+      "M02"
+    ],
+    "SM-M045F": [
+      "M04"
+    ],
+    "SM-M105": [
+      "M10"
+    ],
+    "SM-M107F": [
+      "M10s"
+    ],
+    "SM-M115F": [
+      "M11"
+    ],
+    "SM-M127F": [
+      "M12"
+    ],
+    "SM-M205": [
+      "M20"
+    ],
+    "SM-M215F": [
+      "M21"
+    ],
+    "SM-M215G": [
+      "M21"
+    ],
+    "SM-M215M": [
+      "M21"
+    ],
+    "SM-M305F": [
+      "M30"
+    ],
+    "SM-M305M": [
+      "M30"
+    ],
+    "SM-M307F": [
+      "M30s"
+    ],
+    "SM-M315F": [
+      "M31"
+    ],
+    "SM-M317F": [
+      "M31s"
+    ],
+    "SM-M326B": [
+      "M32 5G"
+    ],
+    "SM-M325F": [
+      "M32"
+    ],
+    "SM-M426B": [
+      "M42 5G"
+    ],
+    "SM-N9005": [
+      "Note 3 lte"
+    ],
+    "SM-N900": [
+      "Note 3"
+    ],
+    "SM-N910F": [
+      "Note 4"
+    ],
+    "SM-N920C": [
+      "Note 5"
+    ],
+    "SM-G770F": [
+      "S10 Lite"
+    ],
+    "GT-I9105": [
+      "S2 Plus"
+    ],
+    "GT-I9100": [
+      "S2"
+    ],
+    "SM-T819": [
+      "S2"
+    ],
+    "SM-S711B": [
+      "S23 fe"
+    ],
+    "SM-S9260": [
+      "S24 Plus 5G"
+    ],
+    "SM-S926B": [
+      "S24 Plus 5G"
+    ],
+    "SM-S926W": [
+      "S24 Plus 5G"
+    ],
+    "GT-I9300I": [
+      "S3 Neo"
+    ],
+    "GT-I8190": [
+      "S3 mini"
+    ],
+    "GT-I8200": [
+      "S3 mini"
+    ],
+    "GT-I9300": [
+      "S3"
+    ],
+    "GT-I9295": [
+      "S4 Active"
+    ],
+    "GT-I9505": [
+      "S4 lte"
+    ],
+    "GT-I9190": [
+      "S4 mini"
+    ],
+    "GT-I9500": [
+      "S4"
+    ],
+    "SM-T867": [
+      "S6 4G"
+    ],
+    "SM-J727": [
+      "J7"
+    ],
+    "SM-D950J": [
+      "S8"
+    ],
+    "SM-I9300": [
+      "S3"
+    ],
+    "SM-I9500": [
+      "S4"
+    ],
+    "SM-J330L": [
+      "C2a"
+    ],
+    "SM-J330": [
+      "C2a"
+    ],
+    "SM-J400": [
+      "J4"
+    ],
+    "SM-J610": [
+      "J6 Plus"
+    ],
+    "SM-J737T": [
+      "C7f"
+    ],
+    "SM-J737": [
+      "C7f"
+    ],
+    "SM-J808": [
+      "E5b"
+    ],
+    "SM-M055F": [
+      "F4c"
+    ],
+    "SM-N910": [
+      "Note 4"
+    ],
+    "SM-W620": [
+      "W620"
+    ],
+    "SM-W727": [
+      "W720"
+    ],
+    "SM-Z130": [
+      "Z130h"
+    ],
+    "SM-W7025": [
+      "W25"
+    ],
+    "SM-A022M": [
+      "A02"
+    ],
+    "SM-A025M": [
+      "A02s"
+    ]
+  },
+  "evidence": {
+    "SM-A013": [
+      "A01 Core SM-A013"
+    ],
+    "SM-A015": [
+      "A01 SM-A015"
+    ],
+    "SM-A022": [
+      "A02 SM-A022"
+    ],
+    "SM-A025F": [
+      "A02 SM-A025F"
+    ],
+    "SM-A037": [
+      "A03s SM-A037"
+    ],
+    "SM-A045": [
+      "A04 SM-A045"
+    ],
+    "SM-A042": [
+      "A04e SM-A042"
+    ],
+    "SM-A047": [
+      "A04s SM-A047"
+    ],
+    "SM-A055": [
+      "A05 SM-A055"
+    ],
+    "SM-A065": [
+      "A06 SM-A065"
+    ],
+    "SM-A075F": [
+      "A07 SM-A075F_M"
+    ],
+    "SM-A105": [
+      "A10 SM-A105"
+    ],
+    "SM-A102": [
+      "A10e SM-A102"
+    ],
+    "SM-A107": [
+      "A10s SM-A107"
+    ],
+    "SM-A115": [
+      "A11 SM-A115"
+    ],
+    "SM-A127": [
+      "A12 Nacho SM-A127"
+    ],
+    "SM-A125": [
+      "A12 SM-A125"
+    ],
+    "SM-A136": [
+      "A13 5G SM-A136"
+    ],
+    "SM-A135": [
+      "A13 SM-A135"
+    ],
+    "SM-A137F": [
+      "A13 SM-A137F"
+    ],
+    "SM-A146": [
+      "A14 5G SM-A146"
+    ],
+    "SM-A145": [
+      "A14 SM-A145"
+    ],
+    "SM-A156": [
+      "A15 5G SM-A156"
+    ],
+    "SM-A155": [
+      "A15 SM-A155"
+    ],
+    "SM-A166": [
+      "A16 5G SM-A166"
+    ],
+    "SM-A165": [
+      "A16 SM-A165"
+    ],
+    "SM-A176B": [
+      "A17 5G SM-A176B"
+    ],
+    "SM-A175F": [
+      "A17 SM-A175F"
+    ],
+    "SM-A260": [
+      "A2 Core SM-A260"
+    ],
+    "SM-A205": [
+      "A20 SM-A205"
+    ],
+    "SM-A202": [
+      "A20e SM-A202"
+    ],
+    "SM-A207": [
+      "A20s SM-A207"
+    ],
+    "SM-A215": [
+      "A21 SM-A215"
+    ],
+    "SM-A217": [
+      "A21S SM-A217"
+    ],
+    "SM-A226": [
+      "A22 5G SM-A226"
+    ],
+    "SM-A225": [
+      "A22 SM-A225"
+    ],
+    "SM-A236": [
+      "A23 5G SM-A236"
+    ],
+    "SM-A235": [
+      "A23 SM-A235"
+    ],
+    "SM-A245": [
+      "A24 SM-A245"
+    ],
+    "SM-A256": [
+      "A25 5G SM-A256"
+    ],
+    "SM-A266B": [
+      "A26 5G SM-A266B"
+    ],
+    "SM-A300": [
+      "A3 SM-A300"
+    ],
+    "SM-A310": [
+      "A3 SM-A310"
+    ],
+    "SM-A320": [
+      "A3 SM-A320"
+    ],
+    "SM-A305": [
+      "A30 SM-A305",
+      "A40s SM-A305"
+    ],
+    "SM-A307": [
+      "A30s SM-A307"
+    ],
+    "SM-A315": [
+      "A31 SM-A315"
+    ],
+    "SM-A326": [
+      "A32 5G SM-A326"
+    ],
+    "SM-A325": [
+      "A32 SM-A325"
+    ],
+    "SM-A336": [
+      "A33 5G SM-A336"
+    ],
+    "SM-A346": [
+      "A34 5G SM-A346"
+    ],
+    "SM-A356": [
+      "A35 5G SM-A356"
+    ],
+    "SM-A405": [
+      "A40 SM-A405"
+    ],
+    "SM-A415": [
+      "A41 SM-A415"
+    ],
+    "SM-A426": [
+      "A42 5G SM-A426"
+    ],
+    "SM-A500": [
+      "A5 SM-A500"
+    ],
+    "SM-A510": [
+      "A5 SM-A510"
+    ],
+    "SM-A520": [
+      "A5 SM-A520"
+    ],
+    "SM-A505": [
+      "A50 SM-A505"
+    ],
+    "SM-A507": [
+      "A50s SM-A507"
+    ],
+    "SM-A516": [
+      "A51 5G SM-A516"
+    ],
+    "SM-A515": [
+      "A51 SM-A515"
+    ],
+    "SM-A526": [
+      "A52 5G SM-A526"
+    ],
+    "SM-A525": [
+      "A52 SM-A525"
+    ],
+    "SM-A528": [
+      "A52s 5G SM-A528"
+    ],
+    "SM-A536": [
+      "A53 5G SM-A536"
+    ],
+    "SM-A546": [
+      "A54 5G SM-A546"
+    ],
+    "SM-A556": [
+      "A55 5G SM-A556"
+    ],
+    "SM-A600": [
+      "A6 SM-A600"
+    ],
+    "SM-A605": [
+      "A6+ SM-A605"
+    ],
+    "SM-A606": [
+      "A60 SM-A606"
+    ],
+    "SM-A700": [
+      "A7 SM-A700"
+    ],
+    "SM-A710": [
+      "A7 SM-A710"
+    ],
+    "SM-A720": [
+      "A7 SM-A720"
+    ],
+    "SM-A750": [
+      "A7 SM-A750"
+    ],
+    "SM-A705": [
+      "A70 SM-A705"
+    ],
+    "SM-A707": [
+      "A70s SM-A707"
+    ],
+    "SM-A716": [
+      "A71 5G SM-A716"
+    ],
+    "SM-A715": [
+      "A71 SM-A715"
+    ],
+    "SM-A725": [
+      "A72 SM-A725"
+    ],
+    "SM-A736": [
+      "A73 5G SM-A736"
+    ],
+    "SM-A530": [
+      "A8 SM-A530"
+    ],
+    "SM-A800": [
+      "A8 SM-A800"
+    ],
+    "SM-A810": [
+      "A8 SM-A810"
+    ],
+    "SM-G885": [
+      "A8 Star SM-G885"
+    ],
+    "SM-A730": [
+      "A8+ SM-A730"
+    ],
+    "SM-A805": [
+      "A80 SM-A805"
+    ],
+    "SM-A826": [
+      "A82 5G SM-A826"
+    ],
+    "SM-G8870": [
+      "A8s SM-G8870"
+    ],
+    "SM-A900": [
+      "A9 SM-A900"
+    ],
+    "SM-A910": [
+      "A9 SM-A910",
+      "A91 SM-A910"
+    ],
+    "SM-A908": [
+      "A90 5G SM-A908"
+    ],
+    "SM-A905": [
+      "A90 SM-A905"
+    ],
+    "SM-A920": [
+      "A9s SM-A920"
+    ],
+    "SM-F731": [
+      "Z Flip5 SM-F731"
+    ],
+    "SM-F721": [
+      "Z Flip4 SM-F721"
+    ],
+    "SM-F711": [
+      "Z Flip3 5G SM-F711"
+    ],
+    "SM-F707": [
+      "Z Flip 5G SM-F707"
+    ],
+    "SM-F700": [
+      "Z Flip SM-F700"
+    ],
+    "SM-F946": [
+      "Z Fold5 SM-F946"
+    ],
+    "SM-F936": [
+      "Z Fold4 5G SM-F936"
+    ],
+    "SM-F926": [
+      "Z Fold3 5G SM-F926"
+    ],
+    "SM-F916": [
+      "Z Fold2 5G SM-F916"
+    ],
+    "SM-F415": [
+      "Z Fold Lite SM-F415"
+    ],
+    "SM-F741": [
+      "Z Flip6 5G SM-F741"
+    ],
+    "SM-F956": [
+      "Z Fold6 5G SM-F956"
+    ],
+    "SM-S948": [
+      "S26 Ultra SM-S948"
+    ],
+    "SM-S936": [
+      "S25 PLUS SM-S936"
+    ],
+    "SM-S938": [
+      "S25 ULTRA SM-S938 schematic",
+      "S25 Ultra SM-S938"
+    ],
+    "SM-S931": [
+      "S25  SM-S931 schematic",
+      "S25 SM-S931"
+    ],
+    "SM-S926U": [
+      "S24+ 5G SM-S926U"
+    ],
+    "SM-S928": [
+      "S24 Ultra SM-S928"
+    ],
+    "SM-S921": [
+      "S24 SM-S921"
+    ],
+    "SM-S916": [
+      "S23+ 5G SM-S916"
+    ],
+    "SM-S918": [
+      "S23 Ultra 5G SM-S918"
+    ],
+    "SM-S911": [
+      "S23 SM-S911"
+    ],
+    "SM-S906": [
+      "S22+ 5G SM-S906"
+    ],
+    "SM-S908": [
+      "S22 Ultra SM-S908"
+    ],
+    "SM-S901": [
+      "S22 5G SM-S901"
+    ],
+    "SM-G998": [
+      "S21 Ultra SM-G998"
+    ],
+    "SM-G996": [
+      "S21+ SM-G996"
+    ],
+    "SM-G991": [
+      "S21 5G SM-G991"
+    ],
+    "SM-G990": [
+      "S21 FE 5G SM-G990"
+    ],
+    "SM-G988": [
+      "S20 Ultra SM-G988"
+    ],
+    "SM-G986": [
+      "S20+ 5G SM-G986"
+    ],
+    "SM-G985": [
+      "S20+ SM-G985"
+    ],
+    "SM-G981": [
+      "S20 5G SM-G981"
+    ],
+    "SM-G980": [
+      "S20 SM-G980"
+    ],
+    "SM-G781": [
+      "S20 FE SM-G781"
+    ],
+    "SM-G780": [
+      "S20 FE SM-G780"
+    ],
+    "SM-G970": [
+      "S10E SM-G970"
+    ],
+    "SM-G975": [
+      "S10+ SM-G975"
+    ],
+    "SM-G977": [
+      "S10 5G SM-G977"
+    ],
+    "SM-G973": [
+      "S10 SM-G973"
+    ],
+    "SM-G965": [
+      "S9+ SM-G965"
+    ],
+    "SM-G960": [
+      "S9 SM-G960"
+    ],
+    "SM-G955": [
+      "S8+ SM-G955"
+    ],
+    "SM-G950": [
+      "S8 SM-G950"
+    ],
+    "SM-G935": [
+      "S7 Edge SM-G935"
+    ],
+    "SM-G930": [
+      "S7 SM-G930"
+    ],
+    "SM-G928": [
+      "S6 Edge+ SM-G928"
+    ],
+    "SM-G925": [
+      "S6 Edge SM-G925"
+    ],
+    "SM-G920": [
+      "S6 SM-G920"
+    ],
+    "SM-G901": [
+      "S5+ SM-G901"
+    ],
+    "SM-G900": [
+      "S5 SM-G900"
+    ],
+    "SM-W9023": [
+      "W23 5G SM-W9023"
+    ],
+    "SM-W2022": [
+      "W22 5G SM-W2022"
+    ],
+    "SM-W2021": [
+      "W21 5G SM-W2021"
+    ],
+    "SM-W2020": [
+      "W20 5G SM-W2020"
+    ],
+    "SM-W2019": [
+      "W2019 SM-W2019"
+    ],
+    "SM-W2018": [
+      "W2018 SM-W2018"
+    ],
+    "SM-W2017": [
+      "W2017 SM-W2017"
+    ],
+    "SM-E025": [
+      "F02s SM-E025"
+    ],
+    "SM-E135": [
+      "F13 SM-E135"
+    ],
+    "SM-E146": [
+      "F14 5G SM-E146"
+    ],
+    "SM-E156": [
+      "F15 5G SM-E156"
+    ],
+    "SM-E225": [
+      "F22 SM-E225"
+    ],
+    "SM-E236": [
+      "F23 5G SM-E236"
+    ],
+    "SM-E346": [
+      "F34 5G SM-E346"
+    ],
+    "SM-E546": [
+      "F54 5G SM-E546"
+    ],
+    "SM-E556": [
+      "F55 5G SM-E556"
+    ],
+    "SM-E625": [
+      "F62 SM-E625"
+    ],
+    "SM-F907": [
+      "Fold 5G SM-F907"
+    ],
+    "SM-F900": [
+      "Fold SM-F900"
+    ],
+    "SM-M156": [
+      "M15 5G SM-M156"
+    ],
+    "SM-M546": [
+      "M54 5G SM-M546"
+    ],
+    "SM-M556": [
+      "M55 5G SM-M556"
+    ],
+    "SM-M558": [
+      "M55s SM-M558"
+    ],
+    "SM-M625": [
+      "M62 SM-M625",
+      "SM-M625 Galaxy M62"
+    ],
+    "SM-N935": [
+      "Note FE SM-N935"
+    ],
+    "SM-N986": [
+      "Note20 Ultra 5G SM-N986"
+    ],
+    "SM-N985": [
+      "Note20 Ultra SM-N985"
+    ],
+    "SM-N981": [
+      "Note20 5G SM-N981"
+    ],
+    "SM-N980": [
+      "Note20 SM-N980"
+    ],
+    "SM-N976": [
+      "Note10+ 5G SM-N976"
+    ],
+    "SM-N975": [
+      "Note10+ SM-N975"
+    ],
+    "SM-N770": [
+      "Note10 Lite SM-N770"
+    ],
+    "SM-N971": [
+      "Note10 5G SM-N971"
+    ],
+    "SM-N970": [
+      "Note10 SM-N970"
+    ],
+    "SM-N960": [
+      "Note9 SM-N960"
+    ],
+    "SM-N950": [
+      "Note8 SM-N950"
+    ],
+    "SM-N930": [
+      "Note7 SM-N930"
+    ],
+    "SM-C5010": [
+      "SM-C5010 Galaxy C5 Pro"
+    ],
+    "SM-C710": [
+      "SM-C710 Galaxy J7"
+    ],
+    "SM-C7100": [
+      "SM-C7100 Galaxy C8"
+    ],
+    "SM-C7108": [
+      "SM-C7108 Galaxy C8"
+    ],
+    "SM-G532": [
+      "SM-G532 J2 Prime"
+    ],
+    "SM-G570": [
+      "SM-G570 J5 Prime"
+    ],
+    "SM-G610": [
+      "SM-G610 J7 Prime"
+    ],
+    "SM-G611": [
+      "SM-G611 Galaxy J7 Prime 2"
+    ],
+    "SM-G8850": [
+      "SM-G8850 Galaxy A8 Star"
+    ],
+    "SM-J106F": [
+      "SM-J106F Galaxy J1 Mini Prime (2016)"
+    ],
+    "SM-J111F": [
+      "SM-J111F Galaxy J1 Ace Neo"
+    ],
+    "SM-J530F": [
+      "SM-J530f Galaxy j5"
+    ],
+    "SM-J700": [
+      "SM-J700 J7"
+    ],
+    "SM-J7109": [
+      "SM-J7109 Galaxy J7"
+    ],
+    "SM-J720F": [
+      "SM-J720F Galaxy J7 Prime 2"
+    ],
+    "SM-J720M": [
+      "SM-J720M Galaxy J7 2018"
+    ],
+    "SM-J730G": [
+      "SM-J730G Galaxy J7 Pro"
+    ],
+    "SM-J810F": [
+      "SM-J810F Galaxy J8 (2018)"
+    ],
+    "SM-M015": [
+      "SM-M015 Galaxy M01"
+    ],
+    "SM-M405": [
+      "SM-M405 Galaxy M40"
+    ],
+    "SM-M515": [
+      "SM-M515 M51"
+    ],
+    "SM-N920S": [
+      "SM-N920S_N920K_N920L"
+    ],
+    "SM-R360": [
+      "SM-R360 Gear Fit 2"
+    ],
+    "SM-R600": [
+      "SM-R600 Gear Sport"
+    ],
+    "SM-R765": [
+      "SM-R765 Gear S3"
+    ],
+    "SM-T819Y": [
+      "SM-T819Y Galaxy Tab S2 9.7 LTE"
+    ],
+    "SM-T865": [
+      "SM-T865 Tab S6 4G"
+    ],
+    "SM-W700": [
+      "SM-W700_W703"
+    ],
+    "SM-A042F": [
+      "{1}/SAMSUNG/A series(VIP)/A04e SM-A042/SM-A042F SCHEMATIC AND PCB(Galaxy M04).pdf"
+    ],
+    "SM-A125F": [
+      "{1}/SAMSUNG/A series(VIP)/A12 SM-A125/SM-A125F A12-image.pdf"
+    ],
+    "SM-A136U": [
+      "{1}/SAMSUNG/A series(VIP)/A13 5G SM-A136/A13-SM-A136U image.pdf"
+    ],
+    "SM-A156U": [
+      "{1}/SAMSUNG/A series(VIP)/A15 5G SM-A156/A15-SM-A156U image.pdf"
+    ],
+    "SM-A205S": [
+      "{1}/SAMSUNG/A series(VIP)/A20 SM-A205/SM-A205S Galaxy A20 service manual.pdf"
+    ],
+    "SM-A202K": [
+      "{1}/SAMSUNG/A series(VIP)/A20e SM-A202/SM-A202K Galaxy A20e service manual.pdf"
+    ],
+    "SM-A225M": [
+      "{1}/SAMSUNG/A series(VIP)/A22 SM-A225/Repair Case/(Spanish)FULL CARGA Y ENCENDIDO samsung a22 sm-a225m.pdf"
+    ],
+    "SM-A307FN": [
+      "{1}/SAMSUNG/A series(VIP)/A30s SM-A307/A30S SM-A307FN-G-GN-GT image.pdf"
+    ],
+    "SM-A315F": [
+      "{1}/SAMSUNG/A series(VIP)/A31 SM-A315/A31-SM-A315F image.pdf"
+    ],
+    "SM-A326B": [
+      "{1}/SAMSUNG/A series(VIP)/A32 5G SM-A326/A32-SM-A326B image.pdf"
+    ],
+    "SM-A3050": [
+      "{1}/SAMSUNG/A series(VIP)/A40s SM-A305/A40S SM-A3050- image.pdf"
+    ],
+    "SM-A500F": [
+      "{1}/SAMSUNG/A series(VIP)/A5 SM-A500/SM-A500F A5 image.pdf"
+    ],
+    "SM-A505N": [
+      "{1}/SAMSUNG/A series(VIP)/A50 SM-A505/A50-SM-A505N image.pdf"
+    ],
+    "SM-A507FN": [
+      "{1}/SAMSUNG/A series(VIP)/A50s SM-A507/A50s SM-A507FN Component explain.pdf"
+    ],
+    "SM-A516N": [
+      "{1}/SAMSUNG/A series(VIP)/A51 5G SM-A516/A51 5G-SM-A516N image.pdf"
+    ],
+    "SM-A526U": [
+      "{1}/SAMSUNG/A series(VIP)/A52 5G SM-A526/A52 5G-SM-A526U image.pdf"
+    ],
+    "SM-A525M": [
+      "{1}/SAMSUNG/A series(VIP)/A52 SM-A525/Repair Case/(Spanish)FULL CARGA Y ENCENDIDO samsung a52 sm-a525m.pdf"
+    ],
+    "SM-A546B": [
+      "{1}/SAMSUNG/A series(VIP)/A54 5G SM-A546/A54-SM-A546B image.pdf"
+    ],
+    "SM-A700K": [
+      "{1}/SAMSUNG/A series(VIP)/A7 SM-A700/SM-A700K A7 image.pdf"
+    ],
+    "SM-A750FN": [
+      "{1}/SAMSUNG/A series(VIP)/A7 SM-A750/SM-A750FN A7 image.pdf"
+    ],
+    "SM-A705F": [
+      "{1}/SAMSUNG/A series(VIP)/A70 SM-A705/A70-SM-A705F image.pdf"
+    ],
+    "SM-A7050": [
+      "{1}/SAMSUNG/A series(VIP)/A70 SM-A705/SM-A7050 Galaxy A70 Component explain.pdf"
+    ],
+    "SM-A716U": [
+      "{1}/SAMSUNG/A series(VIP)/A71 5G SM-A716/SM-A716U/A71-SM-A716U-U1 Component explain.pdf"
+    ],
+    "SM-A530D": [
+      "{1}/SAMSUNG/A series(VIP)/A8 SM-A530/Samsung Galaxy A8 2018 (SM-A530D).pdf"
+    ],
+    "SM-A530F": [
+      "{1}/SAMSUNG/A series(VIP)/A8 SM-A530/Samsung Galaxy A8 2018 (SM-A530F_W) service manual.pdf"
+    ],
+    "SM-A810F": [
+      "{1}/SAMSUNG/A series(VIP)/A8 SM-A810/ SM-A810F (Galaxy A8 2016) service manual.pdf"
+    ],
+    "SM-A810S": [
+      "{1}/SAMSUNG/A series(VIP)/A8 SM-A810/SM-A810S A8_2016_MEA_Block_Diagram_160630.pdf"
+    ],
+    "SM-A730F": [
+      "{1}/SAMSUNG/A series(VIP)/A8+ SM-A730/SM-A730F Galaxy A8+ Level 3 Repair.pdf"
+    ],
+    "SM-A805F": [
+      "{1}/SAMSUNG/A series(VIP)/A80 SM-A805/A80 (SM-A805F_A8050) service manual.pdf"
+    ],
+    "SM-A826S": [
+      "{1}/SAMSUNG/A series(VIP)/A82 5G SM-A826/A82 5G SM-A826S 02C image.pdf"
+    ],
+    "SM-A9080": [
+      "{1}/SAMSUNG/A series(VIP)/A90 5G SM-A908/SM-A9080/A90 SM-A9080-A908Q Component explain.pdf"
+    ],
+    "SM-F7310U": [
+      "{1}/SAMSUNG/Z series(VIP)/Z Flip5 SM-F731/Z Flip 5-SM-F7310U image.pdf"
+    ],
+    "SM-F721U": [
+      "{1}/SAMSUNG/Z series(VIP)/Z Flip4 SM-F721/Z Flip4-SM-F721U Component explain.pdf"
+    ],
+    "SM-F711U": [
+      "{1}/SAMSUNG/Z series(VIP)/Z Flip3 5G SM-F711/SM-F711U/Z Flip3 5G SM-F711U Component explain.pdf"
+    ],
+    "SM-F707B": [
+      "{1}/SAMSUNG/Z series(VIP)/Z Flip 5G SM-F707/Z Flip 5G-SM-F707B-U-N-0-U1-J-W_M Component explain.pdf"
+    ],
+    "SM-F946U": [
+      "{1}/SAMSUNG/Z series(VIP)/Z Fold5 SM-F946/Z Fold5-SM-F946U image.pdf"
+    ],
+    "SM-F936U": [
+      "{1}/SAMSUNG/Z series(VIP)/Z Fold4 5G SM-F936/Z Fold4 5G SM-F936U MB image.pdf"
+    ],
+    "SM-F926B": [
+      "{1}/SAMSUNG/Z series(VIP)/Z Fold3 5G SM-F926/Z Fold3-SM-F926B_QCOM_Common_Service_Schematic_Full.pdf"
+    ],
+    "SM-F926U": [
+      "{1}/SAMSUNG/Z series(VIP)/Z Fold3 5G SM-F926/Z Fold3-SM-F926U_QCOM_Common_Service_Schematic_Full.pdf"
+    ],
+    "SM-F9560": [
+      "{1}/SAMSUNG/Z series(VIP)/Z Fold6 5G SM-F956/Z Fold6-SM-F9560_D image.pdf"
+    ],
+    "SM-S931U": [
+      "{1}/SAMSUNG/S series(VIP)/S25 SM-S931/S25-SM-S931U image.pdf"
+    ],
+    "SM-S916U": [
+      "{1}/SAMSUNG/S series(VIP)/S23+ 5G SM-S916/S23+-SM-S916U image.pdf"
+    ],
+    "SM-S918B": [
+      "{1}/SAMSUNG/S series(VIP)/S23 Ultra 5G SM-S918/S23 Ultra SM-S918B_QCOM_Common_Service_Schematic_Full.pdf"
+    ],
+    "SM-S918U": [
+      "{1}/SAMSUNG/S series(VIP)/S23 Ultra 5G SM-S918/S23 Ultra SM-S918U image.pdf"
+    ],
+    "SM-S908B": [
+      "{1}/SAMSUNG/S series(VIP)/S22 Ultra SM-S908/S22 Ultra Europe-SM-S908B image.pdf"
+    ],
+    "SM-S908U": [
+      "{1}/SAMSUNG/S series(VIP)/S22 Ultra SM-S908/S22 Ultra SM-S908U image.pdf"
+    ],
+    "SM-G998B": [
+      "{1}/SAMSUNG/S series(VIP)/S21 Ultra SM-G998/S21 Ultra-SM-G998B_EXYNOS_Common_Service_Schematic_Full.pdf"
+    ],
+    "SM-G998U": [
+      "{1}/SAMSUNG/S series(VIP)/S21 Ultra SM-G998/S21 Ultra-SM-G998U_QCOM_Common_Service_Schematic_Full.pdf"
+    ],
+    "SM-G998W": [
+      "{1}/SAMSUNG/S series(VIP)/S21 Ultra SM-G998/S21 Ultra-SM-G998W Troubleshooting.pdf"
+    ],
+    "SM-G988U": [
+      "{1}/SAMSUNG/S series(VIP)/S20 Ultra SM-G988/SM-G988U/S20U SM-G988U-U-O- MB image.pdf"
+    ],
+    "SM-G986U": [
+      "{1}/SAMSUNG/S series(VIP)/S20+ 5G SM-G986/S20+ SM-G986U- MB image.pdf"
+    ],
+    "SM-G981U": [
+      "{1}/SAMSUNG/S series(VIP)/S20 5G SM-G981/SM-G981U/S20 5G SM-G981U-0-N-W- MB image.pdf"
+    ],
+    "SM-G781B": [
+      "{1}/SAMSUNG/S series(VIP)/S20 FE SM-G781/S20 FE SM-G781B-N-O Component explain.pdf"
+    ],
+    "SM-G780F": [
+      "{1}/SAMSUNG/S series(VIP)/S20 FE SM-G780/SM-G780F_G (S20FE)_Layout.pdf"
+    ],
+    "SM-G977N": [
+      "{1}/SAMSUNG/S series(VIP)/S10 5G SM-G977/SM-G977N/S10 5G-SM-G977N_B_05E- MB image.pdf"
+    ],
+    "SM-G973U": [
+      "{1}/SAMSUNG/S series(VIP)/S10 SM-G973/Repair Case/Samsung S10 SM-G973U  Unable to power on.pdf"
+    ],
+    "SM-G973F": [
+      "{1}/SAMSUNG/S series(VIP)/S10 SM-G973/SM-G973F/SM-G973F_N07A- image.pdf"
+    ],
+    "SM-G965D": [
+      "{1}/SAMSUNG/S series(VIP)/S9+ SM-G965/SM-G965D/SM-G965D_J Galaxy S9+Component explain.pdf"
+    ],
+    "SM-G965N": [
+      "{1}/SAMSUNG/S series(VIP)/S9+ SM-G965/SM-G965N/SM-G965N Galaxy S9+ Component explain.pdf"
+    ],
+    "SM-G965U": [
+      "{1}/SAMSUNG/S series(VIP)/S9+ SM-G965/SM-G965U/SM-G965U_W_U1 Galaxy S9+ service manual.pdf"
+    ],
+    "SM-G960F": [
+      "{1}/SAMSUNG/S series(VIP)/S9 SM-G960/SM-G960F/SM-G960F_N W47- image.pdf"
+    ],
+    "SM-G960U": [
+      "{1}/SAMSUNG/S series(VIP)/S9 SM-G960/SM-G960U/S9 (SM-G960U_W_U1) service manual.pdf"
+    ],
+    "SM-G955U": [
+      "{1}/SAMSUNG/S series(VIP)/S8+ SM-G955/SM-G955U/SM-G955U_W_W1_Common Service Manual.pdf"
+    ],
+    "SM-G930FD": [
+      "{1}/SAMSUNG/S series(VIP)/S7 SM-G930/SM-G930F/S7-SM-G930FD image.pdf"
+    ],
+    "SM-F9460": [
+      "{1}/SAMSUNG/W series(VIP)/W24/W24 SM-F9460 image.pdf"
+    ],
+    "SM-N9860": [
+      "{1}/SAMSUNG/N series(VIP)/Note20 Ultra 5G SM-N986/NOTE20U SM-N9860 Troubleshooting.pdf"
+    ],
+    "SM-N986B": [
+      "{1}/SAMSUNG/N series(VIP)/Note20 Ultra 5G SM-N986/NOTE20U SM-N986B SM-N986BR Troubleshooting.pdf"
+    ],
+    "SM-N986BR": [
+      "{1}/SAMSUNG/N series(VIP)/Note20 Ultra 5G SM-N986/NOTE20U SM-N986B SM-N986BR Troubleshooting.pdf"
+    ],
+    "SM-N986U": [
+      "{1}/SAMSUNG/N series(VIP)/Note20 Ultra 5G SM-N986/NOTE20U SM-N986U-D-N-O-W Component explain.pdf"
+    ],
+    "SM-N986XU": [
+      "{1}/SAMSUNG/N series(VIP)/Note20 Ultra 5G SM-N986/NOTE20U SM-N986XU Troubleshooting.pdf"
+    ],
+    "SM-N976B": [
+      "{1}/SAMSUNG/N series(VIP)/Note10+ 5G SM-N976/SM-N976B/Trouble shooting/SM-N976B Galaxy Note10+ 5G manual .pdf"
+    ],
+    "SM-N976V": [
+      "{1}/SAMSUNG/N series(VIP)/Note10+ 5G SM-N976/SM-N976V/NOTE10+ 5G SM-N976V service manual.pdf"
+    ],
+    "SM-N971N": [
+      "{1}/SAMSUNG/N series(VIP)/Note10 5G SM-N971/SM-N971N/NOTE10 SM-N971N- MB image.pdf"
+    ],
+    "SM-N950F": [
+      "{1}/SAMSUNG/N series(VIP)/Note8 SM-N950/SM-N950F/NOTE8 SM-N950F connector Diode value.pdf"
+    ],
+    "GT-N5100": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/GT-xxx/GT-N5100/Trouble shooting/GT-N5100 Galaxy Note 8.0 01 02 03 06 09.pdf"
+    ],
+    "GT-I9305": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/GT-xxx/GT-i9305/Samsung S3-GT-I9305 image.pdf"
+    ],
+    "SM-C710F": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Cxxx/SM-C710 Galaxy J7/Samsung Galaxy J7+ (SM-C710F) service manual.pdf"
+    ],
+    "SM-G611F": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Gxxx/SM-G611 Galaxy J7 Prime 2/Samsung Galaxy J7 Prime 2 (SM-G611F).pdf"
+    ],
+    "SM-I9103": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Ixxx/SM-I9103/Trouble shooting/SM-I9103 F99A133957C44364A532D75BD1D9487C.pdf"
+    ],
+    "SM-J410F": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J410F_G Galaxy J4 Core/Samsung Galaxy J4 Core (SM-J410F_G) service manual.pdf"
+    ],
+    "SM-J700M": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J700 J7/Repair Case/(Spanish)(CHARGING SOLUTION) J7 SM-J700M CARGA.pdf"
+    ],
+    "SM-J701F": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J701F/Trouble shooting/SM-J701F_Tsho Galaxy service manual J7o_7.pdf"
+    ],
+    "SM-J727A": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J727/SM-J727A_AZ_T_T1_U_S737TL Galaxy J7/Samsung Galaxy J7 (SM-J727A_AZ_T_T1_U_S737TL) service manual.pdf"
+    ],
+    "SM-M105F": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Mxxx/SM-M105/SM-M105F_G_M_Y Galaxy M10/Samsung Galaxy M10 (SM-M105F_G_M_Y) .pdf"
+    ],
+    "SM-M205F": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Mxxx/SM-M205/SM-M205F_FN_G_M Galaxy M20/Samsung Galaxy M20 (SM-M205F_FN_G_M).pdf"
+    ],
+    "SM-M515F": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Mxxx/SM-M515 M51/M51 SM-M515F schematics.pdf"
+    ],
+    "SM-N910C": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Nxxx/SM-N910/SM-N910C/Samsung Note4 SM-N910C image.pdf"
+    ],
+    "SM-P6800": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Pxxx/SM-P6800/Trouble shooting/SM-P6800 F12FEDCE06214F7A9E6AFD5826A23E65.pdf"
+    ],
+    "SM-S120VL": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Sxxx/SM-S120VL/Trouble shooting/SM-S120VL A3LSMS120VL_BLD_Logic_Block_Diagram_05262016_17105111.pdf"
+    ],
+    "SM-W689": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Wxxx/SM-W689/Trouble shooting/SM-W689 W689_SCH.pdf"
+    ],
+    "SM-W727V": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Wxxx/SM-W727/Samsung SM-W727V_W720_W723 service manual.pdf"
+    ],
+    "SM-W799": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Wxxx/SM-W799/Trouble shooting/SM-W799 W799_SCH.pdf"
+    ],
+    "SM-W899": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Wxxx/SM-W899/Trouble shooting/SM-W899 W899_SCH.pdf"
+    ],
+    "SM-W998": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Wxxx/SM-W998/Trouble shooting/SM-W998 W998_SCH.pdf"
+    ],
+    "SM-W999": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Wxxx/SM-W999/Trouble shooting/SM-w999 W999_SCH.pdf"
+    ],
+    "SM-A105F": [
+      "{1}/SAMSUNG/A series(VIP)/A10 SM-A105/SM-A105F A10 PCB layer.pcb"
+    ],
+    "SM-A3051": [
+      "{1}/SAMSUNG/A series(VIP)/A30 SM-A305/A30 SM-A3051 PCB layer.pcb"
+    ],
+    "SM-A605F": [
+      "{1}/SAMSUNG/A series(VIP)/A6+ SM-A605/A6+-SM-A605F(SDM450)_04 PCB layer.pcb"
+    ],
+    "SM-F7310": [
+      "{1}/SAMSUNG/Z series(VIP)/Z Flip5 SM-F731/Z Flip 5-SM-F7310_D SUB PCB layer.pcb"
+    ],
+    "SM-S938M": [
+      "{1}/SAMSUNG/S series(VIP)/S25 Ultra SM-S938/S25 Ultra Europe-SM-S938M MB PCB layer.pcb"
+    ],
+    "SM-S928U": [
+      "{1}/SAMSUNG/S series(VIP)/S24 Ultra SM-S928/S24 Ultra-SM-S928U MB PCB layer.pcb"
+    ],
+    "SM-G965F": [
+      "{1}/SAMSUNG/S series(VIP)/S9+ SM-G965/SM-G965F/SM-G965F S9+ YiDianTong(For reference only).pcb"
+    ],
+    "SM-G955F": [
+      "{1}/SAMSUNG/S series(VIP)/S8+ SM-G955/SM-G955F/SM-G955F S8+ YiDianTong(For reference only).pcb"
+    ],
+    "SM-G9500": [
+      "{1}/SAMSUNG/S series(VIP)/S8 SM-G950/SM-G9500 S8 YiDianTong(For reference only).pcb"
+    ],
+    "SM-G950F": [
+      "{1}/SAMSUNG/S series(VIP)/S8 SM-G950/SM-G950F/SM-G950F S8 YiDianTong(For reference only).pcb"
+    ],
+    "SM-G950U": [
+      "{1}/SAMSUNG/S series(VIP)/S8 SM-G950/SM-G950U/SM-G950U S8 YiDianTong(For reference only).pcb"
+    ],
+    "SM-G935A": [
+      "{1}/SAMSUNG/S series(VIP)/S7 Edge SM-G935/SM-G935A S7 YiDianTong(For reference only).pcb"
+    ],
+    "SM-G935D": [
+      "{1}/SAMSUNG/S series(VIP)/S7 Edge SM-G935/SM-G935D S7 YiDianTong(For reference only).pcb"
+    ],
+    "SM-G935F": [
+      "{1}/SAMSUNG/S series(VIP)/S7 Edge SM-G935/SM-G935F S7 YiDianTong(For reference only).pcb"
+    ],
+    "SM-G930F": [
+      "{1}/SAMSUNG/S series(VIP)/S7 SM-G930/SM-G930F/SM-G930F S7 YiDianTong(For reference only).pcb"
+    ],
+    "SM-G9200": [
+      "{1}/SAMSUNG/S series(VIP)/S6 SM-G920/S6-SM-G9200 PCB layer.pcb"
+    ],
+    "SM-G920V": [
+      "{1}/SAMSUNG/S series(VIP)/S6 SM-G920/SM-G920V S6 YiDianTong(For reference only).pcb"
+    ],
+    "SM-W9024": [
+      "{1}/SAMSUNG/W series(VIP)/W24/W24 SM-W9024_S SUB PCB layer.pcb"
+    ],
+    "SM-N935F": [
+      "{1}/SAMSUNG/N series(VIP)/Note FE SM-N935/SM-N935F NOTE7 YiDianTong(For reference only).pcb"
+    ],
+    "SM-N9500": [
+      "{1}/SAMSUNG/N series(VIP)/Note8 SM-N950/SM-N9500 NOTE8 YiDianTong(For reference only).pcb"
+    ],
+    "SM-J100H": [
+      "{1}/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J100/SM-J100H/SM-J100H_REV0.2 J1 PCB layer.pcb"
+    ],
+    "SM-J415F": [
+      "sources/Samsung/Samsung J4+ Fn Gn SM-J415F-G/Pcbe/J4+_sm-j415f-g-fn-gn pcb layer.pcbe"
+    ],
+    "GT-N7100": [
+      "sources/Samsung/Samsung Note2 SM-N7100/Pcbe/Note2_gt-n7100 pcb layer.pcbe"
+    ],
+    "SM-N7100": [
+      "sources/Samsung/Samsung Note2 SM-N7100/Pcbe/Note2_gt-n7100 pcb layer.pcbe"
+    ],
+    "SM-J100": [
+      "sources/pcbe/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J100/SM-J100H/SM-J100H_REV0.2 J1 PCB layer.pcbe"
+    ],
+    "SM-J415": [
+      "sources/pcbe/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J415/SM-J415F_DS/J4+_SM-J415F-G-FN-GN PCB layer.pcbe"
+    ],
+    "SM-A032F": [
+      "sources/Samsung/Samsung A03 Core SM-A032F/Pdf/Disassembly & reassembly.pdf"
+    ],
+    "SM-A032": [
+      "sources/Samsung/Samsung A03 Core SM-A032F/Pdf/Samsung a03 sm-a032 lineas de volumen y boton de encendido.pdf"
+    ],
+    "SM-A035": [
+      "sources/Samsung/Samsung A03 SM-A035/Pdf/Samsung a03  (sm-a035) plano esquematico completo.pdf"
+    ],
+    "SM-J111": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J111/SM-J111F Galaxy J1 Ace Neo/Samsung Galaxy J1 Ace Neo (SM-J111F) service manual.pdf"
+    ],
+    "SM-J105H": [
+      "sources/Samsung/Samsung J1 Mini SM-J105H/Pdf/Sm-j105h esquematico completo.pdf"
+    ],
+    "SM-J106B": [
+      "sources/Samsung/Samsung J1 Mini Prime SM-J106B/Pdf/Sm-j106b_ds_electrical part list.pdf"
+    ],
+    "SM-J110F": [
+      "sources/Samsung/Samsung J1 Ace SM-J110F/Pdf/Sm-j110f esquematico completo.pdf"
+    ],
+    "SM-J120H": [
+      "sources/Samsung/Samsung J1 SM-J120H/Pdf/Sm-j120h_cover.pdf"
+    ],
+    "SM-J260": [
+      "sources/Samsung/Samsung J2 Core SM-J260/Pdf/J2 core_j260g-y image.pdf"
+    ],
+    "SM-J250N": [
+      "sources/Samsung/Samsung J2 Pro SM-J250N/Pdf/Sm-j250n_cover.pdf"
+    ],
+    "SM-J200": [
+      "sources/Samsung/Samsung J2 SM-J200/Pdf/J2_sm-j200 image.pdf"
+    ],
+    "SM-J320A": [
+      "sources/Samsung/Samsung J3 SM-J320A/Pdf/Sm-j320a esquematico completo.pdf"
+    ],
+    "SM-J320F": [
+      "sources/Samsung/Samsung J3 SM-J320F/Pdf/Sm-j320f_cover.pdf"
+    ],
+    "SM-J330F": [
+      "sources/Samsung/Samsung J3 SM-J330F/Pdf/Sm-j330f_cover.pdf"
+    ],
+    "SM-J400F": [
+      "sources/Samsung/Samsung J4 SM-J400F-G/Pdf/J4_sm-j400f-g-m image.pdf"
+    ],
+    "SM-J500F": [
+      "sources/Samsung/Samsung J5 SM-J500FN/Pdf/J5_sm-j500f-fm-g-m-y image.pdf"
+    ],
+    "SM-J510FN": [
+      "sources/Samsung/Samsung J5 SM-J510FN-F/Pdf/J5_sm-j510fn-f-mn-gn-yn-un-b-k-l-m image.pdf"
+    ],
+    "SM-J530": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J530/SM-J530f Galaxy j5/J530F - Troubleshooting.pdf"
+    ],
+    "SM-J500M": [
+      "sources/Samsung/Samsung J5 SM-J500M/Pdf/Sm-j500m_cover.pdf"
+    ],
+    "SM-J510F": [
+      "sources/Samsung/Samsung J5 SM-J510F/Pdf/Sm-j510f_cover.pdf"
+    ],
+    "SM-J610F": [
+      "sources/Samsung/Samsung J6+ Fn SM-J610F-G/Pdf/J6+_sm-j610f-g-fn image.pdf"
+    ],
+    "SM-J600F": [
+      "sources/Samsung/Samsung J6 SM-J600F/Pdf/Sm-j600f_common_service_full_schematic.pdf"
+    ],
+    "SM-J720": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J720/SM-J720M Galaxy J7 2018/Samsung Galaxy J7 2018 (SM-J720M).pdf"
+    ],
+    "SM-J730F": [
+      "sources/Samsung/Samsung J7 Pro SM-J730F/Pdf/Sm-j730f esquematico completo.pdf"
+    ],
+    "SM-J730": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J730/SM-J730G Galaxy J7 Pro/Schematic and Silk/SM-J730G_BV_电路图.pdf"
+    ],
+    "SM-J710F": [
+      "sources/Samsung/Samsung J7 SM-J710F/Pdf/Sm-j710f esquematico completo.pdf"
+    ],
+    "SM-J810": [
+      "sources/Samsung/Samsung J8 SM-J810/Pdf/Samsung j8 - proceso de carga.pdf"
+    ],
+    "SM-M017F": [
+      "sources/Samsung/Samsung M01s SM-M017F/Pdf/Sm-m017f disassembly & reassembly.pdf"
+    ],
+    "SM-M017": [
+      "sources/Samsung/Samsung M01s SM-M017/Pdf/Troubleshooting.pdf"
+    ],
+    "SM-M022F": [
+      "sources/Samsung/Samsung M02 SM-M022F/Pdf/Sm-m022f electrical part list.pdf"
+    ],
+    "SM-M022M": [
+      "sources/Samsung/Samsung M02 SM-M022F/Pdf/Sm-m022m_mtk_esquematico completo.pdf"
+    ],
+    "SM-M045F": [
+      "sources/Samsung/Samsung M04 SM-M045F/Pdf/Sm-m045f esquematico completo.pdf"
+    ],
+    "SM-M105": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Mxxx/SM-M105/SM-M105F_G_M_Y Galaxy M10/Samsung Galaxy M10 (SM-M105F_G_M_Y) .pdf"
+    ],
+    "SM-M107F": [
+      "sources/Samsung/Samsung M10s SM-M107F/Pdf/Sm-m107f_mtk_common_service_full_schematic.pdf"
+    ],
+    "SM-M115F": [
+      "sources/Samsung/Samsung M11 SM-M115F/Pdf/Sm-m115f block diagram.pdf"
+    ],
+    "SM-M127F": [
+      "sources/Samsung/Samsung M12 SM-M127F/Pdf/Sm-m127f block diagram.pdf"
+    ],
+    "SM-M205": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Mxxx/SM-M205/SM-M205F_FN_G_M Galaxy M20/Samsung Galaxy M20 (SM-M205F_FN_G_M).pdf"
+    ],
+    "SM-M215F": [
+      "sources/Samsung/Samsung M21 SM-M215G/Pdf/Sm-m215f disassembly & reassembly.pdf"
+    ],
+    "SM-M215G": [
+      "sources/Samsung/Samsung M21 SM-M215G/Pdf/Sm-m215f disassembly & reassembly.pdf"
+    ],
+    "SM-M215M": [
+      "sources/Samsung/Samsung M21 SM-M215M/Pdf/Sm-m215f_exynos_esquematico completo.pdf"
+    ],
+    "SM-M305F": [
+      "sources/Samsung/Samsung M30 SM-M305F/Pdf/Sm-m305f block diagram.pdf"
+    ],
+    "SM-M305M": [
+      "sources/Samsung/Samsung M30 SM-M305F/Pdf/Sm-m305m electrical part list.pdf"
+    ],
+    "SM-M307F": [
+      "sources/Samsung/Samsung M30s SM-M307F/Pdf/Sm-m307f block diagram.pdf"
+    ],
+    "SM-M315F": [
+      "sources/Samsung/Samsung M31 SM-M315F/Pdf/Sm-m315f block diagram.pdf"
+    ],
+    "SM-M317F": [
+      "sources/Samsung/Samsung M31s SM-M317F/Pdf/Sm-m317f block diagram.pdf"
+    ],
+    "SM-M326B": [
+      "sources/Samsung/Samsung M32 5G SM-M326B/Pdf/Sm-m326b block diagram rf.pdf"
+    ],
+    "SM-M325F": [
+      "sources/Samsung/Samsung M32 SM-M325F/Pdf/Sm-m325f block diagram.pdf"
+    ],
+    "SM-M426B": [
+      "sources/Samsung/Samsung M42 5G SM-M426B/Pdf/Sm-m426b block diagram.pdf"
+    ],
+    "SM-N9005": [
+      "sources/Samsung/Samsung Note 3 LTE SM-N9005/Pdf/Sm-n9005 block diagram.pdf"
+    ],
+    "SM-N900": [
+      "sources/Samsung/Samsung Note 3 SM-N900/Pdf/Sm-n900 block diagram.pdf"
+    ],
+    "SM-N910F": [
+      "sources/Samsung/Samsung Note 4 SM-N910F/Pdf/Sm-n910f block diagram.pdf"
+    ],
+    "SM-N920C": [
+      "sources/Samsung/Samsung Note 5 SM-N920C/Pdf/Sm-n920c block diagram.pdf"
+    ],
+    "SM-G770F": [
+      "sources/Samsung/Samsung S10 Lite SM-G770F/Pdf/Sm-g770f block diagram.pdf"
+    ],
+    "GT-I9105": [
+      "sources/Samsung/Samsung S2 Plus GT-I9105/Pdf/Gt-i9105.p block diagram.pdf"
+    ],
+    "GT-I9100": [
+      "sources/Samsung/Samsung S2 GT-I9100/Pdf/Gt-i9100 block diagram.pdf"
+    ],
+    "SM-T819": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Txxx/SM-T819/SM-T819Y Galaxy Tab S2 9.7 LTE/SM-T819Y_TSHOO_7.pdf"
+    ],
+    "SM-S711B": [
+      "sources/Samsung/Samsung S23 Fe SM-S711B/Pdf/Sm-s711b_qcom esquematico completo.pdf"
+    ],
+    "SM-S9260": [
+      "sources/pdf/SAMSUNG/S series(VIP)/S24+ 5G SM-S926U/SM-S9260_QCOM_Common_Service_Schematic_Full.pdf"
+    ],
+    "SM-S926B": [
+      "sources/pdf/SAMSUNG/S series(VIP)/S24+ 5G SM-S926U/SM-S926B_EXYNOS_Common_Service_Schematic_Full.pdf"
+    ],
+    "SM-S926W": [
+      "sources/pdf/SAMSUNG/S series(VIP)/S24+ 5G SM-S926U/SM-S926W_QCOM_Common_Service_Schematic_Full.pdf"
+    ],
+    "GT-I9300I": [
+      "sources/Samsung/Samsung S3 Neo GT-I9300I/Pdf/Gt-i9300i block diagram.pdf"
+    ],
+    "GT-I8190": [
+      "sources/Samsung/Samsung S3 Mini GT-I8190/Pdf/Gt-i8190 block diagram.pdf"
+    ],
+    "GT-I8200": [
+      "sources/Samsung/Samsung S3 Mini GT-I8200/Pdf/Gt-i8200 block diagram.pdf"
+    ],
+    "GT-I9300": [
+      "sources/Samsung/Samsung S3 GT-I9300/Pdf/Gt-i9300 block diagram.pdf"
+    ],
+    "GT-I9295": [
+      "sources/Samsung/Samsung S4 Active GT-I9295/Pdf/Gt-i9295 block diagram.pdf"
+    ],
+    "GT-I9505": [
+      "sources/Samsung/Samsung S4 LTE GT-I9505/Pdf/Gt-i9505 block diagram.pdf"
+    ],
+    "GT-I9190": [
+      "sources/Samsung/Samsung S4 Mini GT-I9190/Pdf/Gt-i9190 block diagram.pdf"
+    ],
+    "GT-I9500": [
+      "sources/Samsung/Samsung S4 GT-I9500/Pdf/Gt-i9500 block diagram.pdf"
+    ],
+    "SM-T867": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Txxx/SM-T865 Tab S6 4G/SM-T865,SM-T867_BV.pdf"
+    ],
+    "SM-J727": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J727/SM-J727A_AZ_T_T1_U_S737TL Galaxy J7/Samsung Galaxy J7 (SM-J727A_AZ_T_T1_U_S737TL) service manual.pdf"
+    ],
+    "SM-D950J": [
+      "sources/pdf/SAMSUNG/S series(VIP)/S8 SM-G950/SM-G950D/SM-G950D_SM-D950J).pdf"
+    ],
+    "SM-I9300": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Ixxx/SM-I9300/S3_GT-I9300 image.pdf"
+    ],
+    "SM-I9500": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Ixxx/SM-I9500/S4_GT-I9500 1W image.pdf"
+    ],
+    "SM-J330L": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J330/SM-J330L/Schematic and Silk/SM-J330L_SCH.pdf"
+    ],
+    "SM-J330": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J330/SM-J330L/Schematic and Silk/SM-J330L_SCH.pdf"
+    ],
+    "SM-J400": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J400/SM-J400F_DS/J4_SM-J400F-G-M image.pdf"
+    ],
+    "SM-J610": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J610/SM-J610F/J6+_SM-J610F-G-FN image.pdf"
+    ],
+    "SM-J737T": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J737/SM-J737T/Schematic and Silk/SM-J737T_SCH.pdf"
+    ],
+    "SM-J737": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J737/SM-J737T/Schematic and Silk/SM-J737T_SCH.pdf"
+    ],
+    "SM-J808": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Jxxx/SM-J808/Schematic and Silk/SM-J808_BV.pdf"
+    ],
+    "SM-M055F": [
+      "sources/pdf/SAMSUNG/M series(VIP)/SM-M055F_MTK_Common_Service_Schematic_Full.pdf"
+    ],
+    "SM-N910": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Nxxx/SM-N910/SM-N910C/Samsung Note4 SM-N910C image.pdf"
+    ],
+    "SM-W620": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Wxxx/SM-W620/W620_WIFI_REV0.4.pdf"
+    ],
+    "SM-W727": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Wxxx/SM-W727/Samsung SM-W727V_W720_W723 service manual.pdf"
+    ],
+    "SM-Z130": [
+      "sources/pdf/SAMSUNG/Other models arranged by board number(VIP)/SM-Zxxx/SM-Z130/Z130H REV0.6 (KIRAN 3G).pdf"
+    ],
+    "SM-W7025": [
+      "sources/pdf/SAMSUNG/W series(VIP)/W25 Flip SM- W7025/SM-W7025_QCOM_Common_Service_Full_Schematic.pdf"
+    ]
+  },
+  "policy": "Separate full board codes; never infer regional suffixes.",
+  "sources": [
+    {
+      "path": "SCRAPING/captures/catalog/catalog-pdf-all.json",
+      "sha256": "158d2b7658369c125f01fd7e7707c76c8efbab8aa4162bcc0aacf12c3e5816be"
+    },
+    {
+      "path": "SCRAPING/captures/catalog/catalog-pcb-all.json",
+      "sha256": "845c2f4f9b7d5b11818aca34b934aafc010873d90bd98312075b8971274f7bad"
+    }
+  ],
+  "manufacturerCorrections": {
+    "SM-A022M": "https://www.samsung.com/ar/support/model/SM-A022MZBJUYO/",
+    "SM-A025F": "https://www.samsung.com/pk/support/model/SM-A025FZBFMEB/",
+    "SM-A025M": "https://www.samsung.com/mx/smartphones/galaxy-a/galaxy-a02s-black-64gb-sm-a025mzkhtce/"
+  }
+}

@@ -142,6 +142,8 @@ def published_pdf_paths(library_root: Path) -> list[Path]:
     root = library_root.resolve(strict=True)
     return sorted(candidate for candidate in root.rglob("*")
         if candidate.suffix.casefold() == ".pdf" and candidate.is_file() and not candidate.is_symlink()
+        # Visible for manual review, but its supplier filename is not a device identity.
+        and candidate.relative_to(root).parts[:2] != ("pdf", "Por revisar")
         and not any(part.startswith(".") or part.casefold() == "backups" for part in candidate.relative_to(root).parts))
 
 

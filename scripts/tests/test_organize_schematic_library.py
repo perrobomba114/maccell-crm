@@ -92,6 +92,15 @@ class OrganizationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             organizer.classify('pcbe/iPhone/14 Pro Max/iPhone14pro faceid.pcbe')
 
+    def test_samsung_code_folders_remain_separate(self):
+        for suffix in ['F', 'M']:
+            source = f'pdf/Samsung/A02 SM-A022{suffix}/Service.pdf'
+            result = organizer.plan([{'path': source, 'size': 1, 'mtime_ns': 1}], {}, 'codes')['entries'][0]
+            self.assertEqual(result['target'], source)
+        source = 'pdf/Samsung/A02/SM-A025F.pdf'
+        result = organizer.plan([{'path': source, 'size': 1, 'mtime_ns': 1}], {}, 'codes')['entries'][0]
+        self.assertIn('/A02s SM-A025F/', result['target'])
+
     def test_path_traversal_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             for bad in ['../outside', '/etc/passwd']:
