@@ -103,7 +103,7 @@ export function ActiveRepairRow({
 
             {/* 4. Tiempo / Estimado */}
             <TableCell className="text-center px-1 py-2.5 whitespace-nowrap">
-                <div className="flex h-7 items-center justify-center">
+                <div className="flex h-8 w-28 items-center justify-center">
                     {duration ? (
                         <span className="text-xs sm:text-sm font-bold tabular-nums text-yellow-600 dark:text-yellow-400">{duration}</span>
                     ) : (

@@ -235,3 +235,16 @@ revisión. No declararlos resueltos ni fabricar modelos para reducir el contador
 Las 10.664 descargas que repetían tres catálogos no equivalen a 10.664 placas.
 Los vínculos entre PDF y PCBE requieren evidencia técnica además de compartir
 carpeta. Las auditorías detalladas se conservan en `.CATALOGO`.
+
+
+Además de las identidades pendientes, consultar `.CATALOGO/FALLOS-INDEXACION.csv`
+y `CIERRE-OPERATIVO.json`: el corpus histórico contiene archivos no interpretables,
+PDF que requieren clave y fallos de extracción/OCR. La auditoría de lectura del
+cierre verificó el contenido antes de corregir estados; no se movieron archivos
+ni se cambiaron IDs. `locked`/`unsupported` no significan borrado. Los fallos
+legibles requieren diagnóstico puntual; no iniciar un reintento masivo ni
+confundir el total de fallos de dos capas con archivos únicos.
+
+El circuito de entrada, SQL, lectura PDF/PCBE y recuperación RAG se verificó.
+La prueba visual del visor privado del CRM requiere una sesión autenticada;
+no declararla realizada a partir de una comprobación interna o un HTTP 200.

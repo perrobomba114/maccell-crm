@@ -3,6 +3,7 @@ import { getActiveRepairsAction } from "@/lib/actions/repairs";
 import { getTechnicianStats } from "@/actions/dashboard-actions";
 import { ActiveRepairsTable } from "@/components/repairs/active-repairs-table";
 import { redirect } from "next/navigation";
+import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { Wrench } from "lucide-react";
 import { REPAIR_STATUS } from "@/lib/repairs/status";
 import { TECHNICIAN_REPAIR_STATUS_IDS } from "@/lib/repairs/status-sets";
@@ -52,6 +53,7 @@ export default async function TechnicianRepairsPage() {
                     />
                 </div>
             </section>
+            <AutoRefresh intervalMs={15000} pauseWhileDialogOpen />
         </div>
     );
 }

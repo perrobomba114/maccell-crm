@@ -59,7 +59,7 @@ export default async function AvailableWorkPage() {
                     />
                 </div>
             </section>
-            <AutoRefresh intervalMs={30000} />
+            <AutoRefresh intervalMs={15000} pauseWhileDialogOpen />
         </div>
     );
 }

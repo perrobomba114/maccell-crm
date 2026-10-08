@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Share2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -12,7 +11,7 @@ import { getTechnicians } from "@/actions/user-actions";
 import { transferRepairAction } from "@/lib/actions/repairs";
 
 interface TransferRepairDialogProps {
-    repair: any;
+    repair: { id: string; ticketNumber: string };
     currentUserId: string;
     isOpen: boolean;
     onClose: () => void;
@@ -26,27 +25,28 @@ export function TransferRepairDialog({ repair, currentUserId, isOpen, onClose }:
     const router = useRouter();
 
     useEffect(() => {
-        if (isOpen) {
-            fetchTechnicians();
-        }
-    }, [isOpen]);
-
-    const fetchTechnicians = async () => {
+        if (!isOpen) return;
+        let cancelled = false;
+        setSelectedTechId("");
         setIsFetchingUsers(true);
-        try {
-            const result = await getTechnicians();
-            if (result.success && result.technicians) {
-                // Filter out current user
-                setTechnicians(result.technicians.filter(t => t.id !== currentUserId));
-            } else {
-                toast.error("Error al cargar la lista de técnicos");
+        const fetchTechnicians = async () => {
+            try {
+                const result = await getTechnicians();
+                if (cancelled) return;
+                if (result.success && result.technicians) {
+                    setTechnicians(result.technicians.filter(t => t.id !== currentUserId));
+                } else {
+                    toast.error("Error al cargar la lista de técnicos");
+                }
+            } catch {
+                if (!cancelled) toast.error("Error inesperado al cargar técnicos");
+            } finally {
+                if (!cancelled) setIsFetchingUsers(false);
             }
-        } catch (error) {
-            toast.error("Error inesperado al cargar técnicos");
-        } finally {
-            setIsFetchingUsers(false);
-        }
-    };
+        };
+        void fetchTechnicians();
+        return () => { cancelled = true; };
+    }, [isOpen, currentUserId]);
 
     const handleTransfer = async () => {
         if (!selectedTechId) {
@@ -59,12 +59,12 @@ export function TransferRepairDialog({ repair, currentUserId, isOpen, onClose }:
             const result = await transferRepairAction(repair.id, currentUserId, selectedTechId);
             if (result.success) {
                 toast.success("Reparación transferida con éxito");
-                router.refresh();
                 onClose();
+                router.refresh();
             } else {
                 toast.error(result.error || "Error al transferir");
             }
-        } catch (error) {
+        } catch {
             toast.error("Error inesperado");
         } finally {
             setIsLoading(false);
@@ -74,7 +74,7 @@ export function TransferRepairDialog({ repair, currentUserId, isOpen, onClose }:
     if (!repair) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && !isLoading && onClose()}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
@@ -82,7 +82,7 @@ export function TransferRepairDialog({ repair, currentUserId, isOpen, onClose }:
                         Transferir Reparación
                     </DialogTitle>
                     <DialogDescription>
-                        Reasignar el ticket #{repair.ticketNumber} a otro técnico.
+                        <span>{`Reasignar el ticket #${repair.ticketNumber} a otro técnico.`}</span>
                     </DialogDescription>
                 </DialogHeader>
 
@@ -96,27 +96,23 @@ export function TransferRepairDialog({ repair, currentUserId, isOpen, onClose }:
 
                     <div className="space-y-2">
                         <Label htmlFor="technician">Seleccionar Técnico Destino</Label>
-                        <Select
+                        <select
+                            id="technician"
                             disabled={isLoading || isFetchingUsers}
-                            onValueChange={setSelectedTechId}
+                            onChange={(event) => setSelectedTechId(event.target.value)}
                             value={selectedTechId}
+                            className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50"
                         >
-                            <SelectTrigger id="technician" className="h-11">
-                                <SelectValue placeholder={isFetchingUsers ? "Cargando..." : "Elegir técnico..."} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {technicians.map((tech) => (
-                                    <SelectItem key={tech.id} value={tech.id}>
-                                        {tech.name}
-                                    </SelectItem>
-                                ))}
-                                {technicians.length === 0 && !isFetchingUsers && (
-                                    <p className="p-2 text-sm text-center text-muted-foreground">
-                                        No hay otros técnicos disponibles
-                                    </p>
-                                )}
-                            </SelectContent>
-                        </Select>
+                            <option value="" disabled>
+                                {isFetchingUsers ? "Cargando..." : "Elegir técnico..."}
+                            </option>
+                            {technicians.map((tech) => (
+                                <option key={tech.id} value={tech.id}>{tech.name}</option>
+                            ))}
+                        </select>
+                        {technicians.length === 0 && !isFetchingUsers && (
+                            <p className="text-sm text-muted-foreground">No hay otros técnicos disponibles</p>
+                        )}
                     </div>
                 </div>
 
@@ -126,11 +122,11 @@ export function TransferRepairDialog({ repair, currentUserId, isOpen, onClose }:
                     </Button>
                     <Button
                         onClick={handleTransfer}
-                        disabled={isLoading || !selectedTechId}
+                        disabled={isLoading || isFetchingUsers || !selectedTechId}
                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold"
                     >
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Confirmar Transferencia
+                        <span>Confirmar Transferencia</span>
                     </Button>
                 </DialogFooter>
             </DialogContent>
