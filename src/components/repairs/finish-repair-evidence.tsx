@@ -14,6 +14,17 @@ interface FinishRepairEvidenceProps {
     onRemoveNewImage: (index: number) => void;
 }
 
+function isHeicPhoto(file: File) {
+    return /\.(heic|heif)$/i.test(file.name) || /^image\/hei[cf]$/i.test(file.type);
+}
+
+function PendingEvidenceThumbnail({ file, url, index }: { file: File; url: string; index: number }) {
+    const [unavailable, setUnavailable] = useState(false);
+    if (unavailable) return <span title={file.name} className="flex h-full w-full items-center justify-center text-[8px] font-bold text-emerald-300">{isHeicPhoto(file) ? "HEIC" : "FOTO"}</span>;
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt={`Evidencia nueva ${index + 1}`} className="h-full w-full object-cover" onError={() => setUnavailable(true)} />;
+}
+
 export function FinishRepairEvidence({
     images,
     newImages,
@@ -63,8 +74,7 @@ export function FinishRepairEvidence({
                             className="h-full w-full cursor-zoom-in overflow-hidden rounded-md border border-emerald-500/60 bg-slate-950 transition-all hover:border-emerald-300"
                             onClick={() => openViewer(images.length + index)}
                         >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={url} alt={`Evidencia nueva ${index + 1}`} className="h-full w-full object-cover" />
+                            <PendingEvidenceThumbnail file={newImages[index]} url={url} index={index} />
                         </button>
                         <button
                             type="button"
@@ -73,7 +83,7 @@ export function FinishRepairEvidence({
                                 event.stopPropagation();
                                 onRemoveNewImage(index);
                             }}
-                            className="absolute -right-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white shadow-md group-hover:flex"
+                            className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white shadow-md sm:hidden sm:group-hover:flex sm:group-focus-within:flex"
                         >
                             <X className="h-2.5 w-2.5" />
                         </button>
@@ -95,6 +105,10 @@ export function FinishRepairEvidence({
                 images={previewImages}
                 currentIndex={viewerIndex}
                 onIndexChange={setViewerIndex}
+                unavailableLabels={[
+                    ...images.map(() => "No se pudo mostrar esta imagen."),
+                    ...newImages.map(file => isHeicPhoto(file) ? `${file.name}: foto HEIC seleccionada. Podrás verla después de guardar la reparación.` : `${file.name}: vista previa no disponible.`),
+                ]}
             />
         </>
     );

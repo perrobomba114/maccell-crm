@@ -20,8 +20,7 @@ import { ActiveRepairCard } from "./active-repair-card";
 import { ActiveRepairRow } from "./active-repair-row";
 import { ActiveRepairsStats } from "./active-repairs-stats";
 import { type ActiveRepair, type ActiveRepairsTableProps } from "./active-repairs-types";
-import { getRepairImageCount } from "./repair-images-action-button";
-import { printRepairTicketSequence } from "@/lib/repair-print-sequence";
+import { printRepairReceptionTicket } from "@/lib/repair-print-sequence";
 import { cn } from "@/lib/utils";
 import { removeRepairDetailsParam } from "@/lib/repair-chat/navigation";
 
@@ -102,7 +101,7 @@ export function ActiveRepairsTable({
     }, [handleTouchStart, handleTouchEnd]);
 
     const handlePrint = (repair: ActiveRepair) => {
-        printRepairTicketSequence(repair);
+        printRepairReceptionTicket(repair);
     };
 
     const sortedRepairs = useMemo(() => [...repairs].sort((a, b) => {
@@ -130,8 +129,6 @@ export function ActiveRepairsTable({
         onTransfer: setTransferRepair,
         onPrint: handlePrint,
     };
-
-    const showActionColumn = enableTakeover || enableManagement || enableImageUpload || sortedRepairs.some((repair) => getRepairImageCount(repair.deviceImages) > 0);
 
     if (!repairs || repairs.length === 0) {
         return <div className="text-center p-8 border rounded-lg bg-muted/10"><p className="text-muted-foreground font-medium">{emptyMessage}</p></div>;
@@ -194,15 +191,13 @@ export function ActiveRepairsTable({
                             <TableHead className="text-center px-1 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Técnico</TableHead>
                             <TableHead className="text-center px-1.5 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Precio</TableHead>
                             <TableHead className="text-center px-1.5 text-[11px] font-black uppercase tracking-wider text-foreground h-11">Estado</TableHead>
-                            {showActionColumn && (
-                                <TableHead className="h-11 min-w-[170px] px-2 text-center text-[11px] font-black uppercase tracking-wider text-foreground">Acciones</TableHead>
-                            )}
+                            <TableHead className="h-11 min-w-[170px] px-2 text-center text-[11px] font-black uppercase tracking-wider text-foreground">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredRepairs.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={showActionColumn ? 10 : 9} className="h-24 text-center">No se encontraron resultados.</TableCell>
+                                <TableCell colSpan={10} className="h-24 text-center">No se encontraron resultados.</TableCell>
                             </TableRow>
                         ) : (
                             filteredRepairs.map((repair, index) => (
@@ -210,7 +205,7 @@ export function ActiveRepairsTable({
                                     key={repair.id}
                                     repair={repair}
                                     position={index + 1}
-                                    showActionColumn={showActionColumn}
+                                    showActionColumn
                                     {...cardProps}
                                 />
                             ))
@@ -231,6 +226,7 @@ export function ActiveRepairsTable({
                     repair={viewDetailsRepair}
                     currentUserId={currentUserId}
                     onAddPart={openAddPartFromDetails}
+                    onPrintReception={!enableManagement ? printRepairReceptionTicket : undefined}
                 />
             )}
             {transferRepair && <TransferRepairDialog isOpen={!!transferRepair} onClose={() => setTransferRepair(null)} repair={transferRepair} currentUserId={currentUserId} />}

@@ -1,5 +1,8 @@
 "use server";
 
+import { getCurrentUser } from "@/actions/auth-actions";
+import type { CashShift, Prisma } from "@prisma/client";
+import { aggregateCashShiftSales, calculateCashShiftBonus } from "@/lib/cash-shift-calculations";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
@@ -82,128 +85,81 @@ export async function openRegister(userId: string, branchId: string, amount: num
 /**
  * Get summary of relevant sales for closing.
  */
+async function summarizeShift(shift: CashShift, client: Prisma.TransactionClient, through: Date): Promise<ShiftSummary> {
+    const where = {
+        branchId: shift.branchId,
+        createdAt: { gte: shift.startTime, lte: shift.endTime ?? through },
+    };
+    const [sales, expenses] = await Promise.all([
+        client.sale.findMany({
+            where: { ...where, vendorId: shift.userId },
+            select: { total: true, paymentMethod: true, payments: { select: { method: true, amount: true } } },
+        }),
+        client.expense.findMany({
+            where: { ...where, userId: shift.userId },
+            select: { amount: true },
+        }),
+    ]);
+    const totals = aggregateCashShiftSales(sales);
+    const expensesTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    return {
+        ...totals,
+        startAmount: shift.startAmount,
+        expectedCash: shift.startAmount + totals.cashSales - expensesTotal,
+        difference: 0,
+        salesCount: sales.length,
+        expenses: expensesTotal,
+        calculatedBonus: shift.status === "CLOSED"
+            ? shift.bonusTotal / Math.max(1, shift.employeeCount)
+            : calculateCashShiftBonus(totals.totalSales),
+    };
+}
+
 export async function getShiftSummary(shiftId: string): Promise<{ success: boolean, summary?: ShiftSummary, error?: string }> {
+    const user = await getCurrentUser();
+    if (!user || !["ADMIN", "VENDOR"].includes(user.role)) return { success: false, error: "No autorizado" };
     try {
-        const shift = await db.cashShift.findUnique({
-            where: { id: shiftId }
-        });
-
+        const shift = await db.cashShift.findUnique({ where: { id: shiftId } });
         if (!shift) return { success: false, error: "Caja no encontrada." };
-
-        // Find sales by this user created AFTER shift start
-        const sales = await db.sale.findMany({
-            where: {
-                vendorId: shift.userId,
-                createdAt: {
-                    gte: shift.startTime
-                }
-            }
-        });
-
-        // Find expenses
-        let expensesTotal = 0;
-        if ((db as any).expense) {
-            try {
-                const expenses = await (db as any).expense.findMany({
-                    where: {
-                        userId: shift.userId,
-                        createdAt: { gte: shift.startTime }
-                    }
-                });
-                expensesTotal = expenses.reduce((sum: number, e: any) => sum + e.amount, 0);
-            } catch (e) { console.error("Error fetching expenses for summary", e); }
+        if (user.role !== "ADMIN" && (shift.userId !== user.id || shift.branchId !== user.branch?.id)) {
+            return { success: false, error: "No autorizado" };
         }
-
-        // Aggregate Sales
-        // Aggregate Sales using SalePayment for accurate Split Payment support
-        let cashSales = 0;
-        let cardSales = 0;
-        let mpSales = 0;
-
-        // Fetch payments for these sales
-        const saleIds = sales.map(s => s.id);
-        const payments = await (db as any).salePayment.findMany({
-            where: { saleId: { in: saleIds } }
-        });
-
-        payments.forEach((p: any) => {
-            if (p.method === "CASH") cashSales += p.amount;
-            else if (p.method === "CARD") cardSales += p.amount;
-            else if (p.method === "MERCADOPAGO") mpSales += p.amount;
-        });
-
-        // Re-calculate total from payments to be precise
-        const totalSales = cashSales + cardSales + mpSales;
-
-        // Fallback for lagacy sales without payments (if any, though migration should handle it or code should handle old sales)
-        // If we want to be safe: check if sale has payments. If not, use sale header method. 
-        // But for new system, rely on SalePayment.
-
-        // Calculate Bonus (Per Employee)
-        const bonusRate = totalSales >= 1200000 ? 0.02 : 0.01;
-        // Round to nearest 1000 using standard rounding to avoid "phantom" inflation
-        const prizePerEmp = (Math.round((totalSales * bonusRate) / 1000) * 1000);
-        // Assuming 1 employee for the summary projection (frontend multiplies this)
-        const calculatedBonus = prizePerEmp;
-
-        // Expected Cash in Drawer = Start + Cash Sales - Expenses
-        // We do NOT subtract bonus here anymore, because the frontend does it dynamically based on employee count.
-        // We return calculatedBonus so the frontend uses the same unit value.
-        const expectedCash = shift.startAmount + cashSales - expensesTotal;
-
-        return {
-            success: true,
-            summary: {
-                startAmount: shift.startAmount,
-                totalSales,
-                expectedCash,
-                difference: 0,
-                salesCount: sales.length,
-                cashSales,
-                cardSales,
-                mpSales,
-                expenses: expensesTotal,
-                calculatedBonus
-            }
-        };
-
+        return { success: true, summary: await summarizeShift(shift, db, new Date()) };
     } catch (error) {
         console.error("Error getting shift summary:", error);
         return { success: false, error: "Error al obtener resumen." };
     }
 }
 
-/**
- * Close the register.
- */
+/** Close using one bounded snapshot for the persisted prize and the printed receipt. */
 export async function closeRegister(shiftId: string, finalAmount: number, employeeCount: number = 1) {
+    const user = await getCurrentUser();
+    if (!user || !["ADMIN", "VENDOR"].includes(user.role)) return { success: false as const, error: "No autorizado" };
+    if (!Number.isFinite(finalAmount) || finalAmount < 0 || !Number.isSafeInteger(employeeCount) || employeeCount < 1) {
+        return { success: false as const, error: "Monto o cantidad de empleados inválidos." };
+    }
     try {
-        // Calculate bonus before closing
-        const { summary } = await getShiftSummary(shiftId);
-        let bonusTotal = 0;
-
-        if (summary) {
-            const bonusRate = summary.totalSales >= 1200000 ? 0.02 : 0.01;
-            const prizePerEmp = (Math.round((summary.totalSales * bonusRate) / 1000) * 1000);
-            bonusTotal = prizePerEmp * employeeCount;
-        }
-
-        await db.cashShift.update({
-            where: { id: shiftId },
-            data: {
-                endAmount: finalAmount,
-                status: "CLOSED",
-                endTime: new Date(),
-                employeeCount: employeeCount,
-                bonusTotal: bonusTotal
-            } as any
-        });
-
-        revalidatePath("/vendor/pos");
-        return { success: true };
+        const result = await db.$transaction(async (tx) => {
+            const shift = await tx.cashShift.findUnique({ where: { id: shiftId } });
+            if (!shift || shift.status !== "OPEN") return { success: false as const, error: "La caja no está abierta." };
+            if (user.role !== "ADMIN" && (shift.userId !== user.id || shift.branchId !== user.branch?.id)) {
+                return { success: false as const, error: "No autorizado" };
+            }
+            const closedAt = new Date();
+            const summary = await summarizeShift(shift, tx, closedAt);
+            const bonusTotal = summary.calculatedBonus * employeeCount;
+            const updated = await tx.cashShift.updateMany({
+                where: { id: shiftId, status: "OPEN" },
+                data: { endAmount: finalAmount, status: "CLOSED", endTime: closedAt, employeeCount, bonusTotal },
+            });
+            if (updated.count !== 1) return { success: false as const, error: "La caja ya fue cerrada." };
+            return { success: true as const, summary, closedAt };
+        }, { isolationLevel: "RepeatableRead" });
+        if (result.success) revalidatePath("/vendor/pos");
+        return result;
     } catch (error) {
         console.error("Error closing register:", error);
-        return { success: false, error: "Error al cerrar la caja." };
+        return { success: false as const, error: "Error al cerrar la caja." };
     }
 }
 

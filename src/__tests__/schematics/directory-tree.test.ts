@@ -156,3 +156,17 @@ test("Samsung canonical tree keeps commercial names and full regional codes", ()
     Object.assign(mockAsset(`sam${i}`, `sources/pdf/Samsung/${model}/service.pdf`, 'service.pdf', 'pdf'), { brand: 'SAMSUNG', model })));
   assert.deepEqual([...tree[0]!.subfolders.keys()], ['A02 SM-A022F', 'A02 SM-A022M', 'A02s SM-A025F']);
 });
+
+test("production mount paths preserve console families including Steam Deck and review folders", () => {
+  const rows = [
+    mockAsset("ps5-mounted", "sources/pcbe/Consolas/PlayStation/Ps5/board.pcbe", "board.pcbe"),
+    mockAsset("steam-mounted", "sources/pcbe/Consolas/Steam Deck/Steamdeck oled/board.pcbe", "board.pcbe"),
+    mockAsset("switch-review", "sources/pcbe/Consolas/Nintendo/Por revisar/board.pcbe", "board.pcbe"),
+  ].map(row => ({ ...row, status: "unsupported" as const }));
+  const root = buildDirectoryTree(rows).find(node => node.name === "Consolas");
+  assert.ok(root);
+  assert.equal(root.totalFiles, 3);
+  assert.equal(root.subfolders.get("PlayStation")?.subfolders.get("Ps5")?.totalFiles, 1);
+  assert.equal(root.subfolders.get("Steam Deck")?.subfolders.get("Steamdeck oled")?.totalFiles, 1);
+  assert.equal(root.subfolders.get("Nintendo")?.subfolders.get("Por revisar")?.totalFiles, 1);
+});

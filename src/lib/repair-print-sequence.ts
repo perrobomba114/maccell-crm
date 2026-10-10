@@ -96,3 +96,8 @@ export function printRepairTicketSequence(repair: PrintableRepair) {
         }
     }, FOLLOW_UP_PRINT_DELAY_MS);
 }
+
+/** Reprint only the reception receipt, regardless of the current repair status. */
+export function printRepairReceptionTicket(repair: PrintableRepair) {
+    printRepairTicket(buildRepairTicketInput(repair));
+}

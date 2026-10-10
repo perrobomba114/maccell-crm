@@ -47,3 +47,17 @@ test("keeps an equal hash when it belongs to a different commercial model", () =
 
   assert.deepEqual(result.map(item => item.id).sort(), ["iphone-12", "iphone-12-mini"]);
 });
+
+test("keeps existing unsupported boards and locked PDFs visible with their original status", () => {
+  const rows = [
+    asset("board", { kind: "pcbe", status: "unsupported", detail: "Contenido no interpretable con el lector actual", relativePath: "sources/pcbe/Consolas/PlayStation/PS5/board.pcbe" }),
+    asset("locked", { status: "locked", relativePath: "sources/pdf/Samsung/A03/guide.pdf" }),
+  ];
+  const result = reconcilePublishedAssets(rows, new Set(rows.map(row => row.relativePath)));
+  assert.deepEqual(result, rows);
+});
+
+test("does not publish missing files or DZKJ menu downloads as technical documents", () => {
+  const invalid = asset("menu", { status: "unsupported", detail: "La descarga contiene el catálogo de DZKJ, no el documento solicitado." });
+  assert.deepEqual(reconcilePublishedAssets([invalid, asset("missing")], new Set([invalid.relativePath])), []);
+});

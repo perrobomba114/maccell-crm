@@ -44,7 +44,7 @@ test("rebuilds a closed shift from bounded payments and expenses", () => {
     });
 });
 
-test("calculates the historical bonus when an old shift did not store it", () => {
+test("preserves a historical zero instead of inventing a prize with the current policy", () => {
     const result = buildCashShiftReprintSummary({
         shift: {
             startAmount: 5_000,
@@ -58,6 +58,6 @@ test("calculates the historical bonus when an old shift did not store it", () =>
 
     assert.equal(result.employeeCount, 1);
     assert.equal(result.finalCount, 0);
-    assert.equal(result.summary.calculatedBonus, 1_000);
+    assert.equal(result.summary.calculatedBonus, 0);
     assert.equal(result.summary.expectedCash, 85_000);
 });

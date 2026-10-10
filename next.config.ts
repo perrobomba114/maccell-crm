@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  serverExternalPackages: ['pdf-parse', '@xenova/transformers', 'onnxruntime-node', 'sharp'],
+  serverExternalPackages: ['pdf-parse', '@xenova/transformers', 'onnxruntime-node', 'sharp', 'heic-decode', 'libheif-js'],
   experimental: {
     serverActions: {
       allowedOrigins: ["sistema.maccell.com.ar", "localhost:3000"],

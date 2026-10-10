@@ -27,3 +27,14 @@ test('a source menu saved with a board extension is rejected explicitly', () => 
   assert.match(inventoryFormatProblem(new Uint8Array([0,12,4]), 'pdf') ?? '', /no es un PDF válido/);
   assert.equal(inventoryFormatProblem(new TextEncoder().encode('%PDF-1.7'), 'pdf'), undefined);
 });
+
+test('a DZKJ menu wrapped in a PCBE signature is still an invalid download', () => {
+  const menu = new TextEncoder().encode('{0}\u0000\u0001\u0000Xinzhizao Download and Install Redemption Code Instructions.com');
+  const wrapped = new Uint8Array(0x40 + menu.length);
+  wrapped.set(new TextEncoder().encode('XZZPCB V1.0'));
+  wrapped.set(menu.map(value => value ^ 0x20), 0x40);
+  assert.match(inventoryFormatProblem(wrapped, 'pcbe') ?? '', /catálogo de DZKJ/);
+  const genuineHeader = new Uint8Array(0x80);
+  genuineHeader.set(new TextEncoder().encode('XZZPCB V1.0'));
+  assert.equal(inventoryFormatProblem(genuineHeader, 'pcbe'), undefined);
+});

@@ -7,7 +7,12 @@ let lastPrintTime = 0;
  * Robust printing helper that uses a hidden iframe.
  * Handles timeouts and cleanup to prevent freezing.
  */
-export const printHtml = (htmlContent: string) => {
+export function getRollPageHeightMm(contentHeightPx: number): number {
+    // CSS pixels use 96 dpi. Leave 2 mm after the content for the cutter.
+    return Math.ceil(contentHeightPx * 25.4 / 96 + 2);
+}
+
+export const printHtml = (htmlContent: string, options?: { rollWidthMm: number }) => {
     const now = Date.now();
     // Reduced from 2000 to 800 to allow sequential tickets (Sale -> Warranty)
     if (now - lastPrintTime < 800) {
@@ -22,7 +27,7 @@ export const printHtml = (htmlContent: string) => {
         iframe.style.position = 'fixed';
         iframe.style.right = '0';
         iframe.style.bottom = '0';
-        iframe.style.width = '1px';
+        iframe.style.width = options ? `${options.rollWidthMm}mm` : '80mm';
         iframe.style.height = '1px';
         iframe.style.border = 'none';
         iframe.style.opacity = '0.01'; // Hidden but renderable
@@ -38,16 +43,19 @@ export const printHtml = (htmlContent: string) => {
             return;
         }
 
-        doc.open();
-        doc.write(htmlContent);
-        doc.close();
-
         // 3. Wait for Load (Images, QR)
         iframe.onload = () => {
             // 4. Trace focus and Print
             setTimeout(() => {
                 try {
                     if (!iframe.contentWindow) return;
+
+                    if (options) {
+                        const pageStyle = doc.createElement('style');
+                        const heightPx = Math.max(doc.body.scrollHeight, doc.body.getBoundingClientRect().height);
+                        pageStyle.textContent = `@page { size: ${options.rollWidthMm}mm ${getRollPageHeightMm(heightPx)}mm; margin: 0; }`;
+                        doc.head.appendChild(pageStyle);
+                    }
 
                     iframe.contentWindow.focus();
                     iframe.contentWindow.print();
@@ -67,6 +75,10 @@ export const printHtml = (htmlContent: string) => {
             }, 500); // 500ms allows images to render layout
         };
 
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+
         // Fallback cleanup
         setTimeout(() => {
             if (document.body.contains(iframe)) {
@@ -82,6 +94,7 @@ export const printHtml = (htmlContent: string) => {
 // --- Shared CSS for Receipts ---
 export const SHARED_CSS = `
     body {
+        box-sizing: border-box;
         font-family: 'Courier New', monospace;
         width: 80mm;
         margin: 0;
@@ -89,6 +102,7 @@ export const SHARED_CSS = `
         font-size: 16px;
         color: black;
         font-weight: bold;
+        overflow-wrap: anywhere;
     }
     .header {
         text-align: center;
@@ -153,8 +167,24 @@ export const SHARED_CSS = `
         text-align: center;
         margin-top: 20px;
     }
+    .receipt-signature {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        padding-top: 12mm;
+        margin-top: 5mm;
+        font-size: 12px;
+        text-align: center;
+    }
+    .receipt-acceptance {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    .receipt-signature-line {
+        border-top: 1px solid black;
+        padding-top: 5px;
+    }
     @media print {
-        @page { margin: 0; size: 80mm auto; }
+        @page { margin: 0; size: auto; }
         body { width: 80mm; padding: 2mm; }
     }
 `;

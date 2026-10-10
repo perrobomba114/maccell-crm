@@ -1,5 +1,6 @@
 "use server";
 
+import { validatePosAmounts } from "@/lib/pos-payment-validation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth-actions";
 import { generateAfipInvoiceForSale } from "./checkout-afip";
@@ -54,6 +55,9 @@ export async function processPosSale(data: {
         return { success: false, error: "El carrito está vacío." };
     }
 
+    const amountError = validatePosAmounts(data);
+    if (amountError) return { success: false, error: amountError };
+
     const repairIds = data.items.filter((item) => item.type === "REPAIR").map((item) => item.id);
     if (repairIds.length > 0) {
         const repairs = await db.repair.findMany({
@@ -82,16 +86,6 @@ export async function processPosSale(data: {
         }
         if (!data.invoiceData.customerName?.trim()) {
             return { success: false, error: "Nombre del cliente requerido para la factura." };
-        }
-    }
-
-    if (data.paymentMethod === "SPLIT") {
-        const paymentsTotal = data.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-        if (Math.abs(paymentsTotal - data.total) > 1) {
-            return {
-                success: false,
-                error: `Error en montos: Total venta $${data.total}, Pagos $${paymentsTotal}`
-            };
         }
     }
 

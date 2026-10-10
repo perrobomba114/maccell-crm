@@ -12,9 +12,11 @@ interface ImagePreviewModalProps {
     images: string[];
     currentIndex: number;
     onIndexChange: (index: number) => void;
+    unavailableLabels?: string[];
 }
 
-export function ImagePreviewModal({ isOpen, onClose, images, currentIndex, onIndexChange }: ImagePreviewModalProps) {
+export function ImagePreviewModal({ isOpen, onClose, images, currentIndex, onIndexChange, unavailableLabels }: ImagePreviewModalProps) {
+    const [failedUrl, setFailedUrl] = useState<string | null>(null);
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -165,14 +167,15 @@ export function ImagePreviewModal({ isOpen, onClose, images, currentIndex, onInd
                     </div>
 
                     {/* The Image */}
-                    <img
+                    {failedUrl === imageUrl ? <p className="max-w-sm px-6 text-center text-sm text-white/80">{unavailableLabels?.[currentIndex] ?? "No se pudo mostrar esta imagen."}</p> : <img
                         src={getImgUrl(imageUrl)}
                         alt={`Preview ${currentIndex + 1}`}
                         className={`max-w-full max-h-full object-contain pointer-events-none transition-transform ${isDragging ? "duration-0" : "duration-300"} ease-out`}
                         style={{
                             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
                         }}
-                    />
+                        onError={() => setFailedUrl(imageUrl)}
+                    />}
                 </div>
 
                 {/* Help Overlay (Temporary) */}

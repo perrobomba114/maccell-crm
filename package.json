@@ -58,6 +58,7 @@
     "firebase": "^12.9.0",
     "firebase-admin": "^13.6.1",
     "framer-motion": "^12.23.26",
+    "heic-decode": "^2.1.0",
     "jsbarcode": "^3.12.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",

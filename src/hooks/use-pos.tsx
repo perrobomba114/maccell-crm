@@ -276,7 +276,7 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
             if (!cashShift || !shiftSummary) return;
             const res = await closeRegister(cashShift.id, val, employeeCount);
             if (res.success) {
-                printCashShiftClosureTicket({ branch: branchData, user: { name: "Cajero" }, shift: { startAmount: cashShift.startAmount, startTime: cashShift.startTime }, summary: shiftSummary, billCounts, finalCount: val, employeeCount });
+                printCashShiftClosureTicket({ branch: branchData, user: { name: "Cajero" }, shift: { startAmount: cashShift.startAmount, startTime: cashShift.startTime }, summary: res.summary, billCounts, finalCount: val, employeeCount, closedAt: res.closedAt });
                 setCashShift(null);
                 setShiftSummary(null);
                 setBillCounts({});

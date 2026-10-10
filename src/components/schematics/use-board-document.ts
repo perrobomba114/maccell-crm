@@ -1,25 +1,28 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { SchematicAsset } from "@/lib/schematics/catalog-types";
+import { inventoryFormatProblem } from "@/lib/schematics/board-format";
 import type { PcbeDocument } from "@/lib/schematics/types";
 
 export function useBoardDocument(asset: SchematicAsset | null) {
   const [result, setResult] = useState<{ id?: string; board: PcbeDocument | null; error: string; loading: boolean }>({ board: null, error: "", loading: false });
   useEffect(() => {
     if (!asset) return;
-    if (asset.status !== "ready") {
-      setResult({ id: asset.id, board: null, error: asset.detail || "El archivo requiere revisión antes de abrirse como placa.", loading: false });
-      return;
-    }
     const controller = new AbortController();
     let worker: Worker | undefined;
     setResult({ id: asset.id, board: null, error: "", loading: true });
     async function load() {
       try {
-        const response = await fetch(`/api/schematics/${asset!.id}`, { signal: controller.signal });
+        const response = await fetch(`/api/schematics/${asset!.id}`, {
+          signal: controller.signal,
+          ...(asset!.status !== "ready" ? { headers: { Range: "bytes=0-1023" } } : {}),
+        });
         if (!response.ok) throw new Error(response.status === 401 ? "La sesión venció. Volvé a ingresar." : "No se pudo abrir la placa.");
         const bytes = await response.arrayBuffer();
         if (controller.signal.aborted) return;
+        const formatProblem = inventoryFormatProblem(new Uint8Array(bytes), "pcbe");
+        if (formatProblem) throw new Error(formatProblem);
+        if (asset!.status !== "ready") throw new Error(asset!.detail || "El archivo requiere revisión antes de abrirse como placa.");
         worker = new Worker(new URL("./pcbe.worker.ts", import.meta.url));
         worker.onmessage = (event: MessageEvent<{ board?: PcbeDocument; error?: string }>) => {
           if (!controller.signal.aborted) setResult({ id: asset!.id, board: event.data.board ?? null, error: event.data.error ?? "", loading: false });

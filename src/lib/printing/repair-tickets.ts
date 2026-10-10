@@ -32,6 +32,29 @@ type RepairTicketData = {
     }[];
 };
 
+const REPAIR_ROLL_OPTIONS = { rollWidthMm: 80 };
+
+// Reception only: keep the complete conditions legible while reducing blank
+// space on the 297 mm forms still used by some Windows printer drivers.
+const RECEPTION_CSS = `
+    .header { margin-bottom: 5px; padding-bottom: 5px; }
+    .logo { width: auto; max-width: 35mm; max-height: 14mm; margin-bottom: 2px; }
+    .branch-name { margin: 2px 0; }
+    .branch-info { margin-top: 0; font-size: 13px; }
+    .date { margin-top: 2px; font-size: 12px; }
+    .receipt-section { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed black; }
+    .receipt-label { font-size: 12px; font-weight: 900; }
+    .receipt-value { font-size: 16px; font-weight: bold; }
+    .receipt-title { margin-top: 4px; border-top: 1px solid black; border-bottom: 1px solid black; padding: 3px 0; font-size: 13px; text-transform: uppercase; }
+    .receipt-number { font-size: 24px; font-weight: 900; margin: 2px 0; }
+    .receipt-total { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px; }
+    .receipt-total-label { font-size: 14px; font-weight: 900; }
+    .receipt-total-price { font-size: 28px; font-weight: 900; text-align: right; }
+    .receipt-terms { font-family: sans-serif; font-size: 11px; text-align: left; margin-top: 6px; font-weight: bold; line-height: 1.1; }
+    .qr-container { margin-top: 6px; }
+    .receipt-signature { padding-top: 10mm; margin-top: 3mm; }
+`;
+
 export const printRepairTicket = (repair: RepairTicketData | null | undefined) => {
     if (!repair) return;
     const logoUrl = repair.branch?.imageUrl || "/logo.jpg";
@@ -43,25 +66,22 @@ export const printRepairTicket = (repair: RepairTicketData | null | undefined) =
             ${repair.branch?.address ? `<div class="branch-info">${repair.branch.address}</div>` : ''}
             ${repair.branch?.phone ? `<div class="branch-info">Tel: ${repair.branch.phone}</div>` : ''}
 
-            <div style="margin-top: 10px; text-transform: uppercase; border-top: 1px solid black; border-bottom: 1px solid black; padding: 5px 0; display: inline-block;">
+            <div class="receipt-title">
                 Comprobante de Reparación
             </div>
 
-            <div style="font-size: 24px; font-weight: 900; margin: 5px 0;">#${repair.ticketNumber}</div>
+            <div class="receipt-number">#${repair.ticketNumber}</div>
             <div class="date">${format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })}</div>
         </div>
 
-        <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
-            <div style="font-size: 12px; font-weight: 900;">CLIENTE</div>
-            <div style="font-size: 16px; font-weight: bold;">${repair.customer?.name || "Consumidor Final"}</div>
+        <div class="receipt-section">
+            <div class="receipt-label">CLIENTE</div>
+            <div class="receipt-value">${repair.customer?.name || "Consumidor Final"}</div>
+            <div class="receipt-label" style="margin-top: 4px;">DISPOSITIVO</div>
+            <div class="receipt-value">${repair.deviceBrand} ${repair.deviceModel}</div>
         </div>
 
-        <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
-            <div style="font-size: 12px; font-weight: 900;">DISPOSITIVO</div>
-            <div style="font-size: 16px; font-weight: bold;">${repair.deviceBrand} ${repair.deviceModel}</div>
-        </div>
-
-        <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
+        <div class="receipt-section">
             <div style="font-size: 12px; font-weight: 900;">RECEPCIÓN DEL EQUIPO</div>
             <div style="font-size: 14px; font-weight: bold;">
                 Acceso: ${formatRepairAccess(repair.accessType ?? "NONE")}
@@ -72,7 +92,7 @@ export const printRepairTicket = (repair: RepairTicketData | null | undefined) =
             <div style="font-size: 10px; margin-top: 3px;">La credencial de acceso no se imprime por seguridad.</div>
         </div>
 
-         <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
+         <div class="receipt-section">
             <div style="font-size: 12px; font-weight: 900;">PROBLEMA / DIAGNÓSTICO</div>
             <div style="font-style: italic; font-size: 14px;">"${repair.problemDescription}"</div>
             <div style="font-size: 12px; font-weight: bold; margin-top: 5px;">* No se pudieron comprobar sus funciones.</div>
@@ -84,7 +104,7 @@ export const printRepairTicket = (repair: RepairTicketData | null | undefined) =
         </div>
 
         ${repair.parts && repair.parts.length > 0 ? `
-            <div style="margin-bottom: 10px; border-bottom: 1px dashed black; padding-bottom: 10px;">
+            <div class="receipt-section">
                 <div style="font-size: 12px; font-weight: 900;">REPUESTOS</div>
                 ${repair.parts.map((p) => `
                     <div style="font-size: 14px; margin-bottom: 2px;">
@@ -94,21 +114,21 @@ export const printRepairTicket = (repair: RepairTicketData | null | undefined) =
             </div>
         ` : ''}
 
-        <div style="border-bottom: 3px solid black; padding-bottom: 10px;">
-            <div class="row">
-                <span style="font-size: 18px; font-weight: 900;">TOTAL ESTIMADO</span>
+        <div style="border-bottom: 3px solid black; padding-bottom: 4px;">
+            <div class="receipt-total">
+                <span class="receipt-total-label">TOTAL ESTIMADO</span>
+                <span class="receipt-total-price">$${repair.estimatedPrice?.toLocaleString() || "0"}</span>
             </div>
-            <div style="font-size: 28px; font-weight: 900; text-align: right;">$${repair.estimatedPrice?.toLocaleString() || "0"}</div>
-            <div class="row" style="margin-top: 10px; justify-content: flex-end;">
+            <div class="row" style="margin-top: 4px; justify-content: flex-end; font-size: 13px;">
                 <span class="label" style="margin-right: 5px;">PROMETIDO:</span>
                 <span class="value" style="margin-bottom: 0;">${repair.promisedAt ? format(new Date(repair.promisedAt), "dd/MM HH:mm", { locale: es }) : ""}</span>
             </div>
-            <div style="font-size: 16px; font-weight: 900; text-align: center; margin-top: 5px; text-transform: uppercase;">
+            <div style="font-size: 13px; font-weight: 900; text-align: center; margin-top: 3px; text-transform: uppercase;">
                 PARA RETIRAR EL EQUIPO SI O SI NECESITA ESTE COMPROBANTE
             </div>
         </div>
 
-        <div style="font-family: sans-serif; font-size: 11px; text-align: left; margin-top: 15px; font-weight: bold; line-height: 1.1;">
+        <div class="receipt-terms">
             <div style="text-decoration: underline; margin-bottom: 2px;">TÉRMINOS Y CONDICIONES:</div>
             1. ACEPTACIÓN: La entrega del equipo implica la conformidad total con el presupuesto y estas condiciones.<br/>
             2. GARANTÍA LIMITADA: Validez de 30 días corridos. Cubre exclusivamente la mano de obra realizada y los repuestos reemplazados en esta orden.<br/>
@@ -117,18 +137,20 @@ export const printRepairTicket = (repair: RepairTicketData | null | undefined) =
             ${REPAIR_DATA_RESPONSIBILITY_TERMS}
         </div>
 
+        <div class="receipt-acceptance">
         <div class="qr-container">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.origin + '/estado/' + repair.ticketNumber)}" style="width: 100px; height: 100px; margin: 0 auto; display: block;" alt="QR Ticket" />
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.origin + '/estado/' + repair.ticketNumber)}" style="width: 80px; height: 80px; margin: 0 auto; display: block;" alt="QR Ticket" />
             <div style="font-size: 10px; margin-top: 5px;">Escaneá para saber el estado de tu equipo</div>
             <div style="font-size: 10px; font-weight: bold;">Ticket #${repair.ticketNumber}</div>
         </div>
 
-        <div style="margin-top: 200px; border-top: 2px solid black; text-align: center; padding-top: 5px; font-size: 14px; font-weight: bold;">
-            Firma del Cliente / Aceptación
+        <div class="receipt-signature">
+            <div class="receipt-signature-line">Firma del Cliente / Aceptación</div>
+        </div>
         </div>
     `;
 
-    printHtml(wrapHtml(`Ticket #${repair.ticketNumber}`, SHARED_CSS, content));
+    printHtml(wrapHtml(`Ticket #${repair.ticketNumber}`, SHARED_CSS + RECEPTION_CSS, content), REPAIR_ROLL_OPTIONS);
 };
 
 export const printWetReport = (repair: RepairTicketData | null | undefined) => {
@@ -200,7 +222,7 @@ export const printWetReport = (repair: RepairTicketData | null | undefined) => {
         </div>
     `;
 
-    printHtml(wrapHtml(`Informe Humedad #${repair.ticketNumber}`, SHARED_CSS, content));
+    printHtml(wrapHtml(`Informe Humedad #${repair.ticketNumber}`, SHARED_CSS, content), REPAIR_ROLL_OPTIONS);
 };
 
 export const printWarrantyTicket = (repair: RepairTicketData | null | undefined) => {
@@ -253,8 +275,7 @@ export const printWarrantyTicket = (repair: RepairTicketData | null | undefined)
             - El equipo fue manipulado por terceros.
         </div>
 
-        <div style="margin-top: 180px; font-size: 11px;">
-             <br/><br/>
+        <div class="receipt-signature">
              <div style="border-top: 1px solid black; display: flex; justify-content: space-between; padding-top: 5px;">
                 <span>Firma Cliente: __________________</span>
                 <span>Fecha: ${format(new Date(), "dd/MM/yyyy", { locale: es })}</span>
@@ -262,5 +283,5 @@ export const printWarrantyTicket = (repair: RepairTicketData | null | undefined)
         </div>
     `;
 
-    printHtml(wrapHtml(`Garantía #${repair.ticketNumber}`, SHARED_CSS, content));
+    printHtml(wrapHtml(`Garantía #${repair.ticketNumber}`, SHARED_CSS, content), REPAIR_ROLL_OPTIONS);
 };

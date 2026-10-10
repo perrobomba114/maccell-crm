@@ -105,11 +105,6 @@ export function ActiveRepairCard({
                         onClick={() => onViewImages(repair)}
                         className="size-9"
                     />
-                    {!enableManagement && (
-                        <Button size="icon" variant="ghost" onClick={() => onPrint(repair)} className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Imprimir">
-                            <Printer className="h-4 w-4" />
-                        </Button>
-                    )}
                     {enableImageUpload && imageCount < 3 && (
                         <Button size="icon" variant="ghost" onClick={() => onImageUpload(repair)} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Fotos">
                             <Camera className="h-4 w-4" />
@@ -201,8 +196,14 @@ export function ActiveRepairCard({
             </div>
 
             {/* Row 4: Management actions */}
-            {hasActions && (
+            {(hasActions || !enableManagement) && (
                 <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                    {!enableManagement && (
+                        <Button type="button" size="sm" variant="outline" onClick={() => onPrint(repair)} className="flex-1 gap-2" aria-label={`Reimprimir recepción de reparación ${repair.ticketNumber}`}>
+                            <Printer className="h-4 w-4" />
+                            Reimprimir recepción
+                        </Button>
+                    )}
                     {enableTakeover && (
                         <Button size="sm" onClick={() => onTakeover(repair)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold flex-1">
                             Retirar

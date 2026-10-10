@@ -7,7 +7,8 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { createNotificationAction } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
-import { saveRepairImages } from "@/lib/actions/upload";
+import { saveRepairImages, deleteRepairImageFile } from "@/lib/actions/upload";
+import { RepairImageValidationError } from "@/lib/repair-image-conversion";
 import { isReactivatableRepair } from "@/lib/repairs/reactivation-policy";
 import { REPAIR_STATUS } from "@/lib/repairs/status";
 import { VENDOR_REACTIVATABLE_STATUS_IDS } from "@/lib/repairs/status-sets";
@@ -15,6 +16,8 @@ import { VENDOR_REACTIVATABLE_STATUS_IDS } from "@/lib/repairs/status-sets";
 class FinishValidationError extends Error {}
 
 export async function finishRepairAction(formData: FormData) {
+    let newImages: string[] = [];
+    let evidenceCommitted = false;
     try {
         const repairId = formData.get("repairId") as string;
         const technicianId = formData.get("technicianId") as string;
@@ -75,12 +78,7 @@ export async function finishRepairAction(formData: FormData) {
         }
 
         const currentImages = repair.deviceImages || [];
-        let newImages: string[] = [];
-        try {
-            newImages = await saveRepairImages(formData, repair.ticketNumber, currentImages.length);
-        } catch (imgError) {
-            console.error("Error saving images:", imgError);
-        }
+        newImages = await saveRepairImages(formData, repair.ticketNumber, currentImages.length);
 
         const oldRepairStatusId = repair.statusId;
         const dataToUpdate: Prisma.RepairUpdateInput = {
@@ -117,7 +115,7 @@ export async function finishRepairAction(formData: FormData) {
 
         await db.$transaction(async tx => {
             const locked = await tx.repair.updateMany({
-                where: { id: repairId, assignedUserId: actor.id, statusId: repair.statusId,
+                where: { id: repairId, assignedUserId: actor.id, statusId: repair.statusId, deviceImages: { equals: currentImages },
                     AND: { statusId: { in: EXTERNAL_PURCHASE_EDITABLE_STATUSES } } },
                 data: { updatedAt: new Date() },
             });
@@ -139,6 +137,7 @@ export async function finishRepairAction(formData: FormData) {
             }
         });
 
+        evidenceCommitted = true;
         try {
             const [technician, newStatus] = await Promise.all([
                 db.user.findUnique({ where: { id: technicianId } }),
@@ -238,7 +237,8 @@ export async function finishRepairAction(formData: FormData) {
         return { success: true };
 
     } catch (error) {
+        if (!evidenceCommitted) await Promise.all(newImages.map(deleteRepairImageFile));
         console.error("Error finishing repair (CRITICAL):", error);
-        return { success: false, error: error instanceof FinishValidationError ? error.message : "Error al finalizar reparación" };
+        return { success: false, error: error instanceof FinishValidationError || error instanceof RepairImageValidationError ? error.message : "Error al finalizar reparación" };
     }
 }

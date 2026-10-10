@@ -12,8 +12,8 @@ const familyLabels: Record<string, ConsoleIdentity["family"]> = {
 
 export function consoleIdentityFromCanonicalPath(relativePath: string): ConsoleIdentity | null {
   if (!isCanonicalConsolePath(relativePath)) return null;
-  const [, , rawFamily, model] = relativePath.replace(/\\/g, "/").split("/");
-  const family = familyLabels[rawFamily?.toLowerCase() ?? ""];
+  const [, , rawFamily, model] = relativePath.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/").replace(/^sources\//i, "").split("/");
+  const family = familyLabels[rawFamily?.toLowerCase().replace(/\s/g, "") ?? ""];
   if (!family || !model || isNoiseModel(model)) return null;
   return { family, model };
 }

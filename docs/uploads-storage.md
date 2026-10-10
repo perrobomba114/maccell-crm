@@ -31,6 +31,9 @@ El endpoint `/api/uploads/[...path]` busca primero en `upload/` y después en `p
 - Renderizar imágenes con `getImgUrl(...)` cuando el valor venga de DB o de datos legacy.
 - No guardar paths nuevos como `/repairs/images`, `/branches`, `/profiles` ni `/knowledge`.
 - Aceptar imágenes de reparación como `image/*` y convertirlas server-side a JPEG antes de escribirlas en `upload/repairs/images`.
+- HEIC/HEIF de celulares se decodifica con `heic-decode`/libheif portable: el `sharp` precompilado no incluye el codec HEVC. AVIF y las demás imágenes se procesan con `sharp`.
+- Hasta 3 fotos por envío, 30 MB por foto y 80 megapíxeles; el JPEG se orienta y se reduce a un lado máximo de 4096 píxeles, sin ampliar fotos pequeñas. Los límites se validan antes de escribir el lote.
+- Si una foto del lote es inválida, no se guarda ninguna ni se finaliza la reparación. Si falla la transacción de reparación, se eliminan los archivos recién creados.
 - No usar `next/image` para ocultar problemas de storage; la URL debe abrir directo en navegador.
 
 ## Migración

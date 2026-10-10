@@ -1,3 +1,4 @@
+import { calculateCashShiftBonus } from "../cash-shift-calculations";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { printHtml, SHARED_CSS, wrapHtml } from "./core";
@@ -30,8 +31,7 @@ export const printCashShiftClosureTicket = (data: {
 }) => {
     const { branch, user, shift, summary, billCounts, finalCount, employeeCount, closedAt } = data;
     const logoUrl = branch?.imageUrl || "/logo.jpg";
-    // Prefer the server-calculated bonus to ensure consistency. Fallback to local calc rounding UP to 1000.
-    const bonusPerEmp = summary?.calculatedBonus ?? (summary ? Math.ceil((summary.totalSales * (summary.totalSales >= 1200000 ? 0.02 : 0.01)) / 1000) * 1000 : 0);
+    const bonusPerEmp = summary.calculatedBonus ?? calculateCashShiftBonus(summary.totalSales);
     const totalBonus = bonusPerEmp * employeeCount;
     // Note: expectedCash in summary might already account for expenses but not bonus dynamically?
     // In getShiftSummary, expectedCash = start + sales - expenses.
@@ -86,7 +86,7 @@ export const printCashShiftClosureTicket = (data: {
             <span>$${bonusPerEmp.toLocaleString()}</span>
         </div>
         <div class="row">
-            <span>TOTAL PREMIOS (${summary.totalSales >= 1200000 ? "2%" : "1%"}):</span>
+            <span>TOTAL PREMIOS:</span>
             <span>-$${totalBonus.toLocaleString()}</span>
         </div>
 

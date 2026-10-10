@@ -113,6 +113,7 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const files = Array.from(e.target.files);
+            e.target.value = "";
             if (newImages.length + files.length > 3) {
                 toast.error("Máximo 3 imágenes.");
                 return;

@@ -96,7 +96,7 @@ function DirectoryBranch({
                   {roleLabels[documentRole(asset)]}
                 </small>
               </div>
-              {asset.status !== "ready" && <i className="sch-asset-badge is-review" title={asset.detail}>{asset.detail?.includes("catálogo de DZKJ") ? "Descarga inválida" : "Revisar"}</i>}
+              {asset.status !== "ready" && <i className="sch-asset-badge is-review" title={asset.detail}>{asset.detail?.includes("catálogo de DZKJ") ? "Descarga inválida" : asset.status === "locked" ? "Con clave" : "Sin visor"}</i>}
               {asset.status === "ready" && <i className="sch-asset-badge is-ready" title="Archivo disponible; consultá su estado de indexación">Disponible</i>}
               {asset.kind === "pcbe" && (asset.detail?.toLowerCase().includes("diode") || asset.name.toLowerCase().includes("diode")) && <i className="sch-asset-badge is-diode" title="Contiene anotaciones de diodo originales">Diodos</i>}
             </button>

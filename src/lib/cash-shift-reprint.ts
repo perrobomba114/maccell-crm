@@ -1,3 +1,5 @@
+import { aggregateCashShiftSales } from "./cash-shift-calculations";
+
 export type CashShiftReprintPaymentMethod = "CASH" | "CARD" | "MERCADOPAGO" | "TRANSFER" | "MIXTO" | "SPLIT";
 
 export type CashShiftReprintInput = {
@@ -34,30 +36,12 @@ export type CashShiftReprintSummary = {
 };
 
 export function buildCashShiftReprintSummary(input: CashShiftReprintInput): CashShiftReprintSummary {
-    let cashSales = 0;
-    let cardSales = 0;
-    let mpSales = 0;
-    let totalSales = 0;
-
-    for (const sale of input.sales) {
-        totalSales += sale.total;
-        const allocations = sale.payments.length > 0
-            ? sale.payments
-            : [{ method: sale.paymentMethod, amount: sale.total }];
-
-        for (const payment of allocations) {
-            if (payment.method === "CASH") cashSales += payment.amount;
-            if (payment.method === "CARD") cardSales += payment.amount;
-            if (payment.method === "MERCADOPAGO" || payment.method === "TRANSFER") mpSales += payment.amount;
-        }
-    }
+    const { totalSales, cashSales, cardSales, mpSales } = aggregateCashShiftSales(input.sales);
 
     const expenses = input.expenses.reduce((total, expense) => total + expense.amount, 0);
     const employeeCount = Math.max(1, input.shift.employeeCount);
-    const bonusRate = totalSales >= 1_200_000 ? 0.02 : 0.01;
-    const calculatedBonus = input.shift.bonusTotal > 0
-        ? input.shift.bonusTotal / employeeCount
-        : Math.round((totalSales * bonusRate) / 1_000) * 1_000;
+    // A closed receipt must preserve the recorded withdrawal, including zero.
+    const calculatedBonus = input.shift.bonusTotal / employeeCount;
 
     return {
         summary: {

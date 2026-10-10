@@ -1,3 +1,4 @@
+import { validatePosAmounts } from "@/lib/pos-payment-validation";
 import { db } from "@/lib/db";
 import { PaymentMethod, Role } from "@prisma/client";
 import { isPosDeliveryBlockedStatus } from "@/lib/repairs/status";
@@ -47,6 +48,9 @@ export async function saveSaleTransaction(
     totalNet: number,
     totalVat: number
 ) {
+    const amountError = validatePosAmounts(data);
+    if (amountError) throw new Error(amountError);
+
     const negativeStockItems: { name: string; available: number; requested: number }[] = [];
 
     const transactionResult = await db.$transaction(async (tx) => {

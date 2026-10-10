@@ -21,7 +21,7 @@ import { type RepairData } from "./repair-history-types";
 import { RepairHistoryCard } from "./repair-history-card";
 import { RepairHistoryRow } from "./repair-history-row";
 import { getRepairImageCount } from "./repair-images-action-button";
-import { printRepairTicketSequence } from "@/lib/repair-print-sequence";
+import { printRepairReceptionTicket, printRepairTicketSequence } from "@/lib/repair-print-sequence";
 import { removeRepairDetailsParam } from "@/lib/repair-chat/navigation";
 
 export interface HistoryRepairsTableProps {
@@ -232,7 +232,7 @@ export function HistoryRepairsTable({ repairs, currentPage, totalPages }: Histor
                 </div>
             )}
 
-            <RepairDetailsDialog isOpen={isDetailsOpen} onClose={closeRepairDetails} repair={selectedRepair} />
+            <RepairDetailsDialog isOpen={isDetailsOpen} onClose={closeRepairDetails} repair={selectedRepair} onPrintReception={printRepairReceptionTicket} />
             <RepairImagesDialog isOpen={!!imageRepair} onClose={() => setImageRepair(null)} repair={imageRepair} />
         </div>
     );

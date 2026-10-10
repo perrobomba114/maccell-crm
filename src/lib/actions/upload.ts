@@ -1,8 +1,8 @@
-"use server";
-
+// Internal storage helpers. Do not mark this module "use server": that would
+// expose filesystem writes/deletes as callable actions without repair guards.
 import fs from "fs/promises";
 import path from "path";
-import { convertRepairImageForStorage } from "@/lib/repair-image-conversion";
+import { convertRepairImageForStorage, RepairImageValidationError } from "@/lib/repair-image-conversion";
 import { buildRepairImageUploadUrl, getRepairImageUploadSubpath } from "@/lib/repair-image-storage";
 
 function sanitizeFilenamePart(value: string) {
@@ -14,6 +14,7 @@ export async function saveRepairImages(formData: FormData, ticketNumber: string,
     const savedPaths: string[] = [];
 
     if (!files || files.length === 0) return [];
+    if (files.filter(file => file.size > 0).length > 3) throw new RepairImageValidationError("Podés subir hasta 3 fotos por vez.");
 
     const uploadDir = path.join(process.cwd(), "upload/repairs/images");
 
@@ -24,6 +25,8 @@ export async function saveRepairImages(formData: FormData, ticketNumber: string,
         await fs.mkdir(uploadDir, { recursive: true });
     }
 
+    // Validate the whole batch before writing any evidence.
+    const prepared: { filepath: string; url: string; buffer: Buffer }[] = [];
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (!file.name || file.size === 0) continue;
@@ -41,8 +44,17 @@ export async function saveRepairImages(formData: FormData, ticketNumber: string,
         const subpath = getRepairImageUploadSubpath(filename);
         const filepath = path.join(process.cwd(), "upload", subpath);
 
-        await fs.writeFile(filepath, converted.buffer);
-        savedPaths.push(buildRepairImageUploadUrl(filename));
+        prepared.push({ filepath, url: buildRepairImageUploadUrl(filename), buffer: converted.buffer });
+    }
+
+    try {
+        for (const image of prepared) {
+            await fs.writeFile(image.filepath, image.buffer, { flag: "wx" });
+            savedPaths.push(image.url);
+        }
+    } catch (error) {
+        await Promise.all(savedPaths.map(deleteRepairImageFile));
+        throw error;
     }
 
     return savedPaths;

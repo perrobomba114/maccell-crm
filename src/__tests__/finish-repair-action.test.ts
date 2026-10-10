@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
+import { EXTERNAL_PURCHASE_EDITABLE_STATUSES } from "../lib/repairs/external-purchases";
 
 const require = createRequire(import.meta.url);
 const bundled = build({
@@ -11,7 +12,7 @@ const bundled = build({
         const stubs: Record<string, string> = {
             "@/lib/db": "export const db = __finishTestDeps.db;",
             "@/actions/auth-actions": "export const getCurrentUser = async () => __finishTestDeps.actor;",
-            "@/lib/actions/upload": "export const saveRepairImages = async () => [];",
+            "@/lib/actions/upload": "export const saveRepairImages = async () => { if (__finishTestDeps.uploadError) throw new Error('Invalid photo'); return __finishTestDeps.uploadedImages; }; export const deleteRepairImageFile = async (url) => { __finishTestDeps.deletedImages.push(url); };",
             "@/lib/actions/notifications": "export const createNotificationAction = async () => {};",
             "next/cache": "export const revalidatePath = () => {};",
         };
@@ -20,12 +21,14 @@ const bundled = build({
     } }],
 });
 
-async function harness(options: { role?: string; local?: number; external?: number; lock?: number } = {}) {
+async function harness(options: { role?: string; local?: number; external?: number; lock?: number; uploadError?: boolean; uploadedImages?: string[] } = {}) {
     const writes: string[] = [];
+    const deletedImages: string[] = [];
+    const lockConditions: unknown[] = [];
     const db = {
         repair: {
             findUnique: async () => ({ id: "repair", assignedUserId: "tech", statusId: 3, parts: [], deviceImages: [], ticketNumber: "TEST", userId: null }),
-            updateMany: async () => ({ count: options.lock ?? 1 }),
+            updateMany: async (query: { where: unknown }) => { lockConditions.push(query.where); return { count: options.lock ?? 1 }; },
             update: async () => { writes.push("repair"); },
         },
         repairPart: { count: async () => options.local ?? 0 },
@@ -38,6 +41,7 @@ async function harness(options: { role?: string; local?: number; external?: numb
     const testModule = { exports: {} as { finishRepairAction: (data: FormData) => Promise<{ success: boolean; error?: string }> } };
     new Function("require", "module", "exports", "__finishTestDeps", (await bundled).outputFiles[0].text)(require, testModule, testModule.exports, {
         db, actor: { id: "tech", role: options.role ?? "TECHNICIAN" },
+        uploadError: options.uploadError, uploadedImages: options.uploadedImages ?? [], deletedImages,
     });
     const submit = async (partsRequired?: string) => {
         const form = new FormData();
@@ -45,7 +49,7 @@ async function harness(options: { role?: string; local?: number; external?: numb
         if (partsRequired !== undefined) form.set("partsRequired", partsRequired);
         return testModule.exports.finishRepairAction(form);
     };
-    return { submit, writes };
+    return { submit, writes, deletedImages, lockConditions };
 }
 
 test("finish rejects a forged technician role before changing the repair", async () => {
@@ -79,4 +83,29 @@ test("finish rejects concurrent ownership or status changes", async () => {
     const h = await harness({ local: 1, lock: 0 });
     assert.equal((await h.submit("true")).success, false);
     assert.deepEqual(h.writes, []);
+});
+
+test("finish rejects failed evidence before updating any state or history", async () => {
+    const h = await harness({ local: 1, uploadError: true });
+    assert.equal((await h.submit("true")).success, false);
+    assert.deepEqual(h.writes, []);
+    assert.deepEqual(h.lockConditions, []);
+});
+
+test("finish cleans uploaded evidence if the repair changed before commit", async () => {
+    const uploadedImages = ["/api/uploads/repairs/images/TEST_0.jpg"];
+    const h = await harness({ local: 1, lock: 0, uploadedImages });
+    assert.equal((await h.submit("true")).success, false);
+    assert.deepEqual(h.writes, []);
+    assert.deepEqual(h.deletedImages, uploadedImages);
+    assert.deepEqual(h.lockConditions[0], {
+        id: "repair", assignedUserId: "tech", statusId: 3, deviceImages: { equals: [] },
+        AND: { statusId: { in: EXTERNAL_PURCHASE_EDITABLE_STATUSES } },
+    });
+});
+
+test("finish keeps uploaded evidence after a successful commit", async () => {
+    const h = await harness({ uploadedImages: ["/api/uploads/repairs/images/TEST_0.jpg"] });
+    assert.equal((await h.submit("false")).success, true);
+    assert.deepEqual(h.deletedImages, []);
 });

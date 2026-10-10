@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Lock, Unlock, ArrowRight, Banknote } from "lucide-react";
+import { CheckCircle2, Lock, Unlock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,8 @@ import {
     DialogFooter,
     DialogDescription
 } from "@/components/ui/dialog";
+import { getCashShiftBonusRate } from "@/lib/cash-shift-calculations";
+import type { ShiftSummary } from "@/lib/actions/cash-register";
 import { cn } from "@/lib/utils";
 
 interface RegisterDialogProps {
@@ -22,7 +24,7 @@ interface RegisterDialogProps {
     modalAction: "OPEN" | "CLOSE";
     amountInput: string;
     setAmountInput: (v: string) => void;
-    shiftSummary: any;
+    shiftSummary: ShiftSummary | null;
     billCounts: Record<number, number>;
     handleBillChange: (denom: number, val: number) => void;
     employeeCount: number;
@@ -159,9 +161,9 @@ export function RegisterDialog({
                                     <div className="space-y-2 py-2 bg-secondary/20 rounded-lg p-2">
                                         <div className="flex justify-between items-center">
                                             <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                                                Premios ({shiftSummary && shiftSummary.totalSales >= 1200000 ? "2%" : "1%"})
+                                                Premios ({shiftSummary && getCashShiftBonusRate(shiftSummary.totalSales) === 0.02 ? "2%" : "1%"})
                                             </Label>
-                                            {shiftSummary && shiftSummary.totalSales >= 1200000 && (
+                                            {shiftSummary && getCashShiftBonusRate(shiftSummary.totalSales) === 0.02 && (
                                                 <Badge variant="default" className="text-[10px] h-4 px-1 bg-yellow-500/20 text-yellow-600 hover:bg-yellow-500/30 border-yellow-500/50">
                                                     BONUS 2%
                                                 </Badge>

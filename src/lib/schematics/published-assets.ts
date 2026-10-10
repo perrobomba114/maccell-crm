@@ -10,7 +10,7 @@ function normalize(relativePath: string): string {
 }
 
 export function isCanonicalConsolePath(relativePath: string): boolean {
-  return /^(?:pcbe|pdf)\/Consolas\/(?:Nintendo|PlayStation|SteamDeck|Xbox)\//i.test(normalize(relativePath));
+  return /^(?:sources\/)?(?:pcbe|pdf)\/Consolas\/(?:Nintendo|PlayStation|Steam\s*Deck|Xbox)\//i.test(normalize(relativePath));
 }
 
 function presentationPriority(asset: SchematicAsset): [number, string] {
@@ -25,7 +25,11 @@ export function reconcilePublishedAssets(assets: readonly SchematicAsset[], exis
   const best = new Map<string, SchematicAsset>();
 
   for (const asset of assets) {
-    if (asset.status !== "ready" || !normalizedPaths.has(normalize(asset.relativePath))) continue;
+    if (!normalizedPaths.has(normalize(asset.relativePath))) continue;
+    // Keep genuine files discoverable even when their reader is unsupported or
+    // password protected. These states are shown by the UI, not missing files.
+    // A known DZKJ menu download is not the requested technical document.
+    if (asset.status === "unsupported" && asset.detail?.includes("catálogo de DZKJ")) continue;
     // One byte-identical document can legitimately be filed under more than
     // one device (for example, a shared iPhone 12/12 Pro boardview). A global
     // SHA key erased every other model from the technician tree. Collapse

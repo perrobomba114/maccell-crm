@@ -26,7 +26,8 @@ import {
     Camera,
     Sparkles,
     ArrowLeft,
-    ShieldAlert
+    ShieldAlert,
+    Printer
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ImagePreviewModal } from "./image-preview-modal";
@@ -90,7 +91,7 @@ export type RepairDetails = {
         name: string;
         phone?: string | null;
     };
-    branch?: { name: string } | null;
+    branch?: { name: string; address?: string | null; phone?: string | null; imageUrl?: string | null } | null;
     status: RepairStatusSummary;
     assignedTo?: { name: string } | null;
     originalRepair?: {
@@ -119,6 +120,7 @@ interface RepairDetailsDialogProps {
     currentUserId?: string;
     onAddPart?: () => void;
     onOpenRepair?: (repairId: string) => void;
+    onPrintReception?: (repair: RepairDetails) => void;
 }
 
 const statusColorMap: Record<string, { bg: string; border: string; text: string }> = {
@@ -168,7 +170,7 @@ function RepairImage({ url, index, onClick }: { url: string; index: number; onCl
     );
 }
 
-export function RepairDetailsDialog({ repair: initialRepair, isOpen, onClose, currentUserId, onAddPart, onOpenRepair }: RepairDetailsDialogProps) {
+export function RepairDetailsDialog({ repair: initialRepair, isOpen, onClose, currentUserId, onAddPart, onOpenRepair, onPrintReception }: RepairDetailsDialogProps) {
     const router = useRouter();
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
@@ -327,6 +329,11 @@ export function RepairDetailsDialog({ repair: initialRepair, isOpen, onClose, cu
 
                             {/* Device & Client quick tags */}
                             <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+                                {onPrintReception && (
+                                    <Button type="button" variant="outline" size="sm" onClick={() => onPrintReception(activeRepair)}>
+                                        <Printer className="mr-2 h-4 w-4" /> Reimprimir recepción
+                                    </Button>
+                                )}
                                 <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-xs shadow-inner">
                                     <Smartphone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                                     <span className="font-bold text-white uppercase italic truncate max-w-[170px]">

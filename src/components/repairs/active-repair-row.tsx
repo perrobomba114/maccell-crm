@@ -212,8 +212,8 @@ export function ActiveRepairRow({
                             />
                         )}
 
-                        {/* Cargar Fotos o Imprimir */}
-                        {enableImageUpload && imageCount < 3 ? (
+                        {/* Fotos y reimpresión son acciones independientes. */}
+                        {enableImageUpload && imageCount < 3 && (
                             <Button
                                 type="button"
                                 size="icon"
@@ -225,19 +225,21 @@ export function ActiveRepairRow({
                             >
                                 <Camera className="h-4 w-4" />
                             </Button>
-                        ) : !enableManagement ? (
+                        )}
+                        {!enableManagement && (
                             <Button
                                 type="button"
-                                size="icon"
+                                size="sm"
                                 variant="ghost"
                                 onClick={() => onPrint(repair)}
-                                className="size-8 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-primary transition-colors"
-                                title="Imprimir"
-                                aria-label={`Imprimir reparación ${repair.ticketNumber}`}
+                                className="h-8 gap-1.5 rounded-lg px-2 text-xs text-slate-400 hover:bg-slate-800 hover:text-primary transition-colors"
+                                title="Reimprimir recepción"
+                                aria-label={`Reimprimir recepción de reparación ${repair.ticketNumber}`}
                             >
                                 <Printer className="h-4 w-4" />
+                                Reimprimir
                             </Button>
-                        ) : null}
+                        )}
 
                         {/* 4. Compartir / Transferir Reparación */}
                         {enableManagement ? (
