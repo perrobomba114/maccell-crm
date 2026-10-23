@@ -45,18 +45,31 @@ type ConvertedRepairImage = {
     contentType: "image/jpeg";
 };
 
-function isSupportedImageInput(fileName: string, contentType: string) {
+function hasSupportedImageSignature(buffer: Buffer) {
+    if (buffer.length < 12) return false;
+    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return true; // JPEG
+    if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return true; // PNG
+    if (buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP") return true; // WEBP
+    if (buffer.subarray(4, 8).toString("ascii") === "ftyp") {
+        const brands = buffer.subarray(8, Math.min(buffer.length, 80)).toString("ascii");
+        if (/heic|heix|hevc|hevx|mif1|msf1|avif|avis/.test(brands)) return true;
+    }
+    return false;
+}
+
+function isSupportedImageInput(fileName: string, contentType: string, buffer: Buffer) {
     const normalizedContentType = contentType.toLowerCase();
     const extension = path.extname(fileName).toLowerCase();
 
     return (
         SUPPORTED_INPUT_CONTENT_TYPES.has(normalizedContentType) ||
-        SUPPORTED_INPUT_EXTENSIONS.has(extension)
+        SUPPORTED_INPUT_EXTENSIONS.has(extension) ||
+        hasSupportedImageSignature(buffer)
     );
 }
 
 export async function convertRepairImageForStorage(input: ConvertRepairImageInput): Promise<ConvertedRepairImage> {
-    if (!isSupportedImageInput(input.fileName, input.contentType)) {
+    if (!isSupportedImageInput(input.fileName, input.contentType, input.buffer)) {
         throw new RepairImageValidationError("El archivo debe ser una imagen.");
     }
     if (input.buffer.length > MAX_REPAIR_IMAGE_BYTES) {
@@ -72,7 +85,10 @@ export async function convertRepairImageForStorage(input: ConvertRepairImageInpu
         if (source.subarray(4, 8).toString("ascii") === "ftyp" && /heic|heix|hevc|hevx|mif1|msf1/.test(brands) && !/avif|avis/.test(brands)) {
             const batch = await decodeHeic.all({ buffer: source });
             try {
-                const primary = batch[0];
+                const primary = batch.reduce<typeof batch[number] | undefined>(
+                    (best, current) => (!best || current.width * current.height > best.width * best.height ? current : best),
+                    batch[0],
+                );
                 if (!primary || primary.width * primary.height > 80_000_000) throw new Error("La foto supera 80 megapíxeles.");
                 const decoded = await primary.decode();
                 image = sharp(Buffer.from(decoded.data), { raw: { width: decoded.width, height: decoded.height, channels: 4 } });

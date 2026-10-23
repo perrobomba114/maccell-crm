@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Camera, X } from "lucide-react";
 
-import { getImgUrl } from "@/lib/utils";
+import { getImgUrl, cn } from "@/lib/utils";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { SafeImageThumbnail } from "./safe-image-thumbnail";
 
@@ -90,13 +90,23 @@ export function FinishRepairEvidence({
                     </div>
                 ))}
 
-                {newImages.length < 3 ? (
-                    <label className="group flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-dashed border-slate-700 bg-slate-900 transition-all hover:border-cyan-600 hover:bg-slate-800">
-                        <Camera size={13} className="text-slate-500 group-hover:text-cyan-400" />
-                        <span className="sr-only">Agregar evidencia</span>
-                        <input type="file" accept="image/*" multiple className="hidden" onChange={onImageChange} />
-                    </label>
-                ) : null}
+                <label
+                    className={cn(
+                        "group flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-dashed border-slate-700 bg-slate-900 transition-all hover:border-cyan-600 hover:bg-slate-800",
+                        newImages.length >= 3 && "hidden",
+                    )}
+                >
+                    <Camera size={13} className="text-slate-500 group-hover:text-cyan-400" />
+                    <span className="sr-only">Agregar evidencia</span>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        disabled={newImages.length >= 3}
+                        className="hidden"
+                        onChange={onImageChange}
+                    />
+                </label>
             </div>
 
             <ImagePreviewModal

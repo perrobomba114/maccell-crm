@@ -7,6 +7,7 @@ import { X, ImagePlus, Camera, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { materializeRepairImageFiles } from "@/lib/repairs/client-image-files";
 
 // Detects mobile browsers where the native camera app gives a far better UX
 // than the WebRTC stream API (correct rear camera, full resolution, etc.)
@@ -58,10 +59,25 @@ export function RepairImages() {
         };
     }, [cameraStream, isCameraOpen]);
 
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const newFiles = Array.from(e.target.files);
-            setFiles(prev => [...prev, ...newFiles]);
+    const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
+        const input = e.currentTarget;
+        if (input.files && input.files.length > 0) {
+            const newFiles = Array.from(input.files);
+            const prepared = await materializeRepairImageFiles(newFiles, files.length);
+            if (input !== inputRef.current) {
+                input.value = "";
+            }
+            if (!prepared.ok) {
+                toast.error(prepared.error);
+                return;
+            }
+            setFiles(prev => {
+                if (prev.length + prepared.files.length > 3) {
+                    toast.error("Máximo 3 imágenes.");
+                    return prev;
+                }
+                return [...prev, ...prepared.files];
+            });
         }
     };
 

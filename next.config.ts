@@ -27,6 +27,7 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ['pdf-parse', '@xenova/transformers', 'onnxruntime-node', 'sharp', 'heic-decode', 'libheif-js'],
   experimental: {
+    middlewareClientMaxBodySize: '500mb',
     serverActions: {
       allowedOrigins: ["sistema.maccell.com.ar", "localhost:3000"],
       bodySizeLimit: '500mb',

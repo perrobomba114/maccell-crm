@@ -34,6 +34,7 @@ import type { RepairAccessType } from "@/lib/repairs/intake";
 import { AddPartDialog } from "./add-part-dialog";
 import { getFinishRepairParts } from "@/actions/repairs/finish-parts";
 import { validateFinishParts } from "@/lib/repairs/finish-parts-policy";
+import { materializeRepairImageFiles } from "@/lib/repairs/client-image-files";
 
 type FinishRepairPart = {
     id: string;
@@ -95,7 +96,13 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
     const [partsRevision, setPartsRevision] = useState(0);
     const [partsState, setPartsState] = useState<Awaited<ReturnType<typeof getFinishRepairParts>> | null>(null);
     const [partsError, setPartsError] = useState(false);
-    useEffect(() => { if (isOpen) setPartsRequired(true); }, [isOpen, repair.id]);
+    useEffect(() => {
+        if (isOpen) {
+            setPartsRequired(true);
+        } else {
+            setNewImages([]);
+        }
+    }, [isOpen, repair.id]);
     useEffect(() => {
         if (!isOpen) return;
         let active = true;
@@ -110,16 +117,23 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
 
     const images = (repair.deviceImages || []).filter(isValidImg);
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const files = Array.from(e.target.files);
-            e.target.value = "";
-            if (newImages.length + files.length > 3) {
-                toast.error("Máximo 3 imágenes.");
-                return;
-            }
-            setNewImages(prev => [...prev, ...files]);
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const input = e.currentTarget;
+        if (!input.files || input.files.length === 0) return;
+        const selected = Array.from(input.files);
+        const prepared = await materializeRepairImageFiles(selected, newImages.length);
+        input.value = "";
+        if (!prepared.ok) {
+            toast.error(prepared.error);
+            return;
         }
+        setNewImages(prev => {
+            if (prev.length + prepared.files.length > 3) {
+                toast.error("Máximo 3 imágenes.");
+                return prev;
+            }
+            return [...prev, ...prepared.files];
+        });
     };
 
     const togglePartReturn = (partId: string) => {
@@ -210,8 +224,9 @@ export function FinishRepairModal({ repair, currentUserId, isOpen, onClose }: Fi
             } else {
                 toast.error(result.error);
             }
-        } catch {
-            toast.error("Error inesperado.");
+        } catch (error) {
+            console.error("Error submitting finish repair:", error);
+            toast.error("No se pudo enviar el cierre con las fotos. Verificá tu conexión o intentá con menos peso por foto.");
         } finally {
             setIsLoading(false);
         }

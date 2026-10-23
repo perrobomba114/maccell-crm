@@ -30,6 +30,16 @@ test("decodes a real HEVC HEIC photo when prebuilt sharp lacks that codec", asyn
     assert.equal(metadata.format, "jpeg");
     assert.equal(metadata.width, 1280);
     assert.equal(metadata.height, 854);
+
+    // Also works when iOS/Safari sends empty or generic application/octet-stream MIME type
+    const octetConverted = await convertRepairImageForStorage({
+        buffer: input,
+        fileName: "IMG_4821",
+        contentType: "application/octet-stream",
+    });
+    const octetMetadata = await sharp(octetConverted.buffer).metadata();
+    assert.equal(octetMetadata.format, "jpeg");
+    assert.equal(octetMetadata.width, 1280);
 });
 
 test("rotates EXIF camera images before resizing and strips orientation", async () => {

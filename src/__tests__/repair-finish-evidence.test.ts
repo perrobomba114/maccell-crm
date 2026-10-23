@@ -12,6 +12,8 @@ import * as externalPurchases from "../lib/repairs/external-purchases";
 import * as reactivation from "../lib/repairs/reactivation-policy";
 import * as status from "../lib/repairs/status";
 import * as statusSets from "../lib/repairs/status-sets";
+import { materializeRepairImageFiles, MAX_CLIENT_REPAIR_IMAGE_BYTES } from "../lib/repairs/client-image-files";
+import nextConfig from "../../next.config";
 
 // Execute the production action with its actual storage/conversion code and
 // request/DB doubles, without opening a connection or changing production data.
@@ -78,5 +80,60 @@ test("invalid evidence prevents finishing and DB failure cleans newly uploaded f
     } finally {
         process.chdir(previous);
         await rm(root, { recursive: true, force: true });
+    }
+});
+
+test("middleware body size limit matches server actions limit so multi-photo repair uploads are not truncated at 10MB", () => {
+    assert.equal(nextConfig.experimental?.middlewareClientMaxBodySize, "500mb");
+    assert.equal(nextConfig.experimental?.serverActions?.bodySizeLimit, "500mb");
+});
+
+test("client repair image materialization clones bytes into memory and validates limits before clearing file inputs", async () => {
+    const sourceFile = new File([Buffer.from("jpeg-bytes")], "foto-1.jpg", {
+        type: "image/jpeg",
+        lastModified: 1700000000000,
+    });
+    const ok = await materializeRepairImageFiles([sourceFile], 1);
+    assert.equal(ok.ok, true);
+    if (ok.ok) {
+        assert.equal(ok.files.length, 1);
+        assert.notEqual(ok.files[0], sourceFile);
+        assert.equal(ok.files[0].name, "foto-1.jpg");
+        assert.equal(Buffer.from(await ok.files[0].arrayBuffer()).toString(), "jpeg-bytes");
+    }
+
+    const tooMany = await materializeRepairImageFiles([sourceFile, sourceFile], 2);
+    assert.deepEqual(tooMany, { ok: false, error: "Máximo 3 imágenes." });
+
+    const emptyFile = new File([], "empty.jpg", { type: "image/jpeg" });
+    const emptyRes = await materializeRepairImageFiles([emptyFile], 0);
+    assert.equal(emptyRes.ok, false);
+
+    const unreadableFile = {
+        name: "revoked.jpg",
+        size: 1024,
+        type: "image/jpeg",
+        lastModified: Date.now(),
+        arrayBuffer: async () => {
+            throw new Error("NotReadableError");
+        },
+    } as unknown as File;
+    const unreadableRes = await materializeRepairImageFiles([unreadableFile], 0);
+    assert.equal(unreadableRes.ok, false);
+    if (!unreadableRes.ok) {
+        assert.match(unreadableRes.error, /No se pudo leer la foto/);
+    }
+
+    const oversizedFile = {
+        name: "huge.jpg",
+        size: MAX_CLIENT_REPAIR_IMAGE_BYTES + 1,
+        type: "image/jpeg",
+        lastModified: Date.now(),
+        arrayBuffer: async () => new ArrayBuffer(0),
+    } as unknown as File;
+    const oversizedRes = await materializeRepairImageFiles([oversizedFile], 0);
+    assert.equal(oversizedRes.ok, false);
+    if (!oversizedRes.ok) {
+        assert.match(oversizedRes.error, /30 MB/);
     }
 });
