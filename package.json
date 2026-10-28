@@ -14,6 +14,10 @@
     "test": "node scripts/run-tests.mjs",
     "lint": "eslint",
     "uploads:migrate": "tsx scripts/migrate-public-uploads-to-upload.ts",
+    "arq": "node docs/arquitectura/actualizar_arquitectura.mjs",
+    "arq:check": "node docs/arquitectura/actualizar_arquitectura.mjs --check",
+    "arq:watch": "node docs/arquitectura/vigilar_arquitectura.mjs",
+    "arq:hook": "git config core.hooksPath .githooks",
     "postinstall": "node scripts/patch-sdk.js"
   },
   "prisma": {

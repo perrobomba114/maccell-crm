@@ -1,0 +1,51 @@
+name: Mapa de arquitectura
+
+# En main regenera y publica el mapa; en pull requests solo verifica.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arquitectura-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verificar:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verificar mapa de arquitectura
+        run: |
+          node docs/arquitectura/actualizar_arquitectura.mjs --check || {
+            echo "::error::El mapa de arquitectura está desactualizado. Corré 'npm run arq' y commiteá docs/arquitectura/."
+            exit 1
+          }
+
+  regenerar:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Regenerar mapa
+        run: node docs/arquitectura/actualizar_arquitectura.mjs
+      - name: Commit automático
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/arquitectura/arquitectura.json docs/arquitectura/arquitectura.html
+          git diff --cached --quiet || (git commit -m "chore(arquitectura): actualizar mapa [skip ci]" && git push origin HEAD:main)

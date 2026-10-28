@@ -1,0 +1,2723 @@
+{
+  "proyecto": "MACCELL CRM",
+  "generado": "2026-10-28",
+  "commit": "7150fc9",
+  "resumen": [
+    [
+      "lenguaje",
+      "TypeScript 90% · Python 5% · JavaScript 1%"
+    ],
+    [
+      "base",
+      "PostgreSQL (Prisma, 41 modelos) + base RAG (7 tablas)"
+    ],
+    [
+      "modulos",
+      "853"
+    ],
+    [
+      "lineas",
+      "88.917"
+    ],
+    [
+      "endpoints",
+      "65"
+    ],
+    [
+      "variables de entorno",
+      "50"
+    ],
+    [
+      "framework",
+      "Next.js 15 (App Router) + React 19 + Prisma 6"
+    ],
+    [
+      "procesos en segundo plano",
+      "Worker Node del índice técnico · Worker RAG Python · Cron de diagnósticos"
+    ]
+  ],
+  "capas": [
+    {
+      "id": "externo",
+      "nombre": "Afuera: servicios y dispositivos externos",
+      "y": 40,
+      "desc": "Lo que MACCELL no controla y consume o alimenta: ARCA/AFIP, proveedores de IA, buscadores y los televisores de publicidad."
+    },
+    {
+      "id": "entrada",
+      "nombre": "Entrada: pantallas que ve cada persona",
+      "y": 210,
+      "desc": "Páginas web según el rol (administrador, vendedor, técnico) y la página pública para clientes. Incluye el login y el guardián de sesión."
+    },
+    {
+      "id": "api",
+      "nombre": "API: rutas HTTP del servidor",
+      "y": 380,
+      "desc": "Puertas de entrada por HTTP bajo /api para el navegador, los televisores, los procesos programados y el estado público."
+    },
+    {
+      "id": "negocio",
+      "nombre": "Negocio: reparaciones, ventas y dinero",
+      "y": 550,
+      "desc": "Acciones de servidor que implementan las reglas del negocio: cada operación valida usuario, rol y sucursal antes de tocar datos."
+    },
+    {
+      "id": "soporte",
+      "nombre": "Soporte: usuarios, avisos, impresión y utilidades",
+      "y": 720,
+      "desc": "Piezas transversales que usan varias áreas del negocio."
+    },
+    {
+      "id": "cerebro",
+      "nombre": "Cerebro y biblioteca técnica",
+      "y": 890,
+      "desc": "El asistente de diagnóstico con IA y la biblioteca de esquemáticos (PDF/PCBE) que le da evidencia."
+    },
+    {
+      "id": "datos",
+      "nombre": "Acceso a datos",
+      "y": 1060,
+      "desc": "Código que habla con las bases de datos y con las carpetas de archivos."
+    },
+    {
+      "id": "almacen",
+      "nombre": "Bases de datos y almacenamiento",
+      "y": 1230,
+      "desc": "Donde viven los datos de verdad: dos bases PostgreSQL separadas y dos carpetas en disco."
+    },
+    {
+      "id": "jobs",
+      "nombre": "Procesos en segundo plano",
+      "y": 1400,
+      "desc": "Trabajos que corren solos, sin que nadie esté mirando una pantalla: indexar PDFs, sincronizar reparaciones, enriquecer diagnósticos."
+    },
+    {
+      "id": "infra",
+      "nombre": "Infraestructura, pruebas y configuración",
+      "y": 1570,
+      "desc": "Cómo se empaqueta, se despliega, se prueba y se configura el sistema."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "afip",
+      "nombre": "ARCA / AFIP",
+      "capa": "externo",
+      "x": 40,
+      "w": 190,
+      "sub": "Facturación electrónica y padrón",
+      "desc": "Servicio del Estado que autoriza las facturas electrónicas. MACCELL le pide el CAE de cada factura y consulta datos de contribuyentes por CUIT.",
+      "detalle": [
+        "Cliente basado en la librería @arcasdk/core, con certificados por entidad (MACCELL y 8BIT) elegidos según la sucursal.",
+        "Funciones: estado del servidor, último comprobante, crear factura y consultar el padrón.",
+        "Configuración por variables de entorno AFIP_CUIT, AFIP_CERT, AFIP_KEY, AFIP_PRODUCTION (y sus variantes _8BIT). Nunca se copian sus valores."
+      ],
+      "archivos": [
+        "src/lib/afip.ts",
+        "src/lib/afip-utils.ts",
+        "src/lib/afip-voucher-recovery.ts"
+      ],
+      "color": "rojo",
+      "lineas": 622,
+      "nArchivos": 5,
+      "rutas": [
+        "src/lib/afip.ts",
+        "src/lib/afip-utils.ts",
+        "src/lib/afip-voucher-recovery.ts",
+        "scripts/debug-afip.ts",
+        "scripts/debug-padron.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ia-nube",
+      "nombre": "IA en la nube",
+      "capa": "externo",
+      "x": 250,
+      "w": 190,
+      "sub": "Groq · OpenRouter · Google · Empero",
+      "desc": "Modelos de lenguaje alojados por terceros. Redactan diagnósticos, responden en el chat de Cerebro y enriquecen diagnósticos viejos.",
+      "detalle": [
+        "La elección de proveedor y modelo vive en provider-selection y model-routing; el flujo de diagnóstico prioriza Qwen/Groq y tiene respaldos.",
+        "Se usan los SDK de Vercel AI para Groq, OpenRouter, Google y OpenAI-compatible (Empero).",
+        "Credenciales por variables de entorno como OPENROUTER_API_KEY y CEREBRO_EMPERO_API_KEY; solo se citan los nombres."
+      ],
+      "archivos": [
+        "src/lib/groq.ts",
+        "src/config/ai-models.ts",
+        "src/lib/cerebro-v2/provider-selection.ts",
+        "src/lib/cerebro-v2/model-routing.ts",
+        "src/lib/cerebro-v2/provider.ts"
+      ],
+      "color": "rojo",
+      "lineas": 456,
+      "nArchivos": 7,
+      "rutas": [
+        "src/lib/groq.ts",
+        "src/config/ai-models.ts",
+        "src/lib/cerebro-v2/provider-selection.ts",
+        "src/lib/cerebro-v2/model-routing.ts",
+        "src/lib/cerebro-v2/provider.ts",
+        "scripts/test-openrouter.ts",
+        "scripts/test-openrouter-llama.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ia-local",
+      "nombre": "IA local",
+      "capa": "externo",
+      "x": 460,
+      "w": 190,
+      "sub": "llama.cpp / Ollama propios",
+      "desc": "Un servidor de inferencia propio (con GPU) para texto y visión. Permite usar IA sin depender de un tercero cuando está disponible.",
+      "detalle": [
+        "El CRM lo consulta por HTTP desde local-provider (variables CEREBRO_LOCAL_AI_* y CEREBRO_LOCAL_VISION_*).",
+        "El servicio se declara en infra/cerebro-local-ai/docker-compose.yml con la imagen llama.cpp server-cuda.",
+        "Tiene routing propio: no es el proveedor universal del sistema."
+      ],
+      "archivos": [
+        "src/lib/cerebro-v2/local-provider.ts",
+        "infra/cerebro-local-ai/docker-compose.yml",
+        "docs/cerebro-local-inference.md"
+      ],
+      "color": "rojo",
+      "lineas": 93,
+      "nArchivos": 2,
+      "rutas": [
+        "src/lib/cerebro-v2/local-provider.ts",
+        "infra/cerebro-local-ai/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "busqueda-web",
+      "nombre": "Búsqueda web y YouTube",
+      "capa": "externo",
+      "x": 670,
+      "w": 190,
+      "sub": "Google Custom Search · YouTube Data",
+      "desc": "Fuentes de investigación externa: el asistente puede buscar información pública cuando la biblioteca propia no alcanza.",
+      "detalle": [
+        "Se activa con las variables GOOGLE_CUSTOM_SEARCH_API_KEY, GOOGLE_CUSTOM_SEARCH_ENGINE_ID y YOUTUBE_DATA_API_KEY.",
+        "Lo usa el módulo external-research de Cerebro v2; cerebro-web-search es el equivalente del asistente anterior."
+      ],
+      "archivos": [
+        "src/lib/cerebro-v2/external-research.ts",
+        "src/lib/cerebro-web-search.ts"
+      ],
+      "color": "rojo",
+      "lineas": 474,
+      "nArchivos": 2,
+      "rutas": [
+        "src/lib/cerebro-v2/external-research.ts",
+        "src/lib/cerebro-web-search.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "apk-pantallas",
+      "nombre": "Televisores de publicidad",
+      "capa": "externo",
+      "x": 880,
+      "w": 190,
+      "sub": "App Android (APK) reproductora",
+      "desc": "Los televisores de los locales corren una app que baja videos e imágenes del CRM y los repite en bucle como cartelería digital.",
+      "detalle": [
+        "La app se identifica con una clave de pantalla generada por el CRM y consulta las rutas públicas de pantallas.",
+        "La documentación del sistema de publicidad y de la APK está en PANTALLAS/README.md."
+      ],
+      "archivos": [
+        "PANTALLAS/README.md",
+        "src/lib/pantallas/cors.ts"
+      ],
+      "color": "rojo",
+      "lineas": 0,
+      "nArchivos": 0,
+      "rutas": [],
+      "auto": false
+    },
+    {
+      "id": "login",
+      "nombre": "Login y guardián de sesión",
+      "capa": "entrada",
+      "x": 40,
+      "w": 190,
+      "sub": "Cookies de sesión · middleware por rol",
+      "desc": "Pantalla de ingreso y el control que impide entrar a /admin, /vendor o /technician sin haber iniciado sesión. Renueva la sesión mientras la persona trabaja.",
+      "detalle": [
+        "El middleware lee las cookies session_role y session_user_id y redirige a /login si faltan.",
+        "La sesión dura 6 horas y se renueva con cada navegación (sesión deslizante).",
+        "El acceso a /cerebro se limita a administradores y técnicos."
+      ],
+      "archivos": [
+        "src/middleware.ts",
+        "src/app/(auth)/login/page.tsx",
+        "src/app/(auth)/layout.tsx"
+      ],
+      "color": "azul",
+      "lineas": 392,
+      "nArchivos": 4,
+      "rutas": [
+        "src/app/(auth)/",
+        "src/middleware.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ui-admin",
+      "nombre": "Panel Administrador",
+      "capa": "entrada",
+      "x": 250,
+      "w": 190,
+      "sub": "Gestión total del negocio",
+      "desc": "Pantallas del dueño o encargado: reparaciones, productos, repuestos, ventas, caja, facturas, estadísticas, usuarios, sucursales, importaciones y respaldos.",
+      "detalle": [
+        "Una carpeta por tema bajo src/app/admin (repairs, products, repuestos, sales, cash-shifts, invoices, statistics, users, branches, backups, pantallas…).",
+        "Los componentes específicos están en src/components/admin."
+      ],
+      "archivos": [
+        "src/app/admin/layout.tsx",
+        "src/app/admin/dashboard",
+        "src/app/admin/repairs",
+        "src/components/admin"
+      ],
+      "color": "azul",
+      "lineas": 20535,
+      "nArchivos": 155,
+      "rutas": [
+        "src/app/admin/",
+        "src/components/admin/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ui-vendor",
+      "nombre": "Panel Vendedor",
+      "capa": "entrada",
+      "x": 460,
+      "w": 190,
+      "sub": "Mostrador, caja y recepción",
+      "desc": "Lo que usa quien atiende el local: punto de venta, ingreso de reparaciones, stock de la sucursal, caja y gastos.",
+      "detalle": [
+        "Pantallas bajo src/app/vendor (pos, repairs, stock, sales, expenses, imei, reviews).",
+        "El POS usa el hook use-pos y componentes de src/components/pos."
+      ],
+      "archivos": [
+        "src/app/vendor/layout.tsx",
+        "src/app/vendor/vendor-layout-client.tsx",
+        "src/app/vendor/pos",
+        "src/components/vendor"
+      ],
+      "color": "azul",
+      "lineas": 5419,
+      "nArchivos": 48,
+      "rutas": [
+        "src/app/vendor/",
+        "src/components/vendor/",
+        "src/components/pos/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ui-tecnico",
+      "nombre": "Panel Técnico",
+      "capa": "entrada",
+      "x": 670,
+      "w": 190,
+      "sub": "Taller: tickets y reparaciones",
+      "desc": "Pantallas del técnico: tomar tickets, trabajar la reparación, pedir repuestos, ver su historial y devoluciones.",
+      "detalle": [
+        "Pantallas bajo src/app/technician (tickets, repairs, history, returns, imei).",
+        "Desde acá se accede a Cerebro y a los esquemáticos."
+      ],
+      "archivos": [
+        "src/app/technician/layout.tsx",
+        "src/app/technician/tickets",
+        "src/app/technician/repairs",
+        "src/components/technician"
+      ],
+      "color": "azul",
+      "lineas": 1556,
+      "nArchivos": 15,
+      "rutas": [
+        "src/app/technician/",
+        "src/components/technician/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ui-estado-publico",
+      "nombre": "Estado público de la reparación",
+      "capa": "entrada",
+      "x": 880,
+      "w": 190,
+      "sub": "Página /estado/[id] para el cliente",
+      "desc": "Página sin login para que el cliente consulte en qué estado está su equipo.",
+      "detalle": [
+        "Consulta la ruta pública /api/public/repair-status."
+      ],
+      "archivos": [
+        "src/app/estado/[id]/page.tsx"
+      ],
+      "color": "azul",
+      "lineas": 88,
+      "nArchivos": 1,
+      "rutas": [
+        "src/app/estado/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ui-cerebro",
+      "nombre": "Pantallas de Cerebro",
+      "capa": "entrada",
+      "x": 1090,
+      "w": 190,
+      "sub": "Chat de diagnóstico",
+      "desc": "El chat donde el técnico describe el síntoma, adjunta fotos y recibe preguntas guiadas y respuestas con fuentes citadas.",
+      "detalle": [
+        "Hay una página de Cerebro por rol (admin, vendor, technician).",
+        "Los componentes viven en src/components/cerebro-v2 (chat, composer, cierre de reparación)."
+      ],
+      "archivos": [
+        "src/app/admin/cerebro/page.tsx",
+        "src/components/cerebro-v2/cerebro-v2-chat.tsx",
+        "src/components/cerebro-v2/cerebro-v2-composer.tsx"
+      ],
+      "color": "azul",
+      "lineas": 921,
+      "nArchivos": 17,
+      "rutas": [
+        "src/app/admin/cerebro/",
+        "src/app/vendor/cerebro/",
+        "src/app/technician/cerebro/",
+        "src/components/cerebro-v2/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ui-esquematicos",
+      "nombre": "Visor de esquemáticos",
+      "capa": "entrada",
+      "x": 1300,
+      "w": 190,
+      "sub": "Workbench PDF / PCBE",
+      "desc": "El lugar donde el técnico busca y abre esquemáticos, ve el PDF, sigue conexiones y anota hallazgos de la reparación.",
+      "detalle": [
+        "Usa pdfjs-dist para mostrar los PDF en el navegador.",
+        "Hay una página para administradores y otra para técnicos."
+      ],
+      "archivos": [
+        "src/app/admin/schematics/page.tsx",
+        "src/components/schematics/pdf-reader.tsx"
+      ],
+      "color": "azul",
+      "lineas": 2155,
+      "nArchivos": 35,
+      "rutas": [
+        "src/app/admin/schematics/",
+        "src/app/technician/schematics/",
+        "src/components/schematics/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ui-chat",
+      "nombre": "Chat de la reparación",
+      "capa": "entrada",
+      "x": 1510,
+      "w": 190,
+      "sub": "Mensajes entre sucursal y técnico",
+      "desc": "Conversación asociada a cada reparación, con imágenes y estado de lectura.",
+      "detalle": [
+        "Se actualiza en vivo mediante eventos del servidor."
+      ],
+      "archivos": [
+        "src/components/repair-chat"
+      ],
+      "color": "azul",
+      "lineas": 554,
+      "nArchivos": 7,
+      "rutas": [
+        "src/components/repair-chat/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ui-compartida",
+      "nombre": "Componentes compartidos",
+      "capa": "entrada",
+      "x": 1720,
+      "w": 190,
+      "sub": "UI base, formularios, hooks, estilos",
+      "desc": "Piezas de interfaz que usan todos los roles: formularios de reparación, botones y diálogos (shadcn), hooks y estilos globales.",
+      "detalle": [
+        "Formularios de reparaciones en src/components/repairs (crear, tomar, finalizar).",
+        "Hooks de punto de venta, factura, polling y debounce en src/hooks.",
+        "Tailwind 4 y los estilos globales en src/app/globals.css."
+      ],
+      "archivos": [
+        "src/components/repairs/create-form.tsx",
+        "src/components/ui",
+        "src/hooks/use-pos.tsx",
+        "src/app/globals.css",
+        "src/app/layout.tsx"
+      ],
+      "color": "azul",
+      "lineas": 17050,
+      "nArchivos": 123,
+      "rutas": [
+        "src/components/",
+        "src/hooks/",
+        "src/app/layout.tsx",
+        "src/app/page.tsx",
+        "src/app/error.tsx",
+        "src/app/global-error.tsx",
+        "src/app/globals.css"
+      ],
+      "auto": false
+    },
+    {
+      "id": "api-estado-publico",
+      "nombre": "API estado público",
+      "capa": "api",
+      "x": 40,
+      "w": 190,
+      "sub": "GET /api/public/repair-status",
+      "desc": "Devuelve al cliente el estado de su reparación sin exigir login.",
+      "detalle": [
+        "Lee la reparación directo con Prisma y arma las URLs de imágenes con helpers de lib/utils."
+      ],
+      "archivos": [
+        "src/app/api/public/repair-status/route.ts"
+      ],
+      "color": "violeta",
+      "lineas": 110,
+      "nArchivos": 1,
+      "rutas": [
+        "src/app/api/public/repair-status/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "api-cerebro",
+      "nombre": "API de Cerebro",
+      "capa": "api",
+      "x": 250,
+      "w": 190,
+      "sub": "/api/cerebro-v2/* y enhance-diagnosis",
+      "desc": "Rutas del asistente: chat, sesiones, documentos y páginas citadas, feedback, cierre de reparación, estado de salud y dataset de entrenamiento.",
+      "detalle": [
+        "El chat valida usuario, rol (canUseCerebroV2) y que la reparación le corresponda antes de responder.",
+        "Responde con una sola respuesta fundamentada y guarda el mensaje; si el chat ya fue respondido, devuelve lo guardado.",
+        "/api/cerebro/enhance-diagnosis mejora la redacción de un diagnóstico."
+      ],
+      "archivos": [
+        "src/app/api/cerebro-v2/chat/route.ts",
+        "src/app/api/cerebro-v2/health/route.ts",
+        "src/app/api/cerebro/enhance-diagnosis/route.ts"
+      ],
+      "color": "violeta",
+      "lineas": 673,
+      "nArchivos": 13,
+      "rutas": [
+        "src/app/api/cerebro-v2/",
+        "src/app/api/cerebro/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "api-esquematicos",
+      "nombre": "API de esquemáticos",
+      "capa": "api",
+      "x": 460,
+      "w": 190,
+      "sub": "/api/schematics/*",
+      "desc": "Sirve el catálogo, la búsqueda, los PDF y las referencias de la biblioteca técnica, y guarda el cuaderno de cada reparación.",
+      "detalle": [
+        "Incluye pdf-assets (sirve PDF publicados), ocr, links, identity y references por esquemático."
+      ],
+      "archivos": [
+        "src/app/api/schematics/catalog/route.ts",
+        "src/app/api/schematics/search/route.ts",
+        "src/app/api/schematics/pdf-assets/[...path]/route.ts"
+      ],
+      "color": "violeta",
+      "lineas": 579,
+      "nArchivos": 13,
+      "rutas": [
+        "src/app/api/schematics/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "api-chat-reparacion",
+      "nombre": "API del chat de reparación",
+      "capa": "api",
+      "x": 670,
+      "w": 190,
+      "sub": "/api/repair-chats/*",
+      "desc": "Mensajes, imágenes, lecturas, búsqueda y un canal de eventos en vivo para el chat de cada reparación.",
+      "detalle": [
+        "La ruta events entrega los eventos en tiempo real."
+      ],
+      "archivos": [
+        "src/app/api/repair-chats/events/route.ts",
+        "src/app/api/repair-chats/[repairId]/messages/route.ts"
+      ],
+      "color": "violeta",
+      "lineas": 244,
+      "nArchivos": 8,
+      "rutas": [
+        "src/app/api/repair-chats/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "api-pantallas",
+      "nombre": "API de pantallas digitales",
+      "capa": "api",
+      "x": 880,
+      "w": 190,
+      "sub": "/api/public/pantallas/* y alias",
+      "desc": "Rutas que usan los televisores para registrarse y bajar su contenido, más la subida de contenidos desde el panel de admin.",
+      "detalle": [
+        "Existen rutas públicas (registrar, contenidos, pantallas, index) y alias en /api/registrar, /api/contenidos, /api/index y /api/pantallas."
+      ],
+      "archivos": [
+        "src/app/api/public/pantallas/registrar/route.ts",
+        "src/app/api/public/pantallas/contenidos/route.ts",
+        "src/app/api/admin/pantallas/upload/route.ts"
+      ],
+      "color": "violeta",
+      "lineas": 335,
+      "nArchivos": 10,
+      "rutas": [
+        "src/app/api/public/pantallas/",
+        "src/app/api/pantallas/",
+        "src/app/api/registrar/",
+        "src/app/api/contenidos/",
+        "src/app/api/index/",
+        "src/app/api/admin/pantallas/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "api-sistema",
+      "nombre": "API de sistema",
+      "capa": "api",
+      "x": 1090,
+      "w": 190,
+      "sub": "uploads · backups · presencia · versión",
+      "desc": "Rutas de apoyo: servir imágenes subidas, descargar respaldos, marcar usuarios conectados, informar la versión y actualizar precios de repuestos.",
+      "detalle": [
+        "uploads/[...path] sirve los archivos dinámicos desde upload/.",
+        "presence/heartbeat mantiene el estado en línea de las personas.",
+        "system/version expone la versión para que el navegador sepa si hay un deploy nuevo."
+      ],
+      "archivos": [
+        "src/app/api/uploads/[...path]/route.ts",
+        "src/app/api/backups/[filename]/route.ts",
+        "src/app/api/presence/heartbeat/route.ts",
+        "src/app/api/system/version/route.ts"
+      ],
+      "color": "violeta",
+      "lineas": 419,
+      "nArchivos": 7,
+      "rutas": [
+        "src/app/api/uploads/",
+        "src/app/api/backups/",
+        "src/app/api/presence/",
+        "src/app/api/system/",
+        "src/app/api/admin/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "reparaciones",
+      "nombre": "Reparaciones",
+      "capa": "negocio",
+      "x": 40,
+      "w": 190,
+      "sub": "Ingreso · asignación · estados · cierre",
+      "desc": "El corazón del negocio: registra los equipos que llegan, los asigna a un técnico, controla en qué estado está cada uno y guarda todo el historial.",
+      "detalle": [
+        "Acciones para crear, tomar, cambiar estado, finalizar, reactivar, borrar, buscar y listar reparaciones.",
+        "Los estados salen de constantes compartidas (src/lib/repairs/status.ts): nunca se copian números.",
+        "Las tomas y cambios se hacen en transacciones y conservan el historial de estados (RepairStatusHistory).",
+        "Compras externas de repuestos y consumo de repuestos por reparación."
+      ],
+      "archivos": [
+        "src/actions/repairs/create.ts",
+        "src/actions/repairs/take.ts",
+        "src/actions/repairs/finish.ts",
+        "src/lib/repairs/status.ts",
+        "src/lib/repairs/status-sets.ts"
+      ],
+      "color": "verde",
+      "lineas": 4016,
+      "nArchivos": 52,
+      "rutas": [
+        "src/actions/repairs/",
+        "src/actions/repair-*.ts",
+        "src/lib/repairs/",
+        "src/lib/repair-*.ts",
+        "src/lib/admin-repairs-*.ts",
+        "src/lib/actions/repairs.ts",
+        "src/lib/technician-outcomes.ts",
+        "src/lib/services/",
+        "src/types/admin-repairs.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ventas-pos",
+      "nombre": "Ventas y punto de venta",
+      "capa": "negocio",
+      "x": 250,
+      "w": 190,
+      "sub": "POS · pagos · devoluciones · descuentos",
+      "desc": "Cobra productos y reparaciones listas en el mostrador, registra los medios de pago y maneja devoluciones y descuentos.",
+      "detalle": [
+        "processPosSale valida montos, bloquea la entrega de reparaciones en estados no entregables y guarda la venta en una transacción.",
+        "Medios de pago: efectivo, tarjeta, Mercado Pago o pago dividido.",
+        "Después de guardar notifica y, si corresponde, emite la factura."
+      ],
+      "archivos": [
+        "src/actions/pos/checkout.ts",
+        "src/actions/pos/checkout-db.ts",
+        "src/actions/pos/checkout-notifications.ts",
+        "src/lib/pos-payment-validation.ts"
+      ],
+      "color": "verde",
+      "lineas": 1762,
+      "nArchivos": 16,
+      "rutas": [
+        "src/actions/pos/checkout.ts",
+        "src/actions/pos/checkout-db.ts",
+        "src/actions/pos/checkout-notifications.ts",
+        "src/actions/pos/price-change-notification.ts",
+        "src/actions/pos/repair-delivery-policy.ts",
+        "src/actions/pos/search.ts",
+        "src/actions/sales/",
+        "src/actions/sales-actions.ts",
+        "src/actions/return-actions.ts",
+        "src/actions/discount-actions.ts",
+        "src/lib/pos-payment-validation.ts",
+        "src/lib/sale-payment-details.ts",
+        "src/lib/return-request-parts.ts",
+        "src/lib/actions/pos.ts",
+        "src/types/sales.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "facturacion",
+      "nombre": "Facturación electrónica",
+      "capa": "negocio",
+      "x": 460,
+      "w": 190,
+      "sub": "Facturas A/B · control y recuperación",
+      "desc": "Arma y emite las facturas de cada venta, controla que lo emitido coincida con ARCA y recupera comprobantes cuando una emisión queda a medias.",
+      "detalle": [
+        "generateAfipInvoiceForSale pide el CAE y guarda el resultado en SaleInvoice.",
+        "Hay herramientas de conciliación (AfipReconciliation) y registro de intentos (FiscalEmissionAttempt).",
+        "Consulta de padrón por CUIT para completar datos del cliente."
+      ],
+      "archivos": [
+        "src/actions/pos/checkout-afip.ts",
+        "src/actions/pos/afip-padron.ts",
+        "src/actions/invoice-actions.ts",
+        "src/actions/invoice-afip-control.ts"
+      ],
+      "color": "verde",
+      "lineas": 1482,
+      "nArchivos": 12,
+      "rutas": [
+        "src/actions/pos/checkout-afip.ts",
+        "src/actions/pos/afip-padron.ts",
+        "src/actions/invoice-*.ts",
+        "src/actions/afip-voucher-*.ts",
+        "src/lib/admin-invoice-validation.ts",
+        "src/lib/actions/admin-invoice*.ts",
+        "src/types/invoice-form.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "caja",
+      "nombre": "Caja, turnos y gastos",
+      "capa": "negocio",
+      "x": 670,
+      "w": 190,
+      "sub": "Apertura/cierre de caja · gastos",
+      "desc": "Controla el dinero de cada sucursal: apertura y cierre de turnos de caja, conteos, reimpresión de cierres y gastos.",
+      "detalle": [
+        "Cálculos de turno separados en cash-shift-calculations.",
+        "Los gastos se registran por sucursal (Expense)."
+      ],
+      "archivos": [
+        "src/actions/cash-shifts/mutations.ts",
+        "src/actions/cash-shifts/stats-queries.ts",
+        "src/lib/cash-shift-calculations.ts",
+        "src/actions/expenses-actions.ts"
+      ],
+      "color": "verde",
+      "lineas": 1167,
+      "nArchivos": 12,
+      "rutas": [
+        "src/actions/cash-shift-actions.ts",
+        "src/actions/cash-shifts/",
+        "src/actions/expenses-actions.ts",
+        "src/actions/admin-expenses.ts",
+        "src/lib/cash-shift-*.ts",
+        "src/lib/actions/cash-register.ts",
+        "src/types/admin-expenses.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "stock-productos",
+      "nombre": "Productos, stock y transferencias",
+      "capa": "negocio",
+      "x": 880,
+      "w": 190,
+      "sub": "Catálogo · stock por sucursal · IMEI",
+      "desc": "Mantiene el catálogo de productos y cuánto hay en cada sucursal, y permite pasar mercadería de un local a otro con aceptación del destino.",
+      "detalle": [
+        "createStockTransfer crea la transferencia y avisa a la sucursal destino; respondToTransfer la acepta o rechaza en una transacción.",
+        "Controles de stock, categorías, importación de planillas (xlsx) y consulta por IMEI.",
+        "Detección de código de barras con Quagga en el navegador."
+      ],
+      "archivos": [
+        "src/actions/transfers/mutations.ts",
+        "src/actions/products/stock.ts",
+        "src/actions/stock-check-actions.ts",
+        "src/actions/imei-action.ts"
+      ],
+      "color": "verde",
+      "lineas": 1964,
+      "nArchivos": 16,
+      "rutas": [
+        "src/actions/products/",
+        "src/actions/products.ts",
+        "src/actions/stock.ts",
+        "src/actions/stock-check-actions.ts",
+        "src/actions/transfers/",
+        "src/actions/transfer-actions.ts",
+        "src/actions/categories.ts",
+        "src/actions/imei-action.ts",
+        "src/lib/actions/stock-actions.ts",
+        "src/lib/actions/compliance-actions.ts",
+        "src/lib/barcode-*.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "repuestos",
+      "nombre": "Repuestos",
+      "capa": "negocio",
+      "x": 1090,
+      "w": 190,
+      "sub": "Inventario de repuestos y compras",
+      "desc": "Inventario de piezas para reparar: reposición, descuento al usarlas, historial de movimientos y actualización de precios.",
+      "detalle": [
+        "Registra cada movimiento (SparePartHistory).",
+        "Reportes de reposición en PDF con jspdf."
+      ],
+      "archivos": [
+        "src/actions/spare-parts/mutations.ts",
+        "src/actions/spare-parts/stock.ts",
+        "src/actions/spare-parts/history.ts"
+      ],
+      "color": "verde",
+      "lineas": 747,
+      "nArchivos": 7,
+      "rutas": [
+        "src/actions/spare-parts/",
+        "src/actions/spare-parts.ts",
+        "src/lib/spare-parts-history-state.ts",
+        "src/types/spare-parts.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "estadisticas",
+      "nombre": "Dashboards y estadísticas",
+      "capa": "negocio",
+      "x": 1300,
+      "w": 190,
+      "sub": "Indicadores por rol y sucursal",
+      "desc": "Calcula los números que se muestran en los tableros: ventas, reparaciones, técnicos, vendedores, productos y comparación entre sucursales.",
+      "detalle": [
+        "Las fechas usan los helpers de Argentina de date-utils.",
+        "El premio de vendedores se calcula en vendor-prize."
+      ],
+      "archivos": [
+        "src/actions/dashboard/sales.ts",
+        "src/actions/dashboard/repairs.ts",
+        "src/actions/statistics/global.ts",
+        "src/actions/analytics-actions.ts"
+      ],
+      "color": "verde",
+      "lineas": 1925,
+      "nArchivos": 13,
+      "rutas": [
+        "src/actions/dashboard/",
+        "src/actions/dashboard-actions.ts",
+        "src/actions/statistics/",
+        "src/actions/statistics-actions.ts",
+        "src/actions/analytics-actions.ts",
+        "src/lib/vendor-prize.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "auth",
+      "nombre": "Autenticación y usuarios",
+      "capa": "soporte",
+      "x": 40,
+      "w": 190,
+      "sub": "Login · perfil · usuarios · sucursales",
+      "desc": "Verifica contraseñas, crea la sesión por cookies y gestiona usuarios, perfil y sucursales.",
+      "detalle": [
+        "login compara la contraseña con bcrypt, marca al usuario en línea y guarda cookies httpOnly por 6 horas.",
+        "Redirige según el rol: admin, vendor o technician.",
+        "Cada acción privada vuelve a comprobar usuario, rol y sucursal (branchId)."
+      ],
+      "archivos": [
+        "src/actions/auth-actions.ts",
+        "src/actions/get-user.ts",
+        "src/actions/user-actions.ts",
+        "src/actions/branch-actions.ts"
+      ],
+      "color": "gris",
+      "lineas": 598,
+      "nArchivos": 6,
+      "rutas": [
+        "src/actions/auth-actions.ts",
+        "src/actions/get-user.ts",
+        "src/actions/user-actions.ts",
+        "src/actions/profile-actions.ts",
+        "src/actions/branch-actions.ts",
+        "src/actions/get-branches.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "notificaciones",
+      "nombre": "Notificaciones internas",
+      "capa": "soporte",
+      "x": 250,
+      "w": 190,
+      "sub": "Avisos entre sucursales y técnicos",
+      "desc": "Genera avisos dentro del sistema (nueva reparación, transferencia, devolución, alerta) y arma el centro de notificaciones de cada persona.",
+      "detalle": [
+        "Se guardan en el modelo Notification.",
+        "Las respuestas a notificaciones (aceptar, rechazar) tienen helpers propios."
+      ],
+      "archivos": [
+        "src/lib/actions/notifications.ts",
+        "src/lib/actions/notification-creation.ts",
+        "src/lib/notification-center.ts"
+      ],
+      "color": "gris",
+      "lineas": 897,
+      "nArchivos": 8,
+      "rutas": [
+        "src/lib/actions/notification-*.ts",
+        "src/lib/actions/notifications.ts",
+        "src/lib/notification-*.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "impresion",
+      "nombre": "Impresión de tickets y etiquetas",
+      "capa": "soporte",
+      "x": 460,
+      "w": 190,
+      "sub": "Tickets, términos y etiquetas ZPL",
+      "desc": "Genera lo que se imprime: tickets de venta y reparación, cierres de caja, condiciones del servicio y etiquetas.",
+      "detalle": [
+        "Las etiquetas usan lenguaje ZPL; los tickets usan react-to-print y jsPDF."
+      ],
+      "archivos": [
+        "src/lib/printing/core.ts",
+        "src/lib/printing/repair-tickets.ts",
+        "src/utils/zpl-generator.ts",
+        "src/actions/printer.ts"
+      ],
+      "color": "gris",
+      "lineas": 1432,
+      "nArchivos": 9,
+      "rutas": [
+        "src/lib/printing/",
+        "src/lib/print-utils.ts",
+        "src/actions/printer.ts",
+        "src/utils/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "pantallas",
+      "nombre": "Pantallas digitales (gestión)",
+      "capa": "soporte",
+      "x": 670,
+      "w": 190,
+      "sub": "Altas, claves y contenido",
+      "desc": "Administra los televisores: crea pantallas, genera su clave, carga contenido por día y registra cada dispositivo.",
+      "detalle": [
+        "registerScreenForDevice enlaza un dispositivo con su pantalla.",
+        "Incluye una migración de datos antiguos al primer uso (bootstrap)."
+      ],
+      "archivos": [
+        "src/lib/pantallas/repository.ts",
+        "src/lib/pantallas/bootstrap.ts",
+        "src/actions/pantallas-actions.ts"
+      ],
+      "color": "gris",
+      "lineas": 1065,
+      "nArchivos": 7,
+      "rutas": [
+        "src/lib/pantallas/",
+        "src/actions/pantallas-actions.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "chat-reparacion",
+      "nombre": "Chat de reparación (lógica)",
+      "capa": "soporte",
+      "x": 880,
+      "w": 190,
+      "sub": "Repositorio, políticas y tiempo real",
+      "desc": "Reglas y almacenamiento de los mensajes de cada reparación, y difusión en vivo a quien tiene el chat abierto.",
+      "detalle": [
+        "Usa LISTEN/NOTIFY de PostgreSQL para avisar eventos entre procesos.",
+        "Validación de eventos con zod."
+      ],
+      "archivos": [
+        "src/lib/repair-chat/realtime.ts",
+        "src/lib/repair-chat/repository.ts",
+        "src/lib/repair-chat/policy.ts"
+      ],
+      "color": "gris",
+      "lineas": 473,
+      "nArchivos": 7,
+      "rutas": [
+        "src/lib/repair-chat/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "mantenimiento",
+      "nombre": "Importación, respaldos y mantenimiento",
+      "capa": "soporte",
+      "x": 1090,
+      "w": 190,
+      "sub": "Herramientas de administración",
+      "desc": "Operaciones de administración: importar datos desde planillas, generar y listar respaldos y tareas de mantenimiento.",
+      "detalle": [
+        "Los respaldos se guardan en la carpeta backups/ (fuera de Git)."
+      ],
+      "archivos": [
+        "src/actions/backup.ts",
+        "src/actions/import-actions.ts",
+        "src/actions/maintenance-actions.ts"
+      ],
+      "color": "gris",
+      "lineas": 376,
+      "nArchivos": 3,
+      "rutas": [
+        "src/actions/backup.ts",
+        "src/actions/import-actions.ts",
+        "src/actions/maintenance-actions.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "utilidades",
+      "nombre": "Utilidades y tipos",
+      "capa": "soporte",
+      "x": 1300,
+      "w": 190,
+      "sub": "Fechas Argentina · helpers",
+      "desc": "Funciones comunes, sobre todo el manejo de fechas de Argentina, que evitan repetir reglas en cada módulo.",
+      "detalle": [
+        "date-utils es la única fuente de fechas: no se inventan offsets nuevos."
+      ],
+      "archivos": [
+        "src/lib/date-utils.ts",
+        "src/lib/utils.ts",
+        "lib/utils.ts"
+      ],
+      "color": "gris",
+      "lineas": 168,
+      "nArchivos": 4,
+      "rutas": [
+        "src/lib/date-utils.ts",
+        "src/lib/utils.ts",
+        "lib/utils.ts",
+        "src/types/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "cerebro",
+      "nombre": "Cerebro v2",
+      "capa": "cerebro",
+      "x": 40,
+      "w": 190,
+      "sub": "Asistente de diagnóstico con evidencia",
+      "desc": "El asistente que ayuda al técnico a diagnosticar: entiende el equipo, busca evidencia en la biblioteca y casos previos, pregunta lo que falta y responde citando fuentes.",
+      "detalle": [
+        "diagnoseRepair arma el estado del diagnóstico, recupera evidencia, elige modelo y devuelve texto + fuentes.",
+        "Mantiene aislamiento por marca/modelo y no expone precios internos.",
+        "Guarda chats y feedback en la base RAG; aprende de reparaciones cerradas (closure-learning).",
+        "Sin evidencia verificable no inventa mediciones ni procedimientos."
+      ],
+      "archivos": [
+        "src/lib/cerebro-v2/diagnosis-service.ts",
+        "src/lib/cerebro-v2/resilient-retrieval.ts",
+        "src/lib/cerebro-v2/guided-diagnosis.ts",
+        "src/lib/cerebro-v2/worker-client.ts",
+        "docs/cerebro-rag-runbook.md"
+      ],
+      "color": "amarillo",
+      "lineas": 3128,
+      "nArchivos": 36,
+      "rutas": [
+        "src/lib/cerebro-v2/",
+        "src/lib/repair-diagnosis-enhancement.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "cerebro-legacy",
+      "nombre": "Cerebro anterior (v1)",
+      "capa": "cerebro",
+      "x": 250,
+      "w": 190,
+      "sub": "Módulos previos a la v2",
+      "desc": "Código del asistente anterior y utilidades de lenguaje técnico que siguen en el repositorio. Antes de modificarlos conviene seguir los imports para saber si algo todavía los usa.",
+      "detalle": [
+        "Incluye modelos, procesamiento de mensajes, indexador y token tracker del Cerebro original.",
+        "La referencia actual es Cerebro v2."
+      ],
+      "archivos": [
+        "src/lib/cerebro/models.ts",
+        "src/lib/cerebro/tasks.ts",
+        "src/lib/cerebro-indexer.ts",
+        "src/lib/cerebro-rag.ts"
+      ],
+      "color": "amarillo",
+      "lineas": 1513,
+      "nArchivos": 12,
+      "rutas": [
+        "src/lib/cerebro/",
+        "src/lib/cerebro-*.ts",
+        "src/lib/master-protocols.ts",
+        "src/lib/technical-dictionary.ts",
+        "src/lib/local-embeddings.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "biblioteca-tecnica",
+      "nombre": "Biblioteca técnica",
+      "capa": "cerebro",
+      "x": 460,
+      "w": 190,
+      "sub": "Catálogo · PDF/PCBE · OCR · búsqueda",
+      "desc": "Todo lo que permite encontrar y usar esquemáticos: catálogo, lectura de formatos PCBE, extracción de texto con OCR, búsqueda y cuaderno de reparación.",
+      "detalle": [
+        "Catálogo, índice técnico y RAG son capas distintas: no se confunden sus jobs ni sus bases.",
+        "OCR con tesseract y poppler dentro del contenedor.",
+        "Inventario físico de los PDF contra el disco de la biblioteca."
+      ],
+      "archivos": [
+        "src/lib/schematics/catalog.ts",
+        "src/lib/schematics/pcbe.ts",
+        "src/lib/schematics/unified-index.ts",
+        "src/lib/schematics/physical-inventory.ts",
+        "docs/schematics-architecture.md"
+      ],
+      "color": "amarillo",
+      "lineas": 2853,
+      "nArchivos": 45,
+      "rutas": [
+        "src/lib/schematics/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "prisma-db",
+      "nombre": "Acceso a la base principal",
+      "capa": "datos",
+      "x": 40,
+      "w": 190,
+      "sub": "Prisma Client + adaptador pg",
+      "desc": "Único punto por donde el CRM habla con la base de datos principal. Todas las acciones piden la conexión a este archivo.",
+      "detalle": [
+        "Usa @prisma/client con el adaptador de pg.",
+        "La conexión se configura con DATABASE_URL."
+      ],
+      "archivos": [
+        "src/lib/db.ts",
+        "prisma/schema.prisma"
+      ],
+      "color": "azul",
+      "lineas": 23,
+      "nArchivos": 1,
+      "rutas": [
+        "src/lib/db.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "rag-acceso",
+      "nombre": "Acceso a la base RAG",
+      "capa": "datos",
+      "x": 250,
+      "w": 190,
+      "sub": "pg directo (RAG_DATABASE_URL)",
+      "desc": "Conexión de Cerebro a la base de conocimiento: chats, mensajes, evidencia de reparaciones y búsqueda por vectores.",
+      "detalle": [
+        "Usa pg y no Prisma. La base RAG también guarda chats y feedback, por eso no es descartable."
+      ],
+      "archivos": [
+        "src/lib/cerebro-v2/rag-db.ts",
+        "src/lib/cerebro-v2/chat-repository.ts",
+        "src/lib/cerebro-v2/repair-evidence-store.ts"
+      ],
+      "color": "azul",
+      "lineas": 235,
+      "nArchivos": 3,
+      "rutas": [
+        "src/lib/cerebro-v2/rag-db.ts",
+        "src/lib/cerebro-v2/chat-repository.ts",
+        "src/lib/cerebro-v2/repair-evidence-store.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "archivos-subidos",
+      "nombre": "Almacenamiento de imágenes",
+      "capa": "datos",
+      "x": 460,
+      "w": 190,
+      "sub": "Fotos de reparaciones y perfiles",
+      "desc": "Guarda y lee fotos (reparaciones, perfiles, sucursales, pantallas). Convierte formatos como HEIC.",
+      "detalle": [
+        "Los archivos dinámicos van a upload/ y se sirven por /api/uploads/...; public/ es solo para estáticos."
+      ],
+      "archivos": [
+        "src/lib/repair-image-storage.ts",
+        "src/lib/repair-image-conversion.ts",
+        "src/actions/upload-actions.ts",
+        "src/lib/actions/upload.ts"
+      ],
+      "color": "azul",
+      "lineas": 338,
+      "nArchivos": 4,
+      "rutas": [
+        "src/lib/repair-image-storage.ts",
+        "src/lib/repair-image-conversion.ts",
+        "src/actions/upload-actions.ts",
+        "src/lib/actions/upload.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "pg-maccell",
+      "nombre": "PostgreSQL maccell",
+      "capa": "almacen",
+      "x": 40,
+      "w": 190,
+      "sub": "Base del CRM (Prisma)",
+      "desc": "La base donde está todo el negocio: reparaciones, ventas, caja, stock, usuarios, notificaciones y chat.",
+      "detalle": [
+        "El esquema Prisma define los modelos (ver inventario del mapa) y las migraciones están en prisma/migrations.",
+        "Producción aplica prisma migrate deploy al arrancar el contenedor.",
+        "En desarrollo local hay un compose con pgvector."
+      ],
+      "archivos": [
+        "prisma/schema.prisma",
+        "prisma/seed.ts",
+        "scripts/docker-init.sql",
+        "docker-compose.yml"
+      ],
+      "color": "amarillo",
+      "lineas": 1480,
+      "nArchivos": 19,
+      "rutas": [
+        "prisma/",
+        "scripts/docker-init.sql",
+        "scripts/pending_requests.sql"
+      ],
+      "auto": false
+    },
+    {
+      "id": "pg-rag",
+      "nombre": "PostgreSQL RAG",
+      "capa": "almacen",
+      "x": 250,
+      "w": 190,
+      "sub": "maccell-rag-db (aislada)",
+      "desc": "Base separada del conocimiento de Cerebro: documentos y páginas indexadas, alias de equipos, versiones de modelos y fragmentos de reparaciones.",
+      "detalle": [
+        "Esquema en schema.sql del worker (tablas rag_*).",
+        "Aislada de la base principal para no mezclar jobs ni migraciones."
+      ],
+      "archivos": [
+        "services/cerebro-rag-worker/src/cerebro_rag/schema.sql",
+        "services/cerebro-rag-worker/src/cerebro_rag/migrations.py",
+        "docs/cerebro-rag-runbook.md"
+      ],
+      "color": "amarillo",
+      "lineas": 268,
+      "nArchivos": 2,
+      "rutas": [
+        "services/cerebro-rag-worker/src/cerebro_rag/schema.sql",
+        "services/cerebro-rag-worker/src/cerebro_rag/migrations.py"
+      ],
+      "auto": false
+    },
+    {
+      "id": "biblioteca-fisica",
+      "nombre": "Biblioteca física de esquemáticos",
+      "capa": "almacen",
+      "x": 460,
+      "w": 190,
+      "sub": "/mnt/ESQUEMATICO (disco de 4 TB)",
+      "desc": "El disco donde están los PDF, PCBE y PCB originales. Es la fuente física: nunca se borran originales ni se crea otro destino.",
+      "detalle": [
+        "Se monta en el contenedor como sources (ruta configurable con SCHEMATICS_ROOT).",
+        "Las tandas nuevas entran por staging con un PUBLICAR.json revisado."
+      ],
+      "archivos": [
+        "docs/schematic-library-AGENT.md",
+        "src/lib/schematics/physical-inventory.ts",
+        "scripts/publish-schematic-inventory.ts"
+      ],
+      "color": "amarillo",
+      "lineas": 0,
+      "nArchivos": 0,
+      "rutas": [],
+      "auto": false
+    },
+    {
+      "id": "uploads-disco",
+      "nombre": "Carpeta upload/",
+      "capa": "almacen",
+      "x": 670,
+      "w": 190,
+      "sub": "Fotos y archivos dinámicos",
+      "desc": "Carpeta persistente donde quedan las imágenes subidas por el sistema.",
+      "detalle": [
+        "El Dockerfile crea las subcarpetas repairs, branches, profiles, knowledge y pantallas."
+      ],
+      "archivos": [
+        "docs/uploads-storage.md",
+        "src/app/api/uploads/[...path]/route.ts",
+        "Dockerfile"
+      ],
+      "color": "amarillo",
+      "lineas": 0,
+      "nArchivos": 0,
+      "rutas": [],
+      "auto": false
+    },
+    {
+      "id": "worker-tecnico",
+      "nombre": "Worker del índice técnico (Node)",
+      "capa": "jobs",
+      "x": 40,
+      "w": 190,
+      "sub": "OCR e indexación de PCBE / catálogo",
+      "desc": "Proceso que recorre la biblioteca, extrae texto, arma el índice técnico y lo guarda en la base. Corre dentro del contenedor del CRM cuando está habilitado.",
+      "detalle": [
+        "Se prende con SCHEMATICS_BACKGROUND_INDEXING=true en el script de arranque.",
+        "Trabaja con concurrencia acotada para no saturar la memoria.",
+        "Es una capa distinta del RAG Python."
+      ],
+      "archivos": [
+        "scripts/technical-worker-queue.ts",
+        "scripts/technical-index-database.ts",
+        "scripts/index-technical-library.ts"
+      ],
+      "color": "violeta",
+      "lineas": 302,
+      "nArchivos": 5,
+      "rutas": [
+        "scripts/technical-worker-queue.ts",
+        "scripts/technical-index-database.ts",
+        "scripts/index-technical-library.ts",
+        "scripts/build-technical-worker.mjs",
+        "scripts/start-isolated-technical-worker.mjs"
+      ],
+      "auto": false
+    },
+    {
+      "id": "worker-rag",
+      "nombre": "Worker RAG (Python)",
+      "capa": "jobs",
+      "x": 250,
+      "w": 190,
+      "sub": "Embeddings · indexado de PDFs · repair-sync",
+      "desc": "Servicio aparte que convierte PDFs y reparaciones en conocimiento buscable, y calcula embeddings de las consultas de Cerebro.",
+      "detalle": [
+        "API FastAPI: /health, /internal/embed y lectura de documentos/páginas, protegida con un secreto interno.",
+        "ingestion-sequential indexa PDFs; repair-sync sincroniza reparaciones desde la base principal.",
+        "Que el /health responda no prueba cobertura completa del índice."
+      ],
+      "archivos": [
+        "services/cerebro-rag-worker/src/cerebro_rag/server.py",
+        "services/cerebro-rag-worker/src/cerebro_rag/indexer.py",
+        "services/cerebro-rag-worker/src/cerebro_rag/repair_sync.py",
+        "services/cerebro-rag-worker/pyproject.toml",
+        "services/cerebro-rag-worker/AGENTS.md"
+      ],
+      "color": "violeta",
+      "lineas": 3032,
+      "nArchivos": 27,
+      "rutas": [
+        "services/cerebro-rag-worker/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "cron-diagnosticos",
+      "nombre": "Cron: enriquecer diagnósticos",
+      "capa": "jobs",
+      "x": 460,
+      "w": 190,
+      "sub": "GET /api/cron/enrich-diagnoses",
+      "desc": "Tarea programada que toma reparaciones terminadas y reescribe su diagnóstico de forma más clara usando IA.",
+      "detalle": [
+        "Se protege con Bearer CRON_SECRET.",
+        "Procesa un máximo de reparaciones por corrida (CRON_MAX_TICKETS)."
+      ],
+      "archivos": [
+        "src/app/api/cron/enrich-diagnoses/route.ts",
+        "src/config/ai-models.ts"
+      ],
+      "color": "violeta",
+      "lineas": 72,
+      "nArchivos": 1,
+      "rutas": [
+        "src/app/api/cron/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "ingesta-biblioteca",
+      "nombre": "Scripts de ingesta de esquemáticos",
+      "capa": "jobs",
+      "x": 670,
+      "w": 190,
+      "sub": "Normalizar, publicar y registrar tandas",
+      "desc": "Herramientas manuales para incorporar archivos nuevos a la biblioteca: deduplicar, normalizar nombres, publicar inventario y registrar altas.",
+      "detalle": [
+        "La regla vigente está en docs/schematic-library-AGENT.md.",
+        "Siempre por staging y revisión; sin destinos nuevos ni borrar originales."
+      ],
+      "archivos": [
+        "scripts/schematic-intake.ts",
+        "scripts/register-schematic-additions.mjs",
+        "scripts/organize-schematic-library.py",
+        "scripts/publish-schematic-inventory.ts",
+        "docs/schematics-ingestion-runbook.md"
+      ],
+      "color": "violeta",
+      "lineas": 265,
+      "nArchivos": 3,
+      "rutas": [
+        "scripts/*schematic*",
+        "scripts/import-schematics.ts",
+        "scripts/index-schematics-*.mjs",
+        "scripts/ocr-library-batch.mjs",
+        "scripts/package-schematics.mjs",
+        "scripts/reconcile-schematic-*"
+      ],
+      "auto": false
+    },
+    {
+      "id": "scripts-cerebro",
+      "nombre": "Scripts de Cerebro y reparaciones",
+      "capa": "jobs",
+      "x": 880,
+      "w": 190,
+      "sub": "Evaluación, dataset LoRA, índices",
+      "desc": "Utilidades para evaluar al asistente, exportar datasets de entrenamiento e indexar reparaciones.",
+      "detalle": [
+        "No corren solas: se lanzan a mano."
+      ],
+      "archivos": [
+        "scripts/cerebro-v2-evaluate.ts",
+        "scripts/export-cerebro-lora-dataset.ts",
+        "scripts/train-cerebro-lora.py",
+        "scripts/index-repairs.ts"
+      ],
+      "color": "violeta",
+      "lineas": 395,
+      "nArchivos": 5,
+      "rutas": [
+        "scripts/cerebro-v2-evaluate.ts",
+        "scripts/export-cerebro-lora-dataset.ts",
+        "scripts/train-cerebro-lora.py",
+        "scripts/index-repairs*",
+        "scripts/inspect-repair.js",
+        "scripts/reconcile-repairs.ts"
+      ],
+      "auto": false
+    },
+    {
+      "id": "scripts-ops",
+      "nombre": "Scripts operativos varios",
+      "capa": "jobs",
+      "x": 1090,
+      "w": 190,
+      "sub": "Mantenimiento puntual",
+      "desc": "Scripts sueltos de soporte: reinicio de administrador, migración de uploads, pruebas de conexión y similares. No se ejecutan como rutina.",
+      "detalle": [
+        "Antes de correr cualquier script de datos hay que comprobar qué base y entorno usará."
+      ],
+      "archivos": [
+        "scripts/reset-admin.ts",
+        "scripts/migrate-public-uploads-to-upload.ts",
+        "scripts/production-baseline.ts"
+      ],
+      "color": "violeta",
+      "lineas": 3705,
+      "nArchivos": 33,
+      "rutas": [
+        "scripts/",
+        "src/scripts/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "docker-deploy",
+      "nombre": "Contenedor y despliegue",
+      "capa": "infra",
+      "x": 40,
+      "w": 190,
+      "sub": "Dockerfile · arranque · Dokploy",
+      "desc": "Empaqueta el CRM en una imagen (Node 20) y define cómo arranca: aplica migraciones, importa esquemáticos, lanza el worker opcional y el servidor.",
+      "detalle": [
+        "El build genera el cliente Prisma y el worker técnico.",
+        "El despliegue de producción se gestiona con Dokploy; la guía de Easypanel es histórica.",
+        "El arranque corre prisma migrate deploy antes de levantar el servidor."
+      ],
+      "archivos": [
+        "Dockerfile",
+        "scripts/start-with-technical-worker.sh",
+        "next.config.ts",
+        "docs/deployment_easypanel.md"
+      ],
+      "color": "gris",
+      "lineas": 145,
+      "nArchivos": 4,
+      "rutas": [
+        "Dockerfile",
+        "scripts/start-with-technical-worker.sh",
+        "next.config.ts",
+        "docker-compose.yml"
+      ],
+      "auto": false
+    },
+    {
+      "id": "infra-rag",
+      "nombre": "Infra del RAG y GPU",
+      "capa": "infra",
+      "x": 250,
+      "w": 190,
+      "sub": "Compose del worker y servidor GPU",
+      "desc": "Declaración de los servicios del RAG: el worker de indexación y la variante con GPU para embeddings.",
+      "detalle": [
+        "Los composes son la declaración; hay que verificar en vivo qué contenedores están activos y con qué mounts."
+      ],
+      "archivos": [
+        "infra/cerebro-rag/docker-compose.yml",
+        "infra/cerebro-rag-gpu/docker-compose.yml",
+        "docs/cerebro-rag-runbook.md"
+      ],
+      "color": "gris",
+      "lineas": 266,
+      "nArchivos": 2,
+      "rutas": [
+        "infra/cerebro-rag/",
+        "infra/cerebro-rag-gpu/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "tests",
+      "nombre": "Pruebas automáticas",
+      "capa": "infra",
+      "x": 460,
+      "w": 190,
+      "sub": "Node test runner + pytest",
+      "desc": "Red de seguridad: comprueban dinero, estados, stock, fechas, permisos y el worker de Python.",
+      "detalle": [
+        "npm test usa el runner nativo de Node con tsx (no Vitest).",
+        "El worker Python tiene su propia suite en pytest."
+      ],
+      "archivos": [
+        "scripts/run-tests.mjs",
+        "src/__tests__",
+        "scripts/tests",
+        "services/cerebro-rag-worker/tests"
+      ],
+      "color": "gris",
+      "lineas": 10759,
+      "nArchivos": 183,
+      "rutas": [
+        "src/__tests__/",
+        "scripts/tests/",
+        "scripts/run-tests.mjs",
+        "services/cerebro-rag-worker/tests/"
+      ],
+      "auto": false
+    },
+    {
+      "id": "config-proyecto",
+      "nombre": "Configuración del proyecto",
+      "capa": "infra",
+      "x": 670,
+      "w": 190,
+      "sub": "package.json · TypeScript · ESLint",
+      "desc": "Archivos que definen dependencias, compilación y reglas de código.",
+      "detalle": [
+        "Node 20 o superior; instalación con npm ci --legacy-peer-deps.",
+        "El build ignora errores de tipos y ESLint, por eso se corren aparte."
+      ],
+      "archivos": [
+        "package.json",
+        "tsconfig.json",
+        "eslint.config.mjs",
+        "postcss.config.mjs"
+      ],
+      "color": "gris",
+      "lineas": 81,
+      "nArchivos": 4,
+      "rutas": [
+        "package.json",
+        "tsconfig.json",
+        "eslint.config.mjs",
+        "postcss.config.mjs",
+        "components.json",
+        "get-groq-models.js",
+        "scripts/patch-sdk.js"
+      ],
+      "auto": false
+    },
+    {
+      "id": "mapa-arquitectura",
+      "nombre": "Este mapa de arquitectura",
+      "capa": "infra",
+      "x": 880,
+      "w": 190,
+      "sub": "Visor + generador + auto-actualización",
+      "desc": "El propio mapa: un visor HTML, el script que lo regenera mirando el código y las tres capas que lo mantienen al día (hook, CI y watcher).",
+      "detalle": [
+        "Los textos curados viven en arquitectura.overrides.json y el script nunca los pisa.",
+        "npm run arq lo regenera; npm run arq:check lo verifica."
+      ],
+      "archivos": [
+        "docs/arquitectura/actualizar_arquitectura.mjs",
+        "docs/arquitectura/arquitectura.html",
+        "docs/arquitectura/arquitectura.overrides.json",
+        ".githooks/pre-commit",
+        ".github/workflows/arquitectura.yml"
+      ],
+      "color": "gris",
+      "lineas": 51,
+      "nArchivos": 1,
+      "rutas": [
+        ".github/"
+      ],
+      "auto": false
+    }
+  ],
+  "edges": [
+    {
+      "from": "login",
+      "to": "auth",
+      "label": "1. valida credenciales",
+      "tipo": "llama"
+    },
+    {
+      "from": "login",
+      "to": "ui-admin",
+      "label": "redirige por rol",
+      "tipo": "usa"
+    },
+    {
+      "from": "login",
+      "to": "ui-vendor",
+      "label": "redirige por rol",
+      "tipo": "usa"
+    },
+    {
+      "from": "login",
+      "to": "ui-tecnico",
+      "label": "redirige por rol",
+      "tipo": "usa"
+    },
+    {
+      "from": "ui-admin",
+      "to": "reparaciones",
+      "label": "gestiona reparaciones",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-admin",
+      "to": "stock-productos",
+      "label": "productos y stock",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-admin",
+      "to": "repuestos",
+      "label": "repuestos",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-admin",
+      "to": "estadisticas",
+      "label": "tableros",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-admin",
+      "to": "facturacion",
+      "label": "facturas",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-admin",
+      "to": "caja",
+      "label": "caja y gastos",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-admin",
+      "to": "pantallas",
+      "label": "publicidad",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-vendor",
+      "to": "ventas-pos",
+      "label": "cobra en mostrador",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-vendor",
+      "to": "stock-productos",
+      "label": "stock y transferencias",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-vendor",
+      "to": "caja",
+      "label": "turno de caja",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-tecnico",
+      "to": "reparaciones",
+      "label": "toma y termina reparaciones",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-tecnico",
+      "to": "repuestos",
+      "label": "pide repuestos",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-compartida",
+      "to": "reparaciones",
+      "label": "formularios de reparación",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-compartida",
+      "to": "ventas-pos",
+      "label": "hook del POS",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-estado-publico",
+      "to": "api-estado-publico",
+      "label": "consulta estado",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-cerebro",
+      "to": "api-cerebro",
+      "label": "chat de diagnóstico",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-esquematicos",
+      "to": "api-esquematicos",
+      "label": "busca y abre PDF",
+      "tipo": "llama"
+    },
+    {
+      "from": "ui-chat",
+      "to": "api-chat-reparacion",
+      "label": "mensajes",
+      "tipo": "llama"
+    },
+    {
+      "from": "api-chat-reparacion",
+      "to": "ui-chat",
+      "label": "eventos en vivo",
+      "tipo": "evento"
+    },
+    {
+      "from": "apk-pantallas",
+      "to": "api-pantallas",
+      "label": "registra y baja contenido",
+      "tipo": "llama"
+    },
+    {
+      "from": "api-estado-publico",
+      "to": "prisma-db",
+      "label": "lee reparación",
+      "tipo": "lee"
+    },
+    {
+      "from": "api-cerebro",
+      "to": "cerebro",
+      "label": "delega el diagnóstico",
+      "tipo": "llama"
+    },
+    {
+      "from": "api-esquematicos",
+      "to": "biblioteca-tecnica",
+      "label": "catálogo y búsqueda",
+      "tipo": "llama"
+    },
+    {
+      "from": "api-chat-reparacion",
+      "to": "chat-reparacion",
+      "label": "reglas del chat",
+      "tipo": "llama"
+    },
+    {
+      "from": "api-pantallas",
+      "to": "pantallas",
+      "label": "gestiona pantallas",
+      "tipo": "llama"
+    },
+    {
+      "from": "api-sistema",
+      "to": "archivos-subidos",
+      "label": "sirve imágenes",
+      "tipo": "lee"
+    },
+    {
+      "from": "reparaciones",
+      "to": "prisma-db",
+      "label": "guarda y consulta",
+      "tipo": "escribe"
+    },
+    {
+      "from": "reparaciones",
+      "to": "notificaciones",
+      "label": "avisa a técnicos",
+      "tipo": "llama"
+    },
+    {
+      "from": "reparaciones",
+      "to": "archivos-subidos",
+      "label": "fotos del equipo",
+      "tipo": "escribe"
+    },
+    {
+      "from": "ventas-pos",
+      "to": "facturacion",
+      "label": "emite factura",
+      "tipo": "llama"
+    },
+    {
+      "from": "ventas-pos",
+      "to": "notificaciones",
+      "label": "avisos post-venta",
+      "tipo": "llama"
+    },
+    {
+      "from": "ventas-pos",
+      "to": "prisma-db",
+      "label": "venta en transacción",
+      "tipo": "escribe"
+    },
+    {
+      "from": "facturacion",
+      "to": "afip",
+      "label": "pide CAE",
+      "tipo": "llama"
+    },
+    {
+      "from": "facturacion",
+      "to": "prisma-db",
+      "label": "guarda factura",
+      "tipo": "escribe"
+    },
+    {
+      "from": "caja",
+      "to": "prisma-db",
+      "label": "turnos y gastos",
+      "tipo": "escribe"
+    },
+    {
+      "from": "stock-productos",
+      "to": "prisma-db",
+      "label": "stock y transferencias",
+      "tipo": "escribe"
+    },
+    {
+      "from": "repuestos",
+      "to": "prisma-db",
+      "label": "inventario",
+      "tipo": "escribe"
+    },
+    {
+      "from": "estadisticas",
+      "to": "prisma-db",
+      "label": "agrega datos",
+      "tipo": "lee"
+    },
+    {
+      "from": "auth",
+      "to": "prisma-db",
+      "label": "usuarios",
+      "tipo": "lee"
+    },
+    {
+      "from": "notificaciones",
+      "to": "prisma-db",
+      "label": "avisos",
+      "tipo": "escribe"
+    },
+    {
+      "from": "pantallas",
+      "to": "prisma-db",
+      "label": "pantallas y contenidos",
+      "tipo": "escribe"
+    },
+    {
+      "from": "chat-reparacion",
+      "to": "prisma-db",
+      "label": "mensajes",
+      "tipo": "escribe"
+    },
+    {
+      "from": "cerebro",
+      "to": "rag-acceso",
+      "label": "chats y evidencia",
+      "tipo": "escribe"
+    },
+    {
+      "from": "cerebro",
+      "to": "prisma-db",
+      "label": "lee la reparación",
+      "tipo": "lee"
+    },
+    {
+      "from": "cerebro",
+      "to": "ia-nube",
+      "label": "redacta con IA",
+      "tipo": "llama"
+    },
+    {
+      "from": "cerebro",
+      "to": "ia-local",
+      "label": "IA propia",
+      "tipo": "llama"
+    },
+    {
+      "from": "cerebro",
+      "to": "busqueda-web",
+      "label": "investigación externa",
+      "tipo": "llama"
+    },
+    {
+      "from": "cerebro",
+      "to": "worker-rag",
+      "label": "pide embeddings",
+      "tipo": "llama"
+    },
+    {
+      "from": "biblioteca-tecnica",
+      "to": "biblioteca-fisica",
+      "label": "inventario de PDF",
+      "tipo": "lee"
+    },
+    {
+      "from": "rag-acceso",
+      "to": "pg-rag",
+      "label": "SQL con pgvector",
+      "tipo": "escribe"
+    },
+    {
+      "from": "prisma-db",
+      "to": "pg-maccell",
+      "label": "SQL",
+      "tipo": "usa"
+    },
+    {
+      "from": "archivos-subidos",
+      "to": "uploads-disco",
+      "label": "guarda archivos",
+      "tipo": "escribe"
+    },
+    {
+      "from": "worker-rag",
+      "to": "pg-rag",
+      "label": "indexa",
+      "tipo": "escribe"
+    },
+    {
+      "from": "worker-rag",
+      "to": "pg-maccell",
+      "label": "repair-sync lee reparaciones",
+      "tipo": "lee"
+    },
+    {
+      "from": "worker-rag",
+      "to": "biblioteca-fisica",
+      "label": "lee PDF",
+      "tipo": "lee"
+    },
+    {
+      "from": "worker-tecnico",
+      "to": "biblioteca-fisica",
+      "label": "OCR y PCBE",
+      "tipo": "lee"
+    },
+    {
+      "from": "worker-tecnico",
+      "to": "pg-maccell",
+      "label": "guarda índice técnico",
+      "tipo": "escribe"
+    },
+    {
+      "from": "ingesta-biblioteca",
+      "to": "biblioteca-fisica",
+      "label": "publica tandas",
+      "tipo": "escribe"
+    },
+    {
+      "from": "cron-diagnosticos",
+      "to": "ia-nube",
+      "label": "reescribe diagnóstico",
+      "tipo": "llama"
+    },
+    {
+      "from": "cron-diagnosticos",
+      "to": "prisma-db",
+      "label": "guarda texto enriquecido",
+      "tipo": "escribe"
+    },
+    {
+      "from": "docker-deploy",
+      "to": "pg-maccell",
+      "label": "migrate deploy",
+      "tipo": "usa"
+    },
+    {
+      "from": "docker-deploy",
+      "to": "worker-tecnico",
+      "label": "lo arranca si está activo",
+      "tipo": "usa"
+    },
+    {
+      "from": "infra-rag",
+      "to": "worker-rag",
+      "label": "declara el servicio",
+      "tipo": "usa"
+    }
+  ],
+  "flows": [
+    {
+      "id": "login",
+      "nombre": "Inicio de sesión y acceso por rol",
+      "color": "azul",
+      "resumen": "La persona ingresa con email y contraseña; el sistema crea una sesión de 6 horas y la manda al panel de su rol.",
+      "archivos": [
+        "src/actions/auth-actions.ts::login (línea 6)",
+        "src/middleware.ts::middleware"
+      ],
+      "steps": [
+        {
+          "n": "login",
+          "t": "Formulario de ingreso",
+          "d": "La persona escribe email y contraseña en /login."
+        },
+        {
+          "n": "auth",
+          "t": "Se comprueban las credenciales",
+          "d": "La acción login busca al usuario y compara la contraseña con bcrypt. Si no coincide, responde con un error genérico."
+        },
+        {
+          "n": "prisma-db",
+          "t": "Se marca como conectado",
+          "d": "Se actualiza el usuario como en línea y con su última actividad."
+        },
+        {
+          "n": "login",
+          "t": "Se guarda la sesión",
+          "d": "Se escriben las cookies session_user_id y session_role por 6 horas. El guardián de sesión las lee en cada navegación y las renueva."
+        },
+        {
+          "n": "ui-admin",
+          "t": "Entra a su panel",
+          "d": "Según el rol va a /admin, /vendor o /technician (dashboard)."
+        }
+      ]
+    },
+    {
+      "id": "reparacion-alta",
+      "nombre": "Ingreso de una reparación",
+      "color": "verde",
+      "resumen": "El vendedor registra el equipo que trae el cliente; queda pendiente y se avisa a los técnicos.",
+      "archivos": [
+        "src/actions/repairs/create.ts::createRepairAction (línea 17)",
+        "src/components/repairs/create-form.tsx"
+      ],
+      "steps": [
+        {
+          "n": "ui-compartida",
+          "t": "Formulario de recepción",
+          "d": "El formulario de reparación toma los datos del cliente, el equipo y las fotos."
+        },
+        {
+          "n": "reparaciones",
+          "t": "Se crea la reparación",
+          "d": "createRepairAction guarda la reparación en estado Pendiente (constante REPAIR_STATUS.PENDING)."
+        },
+        {
+          "n": "archivos-subidos",
+          "t": "Se guardan las fotos",
+          "d": "Las imágenes del equipo se almacenan en la carpeta de uploads."
+        },
+        {
+          "n": "prisma-db",
+          "t": "Queda registrada",
+          "d": "La reparación y su historial se persisten en la base principal."
+        },
+        {
+          "n": "notificaciones",
+          "t": "Se avisa a los técnicos",
+          "d": "Se generan notificaciones y se refrescan las listas de tickets del técnico."
+        }
+      ]
+    },
+    {
+      "id": "reparacion-tecnico",
+      "nombre": "El técnico toma y termina la reparación",
+      "color": "verde",
+      "resumen": "El técnico toma el ticket, trabaja, usa repuestos y la finaliza en un estado permitido; cada paso deja historial.",
+      "archivos": [
+        "src/actions/repairs/take.ts::takeRepairAction (línea 17)",
+        "src/actions/repairs/finish.ts::finishRepairAction (línea 18)",
+        "src/actions/repairs/tech-parts.ts::addPartToRepairAction (línea 108)"
+      ],
+      "steps": [
+        {
+          "n": "ui-tecnico",
+          "t": "Toma un ticket",
+          "d": "Desde Tickets el técnico elige una reparación pendiente."
+        },
+        {
+          "n": "reparaciones",
+          "t": "La reparación pasa a tomada",
+          "d": "takeRepairAction cambia el estado dentro de una transacción para evitar que dos técnicos tomen el mismo ticket."
+        },
+        {
+          "n": "cerebro",
+          "t": "Consulta al asistente (opcional)",
+          "d": "Si necesita ayuda abre Cerebro desde la misma reparación."
+        },
+        {
+          "n": "repuestos",
+          "t": "Usa repuestos",
+          "d": "addPartToRepairAction agrega las piezas usadas y descuenta stock."
+        },
+        {
+          "n": "reparaciones",
+          "t": "Finaliza",
+          "d": "finishRepairAction solo acepta estados finales permitidos y notifica."
+        },
+        {
+          "n": "notificaciones",
+          "t": "Avisa a la sucursal",
+          "d": "La sucursal ve que el equipo está listo para entregar."
+        }
+      ]
+    },
+    {
+      "id": "venta",
+      "nombre": "Venta en el mostrador (POS)",
+      "color": "amarillo",
+      "resumen": "Se cobran productos o reparaciones listas; la venta se guarda de forma atómica y, si corresponde, se factura.",
+      "archivos": [
+        "src/actions/pos/checkout.ts::processPosSale (línea 14)",
+        "src/actions/pos/checkout-db.ts::saveSaleTransaction (línea 43)",
+        "src/actions/pos/checkout-afip.ts::generateAfipInvoiceForSale (línea 40)",
+        "src/lib/afip.ts::createAfipInvoice (línea 151)"
+      ],
+      "steps": [
+        {
+          "n": "ui-vendor",
+          "t": "Carga del carrito",
+          "d": "El vendedor agrega productos y reparaciones y elige el medio de pago."
+        },
+        {
+          "n": "ventas-pos",
+          "t": "Validaciones",
+          "d": "processPosSale verifica el usuario, que los montos cierren y que la reparación esté en un estado entregable."
+        },
+        {
+          "n": "prisma-db",
+          "t": "Se guarda la venta",
+          "d": "saveSaleTransaction registra venta, ítems y pagos dentro de una transacción."
+        },
+        {
+          "n": "facturacion",
+          "t": "Factura (si se pidió)",
+          "d": "generateAfipInvoiceForSale arma el comprobante con los datos fiscales de la sucursal."
+        },
+        {
+          "n": "afip",
+          "t": "ARCA autoriza",
+          "d": "Se pide el CAE a ARCA y vuelve el comprobante autorizado."
+        },
+        {
+          "n": "notificaciones",
+          "t": "Avisos finales",
+          "d": "Se envían las notificaciones post-venta."
+        }
+      ]
+    },
+    {
+      "id": "transferencia",
+      "nombre": "Transferencia de stock entre sucursales",
+      "color": "verde",
+      "resumen": "Una sucursal ofrece mercadería a otra; la destino acepta o rechaza y el stock se mueve en una transacción.",
+      "archivos": [
+        "src/actions/transfers/mutations.ts::createStockTransfer",
+        "src/actions/transfers/mutations.ts::respondToTransfer"
+      ],
+      "steps": [
+        {
+          "n": "ui-vendor",
+          "t": "Se crea la transferencia",
+          "d": "El vendedor elige producto, cantidad y sucursal destino."
+        },
+        {
+          "n": "stock-productos",
+          "t": "Se registra y se notifica",
+          "d": "createStockTransfer crea la transferencia y notifica en la misma transacción."
+        },
+        {
+          "n": "prisma-db",
+          "t": "Queda pendiente",
+          "d": "La sucursal destino la ve en su centro de notificaciones."
+        },
+        {
+          "n": "stock-productos",
+          "t": "Se responde",
+          "d": "respondToTransfer acepta o rechaza; si acepta, mueve el stock."
+        }
+      ]
+    },
+    {
+      "id": "cerebro-diagnostico",
+      "nombre": "Diagnóstico asistido por Cerebro",
+      "color": "violeta",
+      "resumen": "El técnico describe el síntoma; Cerebro busca evidencia, pregunta lo que falta y responde con fuentes.",
+      "archivos": [
+        "src/app/api/cerebro-v2/chat/route.ts::POST",
+        "src/lib/cerebro-v2/diagnosis-service.ts::diagnoseRepair (línea 42)",
+        "src/lib/cerebro-v2/provider-selection.ts::buildModel",
+        "src/lib/cerebro-v2/worker-client.ts"
+      ],
+      "steps": [
+        {
+          "n": "ui-cerebro",
+          "t": "El técnico escribe el síntoma",
+          "d": "Puede adjuntar imágenes o responder una pregunta guiada."
+        },
+        {
+          "n": "api-cerebro",
+          "t": "Se valida el pedido",
+          "d": "La ruta de chat comprueba usuario, rol, que el chat sea suyo y que la reparación siga asignada."
+        },
+        {
+          "n": "cerebro",
+          "t": "Se arma el diagnóstico",
+          "d": "diagnoseRepair arma el estado del caso y el plan de comprobaciones."
+        },
+        {
+          "n": "worker-rag",
+          "t": "Se calcula el embedding",
+          "d": "La consulta se manda al worker Python para convertirla en vector."
+        },
+        {
+          "n": "rag-acceso",
+          "t": "Se recupera evidencia",
+          "d": "Se buscan páginas de esquemáticos y casos previos de la misma marca y modelo."
+        },
+        {
+          "n": "ia-nube",
+          "t": "Redacta el modelo",
+          "d": "Un modelo (con respaldos y opción de IA local) redacta usando solo la evidencia recuperada."
+        },
+        {
+          "n": "api-cerebro",
+          "t": "Respuesta con fuentes",
+          "d": "Se guarda el mensaje y se devuelve con fuentes y la siguiente pregunta guiada."
+        }
+      ]
+    },
+    {
+      "id": "esquematicos-ingesta",
+      "nombre": "Nueva tanda de esquemáticos hasta el visor",
+      "color": "rojo",
+      "resumen": "Un lote de PDF/PCBE se revisa, se publica en la biblioteca, se indexa y queda disponible para el técnico.",
+      "archivos": [
+        "scripts/schematic-intake.ts",
+        "scripts/technical-worker-queue.ts",
+        "services/cerebro-rag-worker/src/cerebro_rag/pdf_inventory.py",
+        "docs/schematics-ingestion-runbook.md"
+      ],
+      "steps": [
+        {
+          "n": "ingesta-biblioteca",
+          "t": "Staging y revisión",
+          "d": "El lote llega a una carpeta de staging con un PUBLICAR.json que se revisa a mano."
+        },
+        {
+          "n": "biblioteca-fisica",
+          "t": "Se publica en el disco",
+          "d": "Los archivos se agregan a /mnt/ESQUEMATICO sin tocar los originales."
+        },
+        {
+          "n": "worker-tecnico",
+          "t": "Índice técnico",
+          "d": "El worker Node hace OCR e indexa PCBE y catálogo."
+        },
+        {
+          "n": "worker-rag",
+          "t": "Índice RAG",
+          "d": "El worker Python indexa los PDF de forma incremental."
+        },
+        {
+          "n": "biblioteca-tecnica",
+          "t": "Disponible para consulta",
+          "d": "El catálogo y la búsqueda pasan a incluir el material nuevo."
+        },
+        {
+          "n": "ui-esquematicos",
+          "t": "El técnico lo ve",
+          "d": "Aparece en el visor de esquemáticos."
+        }
+      ]
+    },
+    {
+      "id": "rag-reparaciones",
+      "nombre": "Sincronización de reparaciones al RAG",
+      "color": "violeta",
+      "resumen": "El worker lee reparaciones de la base principal y las indexa para que Cerebro aprenda de casos reales.",
+      "archivos": [
+        "services/cerebro-rag-worker/src/cerebro_rag/repair_sync.py",
+        "services/cerebro-rag-worker/src/cerebro_rag/repairs.py::REPAIR_SYNC_QUERY"
+      ],
+      "steps": [
+        {
+          "n": "worker-rag",
+          "t": "repair-sync",
+          "d": "Corre con un cursor y lee las reparaciones nuevas o modificadas."
+        },
+        {
+          "n": "pg-maccell",
+          "t": "Lectura",
+          "d": "Consulta las reparaciones (y su aprendizaje) en la base principal."
+        },
+        {
+          "n": "worker-rag",
+          "t": "Se indexan",
+          "d": "Se arman fragmentos con control de calidad y embeddings."
+        },
+        {
+          "n": "pg-rag",
+          "t": "Se guardan",
+          "d": "Quedan en la base RAG, disponibles para la recuperación de Cerebro."
+        }
+      ]
+    },
+    {
+      "id": "estado-publico",
+      "nombre": "El cliente consulta el estado",
+      "color": "azul",
+      "resumen": "Sin login, el cliente abre un enlace y ve en qué estado está su reparación.",
+      "archivos": [
+        "src/app/estado/[id]/page.tsx",
+        "src/app/api/public/repair-status/route.ts::GET"
+      ],
+      "steps": [
+        {
+          "n": "ui-estado-publico",
+          "t": "Abre /estado/[id]",
+          "d": "La página pública pide los datos de la reparación."
+        },
+        {
+          "n": "api-estado-publico",
+          "t": "Consulta pública",
+          "d": "La ruta no exige login y devuelve solo datos pensados para el cliente."
+        },
+        {
+          "n": "prisma-db",
+          "t": "Lee la reparación",
+          "d": "Busca la reparación por número o identificador."
+        }
+      ]
+    },
+    {
+      "id": "chat-en-vivo",
+      "nombre": "Mensaje del chat de reparación en vivo",
+      "color": "gris",
+      "resumen": "Un mensaje se guarda y se difunde a quienes tienen abierto el chat sin recargar la página.",
+      "archivos": [
+        "src/lib/repair-chat/realtime.ts::publishRepairChatEvent (línea 60)",
+        "src/lib/repair-chat/realtime.ts::subscribeToRepairChatEvents (línea 67)",
+        "src/app/api/repair-chats/events/route.ts"
+      ],
+      "steps": [
+        {
+          "n": "ui-chat",
+          "t": "Se envía el mensaje",
+          "d": "La persona escribe en el chat de la reparación."
+        },
+        {
+          "n": "api-chat-reparacion",
+          "t": "Se recibe y valida",
+          "d": "La ruta de mensajes aplica las políticas del chat."
+        },
+        {
+          "n": "chat-reparacion",
+          "t": "Se guarda y se publica",
+          "d": "El repositorio persiste el mensaje y publishRepairChatEvent emite el evento por LISTEN/NOTIFY."
+        },
+        {
+          "n": "ui-chat",
+          "t": "Llega a los demás",
+          "d": "Los demás clientes reciben el evento por la ruta events y actualizan la conversación."
+        }
+      ]
+    },
+    {
+      "id": "deploy",
+      "nombre": "Arranque del contenedor en producción",
+      "color": "gris",
+      "resumen": "Al iniciar, el contenedor migra la base, importa esquemáticos, opcionalmente prende el worker y levanta el servidor.",
+      "archivos": [
+        "scripts/start-with-technical-worker.sh",
+        "Dockerfile"
+      ],
+      "steps": [
+        {
+          "n": "docker-deploy",
+          "t": "Se inicia la imagen",
+          "d": "El comando de arranque ejecuta el script start-with-technical-worker.sh."
+        },
+        {
+          "n": "pg-maccell",
+          "t": "Migraciones",
+          "d": "Aplica prisma migrate deploy sobre la base principal."
+        },
+        {
+          "n": "ingesta-biblioteca",
+          "t": "Importación complementaria",
+          "d": "Corre register-schematic-additions; si falla, el CRM sigue y avisa que la biblioteca requiere revisión."
+        },
+        {
+          "n": "worker-tecnico",
+          "t": "Worker opcional",
+          "d": "Solo si SCHEMATICS_BACKGROUND_INDEXING es true."
+        },
+        {
+          "n": "docker-deploy",
+          "t": "Servidor web",
+          "d": "Se levanta server.js (Next.js) en el puerto 3000."
+        }
+      ]
+    }
+  ],
+  "inventario": {
+    "endpoints": [
+      "DELETE /api/admin/spare-parts/[id]",
+      "DELETE /api/cerebro-v2/sessions/[sessionId]",
+      "GET /api/admin/spare-parts",
+      "GET /api/backups/[filename]",
+      "GET /api/cerebro-v2/closure",
+      "GET /api/cerebro-v2/documents/[documentId]",
+      "GET /api/cerebro-v2/documents/[documentId]/pages/[pageNumber]",
+      "GET /api/cerebro-v2/health",
+      "GET /api/cerebro-v2/lora-dataset",
+      "GET /api/cerebro-v2/repair-evidence/[documentId]",
+      "GET /api/cerebro-v2/repairs",
+      "GET /api/cerebro-v2/sessions",
+      "GET /api/cerebro-v2/sessions/[sessionId]",
+      "GET /api/cron/enrich-diagnoses",
+      "GET /api/pantallas/health",
+      "GET /api/public/pantallas/index",
+      "GET /api/public/pantallas/pantallas",
+      "GET /api/public/repair-status",
+      "GET /api/repair-chats",
+      "GET /api/repair-chats/[repairId]/images/[fileName]",
+      "GET /api/repair-chats/[repairId]/messages",
+      "GET /api/repair-chats/[repairId]/messages/[messageId]/readers",
+      "GET /api/repair-chats/events",
+      "GET /api/repair-chats/search",
+      "GET /api/schematics/[id]",
+      "GET /api/schematics/[id]/index",
+      "GET /api/schematics/[id]/links",
+      "GET /api/schematics/[id]/references",
+      "GET /api/schematics/catalog",
+      "GET /api/schematics/index",
+      "GET /api/schematics/pdf-assets/[...path]",
+      "GET /api/schematics/repairs/[repairId]",
+      "GET /api/schematics/repairs/[repairId]/entries",
+      "GET /api/schematics/search",
+      "GET /api/system/version",
+      "GET /api/uploads/[...path]",
+      "GET /health (worker Python)",
+      "GET /internal/documents/{document_id} (worker Python)",
+      "GET /internal/documents/{document_id}/pages/{page_number} (worker Python)",
+      "PATCH /api/cerebro-v2/sessions/[sessionId]",
+      "PATCH /api/repair-chats/[repairId]/read",
+      "POST /api/admin/pantallas/upload",
+      "POST /api/admin/spare-parts",
+      "POST /api/admin/spare-parts/update-prices",
+      "POST /api/cerebro-v2/chat",
+      "POST /api/cerebro-v2/closure",
+      "POST /api/cerebro-v2/closure/review",
+      "POST /api/cerebro-v2/feedback",
+      "POST /api/cerebro-v2/sessions",
+      "POST /api/cerebro/enhance-diagnosis",
+      "POST /api/presence/heartbeat",
+      "POST /api/public/pantallas/contenidos",
+      "POST /api/public/pantallas/registrar",
+      "POST /api/repair-chats/[repairId]/images",
+      "POST /api/repair-chats/[repairId]/messages",
+      "POST /api/schematics/[id]/identity",
+      "POST /api/schematics/[id]/index",
+      "POST /api/schematics/[id]/links",
+      "POST /api/schematics/[id]/ocr",
+      "POST /api/schematics/index",
+      "POST /api/schematics/repairs/[repairId]/consultations",
+      "POST /api/schematics/repairs/[repairId]/entries",
+      "POST /embed (worker Python)",
+      "POST /internal/embed (worker Python)",
+      "PUT /api/admin/spare-parts/[id]"
+    ],
+    "modelos": [
+      "AfipReconciliation",
+      "Branch",
+      "CashShift",
+      "Category",
+      "CerebroConversation",
+      "CerebroMessage",
+      "CerebroSchematic",
+      "Customer",
+      "DeviceFamily",
+      "DigitalScreen",
+      "DigitalScreenContent",
+      "DigitalScreenSync",
+      "Expense",
+      "FiscalEmissionAttempt",
+      "Notification",
+      "Product",
+      "ProductStock",
+      "Repair",
+      "RepairChat",
+      "RepairChatMessage",
+      "RepairChatReadCursor",
+      "RepairEmbedding",
+      "RepairExternalPurchase",
+      "RepairKnowledge",
+      "RepairLearningRecord",
+      "RepairObservation",
+      "RepairPart",
+      "RepairStatus",
+      "RepairStatusHistory",
+      "ReturnRequest",
+      "Sale",
+      "SaleInvoice",
+      "SaleItem",
+      "SalePayment",
+      "SparePart",
+      "SparePartHistory",
+      "StockTransfer",
+      "Ticket",
+      "User",
+      "backups",
+      "cerebro_daily_tokens"
+    ],
+    "tablasRag": [
+      "rag_chunks",
+      "rag_device_aliases",
+      "rag_documents",
+      "rag_feedback",
+      "rag_ingestion_jobs",
+      "rag_model_versions",
+      "rag_pages"
+    ],
+    "dependencias": [
+      "@ai-sdk/google@^3.0.30",
+      "@ai-sdk/groq@^3.0.24",
+      "@ai-sdk/openai@^3.0.30",
+      "@ai-sdk/react@^3.0.99",
+      "@arcasdk/core@^0.3.6",
+      "@ericblade/quagga2@^1.12.1",
+      "@google/generative-ai@^0.24.1",
+      "@hookform/resolvers@^5.2.2",
+      "@openrouter/ai-sdk-provider@^2.2.3",
+      "@prisma/adapter-pg@6.1.0",
+      "@prisma/client@^6.1.0",
+      "@radix-ui/react-alert-dialog@^1.1.15",
+      "@radix-ui/react-avatar@^1.1.11",
+      "@radix-ui/react-checkbox@^1.3.3",
+      "@radix-ui/react-dialog@^1.1.15",
+      "@radix-ui/react-dropdown-menu@^2.1.16",
+      "@radix-ui/react-label@^2.1.8",
+      "@radix-ui/react-popover@^1.1.15",
+      "@radix-ui/react-scroll-area@^1.2.10",
+      "@radix-ui/react-select@^2.2.6",
+      "@radix-ui/react-separator@^1.1.8",
+      "@radix-ui/react-slot@^1.2.4",
+      "@radix-ui/react-tabs@^1.1.13",
+      "@radix-ui/react-tooltip@^1.2.8",
+      "@tailwindcss/postcss@^4",
+      "@types/bcryptjs@^2.4.6",
+      "@types/crypto-js@^4.2.2",
+      "@types/jsbarcode@^3.11.4",
+      "@types/node@^20",
+      "@types/pdf-parse@^1.1.5",
+      "@types/pg@^8.16.0",
+      "@types/react-dom@^19",
+      "@types/react@^19",
+      "@xenova/transformers@^2.17.2",
+      "ai@^6.0.97",
+      "bcryptjs@^3.0.3",
+      "cheerio@^1.1.2",
+      "class-variance-authority@^0.7.1",
+      "clsx@^2.1.1",
+      "cmdk@^1.1.1",
+      "crypto-js@^4.2.0",
+      "date-fns-tz@^3.2.0",
+      "date-fns@^3.6.0",
+      "dotenv@^17.2.3",
+      "esbuild@^0.27.2",
+      "eslint-config-next@15.5.15",
+      "eslint@^9",
+      "firebase-admin@^13.6.1",
+      "firebase@^12.9.0",
+      "framer-motion@^12.23.26",
+      "heic-decode@^2.1.0",
+      "jsbarcode@^3.12.1",
+      "jspdf-autotable@^5.0.7",
+      "jspdf@^4.2.1",
+      "lucide-react@^0.559.0",
+      "next-themes@^0.4.6",
+      "next@15.5.15",
+      "pdf-parse@^1.1.1",
+      "pdfjs-dist@^6.3.289",
+      "pg@^8.16.3",
+      "prisma@6.1.0",
+      "py:fastapi==0.116.1",
+      "py:uvicorn==0.35.0",
+      "react-day-picker@^8.10.1",
+      "react-dom@19.2.1",
+      "react-firebase-hooks@^5.1.1",
+      "react-hook-form@^7.68.0",
+      "react-markdown@^10.1.0",
+      "react-to-print@^3.2.0",
+      "react@19.2.1",
+      "recharts@^3.5.1",
+      "remark-gfm@^4.0.1",
+      "sharp@^0.34.5",
+      "sonner@^2.0.7",
+      "tailwind-merge@^3.4.0",
+      "tailwindcss@^4",
+      "tsx@^4.21.0",
+      "tw-animate-css@^1.4.0",
+      "typescript@^5",
+      "xlsx@^0.18.5",
+      "zod@^4.1.13"
+    ],
+    "variablesEntorno": [
+      "AFIP_CERT",
+      "AFIP_CERT_8BIT",
+      "AFIP_CUIT",
+      "AFIP_CUIT_8BIT",
+      "AFIP_KEY",
+      "AFIP_KEY_8BIT",
+      "AFIP_PRODUCTION",
+      "BATCH_SIZE",
+      "CEREBRO_EMPERO_API_KEY",
+      "CEREBRO_EMPERO_BASE_URL",
+      "CEREBRO_EMPERO_MODEL",
+      "CEREBRO_EVAL_CASES",
+      "CEREBRO_EVAL_CASES_B64",
+      "CEREBRO_LOCAL_AI_BASE_URL",
+      "CEREBRO_LOCAL_AI_KEY",
+      "CEREBRO_LOCAL_AI_MODEL",
+      "CEREBRO_LOCAL_VISION_BASE_URL",
+      "CEREBRO_LOCAL_VISION_KEY",
+      "CEREBRO_LOCAL_VISION_MODEL",
+      "CEREBRO_LORA_SMOKE_TEST",
+      "CEREBRO_VISION_MODEL",
+      "CRON_SECRET",
+      "DATABASE_URL",
+      "EMBEDDING_MODEL",
+      "GOOGLE_CUSTOM_SEARCH_API_KEY",
+      "GOOGLE_CUSTOM_SEARCH_ENGINE_ID",
+      "GPU_DEVICE",
+      "GPU_EMBEDDING_SECRET",
+      "GROQ_API_KEY",
+      "MACCELL_BUILD_DIR",
+      "NEXTAUTH_URL",
+      "NEXT_PUBLIC_APP_URL",
+      "OLLAMA_BASE_URL",
+      "OPENROUTER_API_KEY",
+      "OPENROUTER_MODEL",
+      "OPENROUTER_VISION_MODEL",
+      "PANTALLAS_ENABLE_LEGACY_MIGRATION",
+      "PUBLISHED_CATALOG_ROOT",
+      "RAG_DATABASE_URL",
+      "RAG_INTERNAL_API_SECRET",
+      "RAG_WORKER_URL",
+      "SCHEMATICS_CYCLE_INTERVAL_MS",
+      "SCHEMATICS_EMBEDDING_VERSION",
+      "SCHEMATICS_INDEX_CONCURRENCY",
+      "SCHEMATICS_INVENTORY_REFRESH_MS",
+      "SCHEMATICS_OCR_LANGUAGES",
+      "SCHEMATICS_QA_LOCAL",
+      "SCHEMATICS_ROOT",
+      "SCHEMATICS_WORKER_ENV_FILE",
+      "YOUTUBE_DATA_API_KEY"
+    ]
+  }
+}

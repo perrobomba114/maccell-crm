@@ -1,0 +1,22 @@
+#!/bin/sh
+# Hook pre-commit: regenera el mapa de arquitectura si cambió código relevante.
+# Activar una sola vez:  npm run arq:hook   (hace: git config core.hooksPath .githooks)
+# Nunca bloquea el commit, salvo que exportes ARQ_STRICT=1.
+
+MAPA_DIR="docs/arquitectura"
+
+relevantes=$(git diff --cached --name-only --diff-filter=ACMRD \
+  | grep -v "^$MAPA_DIR/" \
+  | grep -E '\.(ts|tsx|js|mjs|cjs|py|sql|prisma|sh)$|(^|/)(package\.json|pyproject\.toml|requirements[^/]*\.txt|Dockerfile[^/]*|docker-compose[^/]*\.ya?ml)$' \
+  || true)
+
+[ -z "$relevantes" ] && exit 0
+command -v node >/dev/null 2>&1 || { echo "[arq] node no está disponible: se omite el mapa."; exit 0; }
+
+if node "$MAPA_DIR/actualizar_arquitectura.mjs"; then
+  git add "$MAPA_DIR/arquitectura.json" "$MAPA_DIR/arquitectura.html"
+else
+  echo "[arq] No se pudo actualizar el mapa de arquitectura (ver mensaje arriba). Corré: npm run arq"
+  [ "$ARQ_STRICT" = "1" ] && exit 1
+fi
+exit 0

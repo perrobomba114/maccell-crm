@@ -49,6 +49,19 @@ El build omite errores de tipos y ESLint por configuración actual. Verificació
 
 Los runbooks incluyen snapshots e incidentes fechados; verificá en vivo los servicios, montajes y proveedores antes de operar. Las variables de facturación, IA, workers y almacenamiento deben revisarse en el módulo correspondiente y en la configuración del entorno.
 
+## Mapa de arquitectura
+
+Mapa interactivo (nodos, flechas y recorridos de negocio) que se regenera leyendo el código real.
+
+- **Abrirlo:** doble clic en `docs/arquitectura/arquitectura.html` (un solo archivo, funciona offline).
+- **Regenerarlo:** `npm run arq` · verificar sin escribir: `npm run arq:check` · opciones: `--dry-run`, `--backup`, `--verbose`.
+- **Qué se edita a mano:** solo `docs/arquitectura/arquitectura.overrides.json` (textos, flechas, flujos, posiciones). El script nunca lo pisa; `arquitectura.json` y el HTML se generan.
+- **Se actualiza solo con 3 capas:** hook `pre-commit` (activar una vez: `npm run arq:hook`; con `ARQ_STRICT=1` bloquea si falla), GitHub Actions `.github/workflows/arquitectura.yml` (regenera y publica el mapa automáticamente en `main`; en pull requests verifica que esté al día) y watcher opcional `npm run arq:watch`.
+- **Qué detecta solo:** módulos y líneas, módulos nuevos u obsoletos, endpoints, modelos Prisma, tablas RAG, dependencias y nombres de variables de entorno (nunca sus valores).
+- **Qué hay que curar a mano:** descripciones, flechas entre módulos y flujos de negocio nuevos.
+
+Todo cambio estructural (módulo nuevo, tabla, integración, endpoint, flujo) debe terminar corriendo `npm run arq` y revisando el diff del mapa.
+
 ## Infraestructura
 
 `Dockerfile`: Node 20 slim, generación de Prisma y worker técnico durante build. `scripts/start-with-technical-worker.sh`: migraciones, importación complementaria, worker opcional y servidor. Las imágenes usan `upload/`; la biblioteca técnica usa el montaje operativo documentado en su runbook.

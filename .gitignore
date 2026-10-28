@@ -109,3 +109,7 @@ docs/technical-debt-roadmap.md
 # Generated technical index worker bundle
 /scripts/technical-worker.cjs
 /scripts/schematics-vector-worker.cjs
+
+# Mapa de arquitectura: respaldos y temporales del generador
+docs/arquitectura/*.bak_*
+docs/arquitectura/*.tmp-*

@@ -89,4 +89,6 @@ El build ignora errores de tipos y ESLint en `next.config.ts`: no reemplaza esas
 
 Verificá el recorrido afectado: UI en navegador, persistencia, provider o worker según corresponda. No declares producción funcionando por un push o un build. Si el pedido incluye publicar en la rama desplegada, usá exclusivamente `dokploy_maccell`, comprobá commit y estado terminal, y verificá la revisión servida y el comportamiento. Si esa herramienta o acceso falta, reportá el bloqueo.
 
+Todo cambio estructural (módulo nuevo, tabla, integración, endpoint, flujo) debe terminar corriendo `npm run arq` y revisando el diff de `docs/arquitectura/`; los textos curados se editan solo en `arquitectura.overrides.json`.
+
 Cerrá con qué cambió, evidencia de verificación y pendientes reales. No conviertas deuda previa fuera del alcance en una refactorización general. No hagas commit, push ni despliegue por una tarea de documentación salvo pedido del usuario.
