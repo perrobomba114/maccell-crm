@@ -33,6 +33,8 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const previousUnreadCountRef = useRef(0);
+    const requestVersionRef = useRef(0);
+    const pendingReadsRef = useRef(0);
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -73,9 +75,11 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     }, [unreadCount]);
 
     const fetchNotifications = useCallback(async () => {
-        if (!userId) return;
+        if (!userId || pendingReadsRef.current > 0) return;
+        const version = ++requestVersionRef.current;
         try {
             const data = await getNotificationsAction(userId);
+            if (version !== requestVersionRef.current || pendingReadsRef.current > 0) return;
             if (Array.isArray(data)) {
                 setNotifications(data);
             } else {
@@ -92,24 +96,61 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
     usePolling(fetchNotifications, 4000, Boolean(userId));
 
+    useEffect(() => {
+        const refresh = () => {
+            if (document.visibilityState === "visible") void fetchNotifications();
+        };
+        window.addEventListener("focus", refresh);
+        window.addEventListener("online", refresh);
+        document.addEventListener("visibilitychange", refresh);
+        return () => {
+            window.removeEventListener("focus", refresh);
+            window.removeEventListener("online", refresh);
+            document.removeEventListener("visibilitychange", refresh);
+        };
+    }, [fetchNotifications]);
+
     const handleMarkAsRead = async (id: string, link?: string | null) => {
-        // Optimistically update
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-
-        await markNotificationReadAction(id);
-
-        if (link) {
-            setIsOpen(false);
-            router.push(link);
+        pendingReadsRef.current += 1;
+        requestVersionRef.current += 1;
+        try {
+            const result = await markNotificationReadAction(id);
+            if (!result.success) {
+                toast.error("No se pudo marcar la notificación como leída. Volvé a intentarlo.");
+                return;
+            }
+            setNotifications(prev => prev.filter(n => n.id !== id));
+            if (link) {
+                setIsOpen(false);
+                router.push(link);
+            }
+        } catch {
+            toast.error("No se pudo guardar la lectura. Revisá tu conexión.");
+        } finally {
+            pendingReadsRef.current -= 1;
+            void fetchNotifications();
         }
     };
 
     const handleMarkAllRead = async () => {
-        // Optimistic clear
-        setNotifications([]);
-
-        await markAllNotificationsReadAction(userId);
-        toast.success("Notificaciones limpiadas");
+        pendingReadsRef.current += 1;
+        requestVersionRef.current += 1;
+        setLoading(true);
+        try {
+            const result = await markAllNotificationsReadAction(userId);
+            if (!result.success) {
+                toast.error("No se pudieron limpiar las notificaciones. Volvé a intentarlo.");
+                return;
+            }
+            setNotifications([]);
+            toast.success("Notificaciones limpiadas");
+        } catch {
+            toast.error("No se pudo guardar la limpieza. Revisá tu conexión.");
+        } finally {
+            pendingReadsRef.current -= 1;
+            setLoading(false);
+            void fetchNotifications();
+        }
     };
 
     const handleResponse = async (id: string, response: "ACCEPTED" | "REJECTED") => {
@@ -131,7 +172,10 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     };
 
     return (
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <Popover open={isOpen} onOpenChange={(open) => {
+            setIsOpen(open);
+            if (open) void fetchNotifications();
+        }}>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
                     <Bell className="h-5 w-5" />
@@ -164,6 +208,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                             size="sm"
                             className="h-auto shrink-0 py-1 text-xs text-muted-foreground hover:text-foreground"
                             onClick={handleMarkAllRead}
+                            disabled={loading}
                         >
                             Limpiar todo
                         </Button>
