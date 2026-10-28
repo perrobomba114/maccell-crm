@@ -10,10 +10,12 @@ import {
     readNotificationString,
 } from "@/lib/notification-center";
 import { Prisma } from "@prisma/client";
+import { notificationTraceKey, notificationTraceError, startNotificationTrace } from "@/lib/notification-trace";
 
 export async function getNotificationsAction(userId: string) {
     if (!userId) return [];
 
+    const trace = await startNotificationTrace("list", userId);
     try {
         const notifications = await db.notification.findMany({
             where: {
@@ -25,9 +27,14 @@ export async function getNotificationsAction(userId: string) {
                 createdAt: 'desc'
             }
         });
+        trace("result", { count: notifications.length, limit: 20,
+            notifications: notifications.map(n => ({ key: notificationTraceKey(n.id),
+                event: notificationTraceKey(JSON.stringify([n.type, n.title, n.message, n.link, n.actionData])),
+                createdAt: n.createdAt.toISOString() })),
+        });
         return notifications;
     } catch (error) {
-        console.error("Error fetching notifications:", error);
+        trace("error", { code: notificationTraceError(error) });
         return [];
     }
 }
@@ -44,15 +51,18 @@ export async function getAllNotificationsAction(
 export async function markNotificationReadAction(notificationId: string) {
     if (!notificationId) return { success: false };
 
+    const trace = await startNotificationTrace("read", notificationId);
+    trace("start");
     try {
-        await db.notification.update({
+        const updated = await db.notification.update({
             where: { id: notificationId },
             data: { isRead: true }
         });
+        trace("persisted", { owner: notificationTraceKey(updated.userId), isRead: updated.isRead });
         revalidatePath("/"); // optimize path later if needed
         return { success: true };
     } catch (error) {
-        console.error("Error reading notification:", error);
+        trace("error", { code: notificationTraceError(error) });
         return { success: false };
     }
 }
@@ -60,15 +70,18 @@ export async function markNotificationReadAction(notificationId: string) {
 export async function markAllNotificationsReadAction(userId: string) {
     if (!userId) return { success: false };
 
+    const trace = await startNotificationTrace("clear", userId);
+    trace("start");
     try {
-        await db.notification.updateMany({
+        const updated = await db.notification.updateMany({
             where: { userId, isRead: false },
             data: { isRead: true }
         });
+        trace("persisted", { count: updated.count });
         revalidatePath("/");
         return { success: true };
     } catch (error) {
-        console.error("Error reading all notifications:", error);
+        trace("error", { code: notificationTraceError(error) });
         return { success: false };
     }
 }

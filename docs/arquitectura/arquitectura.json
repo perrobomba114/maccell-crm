@@ -1,7 +1,7 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-10-28",
-  "commit": "7150fc9",
+  "commit": "6ae354c",
   "resumen": [
     [
       "lenguaje",
@@ -13,11 +13,11 @@
     ],
     [
       "modulos",
-      "853"
+      "854"
     ],
     [
       "lineas",
-      "88.917"
+      "88.963"
     ],
     [
       "endpoints",
@@ -25,7 +25,7 @@
     ],
     [
       "variables de entorno",
-      "50"
+      "51"
     ],
     [
       "framework",
@@ -923,8 +923,8 @@
         "src/lib/notification-center.ts"
       ],
       "color": "gris",
-      "lineas": 897,
-      "nArchivos": 8,
+      "lineas": 943,
+      "nArchivos": 9,
       "rutas": [
         "src/lib/actions/notification-*.ts",
         "src/lib/actions/notifications.ts",
@@ -1573,8 +1573,8 @@
         "services/cerebro-rag-worker/tests"
       ],
       "color": "gris",
-      "lineas": 10759,
-      "nArchivos": 183,
+      "lineas": 10778,
+      "nArchivos": 184,
       "rutas": [
         "src/__tests__/",
         "scripts/tests/",
@@ -2697,6 +2697,7 @@
       "GPU_DEVICE",
       "GPU_EMBEDDING_SECRET",
       "GROQ_API_KEY",
+      "HOSTNAME",
       "MACCELL_BUILD_DIR",
       "NEXTAUTH_URL",
       "NEXT_PUBLIC_APP_URL",
