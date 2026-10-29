@@ -23,7 +23,7 @@ function bellHarness() {
         fetch: async () => ({ ok: status === 200, status, json: pending }),
         require: (name: string) => {
             if (name === "react") return {
-                useState: (initial: unknown) => { const index = stateIndex++; return [initial, (v: unknown) => { if (index === 0) snapshots.push(v); if (index === 4) errors.push(v); }]; },
+                useState: (initial: unknown) => { const index = stateIndex++; return [initial, (v: unknown) => { if (index === 0) snapshots.push(v); if (index === 3) errors.push(v); }]; },
                 useRef: (current: unknown) => ({ current }),
                 useEffect: () => {},
                 useCallback: (fn: () => Promise<void>) => { callbacks.push(fn); return fn; },
