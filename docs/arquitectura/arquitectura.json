@@ -1,7 +1,7 @@
 {
   "proyecto": "MACCELL CRM",
-  "generado": "2026-10-28",
-  "commit": "6ae354c",
+  "generado": "2026-10-29",
+  "commit": "7356be2",
   "resumen": [
     [
       "lenguaje",
@@ -13,15 +13,15 @@
     ],
     [
       "modulos",
-      "854"
+      "855"
     ],
     [
       "lineas",
-      "88.963"
+      "89.004"
     ],
     [
       "endpoints",
-      "65"
+      "66"
     ],
     [
       "variables de entorno",
@@ -465,7 +465,7 @@
         "src/app/layout.tsx"
       ],
       "color": "azul",
-      "lineas": 17050,
+      "lineas": 17075,
       "nArchivos": 123,
       "rutas": [
         "src/components/",
@@ -915,7 +915,8 @@
       "desc": "Genera avisos dentro del sistema (nueva reparación, transferencia, devolución, alerta) y arma el centro de notificaciones de cada persona.",
       "detalle": [
         "Se guardan en el modelo Notification.",
-        "Las respuestas a notificaciones (aceptar, rechazar) tienen helpers propios."
+        "Las respuestas a notificaciones (aceptar, rechazar) tienen helpers propios.",
+        "La campanita consulta GET /api/notifications sin caché, con la cuenta de la sesión actual y una sola consulta en curso."
       ],
       "archivos": [
         "src/lib/actions/notifications.ts",
@@ -923,12 +924,13 @@
         "src/lib/notification-center.ts"
       ],
       "color": "gris",
-      "lineas": 943,
-      "nArchivos": 9,
+      "lineas": 959,
+      "nArchivos": 10,
       "rutas": [
         "src/lib/actions/notification-*.ts",
         "src/lib/actions/notifications.ts",
-        "src/lib/notification-*.ts"
+        "src/lib/notification-*.ts",
+        "src/app/api/notifications/"
       ],
       "auto": false
     },
@@ -1573,8 +1575,8 @@
         "services/cerebro-rag-worker/tests"
       ],
       "color": "gris",
-      "lineas": 10778,
-      "nArchivos": 184,
+      "lineas": 10853,
+      "nArchivos": 185,
       "rutas": [
         "src/__tests__/",
         "scripts/tests/",
@@ -2480,6 +2482,7 @@
       "GET /api/cerebro-v2/sessions",
       "GET /api/cerebro-v2/sessions/[sessionId]",
       "GET /api/cron/enrich-diagnoses",
+      "GET /api/notifications",
       "GET /api/pantallas/health",
       "GET /api/public/pantallas/index",
       "GET /api/public/pantallas/pantallas",

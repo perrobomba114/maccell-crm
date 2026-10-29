@@ -316,9 +316,9 @@
       "id": "notificaciones", "nombre": "Notificaciones internas", "capa": "soporte", "x": 250, "color": "gris",
       "sub": "Avisos entre sucursales y técnicos",
       "desc": "Genera avisos dentro del sistema (nueva reparación, transferencia, devolución, alerta) y arma el centro de notificaciones de cada persona.",
-      "detalle": ["Se guardan en el modelo Notification.", "Las respuestas a notificaciones (aceptar, rechazar) tienen helpers propios."],
+      "detalle": ["Se guardan en el modelo Notification.", "Las respuestas a notificaciones (aceptar, rechazar) tienen helpers propios.", "La campanita consulta GET /api/notifications sin caché, con la cuenta de la sesión actual y una sola consulta en curso."],
       "archivos": ["src/lib/actions/notifications.ts", "src/lib/actions/notification-creation.ts", "src/lib/notification-center.ts"],
-      "rutas": ["src/lib/actions/notification-*.ts", "src/lib/actions/notifications.ts", "src/lib/notification-*.ts"]
+      "rutas": ["src/lib/actions/notification-*.ts", "src/lib/actions/notifications.ts", "src/lib/notification-*.ts", "src/app/api/notifications/"]
     },
     {
       "id": "impresion", "nombre": "Impresión de tickets y etiquetas", "capa": "soporte", "x": 460, "color": "gris",

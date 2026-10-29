@@ -35,7 +35,7 @@ export async function getNotificationsAction(userId: string) {
         return notifications;
     } catch (error) {
         trace("error", { code: notificationTraceError(error) });
-        return [];
+        throw error;
     }
 }
 

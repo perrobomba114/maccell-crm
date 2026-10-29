@@ -5,7 +5,6 @@ import { Bell } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import {
-    getNotificationsAction,
     markNotificationReadAction,
     markAllNotificationsReadAction,
     respondToNotificationAction
@@ -32,9 +31,11 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [syncError, setSyncError] = useState(false);
     const previousUnreadCountRef = useRef(0);
     const requestVersionRef = useRef(0);
     const pendingReadsRef = useRef(0);
+    const fetchInFlightRef = useRef(false);
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -76,17 +77,34 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
     const fetchNotifications = useCallback(async () => {
         if (!userId || pendingReadsRef.current > 0) return;
-        const version = ++requestVersionRef.current;
+        if (fetchInFlightRef.current) {
+            return;
+        }
+        fetchInFlightRef.current = true;
+        const version = requestVersionRef.current;
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 15000);
         try {
-            const data = await getNotificationsAction(userId);
+            const response = await fetch("/api/notifications", {
+                cache: "no-store",
+                credentials: "same-origin",
+                signal: controller.signal,
+            });
+            if (!response.ok) throw new Error(`Notification refresh failed (${response.status})`);
+            const data: Notification[] = await response.json();
             if (version !== requestVersionRef.current || pendingReadsRef.current > 0) return;
             if (Array.isArray(data)) {
                 setNotifications(data);
+                setSyncError(false);
             } else {
                 setNotifications([]);
             }
         } catch (error: unknown) {
+            setSyncError(true);
             console.error("Failed to fetch notifications", error);
+        } finally {
+            window.clearTimeout(timeout);
+            fetchInFlightRef.current = false;
         }
     }, [userId]);
 
@@ -102,10 +120,12 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         };
         window.addEventListener("focus", refresh);
         window.addEventListener("online", refresh);
+        window.addEventListener("pageshow", refresh);
         document.addEventListener("visibilitychange", refresh);
         return () => {
             window.removeEventListener("focus", refresh);
             window.removeEventListener("online", refresh);
+            window.removeEventListener("pageshow", refresh);
             document.removeEventListener("visibilitychange", refresh);
         };
     }, [fetchNotifications]);
@@ -214,6 +234,11 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                         </Button>
                     )}
                 </div>
+                {syncError && (
+                    <p role="status" className="border-b p-3 text-xs text-destructive">
+                        No se pudo actualizar la lista. Los avisos pueden estar desactualizados; reintentando.
+                    </p>
+                )}
                 <div className="max-h-[min(70dvh,520px)] max-w-full overflow-y-auto overflow-x-hidden overscroll-contain">
                     {notifications.length === 0 ? (
                         <div className="p-8 text-center text-muted-foreground text-sm">
