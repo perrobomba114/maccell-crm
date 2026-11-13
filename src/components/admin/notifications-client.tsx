@@ -15,7 +15,7 @@ import { NotificationRow } from "@/components/admin/notification-row";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { respondToNotificationAction } from "@/lib/actions/notifications";
+import { markNotificationReadAction, respondToNotificationAction } from "@/lib/actions/notifications";
 import {
     normalizeNotificationBranchFilter,
     normalizeNotificationStatusFilter,
@@ -115,8 +115,22 @@ export function AdminNotificationsClient({
         }
     };
 
-    const openNotificationLink = (href: string) => {
-        router.push(href);
+    const readNotification = async (notification: NotificationCenterViewItem, href?: string | null) => {
+        setLoadingId(notification.id);
+        try {
+            if (!notification.isRead) {
+                const result = await markNotificationReadAction(notification.id);
+                if (!result.success) {
+                    toast.error("No se pudo guardar la lectura. Volvé a intentarlo.");
+                    return;
+                }
+            }
+            if (href) router.push(href);
+        } catch {
+            toast.error("No se pudo guardar la lectura. Revisá tu conexión.");
+        } finally {
+            setLoadingId(null);
+        }
     };
 
     return (
@@ -201,7 +215,7 @@ export function AdminNotificationsClient({
                             notification={notification}
                             loading={loadingId === notification.id}
                             onResponse={handleResponse}
-                            onOpenLink={openNotificationLink}
+                            onRead={readNotification}
                         />
                     ))
                 )}

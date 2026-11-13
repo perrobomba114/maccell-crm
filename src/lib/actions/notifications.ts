@@ -1,5 +1,6 @@
 "use server";
 
+import { getCurrentUser } from "@/actions/auth-actions";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { resolveStockDiscrepancy } from "./stock-actions";
@@ -49,17 +50,19 @@ export async function getAllNotificationsAction(
 }
 
 export async function markNotificationReadAction(notificationId: string) {
-    if (!notificationId) return { success: false };
+    const user = await getCurrentUser();
+    if (!user || !notificationId) return { success: false };
 
     const trace = await startNotificationTrace("read", notificationId);
     trace("start");
     try {
-        const updated = await db.notification.update({
-            where: { id: notificationId },
+        const updated = await db.notification.updateMany({
+            where: { id: notificationId, userId: user.id },
             data: { isRead: true }
         });
-        trace("persisted", { owner: notificationTraceKey(updated.userId), isRead: updated.isRead });
-        revalidatePath("/"); // optimize path later if needed
+        if (updated.count !== 1) return { success: false };
+        trace("persisted", { owner: notificationTraceKey(user.id), isRead: true });
+        revalidatePath("/admin/notifications");
         return { success: true };
     } catch (error) {
         trace("error", { code: notificationTraceError(error) });
@@ -67,7 +70,8 @@ export async function markNotificationReadAction(notificationId: string) {
     }
 }
 
-export async function markAllNotificationsReadAction(userId: string) {
+export async function markAllNotificationsReadAction() {
+    const userId = (await getCurrentUser())?.id;
     if (!userId) return { success: false };
 
     const trace = await startNotificationTrace("clear", userId);
@@ -78,7 +82,7 @@ export async function markAllNotificationsReadAction(userId: string) {
             data: { isRead: true }
         });
         trace("persisted", { count: updated.count });
-        revalidatePath("/");
+        revalidatePath("/admin/notifications");
         return { success: true };
     } catch (error) {
         trace("error", { code: notificationTraceError(error) });

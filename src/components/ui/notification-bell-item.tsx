@@ -27,7 +27,7 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
     return (
         <div
             className={cn(
-                "max-w-full overflow-x-hidden p-3 transition-colors hover:bg-muted/50 sm:p-4",
+                "relative max-w-full overflow-x-hidden p-3 transition-colors hover:bg-muted/50 sm:p-4",
                 !notification.isRead && "bg-muted/20"
             )}
         >
@@ -42,10 +42,14 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
                     )}
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">
-                    <div
-                        className="cursor-pointer"
+                    <button
+                        type="button"
+                        aria-label={`Marcar como leída: ${notification.title}`}
+                        className="absolute inset-0 cursor-pointer focus-visible:outline-offset-[-3px]"
+                        disabled={loading}
                         onClick={() => onMarkAsRead(notification.id, notification.link)}
-                    >
+                    />
+                    <div>
                         {repairEntryDisplay ? (
                             <div className={cn("max-w-full space-y-1 overflow-x-hidden", !notification.isRead && "font-bold")}>
                                 <p className="text-sm font-medium leading-snug [overflow-wrap:anywhere]">{notification.title}</p>
@@ -70,7 +74,7 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
                     </div>
 
                     {notification.type === "ACTION_REQUEST" && notification.status === "PENDING" && actionConfig.mode === "respond" && (
-                        <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="relative mt-3 flex flex-wrap gap-2">
                             <Button
                                 size="sm"
                                 className="h-7 min-w-0 bg-green-600 text-xs text-white hover:bg-green-700"
@@ -92,7 +96,7 @@ export function NotificationBellItem({ notification, loading, onMarkAsRead, onRe
                     )}
 
                     {notification.type === "ACTION_REQUEST" && notification.status === "PENDING" && actionConfig.mode === "link" && (
-                        <div className="mt-3">
+                        <div className="relative mt-3">
                             <Button
                                 size="sm"
                                 className="h-7 min-w-0 text-xs font-bold"

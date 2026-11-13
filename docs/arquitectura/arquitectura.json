@@ -1,7 +1,7 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-11-13",
-  "commit": "7a8f279",
+  "commit": "d76f127",
   "resumen": [
     [
       "lenguaje",
@@ -13,11 +13,11 @@
     ],
     [
       "modulos",
-      "866"
+      "868"
     ],
     [
       "lineas",
-      "88.411"
+      "88.585"
     ],
     [
       "endpoints",
@@ -283,7 +283,7 @@
         "src/components/admin"
       ],
       "color": "azul",
-      "lineas": 19382,
+      "lineas": 19410,
       "nArchivos": 159,
       "rutas": [
         "src/app/admin/",
@@ -465,7 +465,7 @@
         "src/app/layout.tsx"
       ],
       "color": "azul",
-      "lineas": 17175,
+      "lineas": 17179,
       "nArchivos": 123,
       "rutas": [
         "src/components/",
@@ -952,7 +952,7 @@
         "src/lib/notification-center.ts"
       ],
       "color": "gris",
-      "lineas": 268,
+      "lineas": 272,
       "nArchivos": 2,
       "rutas": [
         "src/lib/actions/notification-*.ts",
@@ -1521,8 +1521,8 @@
         "scripts/production-baseline.ts"
       ],
       "color": "violeta",
-      "lineas": 3705,
-      "nArchivos": 33,
+      "lineas": 3843,
+      "nArchivos": 35,
       "rutas": [
         "scripts/",
         "src/scripts/"
@@ -1603,8 +1603,8 @@
         "services/cerebro-rag-worker/tests"
       ],
       "color": "gris",
-      "lineas": 11027,
-      "nArchivos": 189,
+      "lineas": 11068,
+      "nArchivos": 190,
       "rutas": [
         "src/__tests__/",
         "scripts/tests/",

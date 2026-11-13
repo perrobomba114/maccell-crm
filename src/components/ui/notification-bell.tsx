@@ -157,7 +157,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         requestVersionRef.current += 1;
         setLoading(true);
         try {
-            const result = await markAllNotificationsReadAction(userId);
+            const result = await markAllNotificationsReadAction();
             if (!result.success) {
                 toast.error("No se pudieron limpiar las notificaciones. Volvé a intentarlo.");
                 return;
@@ -197,7 +197,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
             if (open) void fetchNotifications();
         }}>
             <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
+                <Button aria-label="Notificaciones" variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                         <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background" />

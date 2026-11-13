@@ -13,10 +13,10 @@ type NotificationRowProps = {
     notification: NotificationCenterViewItem;
     loading: boolean;
     onResponse: (id: string, response: "ACCEPTED" | "REJECTED") => void;
-    onOpenLink: (href: string) => void;
+    onRead: (notification: NotificationCenterViewItem, href?: string | null) => void;
 };
 
-export function NotificationRow({ notification, loading, onResponse, onOpenLink }: NotificationRowProps) {
+export function NotificationRow({ notification, loading, onResponse, onRead }: NotificationRowProps) {
     const isPending = notification.status === "PENDING";
     const tone = getToneClasses(notification.tone, isPending);
     const actionConfig = notification.actionConfig;
@@ -44,7 +44,12 @@ export function NotificationRow({ notification, loading, onResponse, onOpenLink 
 
                     <div className="min-w-0">
                         <h2 className="text-base font-black tracking-tight text-foreground sm:text-lg">
-                            {notification.title}
+                            {!notification.isRead || notification.link ? (
+                                <button type="button" className="text-left hover:underline" disabled={loading}
+                                    onClick={() => onRead(notification, notification.link)}>
+                                    {notification.title}
+                                </button>
+                            ) : notification.title}
                         </h2>
                         <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground [overflow-wrap:anywhere]">
                             {notification.message}
@@ -58,6 +63,14 @@ export function NotificationRow({ notification, loading, onResponse, onOpenLink 
                     <Badge className={cn("w-fit rounded-md px-3 py-1 text-[10px] font-black uppercase tracking-widest", tone.status)}>
                         {notification.statusLabel}
                     </Badge>
+
+                    {notification.isRead ? (
+                        <span className="text-xs text-muted-foreground">Leída</span>
+                    ) : (
+                        <Button variant="ghost" size="sm" disabled={loading} onClick={() => onRead(notification)}>
+                            Marcar como leída
+                        </Button>
+                    )}
 
                     {isPending && actionConfig.mode === "respond" && (
                         <div className="grid w-full gap-2 sm:grid-cols-2 lg:grid-cols-1">
@@ -89,7 +102,8 @@ export function NotificationRow({ notification, loading, onResponse, onOpenLink 
                         <Button
                             variant={isPending ? "default" : "outline"}
                             className="h-10 w-full justify-center font-bold lg:w-auto"
-                            onClick={() => onOpenLink(actionConfig.href)}
+                            disabled={loading}
+                            onClick={() => onRead(notification, actionConfig.href)}
                         >
                             {actionConfig.linkLabel}
                             <ArrowUpRight className="ml-2 h-4 w-4" />
