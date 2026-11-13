@@ -55,14 +55,14 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
             <Suspense key={`review-${reportDate.toISOString()}-${branchId ?? "all"}`} fallback={<SectionSkeleton height="h-64" />}>
                 <MonthlyReview period={reportDate} branchId={branchId} />
             </Suspense>
-            <details className="mb-5 rounded-xl border border-zinc-700 bg-zinc-950 p-4"><summary className="min-h-11 cursor-pointer py-2 font-semibold">Costos de taller y bonos</summary>
+            <section className="mb-6"><h2 className="text-lg font-bold">Costos de taller y bonos</h2>
             <Suspense key={`financials-${reportDate.toISOString()}`} fallback={<div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10"><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /></div>}>
                 <FinancialsRowWidget
                     globalStatsPromise={globalStatsPromise}
                 />
             </Suspense>
 
-            </details>
+            </section>
             {/* Main Visuals Grid (Streaming) */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
                 {/* Revenue Chart */}

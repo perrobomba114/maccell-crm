@@ -23,36 +23,15 @@ function SalesFeedTimeline({ sales }: { sales: RecentSale[] }) {
     }
 
     return (
-        <div className="relative pl-4 border-l border-zinc-800 space-y-8 py-2">
-            {sales.map(sale => (
-                <div key={sale.id} className="relative group">
-                    {/* Timeline Dot */}
-                    <div className="absolute -left-[21px] top-3 w-3 h-3 rounded-full bg-zinc-900 border-2 border-zinc-700 group-hover:border-violet-500 group-hover:bg-violet-500 transition-colors shadow-sm"></div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-zinc-900/30 border border-zinc-800/50 hover:bg-zinc-900 hover:border-violet-500/30 transition-all hover:shadow-lg hover:shadow-violet-500/5">
-                        <div className="flex items-center gap-4">
-                            <div>
-                                <h4 className="text-sm font-bold text-white group-hover:text-violet-200 transition-colors">
-                                    Venta #{sale.saleNumber}
-                                </h4>
-                                <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                                    <span className="text-xs text-zinc-400 uppercase tracking-wider bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800 group-hover:border-zinc-700">
-                                        {sale.branchName}
-                                    </span>
-                                    <span className="text-xs text-zinc-400">
-                                        {formatArgentinaDate(new Date(sale.createdAt), "dd/MM/yyyy · HH:mm")}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <span className="text-base font-bold text-white block">{fmtMoney(sale.total)}</span>
-                            <span className="text-xs text-zinc-400">{sale.paymentMethod && getSalePaymentMethodLabel(sale.paymentMethod)}</span>
-                        </div>
-                    </div>
+        <ul className="divide-y divide-zinc-800">
+            {sales.map(sale => <li key={sale.id} className="flex flex-wrap items-start justify-between gap-2 py-3">
+                <div className="min-w-0"><strong className="break-words text-sm">Venta #{sale.saleNumber}</strong>
+                    <p className="text-sm text-zinc-400">{sale.branchName} · {formatArgentinaDate(new Date(sale.createdAt), "dd/MM/yyyy · HH:mm")}</p>
                 </div>
-            ))}
-        </div>
+                <div className="text-right"><strong className="tabular-nums">{fmtMoney(sale.total)}</strong>
+                    <p className="text-sm text-emerald-300">{sale.paymentMethod && getSalePaymentMethodLabel(sale.paymentMethod)}</p></div>
+            </li>)}
+        </ul>
     );
 }
 
@@ -87,7 +66,7 @@ export function RecentTransactions({ stats, selectedCategory }: { stats: { table
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto pr-2 space-y-3 max-h-[400px] scrollbar-thin scrollbar-thumb-zinc-800">
+                    <div className="flex-1">
                         <SalesFeedTimeline sales={filteredRecentSales} />
                     </div>
                 </div>

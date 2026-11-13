@@ -1,9 +1,10 @@
+import { dashboardOrigin } from "@/lib/dashboard-navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatArgentinaDate, getDailyRange } from "@/lib/date-utils";
 import { REPAIR_STATUS as S } from "@/lib/repairs/status";
 
-export async function DailyOperations({ branchId }: { branchId?: string }) {
+export async function DailyOperations({ branchId, period }: { branchId?: string; period: Date }) {
     const today = formatArgentinaDate();
     const { start, end } = getDailyRange(today);
     const scope = branchId ? { branchId } : {};
@@ -26,7 +27,7 @@ export async function DailyOperations({ branchId }: { branchId?: string }) {
         <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-5">
             <h2 className="text-lg font-semibold">Compromisos del taller <span className="ml-1 text-amber-300">{dueCount}</span></h2>
             <p className="mb-2 text-sm text-zinc-400">Pendientes con fecha prometida hasta hoy. Primero los más antiguos.</p>
-            {tickets.length ? <ul className="divide-y divide-zinc-800">{tickets.map(t => <li key={t.ticketNumber}><Link className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm hover:underline" href={`/admin/repairs?${new URLSearchParams({ q: t.ticketNumber, branch: branchId || "ALL" })}`}>
+            {tickets.length ? <ul className="divide-y divide-zinc-800">{tickets.map(t => <li key={t.ticketNumber}><Link className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm hover:underline" href={`/admin/repairs?${new URLSearchParams({ q: t.ticketNumber, branch: branchId || "ALL" })}&${dashboardOrigin(period, branchId)}`}>
                 <span className="min-w-0 break-words"><strong>#{t.ticketNumber}</strong> · {t.deviceBrand} {t.deviceModel}<span className="block text-xs text-zinc-400">{t.branch.name}</span></span>
                 <span className="shrink-0 text-amber-200">{formatArgentinaDate(t.promisedAt,"dd/MM/yy")}</span>
             </Link></li>)}</ul> : <p className="pt-3 text-sm">Sin compromisos pendientes para hoy.</p>}

@@ -1,11 +1,10 @@
 "use client";
 
-import React from "react";
-import { Trophy, Medal, Timer } from "lucide-react";
-import { motion } from "framer-motion";
+import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { dashboardOrigin } from "@/lib/dashboard-navigation";
 import { reportMonth } from "@/lib/date-utils";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 interface Technician {
     id: string;
@@ -21,122 +20,29 @@ interface TechLeaderboardProps {
 export function TechLeaderboard({ technicians }: TechLeaderboardProps) {
     const router = useRouter();
     const params = useSearchParams();
+    const pathname = usePathname();
     // Sort by repairs (desc)
     const sortedTechs = [...technicians].sort((a, b) => b.repairs - a.repairs);
-    const maxRepairs = sortedTechs[0]?.repairs || 1;
 
     const handleTechClick = (tech: Technician) => {
         const date = reportMonth(params.get("month"), params.get("year")).toISOString().slice(0, 7);
         const filters = new URLSearchParams({ techId: tech.id, tech: tech.name, date });
         if (params.get("branchId")) filters.set("branch", params.get("branchId")!);
+        if (pathname === "/admin/dashboard") {
+            dashboardOrigin(new Date(date + "-01T12:00:00Z"), params.get("branchId")).forEach((value, key) => filters.set(key, value));
+        }
         router.push(`/admin/repairs?${filters}`);
     };
 
-    return (
-        <div className="bg-[#09090b] rounded-3xl p-7 border border-zinc-900 shadow-2xl h-full flex flex-col overflow-hidden relative group">
-            {/* Ambient Background Glow */}
-            <div className="absolute -top-24 -right-24 w-64 h-64 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-violet-600/20 transition-all duration-1000" />
-            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-600/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-emerald-600/20 transition-all duration-1000" />
-
-            {/* Header */}
-            <div className="mb-8 flex justify-between items-center z-10 relative">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="w-8 h-8 rounded-lg bg-violet-600/20 flex items-center justify-center border border-violet-500/20">
-                            <Trophy className="text-violet-400" size={18} />
-                        </div>
-                        <h3 className="font-black text-xl text-white tracking-tight uppercase italic">
-                            Podio Técnico
-                        </h3>
-                    </div>
-                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-10">Productividad del Taller</p>
-                </div>
-            </div>
-
-            <div className="flex-1 space-y-3 z-10 relative">
-                {sortedTechs.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-zinc-600 py-12">
-                        <Timer className="mb-2 opacity-20" size={48} />
-                        <p className="text-sm font-medium">Sin actividad registrada</p>
-                    </div>
-                ) : (
-                    sortedTechs.slice(0, 5).map((tech, index) => {
-                        const isFirst = index === 0;
-                        const avgTime = tech.repairs > 0 ? Math.round(tech.time / tech.repairs) : 0;
-
-                        return (
-                            <motion.div
-                                key={tech.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1, duration: 0.5 }}
-                                onClick={() => handleTechClick(tech)}
-                                className={cn(
-                                    "group/item relative p-4 rounded-2xl border-2 transition-all duration-500 cursor-pointer",
-                                    isFirst
-                                        ? "bg-gradient-to-br from-violet-600/10 to-transparent border-violet-500/20 shadow-[0_0_20px_rgba(139,92,246,0.05)] hover:border-violet-500/40"
-                                        : "bg-zinc-900/20 border-transparent hover:border-zinc-800 hover:bg-zinc-900/40"
-                                )}
-                            >
-                                <div className="flex items-center gap-4">
-                                    {/* Rank Badge with Gradient */}
-                                    <div className={cn(
-                                        "w-10 h-10 rounded-xl flex items-center justify-center font-black text-base shadow-xl transition-transform duration-500 group-hover/item:scale-110",
-                                        index === 0 ? "bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 text-white border border-yellow-400/50 shadow-yellow-500/20" :
-                                            index === 1 ? "bg-gradient-to-br from-zinc-300 via-zinc-400 to-zinc-600 text-white border border-zinc-200/30" :
-                                                index === 2 ? "bg-gradient-to-br from-orange-400 via-orange-500 to-orange-700 text-white border border-orange-400/30" :
-                                                    "bg-zinc-800 text-zinc-500 border border-zinc-700/50"
-                                    )}>
-                                        {index === 0 ? <Medal size={22} className="drop-shadow-md" /> : index + 1}
-                                    </div>
-
-                                    {/* Tech Info */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-end mb-2">
-                                            <div className="flex flex-col">
-                                                <span className={cn(
-                                                    "font-bold text-sm tracking-tight",
-                                                    isFirst ? "text-white" : "text-zinc-300 group-hover/item:text-white transition-colors"
-                                                )}>
-                                                    {tech.name}
-                                                </span>
-                                                <div className="flex items-center gap-1.5 opacity-60">
-                                                    <Timer size={10} className="text-violet-400" />
-                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">
-                                                        {avgTime > 0 ? `${avgTime} min prom.` : "N/A"}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="block text-lg font-black text-white leading-none tracking-tighter tabular-nums">
-                                                    {tech.repairs}
-                                                </span>
-                                                <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Equipos</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Stylized Progress Bar */}
-                                        <div className="h-1.5 w-full bg-zinc-800/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${(tech.repairs / maxRepairs) * 100}%` }}
-                                                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                                                className={cn(
-                                                    "h-full rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]",
-                                                    index === 0 ? "bg-gradient-to-r from-yellow-400 to-yellow-600" :
-                                                        index === 1 ? "bg-gradient-to-r from-zinc-300 to-zinc-500" :
-                                                            index === 2 ? "bg-gradient-to-r from-orange-400 to-orange-600" :
-                                                                "bg-gradient-to-r from-violet-600 to-violet-800"
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        );
-                    })
-                )}
-            </div>
-        </div>
-    );
+    return <section className="h-full rounded-2xl border border-violet-900/70 bg-zinc-950 p-5">
+        <h3 className="flex items-center gap-2 text-xl font-black italic"><Trophy className="size-5 text-violet-400" />Podio Técnico</h3>
+        <p className="mb-3 text-sm text-zinc-400">Tickets con actividad de cierre en el período.</p>
+        <ol className="divide-y divide-zinc-800">{sortedTechs.slice(0, 5).map((tech, i) => <li key={tech.id}>
+            <button type="button" onClick={() => handleTechClick(tech)} className="grid w-full grid-cols-[2rem_1fr_auto] items-center gap-3 rounded-md py-3 text-left hover:bg-violet-950/50">
+                <span className={cn("grid size-8 place-items-center rounded-lg font-black", ["bg-amber-400 text-zinc-950","bg-slate-300 text-zinc-950","bg-orange-500 text-zinc-950"][i] ?? "bg-zinc-800")}>{i + 1}</span>
+                <span className="min-w-0 break-words font-semibold">{tech.name}<span className="block text-xs font-normal text-zinc-400">{tech.time} min de carga actual</span></span>
+                <span className="text-right font-bold tabular-nums">{tech.repairs}<span className="block text-xs font-normal text-zinc-400">tickets</span></span>
+            </button>
+        </li>)}</ol>{!sortedTechs.length && <p>Sin técnicos en la selección.</p>}
+    </section>;
 }

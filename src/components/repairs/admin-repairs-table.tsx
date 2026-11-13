@@ -43,8 +43,12 @@ export function AdminRepairsTable({ repairsData, branches, statuses }: { repairs
     const pendingSearchTermRef = useRef<string | null>(null);
     const openedRepairIdRef = useRef<string | null>(null);
 
+    const serialized = searchParams.toString();
+    const draftQuery = useRef(serialized);
+    useEffect(() => { draftQuery.current = serialized; }, [serialized]);
+
     const updateParams = useCallback((updates: Record<string, string | null>) => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(draftQuery.current);
         Object.entries(updates).forEach(([key, value]) => {
             if (value === null || value === "ALL" || value === "") {
                 params.delete(key);
@@ -55,12 +59,13 @@ export function AdminRepairsTable({ repairsData, branches, statuses }: { repairs
         if (!updates.page) params.delete("page");
 
         const queryString = params.toString();
-        if (queryString === searchParams.toString()) return;
+        if (queryString === draftQuery.current) return;
+        draftQuery.current = queryString;
 
         startTransition(() => {
             router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
         });
-    }, [searchParams, pathname, router]);
+    }, [pathname, router]);
 
     useEffect(() => {
         const normalizedSearchTerm = searchTerm.trim();

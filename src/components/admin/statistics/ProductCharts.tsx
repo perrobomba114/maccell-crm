@@ -1,17 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { TrendingUp, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Cell
-} from "recharts";
 type TopProductDatum = {
     name: string;
     quantity: number;
@@ -20,7 +9,7 @@ type TopProductDatum = {
 type LowStockItem = {
     name: string;
     branch: string;
-    stock: number;
+    quantity: number;
 };
 
 type UsedPart = {
@@ -37,66 +26,13 @@ type RepairStatsData = {
     mostUsedParts: UsedPart[];
 };
 
-function TopProductsInternalChart({ data }: { data: TopProductDatum[] }) {
-    const [isMounted, setIsMounted] = useState(false);
-    const [isReady, setIsReady] = useState(false);
-
-    useEffect(() => {
-        setIsMounted(true);
-        const timer = setTimeout(() => setIsReady(true), 500);
-        return () => clearTimeout(timer);
-    }, []);
-
-    if (!data || data.length === 0) return <div className="h-full flex items-center justify-center text-zinc-500 text-sm">Sin datos de productos</div>;
-
-    if (!isMounted || !isReady) {
-        return (
-            <div className="h-full flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-            </div>
-        );
-    }
-
-    return (
-        <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={200}>
-            <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#27272a" />
-                <XAxis type="number" fontSize={11} stroke="#71717a" hide />
-                <YAxis
-                    dataKey="name"
-                    type="category"
-                    width={100}
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    stroke="#a1a1aa"
-                />
-                <Tooltip
-                    cursor={{ fill: '#27272a', opacity: 0.4 }}
-                    contentStyle={{
-                        backgroundColor: '#18181b',
-                        borderColor: '#27272a',
-                        borderRadius: '8px',
-                        color: '#fff'
-                    }}
-                />
-                <Bar dataKey="quantity" name="Cantidad" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={16}>
-                    {data.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={index < 3 ? '#8b5cf6' : '#6366f1'} />
-                    ))}
-                </Bar>
-            </BarChart>
-        </ResponsiveContainer>
-    );
-}
-
 export function ProductCharts({ productStats }: { productStats: ProductStatsData | null | undefined; repairStats?: RepairStatsData | null }) {
     if (!productStats) return null;
 
     return (
         <>
             {/* Top Selling Products - Grid Item */}
-            <div className="xl:col-span-1 bg-[#18181b] rounded-2xl border border-zinc-800 p-6 flex flex-col min-h-[450px]">
+            <div className="xl:col-span-1 bg-[#18181b] rounded-2xl border border-zinc-800 p-6 flex flex-col min-w-0">
                 <div className="flex items-start justify-between mb-6">
                     <div>
                         <h3 className="text-lg font-bold text-white mb-1">Top Productos</h3>
@@ -107,7 +43,9 @@ export function ProductCharts({ productStats }: { productStats: ProductStatsData
                     </div>
                 </div>
                 <div className="flex-1 w-full h-full">
-                    <TopProductsInternalChart data={productStats.topSelling} />
+                    <ol className="divide-y divide-zinc-800">{productStats.topSelling.map((item, index) => <li key={index} className="grid grid-cols-[1.5rem_1fr_auto] items-baseline gap-2 py-2 text-sm">
+                        <span className="font-bold text-violet-400">{index + 1}</span><span className="min-w-0 break-words">{item.name}</span><strong>{item.quantity} un.</strong>
+                    </li>)}</ol>{!productStats.topSelling.length && <p className="text-sm text-zinc-400">Sin productos vendidos en el período.</p>}
                 </div>
             </div>
 
@@ -128,13 +66,13 @@ export function StockAlertsList({ productStats }: { productStats: ProductStatsDa
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <h3 className="text-lg font-bold text-white mb-1">Stock Crítico</h3>
-                    <p className="text-sm text-zinc-500">Existencias actuales por sucursal</p>
+                    <p className="text-sm text-zinc-500">Stock actual de productos con reposición sugerida</p>
                 </div>
                 <div className="bg-red-500/10 p-2 rounded-lg text-red-500">
                     <AlertTriangle size={18} />
                 </div>
             </div>
-            <div className="space-y-4 flex-1 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
+            <div className="space-y-3 flex-1">
                 {productStats.lowStock.length === 0 ? (
                     <div className="text-zinc-500 text-sm text-center py-10 flex flex-col items-center">
                         <CheckCircle2 size={30} className="mb-2 text-emerald-500/50" />
@@ -147,7 +85,7 @@ export function StockAlertsList({ productStats }: { productStats: ProductStatsDa
                             <p className="text-xs text-zinc-400">{item.branch}</p>
                         </div>
                         <div className="px-2 py-1 bg-red-500/10 rounded-md text-red-500 text-xs font-bold border border-red-500/20">
-                            {item.stock} un.
+                            {item.quantity} un.
                         </div>
                     </div>
                 ))}
@@ -170,14 +108,14 @@ export function TopPartsList({ repairStats }: { repairStats: RepairStatsData | n
                     <Package size={18} />
                 </div>
             </div>
-            <div className="space-y-4 flex-1 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
+            <div className="space-y-3 flex-1">
                 {repairStats.mostUsedParts.length === 0 ? (
                     <div className="text-zinc-500 text-sm text-center py-10">Sin datos</div>
                 ) : repairStats.mostUsedParts.map((part, i) => (
                     <div key={i} className="group">
                         <div className="flex justify-between items-center gap-3 mb-1 text-sm">
                             <span className="min-w-0 text-zinc-300 font-medium [overflow-wrap:anywhere]">{part.name}</span>
-                            <span className="text-emerald-500 font-bold">{part.count}</span>
+                            <span className="text-emerald-300 font-bold">{part.count} un.</span>
                         </div>
                         <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
                             <div

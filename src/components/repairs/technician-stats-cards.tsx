@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { format } from "date-fns";
+import { addMonths, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,9 @@ export function TechnicianStatsCards({ selectedDate, initialData, statusName }: 
 
     const handleDateShift = (days: number) => {
         replaceParams({
-            date: shiftAdminRepairDateFilter(activeDateFilter, days),
+            date: isMonthFilter
+                ? format(addMonths(new Date((activeDateFilter === MONTH_REPAIR_DATE_FILTER ? getTodayRepairDateFilter().slice(0, 7) : activeDateFilter) + "-01T12:00:00"), days), "yyyy-MM")
+                : shiftAdminRepairDateFilter(activeDateFilter, days),
         });
     };
 
@@ -91,15 +93,14 @@ export function TechnicianStatsCards({ selectedDate, initialData, statusName }: 
         <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 bg-muted/30 p-2 rounded-lg w-full sm:w-fit">
                 <span className="text-sm font-medium text-muted-foreground pl-2">Filtrar rendimiento por fecha:</span>
-                {!isMonthFilter && (
-                    <>
+
                         <Button
                             variant={"outline"}
                             size="icon"
                             onClick={() => handleDateShift(-1)}
                             disabled={isPending}
-                            className="h-8 w-8"
-                            title="Día anterior"
+                            className="h-11 w-11"
+                            title={isMonthFilter ? "Mes anterior" : "Día anterior"}
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -108,13 +109,11 @@ export function TechnicianStatsCards({ selectedDate, initialData, statusName }: 
                             size="icon"
                             onClick={() => handleDateShift(1)}
                             disabled={isPending}
-                            className="h-8 w-8"
-                            title="Día siguiente"
+                            className="h-11 w-11"
+                            title={isMonthFilter ? "Mes siguiente" : "Día siguiente"}
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
-                    </>
-                )}
                 <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <PopoverTrigger asChild>
                         <Button
@@ -122,7 +121,7 @@ export function TechnicianStatsCards({ selectedDate, initialData, statusName }: 
                             size="sm"
                             disabled={isPending}
                             className={cn(
-                                "w-full sm:w-[240px] justify-start text-left font-normal bg-background hover:bg-background/90",
+                                "h-11 w-full sm:w-[240px] justify-start text-left font-normal bg-background hover:bg-background/90",
                                 !selectedCalendarDate && "text-muted-foreground"
                             )}
                         >
@@ -133,6 +132,7 @@ export function TechnicianStatsCards({ selectedDate, initialData, statusName }: 
                     <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                             mode="single"
+                            defaultMonth={selectedCalendarDate ?? (/^\d{4}-\d{2}$/.test(activeDateFilter) ? new Date(activeDateFilter + "-01T12:00:00") : undefined)}
                             selected={selectedCalendarDate}
                             onSelect={handleDateChange}
                             initialFocus
@@ -140,7 +140,7 @@ export function TechnicianStatsCards({ selectedDate, initialData, statusName }: 
                     </PopoverContent>
                 </Popover>
                 {isPending && (
-                    <span className="text-xs font-semibold text-muted-foreground px-2">
+                    <span role="status" className="sr-only">
                         Actualizando...
                     </span>
                 )}

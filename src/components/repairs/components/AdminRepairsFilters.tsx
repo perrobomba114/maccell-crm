@@ -1,7 +1,7 @@
 "use client";
 
 import { getTodayRepairDateFilter, resolveAdminRepairDateSelection } from "@/lib/admin-repairs-date-filter";
-import { Search, Building2, ShieldCheck, ShieldAlert, X, Filter, Smartphone } from "lucide-react";
+import { Search, ShieldCheck, ShieldAlert, X, Filter, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +55,7 @@ export function AdminRepairsFilters({
                         placeholder="Buscar por ticket, cliente, teléfono, modelo, técnico o falla..."
                         value={localSearchTerm}
                         onChange={(e) => setLocalSearchTerm(e.target.value)}
-                        className="pl-10 h-9 bg-muted/30 border-muted-foreground/20 focus:bg-background transition-all"
+                        className="pl-10 h-11 bg-muted/30 border-muted-foreground/20 focus:bg-background transition-all"
                     />
                     {isSearchWithoutExplicitDate && (
                         <Badge variant="secondary" className="mt-2 w-fit border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300">
@@ -75,7 +75,7 @@ export function AdminRepairsFilters({
                             size="sm"
                             onClick={() => updateParams({ date: period.value })}
                             className={cn(
-                                "h-9 px-4 font-bold flex-1 md:flex-none transition-all",
+                                "h-11 px-4 font-bold flex-1 md:flex-none transition-all",
                                 period.active && period.label === "Hoy" && "bg-blue-600 hover:bg-blue-700 text-white shadow-md border-blue-600",
                                 period.active && period.label === "Este Mes" && "bg-purple-600 hover:bg-purple-700 text-white shadow-md border-purple-600"
                             )}
@@ -87,65 +87,17 @@ export function AdminRepairsFilters({
             </div>
 
             <div className="flex flex-wrap items-end gap-x-4 gap-y-3 pt-3 border-t">
-                {/* Branch Selection */}
-                <div className="min-w-0 space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                        <Building2 className="h-3.5 w-3.5" />
-                        Sucursal
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        <Button
-                            variant={selectedBranchId === "ALL" ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => updateParams({ branch: "ALL" })}
-                            className={cn(
-                                "h-8 px-3 font-bold transition-all border-2",
-                                selectedBranchId === "ALL" 
-                                    ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800 shadow-md" 
-                                    : "text-muted-foreground border-dashed hover:border-solid"
-                            )}
-                        >
-                            Todas
-                        </Button>
-                        {branches
-                            .slice()
-                            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-                            .map((b, index) => {
-                                const isSelected = selectedBranchId === b.id;
-                                const colors = [
-                                    "border-orange-500/30 text-orange-600 bg-orange-50/50 hover:bg-orange-100",
-                                    "border-blue-500/30 text-blue-600 bg-blue-50/50 hover:bg-blue-100",
-                                    "border-green-500/30 text-green-600 bg-green-50/50 hover:bg-green-100",
-                                    "border-purple-500/30 text-purple-600 bg-purple-50/50 hover:bg-purple-100",
-                                    "border-pink-500/30 text-pink-600 bg-pink-50/50 hover:bg-pink-100",
-                                    "border-cyan-500/30 text-cyan-600 bg-cyan-50/50 hover:bg-cyan-100",
-                                ];
-                                const activeColors = [
-                                    "bg-orange-600 text-white border-orange-600 shadow-sm",
-                                    "bg-blue-600 text-white border-blue-600 shadow-sm",
-                                    "bg-green-600 text-white border-green-600 shadow-sm",
-                                    "bg-purple-600 text-white border-purple-600 shadow-sm",
-                                    "bg-pink-600 text-white border-pink-600 shadow-sm",
-                                    "bg-cyan-600 text-white border-cyan-600 shadow-sm",
-                                ];
-                                
-                                return (
-                                    <Button
-                                        key={b.id}
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => updateParams({ branch: b.id })}
-                                        className={cn(
-                                            "h-8 px-3 font-bold transition-all border",
-                                            isSelected ? activeColors[index % activeColors.length] : colors[index % colors.length]
-                                        )}
-                                    >
-                                        {b.name}
-                                    </Button>
-                                );
-                            })}
-                    </div>
-                </div>
+                <label className="block w-full min-w-0 text-sm font-medium sm:w-60">Sucursal
+                    <select className="mt-1 block h-11 w-full rounded-md border border-input bg-background px-2 text-base" value={selectedBranchId} onChange={e => updateParams({ branch: e.target.value })}>
+                        <option value="ALL">Todas las sucursales</option>
+                        {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                </label>
+                <label className="block w-full min-w-0 text-sm font-medium sm:w-48">Mes de reparaciones
+                    <input type="month" className="mt-1 block h-11 w-full min-w-0 rounded-md border border-input bg-background px-2 text-base"
+                        value={activeDate === "MONTH" ? todayStr.slice(0, 7) : /^\d{4}-\d{2}$/.test(activeDate) ? activeDate : ""}
+                        onChange={e => { if (e.target.value) updateParams({ date: e.target.value }); }} />
+                </label>
 
                 {/* Special Filters */}
                 <div className="space-y-2">
@@ -159,7 +111,7 @@ export function AdminRepairsFilters({
                             id="repair-status-filter"
                             value={searchParams.get("status") || "ALL"}
                             onChange={(event) => updateParams({ status: event.target.value })}
-                            className="h-9 w-full sm:w-52 rounded-md border border-input bg-background px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="h-11 w-full sm:w-52 rounded-md border border-input bg-background px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             <option value="ALL">Todos los estados</option>
                             {statuses.map(status => <option key={status.id} value={status.id}>{status.name}</option>)}
@@ -169,7 +121,7 @@ export function AdminRepairsFilters({
                             size="sm"
                             onClick={() => setShowOnlyWarranty(!showOnlyWarranty)}
                             className={cn(
-                                "h-8 font-bold justify-start gap-2",
+                                "h-11 font-bold justify-start gap-2",
                                 showOnlyWarranty ? "bg-yellow-500 hover:bg-yellow-600 text-white shadow-md border-yellow-600" : "text-yellow-600 border-yellow-500/30 hover:bg-yellow-50"
                             )}
                         >
@@ -177,15 +129,16 @@ export function AdminRepairsFilters({
                             Solo Garantías
                         </Button>
 
-                        {hasActiveFilters && (
+                        {(
                             <Button
                                 variant="ghost"
                                 size="sm"
+                                disabled={!hasActiveFilters && !searchParams.has("ingresos")}
                                 onClick={() => {
                                     setLocalSearchTerm("");
-                                    updateParams({ q: null, date: todayStr, techId: null, tech: null, warranty: null, status: null, branch: "ALL" });
+                                    updateParams({ q: null, ingresos: null, date: todayStr, techId: null, tech: null, warranty: null, status: null, branch: "ALL" });
                                 }}
-                                className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50 font-bold justify-start gap-2"
+                                className="h-11 text-red-500 hover:text-red-600 hover:bg-red-50 font-bold justify-start gap-2"
                             >
                                 <X className="h-4 w-4" />
                                 Limpiar Filtros

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { dashboardOrigin } from "@/lib/dashboard-navigation";
 import { reportMonth } from "@/lib/date-utils";
 import { DollarSign, CheckCircle2, Wrench, Package, ShieldAlert, XCircle, Zap } from "lucide-react";
 import { growthLabel } from "@/lib/monthly-growth";
@@ -16,6 +17,7 @@ export function FinancialStats({ stats }: { stats: any }) {
     const context = new URLSearchParams({ month: String(month.getUTCMonth()), year: String(month.getUTCFullYear()) });
     const branch = params.get("branchId");
     if (branch) context.set("branchId", branch);
+    const origin = dashboardOrigin(month, branch);
     if (!stats) return null;
 
     const { financials, repairs, stock } = stats;
@@ -36,7 +38,7 @@ export function FinancialStats({ stats }: { stats: any }) {
                     icon={DollarSign}
                     detail={growthLabel(financials.salesGrowth)}
                     subtext="Respecto del mes anterior"
-                    href={`/admin/sales?${context}`}
+                    href={`/admin/sales?${context}&${origin}`}
                 />
                 <MetricCard
                     title="Margen bruto estimado"
@@ -54,7 +56,7 @@ export function FinancialStats({ stats }: { stats: any }) {
                     icon={Wrench}
                     detail={`${repairs.active} activas hoy`}
                     subtext="Por fecha de ingreso"
-                    href={`/admin/repairs?date=${month.toISOString().slice(0, 7)}&ingresos=1&branch=${encodeURIComponent(branch || "ALL")}`}
+                    href={`/admin/repairs?date=${month.toISOString().slice(0, 7)}&ingresos=1&branch=${encodeURIComponent(branch || "ALL")}&${origin}`}
                 />
                 <MetricCard
                     title="Equipos resueltos"

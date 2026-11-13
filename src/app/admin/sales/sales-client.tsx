@@ -4,21 +4,16 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Link from "next/link";
+import { formatArgentinaDate } from "@/lib/date-utils";
 import { Badge } from "@/components/ui/badge";
 import {
-    CalendarIcon,
-    Search,
-    X,
     DollarSign,
     ShoppingBag,
     Receipt,
     Building2,
     History,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAdminSales } from "./use-admin-sales";
 
@@ -48,7 +43,7 @@ export default function AdminSalesClient() {
         branches,
         loading,
         month, date,
-        setDate,
+        day, setDay, setMonth, clear, back,
         searchTerm,
         setSearchTerm,
         selectedBranch,
@@ -82,13 +77,8 @@ export default function AdminSalesClient() {
             : branches.find((b) => b.id === selectedBranch)?.name ?? "Todas las sucursales";
 
     const periodLabel = date ? format(date, "PPP", { locale: es }) : month ? format(month, "MMMM yyyy", { locale: es }) : "Histórico completo";
-    const hasActiveFilters = searchTerm.trim().length > 0 || date !== undefined || selectedBranch !== "ALL";
-
-    const handleClearFilters = () => {
-        setSearchTerm("");
-        setDate(new Date());
-        setSelectedBranch("ALL");
-    };
+    const field = "mt-1 block h-11 w-full min-w-0 rounded-md border border-input bg-background px-2 text-base font-normal";
+    const mode = month ? "month" : date ? "day" : "history";
 
     const handleViewSale = (sale: SaleWithDetails) => {
         setViewingSale(sale);
@@ -96,7 +86,7 @@ export default function AdminSalesClient() {
 
     return (
         <div className="flex w-full flex-col gap-6 p-4 md:p-6">
-            {/* Header */}
+            {back && <Link href={back} className="inline-flex min-h-11 w-fit items-center text-sm font-medium underline">Volver al Dashboard</Link>}
             <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
                 <div className="relative flex flex-col gap-1 border-b p-5 sm:p-6">
                     <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-emerald-400 to-emerald-600" />
@@ -121,147 +111,29 @@ export default function AdminSalesClient() {
                     </div>
                 </div>
 
-                {/* Toolbar de filtros */}
-                <div className="border-t bg-gradient-to-r from-emerald-500/5 via-blue-500/5 to-purple-500/5 p-4 sm:p-5">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
-                        {/* Buscador hero — full width primero */}
-                        <div className="group relative flex-1">
-                            <div
-                                className={cn(
-                                    "pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 opacity-0 blur transition-opacity duration-300",
-                                    searchTerm ? "opacity-25" : "group-focus-within:opacity-20"
-                                )}
-                            />
-                            <div className="relative">
-                                <Search
-                                    className={cn(
-                                        "absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transition-colors",
-                                        searchTerm ? "text-blue-500" : "text-muted-foreground"
-                                    )}
-                                />
-                                <Input
-                                    placeholder="Buscar ticket, cliente o producto…"
-                                    className={cn(
-                                        "h-12 w-full rounded-xl border-2 pl-12 pr-10 text-base font-medium shadow-sm transition-all",
-                                        "focus-visible:ring-0 focus-visible:ring-offset-0",
-                                        searchTerm
-                                            ? "border-blue-500 bg-blue-500/5"
-                                            : "border-border bg-background hover:border-blue-500/40"
-                                    )}
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                                {searchTerm && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setSearchTerm("")}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                        title="Limpiar búsqueda"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-stretch gap-2">
-                            {/* Sucursal — emerald */}
-                            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                                <SelectTrigger
-                                    className={cn(
-                                        "group h-12 min-w-[180px] gap-2.5 rounded-xl border-2 px-4 font-semibold shadow-sm transition-all hover:shadow-md",
-                                        selectedBranch !== "ALL"
-                                            ? "border-emerald-500 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white hover:from-emerald-500 hover:to-emerald-700 [&>svg]:text-white/80"
-                                            : "border-border bg-background hover:border-emerald-500/50"
-                                    )}
-                                >
-                                    <div
-                                        className={cn(
-                                            "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
-                                            selectedBranch !== "ALL"
-                                                ? "bg-white/20"
-                                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                        )}
-                                    >
-                                        <Building2 className="h-4 w-4" />
-                                    </div>
-                                    <SelectValue placeholder="Todas las sucursales" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="ALL">Todas las sucursales</SelectItem>
-                                    {branches.map((b) => (
-                                        <SelectItem key={b.id ?? b.name} value={b.id ?? "ALL"}>
-                                            {b.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            {/* Fecha — amber */}
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        className={cn(
-                                            "h-12 min-w-[200px] justify-start gap-2.5 rounded-xl border-2 px-4 font-semibold shadow-sm transition-all hover:shadow-md",
-                                            date
-                                                ? "border-amber-500 bg-gradient-to-br from-amber-400 to-orange-500 text-white hover:from-amber-400 hover:to-orange-600"
-                                                : "border-border bg-background text-foreground hover:border-amber-500/50 hover:bg-background"
-                                        )}
-                                    >
-                                        <div
-                                            className={cn(
-                                                "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
-                                                date
-                                                    ? "bg-white/20"
-                                                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                            )}
-                                        >
-                                            <CalendarIcon className="h-4 w-4" />
-                                        </div>
-                                        <span className="flex-1 truncate text-left">
-                                            {date ? format(date, "PPP", { locale: es }) : month ? format(month, "MMMM yyyy", { locale: es }) : "Histórico completo"}
-                                        </span>
-                                        {date && (
-                                            <span
-                                                role="button"
-                                                tabIndex={0}
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setDate(undefined);
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter" || e.key === " ") {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        setDate(undefined);
-                                                    }
-                                                }}
-                                                className="rounded-md p-0.5 hover:bg-white/20"
-                                                title="Ver histórico completo"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </span>
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="end">
-                                    <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                                </PopoverContent>
-                            </Popover>
-
-                            {hasActiveFilters && (
-                                <Button
-                                    variant="outline"
-                                    onClick={handleClearFilters}
-                                    className="h-12 gap-2 rounded-xl border-2 border-rose-500/30 bg-rose-500/5 px-4 font-semibold text-rose-600 shadow-sm transition-all hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-700 hover:shadow-md dark:text-rose-400 dark:hover:text-rose-300"
-                                >
-                                    <X className="h-4 w-4" />
-                                    Limpiar
-                                </Button>
-                            )}
-                        </div>
-                    </div>
+                <div className="grid gap-3 border-t p-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <label className="min-w-0 text-sm font-medium">Buscar venta
+                        <Input type="search" className={field} placeholder="Ticket, cliente o producto" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                    </label>
+                    <label className="min-w-0 text-sm font-medium">Sucursal
+                        <select className={field} value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}>
+                            <option value="ALL">Todas las sucursales</option>
+                            {branches.filter(b => b.id).map(b => <option key={b.id} value={b.id!}>{b.name}</option>)}
+                        </select>
+                    </label>
+                    <label className="min-w-0 text-sm font-medium">Período
+                        <select className={field} value={mode} onChange={e => {
+                            if (e.target.value === "month") setMonth((day || formatArgentinaDate()).slice(0, 7));
+                            else setDay(e.target.value === "day" ? month?.toISOString().slice(0, 10) || formatArgentinaDate() : "");
+                        }}>
+                            <option value="day">Por día</option><option value="month">Por mes</option><option value="history">Histórico completo</option>
+                        </select>
+                    </label>
+                    <label className="min-w-0 text-sm font-medium">{mode === "month" ? "Mes" : "Fecha"}
+                        {month ? <input className={field} type="month" value={month.toISOString().slice(0, 7)} onChange={e => { if (e.target.value) setMonth(e.target.value); }} /> :
+                            <input className={field} type="date" disabled={!day} value={day || ""} onChange={e => setDay(e.target.value)} />}
+                    </label>
+                    <Button variant="outline" className="h-11 w-fit" onClick={clear}>Limpiar filtros</Button>
                 </div>
 
                 {/* KPI Grid */}

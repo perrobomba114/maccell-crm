@@ -59,7 +59,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
             <StatisticsHeader dashboard branches={branches} currentBranchId={branchId} period={date} />
 
             <Suspense key={branchId || "all"} fallback={<SectionSkeleton height="h-48" />}>
-                <DailyOperations branchId={branchId} />
+                <DailyOperations period={date} branchId={branchId} />
             </Suspense>
 
             {/* SECTION 1: FINANCIAL OVERVIEW - Streaming */}
@@ -67,7 +67,6 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                 <FinancialsWidget salesPromise={salesPromise} repairsPromise={repairsPromise} />
             </Suspense>
 
-            <details className="rounded-xl border border-zinc-700 bg-zinc-950 p-4"><summary className="min-h-11 cursor-pointer py-2 font-semibold">Actividad, inventario y detalle operativo</summary>
             <Suspense key={`${date.toISOString()}-${branchId ?? "all"}`} fallback={<SectionSkeleton />}>
                 <InteractiveWidget
                     salesPromise={salesPromise}
@@ -92,7 +91,6 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                 />
             </Suspense>
 
-            </details>
 
         </div>
     );

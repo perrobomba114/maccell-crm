@@ -23,7 +23,7 @@ const COLORS = [
 const fmtMoney = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
 const fmtCompact = (n: number) => new Intl.NumberFormat("es-AR", { notation: "compact", compactDisplay: "short" }).format(n);
 
-export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCategory }: ProfitDonutProps) {
+export function ProfitDonut({ data = [], onCategorySelect, selectedCategory }: ProfitDonutProps) {
     const [isMounted, setIsMounted] = useState(false);
     const [isReady, setIsReady] = useState(false);
 
@@ -38,7 +38,7 @@ export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCa
         .filter(d => d.value > 0)
         .sort((a, b) => b.value - a.value);
 
-    const safeTotal = total > 0 ? total : sortedData.reduce((acc, curr) => acc + curr.value, 0);
+    const safeTotal = sortedData.reduce((acc, curr) => acc + curr.value, 0);
 
     if (!isMounted || !isReady) {
         return (
@@ -54,7 +54,7 @@ export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCa
                 <div className="bg-zinc-900/50 p-4 rounded-full mb-4">
                     <PieChartIcon className="text-zinc-700" size={32} />
                 </div>
-                <h3 className="font-bold text-white mb-1">Sin Datos de Ganancia</h3>
+                <h3 className="font-bold text-white mb-1">Participación de Ganancias</h3>
                 <p className="text-sm text-zinc-500 max-w-[200px]">No se registraron ventas con margen positivo en este periodo.</p>
             </div>
         );
@@ -73,7 +73,7 @@ export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCa
             <div className="flex-1 flex flex-col lg:flex-row items-center justify-between p-6 gap-8 relative z-10 transition-all">
                 {/* 1. Chart Section */}
                 <div className="relative w-full lg:w-1/2 min-h-[300px]" style={{ height: '300px' }}>
-                    <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={300} minHeight={300} debounce={50}>
+                    <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={0} minHeight={300} debounce={50}>
                         <PieChart>
                             <defs>
                                 <linearGradient id="colorVoyager" x1="0" y1="0" x2="0" y2="1">
@@ -153,29 +153,29 @@ export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCa
                             }
                         </span>
                         <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">
-                            {selectedCategory || "Ganancia Total"}
+                            {selectedCategory || "Margen positivo"}
                         </span>
                     </div>
                 </div>
 
                 {/* 2. Legend / Details List (Right Side) */}
                 <div className="w-full lg:w-1/2 flex flex-col justify-center space-y-3">
-                    {sortedData.slice(0, 5).map((entry: any, i: number) => {
+                    {sortedData.map((entry: any, i: number) => {
                         const percent = safeTotal > 0 ? (entry.value / safeTotal) * 100 : 0;
                         const colorSet = COLORS[i % COLORS.length];
                         const isSelected = selectedCategory === entry.name;
                         const isDimmed = selectedCategory && !isSelected;
 
                         return (
-                            <div
+                            <button type="button" aria-pressed={isSelected}
                                 key={i}
                                 className={cn(
-                                    "flex flex-col gap-1 w-full cursor-pointer transition-all duration-300",
-                                    isDimmed ? "opacity-30 blur-[1px]" : "opacity-100"
+                                    "flex flex-col gap-1 min-h-11 w-full cursor-pointer transition-all duration-300",
+                                    isDimmed ? "opacity-75" : "opacity-100"
                                 )}
                                 onClick={() => onCategorySelect && onCategorySelect(isSelected ? null : entry.name)}
                             >
-                                <div className="flex justify-between items-end">
+                                <div className="flex flex-wrap justify-between items-end gap-2">
                                     <div className="flex items-center gap-3">
                                         <div
                                             className={cn(
@@ -185,7 +185,7 @@ export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCa
                                             style={{ backgroundColor: colorSet.hex }}
                                         />
                                         <span className={cn(
-                                            "text-sm font-medium truncate max-w-[140px] transition-colors",
+                                            "min-w-0 break-words text-left text-sm font-medium transition-colors",
                                             isSelected ? "text-white scale-105 origin-left" : "text-zinc-400"
                                         )} title={entry.name}>
                                             {entry.name}
@@ -211,7 +211,7 @@ export function ProfitDonut({ data = [], total = 0, onCategorySelect, selectedCa
                                         }}
                                     />
                                 </div>
-                            </div>
+                            </button>
                         );
                     })}
                     {sortedData.length > 5 && (

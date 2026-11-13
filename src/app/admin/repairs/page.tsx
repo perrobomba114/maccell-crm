@@ -1,3 +1,4 @@
+import { dashboardReturnHref } from "@/lib/dashboard-navigation";
 import { db } from "@/lib/db";
 import { normalizeAdminRepairStatusId } from "@/lib/admin-repairs-status-filter";
 import { getUserData } from "@/actions/get-user";
@@ -28,6 +29,7 @@ export default async function AdminRepairsPage(
     props: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }
 ) {
     const searchParams = await props.searchParams;
+    const back = dashboardReturnHref(typeof searchParams?.fromMonth === "string" ? searchParams.fromMonth : null, typeof searchParams?.fromBranch === "string" ? searchParams.fromBranch : null);
     const query = typeof searchParams?.q === 'string' ? searchParams.q : "";
     const branchId = typeof searchParams?.branch === "string" ? searchParams.branch : "ALL";
     const technician = typeof searchParams?.tech === "string" ? searchParams.tech : "";
@@ -54,6 +56,7 @@ export default async function AdminRepairsPage(
 
     return (
         <div className="space-y-6">
+            {back && <Link href={back} className="inline-flex min-h-11 items-center text-sm font-medium underline">Volver al Dashboard</Link>}
             <div className="flex flex-wrap justify-between items-center gap-3">
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Gestión de Reparaciones</h2>
                 <Link href="/admin/repairs/create">

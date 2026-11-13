@@ -16,7 +16,7 @@ export function OperationalHighlights({ stats, selectedCategory, onCategorySelec
 
     return (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-            <div className="xl:col-span-2 min-h-[400px]">
+            <div className="xl:col-span-2 min-w-0">
                 {/* Using the Donut Chart for profit Segments (Categories) */}
                 <ProfitDonut
                     data={categoryShare.segments}
@@ -25,7 +25,7 @@ export function OperationalHighlights({ stats, selectedCategory, onCategorySelec
                     selectedCategory={selectedCategory}
                 />
             </div>
-            <div className="xl:col-span-1 min-h-[400px]">
+            <div className="xl:col-span-1 min-w-0">
                 <TechLeaderboard technicians={repairs.technicians} />
             </div>
         </div>

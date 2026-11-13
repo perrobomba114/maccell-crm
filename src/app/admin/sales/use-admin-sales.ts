@@ -1,6 +1,8 @@
-import { getMonthlyRange, reportMonth } from "@/lib/date-utils";
-import { useCallback, useEffect, useState } from "react";
+import { formatArgentinaDate, getDailyRange, getMonthlyRange, reportMonth } from "@/lib/date-utils";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { dashboardReturnHref } from "@/lib/dashboard-navigation";
+import { normalizeRepairDateFilter } from "@/lib/repair-date-filter";
 import { toast } from "sonner";
 import {
     getAdminSalesPage,
@@ -16,20 +18,33 @@ const ADMIN_SALES_PAGE_SIZE = 25;
 
 export function useAdminSales() {
     const searchParams = useSearchParams();
-    const initialQuery = searchParams.get("search") || "";
+
 
     const [sales, setSales] = useState<SaleWithDetails[]>([]);
     const [rankingData, setRankingData] = useState<BranchRankingItem[]>([]);
     const [branches, setBranches] = useState<BranchSummary[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [month, setMonth] = useState(() => searchParams.has("month") ? reportMonth(searchParams.get("month"), searchParams.get("year")) : undefined);
-    const [date, setDate] = useState<Date | undefined>(
-        initialQuery || month ? undefined : new Date()
-    );
-    const [searchTerm, setSearchTerm] = useState(initialQuery);
-    const [selectedBranch, setSelectedBranch] = useState<string>(searchParams.get("branchId") || "ALL");
-    const [page, setPage] = useState(1);
+    const searchTerm = searchParams.get("search") || "";
+    const selectedBranch = searchParams.get("branchId") || "ALL";
+    const month = searchParams.has("month") ? reportMonth(searchParams.get("month"), searchParams.get("year")) : undefined;
+    const monthKey = month?.toISOString();
+    const explicitDay = normalizeRepairDateFilter(searchParams.get("day"));
+    const day = explicitDay.length === 10 ? explicitDay : !month && !searchTerm && !searchParams.has("history") ? formatArgentinaDate() : undefined;
+    const date = day ? new Date(day + "T12:00:00") : undefined;
+    const back = dashboardReturnHref(searchParams.get("fromMonth"), searchParams.get("fromBranch"));
+    const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
+    const request = useRef(0);
+    const change = useCallback((updates: Record<string, string | null>) => {
+        const url = new URL(window.location.href);
+        if (!("page" in updates)) url.searchParams.delete("page");
+        for (const [key, value] of Object.entries(updates)) {
+            if (value) url.searchParams.set(key, value);
+            else url.searchParams.delete(key);
+        }
+        window.history.replaceState(null, "", url.pathname + url.search);
+    }, []);
+    const setPage = useCallback((n: number) => change({ page: String(n) }), [change]);
     const [pageSize, setPageSize] = useState(ADMIN_SALES_PAGE_SIZE);
     const [totalPages, setTotalPages] = useState(1);
     const [totalSalesCount, setTotalSalesCount] = useState(0);
@@ -50,30 +65,15 @@ export function useAdminSales() {
     const avgTicket = totalSalesCount > 0 ? totalRevenue / totalSalesCount : 0;
     const topBranch = rankingData[0];
 
-    const updateDate = useCallback((value: Date | undefined) => {
-        setPage(1);
-        setMonth(undefined);
-        setDate(value);
-    }, []);
-
-    const updateSearchTerm = useCallback((value: string) => {
-        setPage(1);
-        setSearchTerm(value);
-    }, []);
-
-    const updateSelectedBranch = useCallback((value: string) => {
-        setPage(1);
-        setSelectedBranch(value);
-    }, []);
-
-    // Handle search param updates (navigation while on page)
-    useEffect(() => {
-        const querySearch = searchParams.get("search");
-        if (querySearch && querySearch !== searchTerm) {
-            updateSearchTerm(querySearch);
-            updateDate(undefined); // Clear date filter to search globally
-        }
-    }, [searchParams, searchTerm, updateDate, updateSearchTerm]);
+    const setDay = (value: string) => change({ day: value || null, history: value ? null : "1", month: null, year: null });
+    const setMonth = (value: string) => {
+        if (!value) return setDay("");
+        const [year, monthNumber] = value.split("-");
+        change({ year, month: String(Number(monthNumber) - 1), day: null, history: null });
+    };
+    const updateSearchTerm = (value: string) => change({ search: value || null, day: day || null, history: !day && !month ? "1" : null });
+    const updateSelectedBranch = (value: string) => change({ branchId: value === "ALL" ? null : value });
+    const clear = () => change({ search: null, branchId: null, year: null, month: null, day: null, history: "1" });
 
     const loadBranches = useCallback(async () => {
         const res = await getAllBranches();
@@ -83,30 +83,26 @@ export function useAdminSales() {
     }, []);
 
     const fetchSales = useCallback(async () => {
+        const id = ++request.current;
         setLoading(true);
         try {
-            const startStr = date ? new Date(date) : undefined;
-            if (startStr) startStr.setHours(0, 0, 0, 0);
-
-            const endStr = date ? new Date(date) : undefined;
-            if (endStr) endStr.setHours(23, 59, 59, 999);
-
-            const range = month ? getMonthlyRange(month.toISOString()) : undefined;
+            const range = monthKey ? getMonthlyRange(monthKey) : day ? getDailyRange(day) : undefined;
             const [salesData, rankingRes] = await Promise.all([
                 getAdminSalesPage({
-                    startDate: range?.start ?? startStr,
-                    endDate: range?.end ?? endStr,
+                    startDate: range?.start,
+                    endDate: range?.end,
                     term: searchTerm,
                     branchId: selectedBranch,
                     page,
                     limit: ADMIN_SALES_PAGE_SIZE,
                 }),
                 getBranchRanking({
-                    startDate: range?.start ?? startStr,
-                    endDate: range?.end ?? endStr
+                    startDate: range?.start,
+                    endDate: range?.end
                 })
             ]);
 
+            if (id !== request.current) return;
             setSales(salesData.sales);
             setTotalSalesCount(salesData.totalSalesCount);
             setTotalRevenue(salesData.totalRevenue);
@@ -117,19 +113,21 @@ export function useAdminSales() {
             }
             setRankingData(rankingRes);
         } catch (error) {
+            if (id !== request.current) return;
             console.error("Error loading sales", error);
             toast.error("Error al cargar ventas");
         } finally {
-            setLoading(false);
+            if (id === request.current) setLoading(false);
         }
-    }, [month, date, page, searchTerm, selectedBranch]);
+    }, [monthKey, day, page, searchTerm, selectedBranch, setPage]);
 
     useEffect(() => {
         loadBranches();
     }, [loadBranches]);
 
     useEffect(() => {
-        fetchSales();
+        void fetchSales();
+        return () => { request.current++; };
     }, [fetchSales]);
 
     const handlePrint = useCallback((sale: SaleWithDetails) => {
@@ -193,7 +191,7 @@ export function useAdminSales() {
         loading,
         month,
         date,
-        setDate: updateDate,
+        day, setDay, setMonth, clear, back,
         searchTerm,
         setSearchTerm: updateSearchTerm,
         selectedBranch,

@@ -35,17 +35,17 @@ export async function OperationalRowWidget({ repairStatsPromise, productStatsPro
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-12">
 
             {/* 1. Tech Leaderboard (Using Unified Dashboard Logic) */}
-            <div className="bg-[#18181b] rounded-2xl border border-zinc-800 p-6 flex flex-col h-full min-h-[350px]">
+            <div className="min-w-0">
                 <TechLeaderboard technicians={repairAnalytics.repairs.technicians} />
             </div>
 
             {/* 2. Stock Alerts */}
-            <div className="h-full min-h-[350px]">
+            <div className="min-w-0">
                 <StockAlertsList productStats={productStats} />
             </div>
 
             {/* 3. Parts Usage */}
-            <div className="h-full min-h-[350px]">
+            <div className="min-w-0">
                 <TopPartsList repairStats={repairStats} />
             </div>
         </div>
