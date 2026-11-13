@@ -9,6 +9,8 @@ export default async function TechnicianDashboardPage() {
 
     const stats = await getTechnicianStats(user.id);
 
+    if (!stats) return null;
+
     return (
         <>
             <UnifiedTechnicianDashboard stats={stats} user={user} />

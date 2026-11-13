@@ -10,7 +10,10 @@ import { MetricCard } from "@/components/admin/shared/MetricCard";
 // Helper utils
 const fmtMoney = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
 
-export function FinancialStats({ stats }: { stats: any }) {
+type SalesAnalytics = Awaited<ReturnType<typeof import("@/actions/dashboard-actions").getSalesAnalytics>>;
+type FinancialSummary = Pick<SalesAnalytics, "financials" | "stock"> & { repairs: { active: number } };
+
+export function FinancialStats({ stats }: { stats: FinancialSummary }) {
     // If we want to implement skeleton loading inside, we can accept null stats, but for now we will rely on Suspense in parent
     const params = useSearchParams();
     const month = reportMonth(params.get("month"), params.get("year"));
@@ -23,14 +26,14 @@ export function FinancialStats({ stats }: { stats: any }) {
     const { financials, repairs, stock } = stats;
 
     return (
-        <div className="space-y-6 mb-12 ">
+        <div className="space-y-3 mb-6 ">
             <div className="flex items-center gap-2 mb-2">
                 <h2 className="text-lg font-bold text-white">Resumen mensual</h2>
                 <div className="h-px bg-zinc-900 flex-1 ml-4"></div>
             </div>
 
             {/* Financial & General Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 mb-4">
                 <MetricCard
                     title="Ingresos Mensuales"
                     value={fmtMoney(financials.revenue)}
@@ -75,7 +78,7 @@ export function FinancialStats({ stats }: { stats: any }) {
             </div>
 
             {/* Operational Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                 <MetricCard
                     title="Garantías"
                     value={stock.warrantiesCount || 0}

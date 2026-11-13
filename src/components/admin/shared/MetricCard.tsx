@@ -18,7 +18,7 @@ interface Props {
 }
 
 export function MetricCard({ title, value, subtext, detail, icon: Icon, accentColor, href }: Props) {
-    const classes = cn("min-w-0 rounded-2xl border-2 p-4 text-white shadow-lg sm:p-5", accents[accentColor]);
+    const classes = cn("min-w-0 rounded-2xl border p-3 text-white sm:p-4", accents[accentColor]);
     const content = <>
         <div className="flex items-start justify-between gap-2">
             <span className="flex items-start gap-2 text-sm font-medium text-white">
@@ -26,7 +26,7 @@ export function MetricCard({ title, value, subtext, detail, icon: Icon, accentCo
             </span>
             {href && <ChevronRight aria-hidden="true" size={16} className="shrink-0 text-white/90" />}
         </div>
-        <p className="my-2 text-2xl font-bold leading-tight tracking-tight text-zinc-50 tabular-nums [overflow-wrap:anywhere] lg:text-3xl">{value}</p>
+        <p className="my-2 text-lg font-bold leading-tight tracking-tight text-zinc-50 tabular-nums [overflow-wrap:anywhere] sm:text-2xl">{value}</p>
         {detail && <p className="text-sm font-medium text-white">{detail}</p>}
         {subtext && <p className="text-xs leading-relaxed text-white/90">{subtext}</p>}
     </>;

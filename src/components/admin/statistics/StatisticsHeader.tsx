@@ -15,7 +15,7 @@ export function StatisticsHeader({ branches, currentBranchId, period, dashboard 
     if (currentBranchId) query.set("branchId", currentBranchId);
 
     return (
-        <header className="mb-6 space-y-4 border-b border-zinc-800 pb-5">
+        <header id="filtros" className="scroll-mt-20 mb-4 space-y-2 border-b border-zinc-800 pb-3">
             <div className="flex flex-wrap items-center justify-between gap-x-4">
                 <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{dashboard ? "Dashboard" : "Estadísticas"}</h1>
                 <Link className="inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-medium text-blue-300 underline-offset-4 hover:underline"

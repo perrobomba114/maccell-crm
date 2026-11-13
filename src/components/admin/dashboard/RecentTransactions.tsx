@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { DollarSign } from "lucide-react";
 import { formatArgentinaDate } from "@/lib/date-utils";
 import { getSalePaymentMethodLabel } from "@/lib/sale-payment-details";
@@ -18,20 +19,21 @@ interface RecentSale {
 }
 
 function SalesFeedTimeline({ sales }: { sales: RecentSale[] }) {
+    const [expanded, setExpanded] = useState(false);
     if (!sales || sales.length === 0) {
         return <div className="text-zinc-500 text-sm text-center py-10 bg-zinc-900/30 rounded-xl">Sin actividad reciente</div>;
     }
 
     return (
-        <ul className="divide-y divide-zinc-800">
-            {sales.map(sale => <li key={sale.id} className="flex flex-wrap items-start justify-between gap-2 py-3">
+        <><ul className="divide-y divide-zinc-800">
+            {(expanded ? sales : sales.slice(0, 3)).map(sale => <li key={sale.id} className="flex flex-wrap items-start justify-between gap-2 py-3">
                 <div className="min-w-0"><strong className="break-words text-sm">Venta #{sale.saleNumber}</strong>
                     <p className="text-sm text-zinc-400">{sale.branchName} · {formatArgentinaDate(new Date(sale.createdAt), "dd/MM/yyyy · HH:mm")}</p>
                 </div>
                 <div className="text-right"><strong className="tabular-nums">{fmtMoney(sale.total)}</strong>
                     <p className="text-sm text-emerald-300">{sale.paymentMethod && getSalePaymentMethodLabel(sale.paymentMethod)}</p></div>
             </li>)}
-        </ul>
+        </ul>{sales.length > 3 && <button className="min-h-11 text-sm text-emerald-300" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? "Ver menos" : `Ver las ${sales.length} ventas`}</button>}</>
     );
 }
 
@@ -53,7 +55,7 @@ export function RecentTransactions({ stats, selectedCategory }: { stats: { table
 
             <div className="grid grid-cols-1">
                 {/* Recent Transactions Feed - Full Width for clarity */}
-                <div className="bg-[#18181b] rounded-2xl p-6 border border-zinc-800/50 flex flex-col h-full min-h-[300px]">
+                <div className="bg-[#18181b] rounded-2xl p-4 border border-zinc-800/50 flex flex-col h-full ">
                     <div className="mb-6 flex justify-between items-start">
                         <div>
                             <h3 className="font-bold text-lg text-white mb-1">

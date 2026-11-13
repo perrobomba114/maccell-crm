@@ -1,7 +1,7 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-11-13",
-  "commit": "a6efb9d",
+  "commit": "ed62773",
   "resumen": [
     [
       "lenguaje",
@@ -13,11 +13,11 @@
     ],
     [
       "modulos",
-      "864"
+      "867"
     ],
     [
       "lineas",
-      "88.098"
+      "88.335"
     ],
     [
       "endpoints",
@@ -283,7 +283,7 @@
         "src/components/admin"
       ],
       "color": "azul",
-      "lineas": 19347,
+      "lineas": 19376,
       "nArchivos": 159,
       "rutas": [
         "src/app/admin/",
@@ -386,7 +386,7 @@
         "src/components/cerebro-v2/cerebro-v2-composer.tsx"
       ],
       "color": "azul",
-      "lineas": 935,
+      "lineas": 949,
       "nArchivos": 17,
       "rutas": [
         "src/app/admin/cerebro/",
@@ -861,7 +861,7 @@
         "src/actions/analytics-actions.ts"
       ],
       "color": "verde",
-      "lineas": 1828,
+      "lineas": 1786,
       "nArchivos": 13,
       "rutas": [
         "src/actions/dashboard/",
@@ -893,8 +893,8 @@
         "src/lib/admin-repairs-query.ts"
       ],
       "color": "gris",
-      "lineas": 2646,
-      "nArchivos": 32,
+      "lineas": 2685,
+      "nArchivos": 33,
       "rutas": [
         "src/lib/"
       ],
@@ -1116,7 +1116,7 @@
         "docs/cerebro-rag-runbook.md"
       ],
       "color": "amarillo",
-      "lineas": 3287,
+      "lineas": 3347,
       "nArchivos": 37,
       "rutas": [
         "src/lib/cerebro-v2/",
@@ -1492,7 +1492,7 @@
         "scripts/index-repairs.ts"
       ],
       "color": "violeta",
-      "lineas": 395,
+      "lineas": 394,
       "nArchivos": 5,
       "rutas": [
         "scripts/cerebro-v2-evaluate.ts",
@@ -1521,8 +1521,8 @@
         "scripts/production-baseline.ts"
       ],
       "color": "violeta",
-      "lineas": 3705,
-      "nArchivos": 33,
+      "lineas": 3843,
+      "nArchivos": 35,
       "rutas": [
         "scripts/",
         "src/scripts/"
@@ -1603,8 +1603,8 @@
         "services/cerebro-rag-worker/tests"
       ],
       "color": "gris",
-      "lineas": 10937,
-      "nArchivos": 188,
+      "lineas": 10977,
+      "nArchivos": 189,
       "rutas": [
         "src/__tests__/",
         "scripts/tests/",

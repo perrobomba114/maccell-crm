@@ -10,22 +10,21 @@ import {
     User,
     Calendar,
     Clock,
-    AlertCircle,
+    type LucideIcon,
     ArrowRight,
     ArrowUpRight,
     ShieldCheck,
-    CalendarCheck,
     AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { WeeklyOutputChart, MyStatusPieChart } from "./TechnicianCharts";
+import { WeeklyOutputChart } from "./TechnicianCharts";
 
 import { formatArgentinaDate } from "@/lib/date-utils";
 
-// --- Standard Metrics Component ---
-function TechMetric({ title, value, icon: Icon, color, subtext, trend, href }: any) {
-    const strategies: any = {
+type TechnicianStats = NonNullable<Awaited<ReturnType<typeof import("@/actions/dashboard-actions").getTechnicianStats>>>;
+function TechMetric({ title, value, icon: Icon, color, subtext, trend, href }: { title: string; value: number | string; icon: LucideIcon; color: "blue" | "emerald" | "orange" | "violet"; subtext: string; trend?: string; href: string }) {
+    const strategies = {
         violet: { bg: "bg-gradient-to-br from-violet-600 to-indigo-700", text: "text-white", icon: "bg-white/20", border: "border-violet-400/50" },
         blue: { bg: "bg-gradient-to-br from-blue-600 to-indigo-600", text: "text-white", icon: "bg-white/20", border: "border-blue-400/50" },
         emerald: { bg: "bg-gradient-to-br from-emerald-600 to-teal-700", text: "text-white", icon: "bg-white/20", border: "border-emerald-400/50" },
@@ -36,7 +35,7 @@ function TechMetric({ title, value, icon: Icon, color, subtext, trend, href }: a
 
     return (
         <Link href={href || "#"} className={cn(
-            "group relative p-6 rounded-2xl transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between overflow-hidden border-2 shadow-lg",
+            "group relative p-3 sm:p-4 rounded-2xl transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between overflow-hidden border-2 shadow-lg",
             style.bg,
             style.border
         )}>
@@ -56,7 +55,7 @@ function TechMetric({ title, value, icon: Icon, color, subtext, trend, href }: a
                     )}
                 </div>
                 <div>
-                    <h3 className="text-3xl font-black text-white tracking-tighter mb-0.5 tabular-nums leading-none">{value}</h3>
+                    <h3 className="text-2xl font-bold text-white tracking-tighter mb-0.5 tabular-nums leading-none">{value}</h3>
                     <p className="text-[10px] font-black text-white/90 uppercase tracking-[0.2em]">{title}</p>
                 </div>
             </div>
@@ -74,7 +73,7 @@ function TechMetric({ title, value, icon: Icon, color, subtext, trend, href }: a
 }
 
 // --- List Items (Dense & Clean) ---
-function JobRow({ job, isActive }: { job: any, isActive?: boolean }) {
+function JobRow({ job, isActive }: { job: TechnicianStats["queue"][number], isActive?: boolean }) {
     if (isActive) {
         return (
             <Link href={`/technician/repairs?repairId=${encodeURIComponent(job.id)}`} className="group relative bg-[#09090b] border border-t-blue-500/50 border-x-zinc-800 border-b-zinc-800 rounded-[2rem] p-6 flex flex-col gap-6 overflow-hidden transition-all hover:border-blue-500/30 shadow-2xl hover:shadow-[0_10px_40px_rgba(37,99,235,0.15)]">
@@ -97,7 +96,7 @@ function JobRow({ job, isActive }: { job: any, isActive?: boolean }) {
 
                 {/* Main Info: Device */}
                 <div className="relative z-10 mt-2">
-                    <h4 className="text-3xl font-black text-white tracking-tighter leading-none mb-2 group-hover:text-blue-500 transition-colors duration-300 drop-shadow-md">
+                    <h4 className="text-2xl font-bold text-white tracking-tighter leading-none mb-2 group-hover:text-blue-500 transition-colors duration-300 drop-shadow-md">
                         {job.device}
                     </h4>
                     <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.15em]">{job.repairType || "Servicio Técnico"}</p>
@@ -157,7 +156,7 @@ function JobRow({ job, isActive }: { job: any, isActive?: boolean }) {
 }
 
 
-export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: any }) {
+export function UnifiedTechnicianDashboard({ stats, user }: { stats: TechnicianStats, user: { name: string | null } }) {
     const activeJobs = stats.activeWorkspace || [];
     const queue = stats.queue || [];
 
@@ -165,10 +164,10 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
     const weeklyData = stats.weeklyOutput || [];
 
     return (
-        <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans p-2 sm:p-6 lg:p-10">
+        <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans p-2 sm:p-5 lg:p-6">
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-10 pb-8 border-b border-zinc-900">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-zinc-900">
                 <div className="flex items-center gap-5">
                     <div className="h-14 w-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-lg">
                         <Wrench className="text-blue-500" size={28} />
@@ -183,7 +182,6 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                     </div>
                 </div>
                 <div className="hidden md:flex flex-col items-end">
-                    <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">v4.0.5 PROFESSIONAL</div>
                     <div className="mt-2 flex items-center gap-2 px-3 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-full">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Sincronizado</span>
@@ -193,13 +191,13 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
 
             {/* Stagnation Radar - Serious Alert */}
             {stats.stagnatedRepairs && stats.stagnatedRepairs.length > 0 && (
-                <div className="mb-10 rounded-3xl bg-[#0F0505] border border-red-900/50 relative overflow-hidden group shadow-[0_0_50px_rgba(220,38,38,0.1)]">
+                <div className="mb-5 rounded-3xl bg-[#0F0505] border border-red-900/50 relative overflow-hidden group shadow-[0_0_50px_rgba(220,38,38,0.1)]">
                     {/* Background Effects */}
                     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/2" />
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
 
                     <div className="p-4 sm:p-8 relative z-10">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-4">
                             <div className="flex items-start gap-5">
                                 <div className="p-3 bg-red-500/10 text-red-500 rounded-2xl border border-red-500/20 shadow-[0_0_20px_rgba(220,38,38,0.2)] animate-pulse">
                                     <AlertTriangle size={32} strokeWidth={2} />
@@ -210,7 +208,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                                         Atención Requerida
                                     </h3>
                                     <div className="flex items-baseline gap-3">
-                                        <span className="text-5xl font-black text-white tracking-tighter tabular-nums leading-none">
+                                        <span className="text-3xl font-bold text-white tracking-tighter tabular-nums leading-none">
                                             {stats.stagnatedRepairs.length}
                                         </span>
                                         <span className="text-lg font-bold text-zinc-400 tracking-tight">
@@ -228,7 +226,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {stats.stagnatedRepairs.map((r: any) => (
+                            {stats.stagnatedRepairs.map((r) => (
                                 <Link key={r.id} href={`/technician/repairs?repairId=${encodeURIComponent(r.id)}`} className="group/card relative bg-black/40 border border-red-900/30 hover:border-red-500 mb-1 rounded-2xl p-5 transition-all hover:bg-red-950/10 hover:shadow-[0_0_30px_rgba(220,38,38,0.15)] flex flex-col justify-between h-full">
                                     <div className="absolute top-3 right-3">
                                         <span className="flex items-center gap-1.5 text-[10px] font-black text-red-500 bg-red-950/40 px-2 py-1 rounded-lg border border-red-900/50">
@@ -239,7 +237,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
 
                                     <div className="mb-4">
                                         <div className="inline-block px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono text-[10px] font-black tracking-wider mb-3 group-hover/card:text-white group-hover/card:border-red-500/30 transition-colors">
-                                            {r.ticketNumber || r.ticket}
+                                            {r.ticketNumber}
                                         </div>
                                         <h4 className="text-lg font-black text-zinc-100 group-hover/card:text-red-400 transition-colors leading-tight">
                                             {r.device}
@@ -258,7 +256,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
             )}
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6 mb-10">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-5">
                 <TechMetric title="En Mesa" value={stats.activeRepairs} subtext="En Proceso" icon={PlayCircle} color="blue" href="/technician/repairs" />
                 <TechMetric title="En Cola" value={stats.pendingTickets} subtext="Tu Fila" icon={ListTodo} color="violet" href="/technician/tickets" />
                 <TechMetric title="Ingresados" value={stats.globalPendingCount || 0} subtext="Global (Estado 1)" icon={Smartphone} color="orange" href="/technician/tickets" />
@@ -266,7 +264,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
 
                 <TechMetric title="Eficiencia" value={stats.avgRepairTime} subtext="Tiempo Promedio" icon={Timer} color="blue" href="/technician/history" />
                 <TechMetric title="Producción" value={stats.completedMonth} subtext="Mensual" icon={Calendar} color="emerald" href="/technician/history" />
-                <TechMetric title="Calidad" value={`${stats.qualityScore || 100}%`} subtext="Sin Garantías" icon={ShieldCheck} color="orange" href="/technician/profile" />
+                <TechMetric title="Calidad" value={`${stats.qualityScore ?? 0}%`} subtext="Sin Garantías" icon={ShieldCheck} color="orange" href="/technician/profile" />
                 {(() => {
                     const current = stats.completedMonth || 0;
                     const last = stats.completedLastMonth || 0;
@@ -289,13 +287,13 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
                 <div className="xl:col-span-2 space-y-10">
                     {/* Workspace */}
                     <div>
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-sm font-black uppercase tracking-[0.4em] text-zinc-100 flex items-center gap-3">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-black uppercase tracking-wide text-zinc-100 flex items-center gap-3">
                                 <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-pulse" />
                                 Espacio de Trabajo
                             </h2>
@@ -307,12 +305,12 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {activeJobs.length === 0 ? (
-                                <div className="col-span-full py-20 border-2 border-dashed border-zinc-900 rounded-[3rem] flex flex-col items-center justify-center text-zinc-700 bg-zinc-950/50">
+                                <div className="col-span-full py-8 border-2 border-dashed border-zinc-900 rounded-[3rem] flex flex-col items-center justify-center text-zinc-700 bg-zinc-950/50">
                                     <Smartphone size={48} className="mb-4 opacity-10" />
-                                    <p className="text-xs font-black uppercase tracking-[0.4em] opacity-40">Workshop despejado</p>
+                                    <p className="text-xs font-black uppercase tracking-wide opacity-40">Sin trabajos en curso</p>
                                 </div>
                             ) : (
-                                activeJobs.map((job: any) => (
+                                activeJobs.map((job) => (
                                     <JobRow key={job.id} job={job} isActive={true} />
                                 ))
                             )}
@@ -324,12 +322,12 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
 
                 {/* Queue */}
                 <div className="xl:col-span-1">
-                    <div className="bg-[#09090b] rounded-[3rem] border-2 border-zinc-900 p-4 sm:p-10 h-full flex flex-col shadow-2xl relative overflow-hidden">
+                    <div className="bg-[#09090b] rounded-[3rem] border-2 border-zinc-900 p-4 sm:p-5 h-full flex flex-col shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500/0 via-orange-500 to-orange-500/0 opacity-50" />
 
-                        <div className="flex items-center justify-between mb-12">
+                        <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h2 className="text-sm font-black uppercase tracking-[0.4em] text-zinc-100 mb-1">Cola de Espera</h2>
+                                <h2 className="text-sm font-black uppercase tracking-wide text-zinc-100 mb-1">Cola de Espera</h2>
                                 <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Siguiente Prioridad</p>
                             </div>
                             <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-2xl">
@@ -339,11 +337,11 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
 
                         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 max-h-[650px]">
                             {queue.length === 0 ? (
-                                <div className="py-24 text-center opacity-30">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.4em]">Sin pendientes</p>
+                                <div className="py-8 text-center opacity-30">
+                                    <p className="text-[10px] font-black uppercase tracking-wide">Sin pendientes</p>
                                 </div>
                             ) : (
-                                queue.map((item: any) => (
+                                queue.map((item) => (
                                     <JobRow key={item.id} job={item} isActive={false} />
                                 ))
                             )}

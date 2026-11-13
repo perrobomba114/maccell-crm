@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { TrendingUp, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
 type TopProductDatum = {
     name: string;
@@ -20,6 +21,7 @@ type UsedPart = {
 type ProductStatsData = {
     topSelling: TopProductDatum[];
     lowStock: LowStockItem[];
+    stockByBranch?: { name: string; count: number }[];
 };
 
 type RepairStatsData = {
@@ -32,7 +34,7 @@ export function ProductCharts({ productStats }: { productStats: ProductStatsData
     return (
         <>
             {/* Top Selling Products - Grid Item */}
-            <div className="xl:col-span-1 bg-[#18181b] rounded-2xl border border-zinc-800 p-6 flex flex-col min-w-0">
+            <div className="xl:col-span-1 bg-[#18181b] rounded-2xl border border-zinc-800 p-4 sm:p-5 flex flex-col min-w-0">
                 <div className="flex items-start justify-between mb-6">
                     <div>
                         <h3 className="text-lg font-bold text-white mb-1">Top Productos</h3>
@@ -59,27 +61,32 @@ export function ProductCharts({ productStats }: { productStats: ProductStatsData
 }
 
 export function StockAlertsList({ productStats }: { productStats: ProductStatsData | null | undefined }) {
+    const [expanded, setExpanded] = useState(false);
     if (!productStats) return null;
 
     return (
-        <div className="bg-[#18181b] rounded-2xl border border-zinc-800 p-6 flex flex-col h-full">
+        <div className="bg-[#18181b] rounded-2xl border border-zinc-800 p-4 sm:p-5 flex flex-col h-full">
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <h3 className="text-lg font-bold text-white mb-1">Stock Crítico</h3>
-                    <p className="text-sm text-zinc-500">Stock actual de productos con reposición sugerida</p>
+                    <p className="text-sm text-zinc-500">{productStats.lowStock.length} artículos con reposición sugerida</p>
                 </div>
                 <div className="bg-red-500/10 p-2 rounded-lg text-red-500">
                     <AlertTriangle size={18} />
                 </div>
             </div>
-            <div className="space-y-3 flex-1">
+            {!!productStats.stockByBranch?.length && <div className="mb-3 border-b border-zinc-700 pb-3">
+                <p className="mb-2 text-xs text-zinc-400">Vendidos en el mes con stock local bajo</p>
+                {productStats.stockByBranch.map(row => <div key={row.name} className="flex justify-between gap-2 text-sm"><span>{row.name}</span><strong>{row.count}</strong></div>)}
+            </div>}
+            <div className="space-y-2 flex-1">
                 {productStats.lowStock.length === 0 ? (
                     <div className="text-zinc-500 text-sm text-center py-10 flex flex-col items-center">
                         <CheckCircle2 size={30} className="mb-2 text-emerald-500/50" />
                         Todo en orden
                     </div>
-                ) : productStats.lowStock.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10 hover:bg-red-500/10 transition-colors" title={item.name}>
+                ) : (expanded ? productStats.lowStock : productStats.lowStock.slice(0, 5)).map((item, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-red-500/5 border border-red-500/10 hover:bg-red-500/10 transition-colors" title={item.name}>
                         <div>
                             <h4 className="text-sm font-semibold text-white [overflow-wrap:anywhere]">{item.name}</h4>
                             <p className="text-xs text-zinc-400">{item.branch}</p>
@@ -90,6 +97,9 @@ export function StockAlertsList({ productStats }: { productStats: ProductStatsDa
                     </div>
                 ))}
             </div>
+            {productStats.lowStock.length > 5 && <button aria-expanded={expanded} className="mt-2 min-h-11 self-start text-sm font-medium text-red-300" onClick={() => setExpanded(!expanded)}>
+                {expanded ? "Ver menos" : `Ver los ${productStats.lowStock.length} artículos`}
+            </button>}
         </div>
     );
 }
@@ -98,7 +108,7 @@ export function TopPartsList({ repairStats }: { repairStats: RepairStatsData | n
     if (!repairStats) return null;
 
     return (
-        <div className="bg-[#18181b] rounded-2xl border border-zinc-800 p-6 flex flex-col h-full">
+        <div className="bg-[#18181b] rounded-2xl border border-zinc-800 p-4 sm:p-5 flex flex-col h-full">
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <h3 className="text-lg font-bold text-white mb-1">Repuestos más usados</h3>
@@ -108,7 +118,7 @@ export function TopPartsList({ repairStats }: { repairStats: RepairStatsData | n
                     <Package size={18} />
                 </div>
             </div>
-            <div className="space-y-3 flex-1">
+            <div className="space-y-2 flex-1">
                 {repairStats.mostUsedParts.length === 0 ? (
                     <div className="text-zinc-500 text-sm text-center py-10">Sin datos</div>
                 ) : repairStats.mostUsedParts.map((part, i) => (

@@ -1,16 +1,19 @@
 "use server";
 
+import { summarizeReplenishment } from "@/lib/replenishment-summary";
+import { getCurrentUser } from "@/actions/auth-actions";
 import { db as prisma } from "@/lib/db";
 import { getMonthlyRange } from "@/lib/date-utils";
 
 export async function getProductStats(branchId?: string, date?: Date) {
     try {
+        if ((await getCurrentUser())?.role !== "ADMIN") return { topSelling: [], lowStock: [], stockByBranch: [], mostProfitable: [] };
         const referenceDateStr = date ? date.toISOString().split('T')[0] : undefined;
         const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange(referenceDateStr);
 
         const whereSale = branchId ? { branchId } : {};
 
-        const [items, totalBranches] = await Promise.all([
+        const [items, branches] = await Promise.all([
             prisma.saleItem.findMany({
                 where: {
                     productId: { not: null },
@@ -21,10 +24,11 @@ export async function getProductStats(branchId?: string, date?: Date) {
                     name: true,
                     quantity: true,
                     price: true,
+                    sale: { select: { branchId: true } },
                     product: { select: { costPrice: true } }
                 }
             }),
-            prisma.branch.count()
+            prisma.branch.findMany({ where: branchId ? { id: branchId } : {}, select: { id: true, name: true }, orderBy: { name: "asc" } })
         ]);
 
         const salesMap = new Map<string, { name: string, quantity: number, productId: string }>();
@@ -39,58 +43,11 @@ export async function getProductStats(branchId?: string, date?: Date) {
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
 
-        const activeSellingProductIds = Array.from(salesMap.keys()).filter(id => id.length > 10); 
-
-        const activeProductsStock = await prisma.productStock.findMany({
-            where: {
-                productId: { in: activeSellingProductIds },
-                product: { deletedAt: null }
-            },
-            select: { productId: true, quantity: true, product: { select: { name: true } } }
+        const products = await prisma.product.findMany({
+            where: { id: { in: Array.from(salesMap.keys()) }, deletedAt: null },
+            select: { id: true, name: true, stock: { where: branchId ? { branchId } : {}, select: { branchId: true, quantity: true } } }
         });
-
-
-        const unifiedStockMap = new Map<string, { name: string, totalStock: number, salesVolume: number }>();
-
-        activeProductsStock.forEach(s => {
-            const saleData = salesMap.get(s.productId);
-            const current = unifiedStockMap.get(s.productId) || {
-                name: s.product.name,
-                totalStock: 0,
-                salesVolume: saleData?.quantity || 0
-            };
-            current.totalStock += s.quantity;
-            unifiedStockMap.set(s.productId, current);
-        });
-
-        const replenishmentSuggestions = Array.from(unifiedStockMap.values())
-            .map(item => {
-                const lowerName = item.name.toLowerCase();
-                let targetPerBranch = 5; 
-
-                if (lowerName.includes("templado")) targetPerBranch = 10;
-                else if (lowerName.includes("funda")) targetPerBranch = 10;
-                else if (lowerName.includes("hidrogel")) targetPerBranch = 20;
-
-                const globalTarget = targetPerBranch * totalBranches;
-                const suggestedQuantity = Math.max(0, globalTarget - item.totalStock);
-
-                return {
-                    name: item.name,
-                    branch: "Todas las sucursales", 
-                    quantity: item.totalStock,
-                    suggestedQuantity,
-                    salesVolume: item.salesVolume
-                };
-            })
-            .filter(item => item.suggestedQuantity > 0)
-            .sort((a, b) => {
-                const urgencyA = a.suggestedQuantity * (1 + a.salesVolume);
-                const urgencyB = b.suggestedQuantity * (1 + b.salesVolume);
-                return urgencyB - urgencyA;
-            })
-            .slice(0, 40)
-            .map(({ name, branch, quantity, suggestedQuantity }) => ({ name, branch, quantity, suggestedQuantity }));
+        const { replenishmentSuggestions, stockByBranch } = summarizeReplenishment(products, branches, items, salesMap, branchId);
 
         const profitMap = new Map<string, { name: string, profit: number }>();
         items.forEach(item => {
@@ -110,11 +67,12 @@ export async function getProductStats(branchId?: string, date?: Date) {
         return {
             topSelling,
             lowStock: replenishmentSuggestions,
+            stockByBranch,
             mostProfitable
         };
 
     } catch (error) {
         console.error("Error in getProductStats:", error);
-        return { topSelling: [], lowStock: [], mostProfitable: [] };
+        return { topSelling: [], lowStock: [], stockByBranch: [], mostProfitable: [] };
     }
 }

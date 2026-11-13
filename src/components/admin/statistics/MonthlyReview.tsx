@@ -18,9 +18,9 @@ async function readPeriod(period: Date, branchId?: string) {
     return { sales: sales._sum.total ?? 0, count: sales._count, expenses: expenses._sum.amount ?? 0, repairs };
 }
 
-export async function MonthlyReview({ period, branchId }: { period: Date; branchId?: string }) {
+export async function MonthlyReview({ period, branchId, globalStats }: { period: Date; branchId?: string; globalStats: Promise<{ profitThisMonth: number }> }) {
     const previous = new Date(Date.UTC(period.getUTCFullYear(), period.getUTCMonth() - 1, 1, 12));
-    const [now, before] = await Promise.all([readPeriod(period, branchId), readPeriod(previous, branchId)]);
+    const [now, before, financials] = await Promise.all([readPeriod(period, branchId), readPeriod(previous, branchId), globalStats]);
     const growth = before.sales > 0 ? growthLabel((now.sales - before.sales) / before.sales * 100) : "Sin base de comparación";
     const rows = [
         { label: "Ventas registradas", a: now.count, b: before.count, format: number },
@@ -34,9 +34,14 @@ export async function MonthlyReview({ period, branchId }: { period: Date; branch
     return <section className="mb-6 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div className="rounded-2xl border border-teal-800 bg-gradient-to-br from-teal-950 to-zinc-900 p-5 sm:p-7">
             <h2 className="text-sm font-semibold text-teal-200">Ventas del mes · {periodLabel.format(period)}</h2>
-            <p className="my-4 break-words text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">{pesos.format(now.sales)}</p>
+            <p className="my-2 break-words text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{pesos.format(now.sales)}</p>
             <p className="text-sm text-teal-100">{growth}</p>
             <p className="mt-4 border-t border-teal-800 pt-4 text-sm text-zinc-300">Mes anterior completo · {pesos.format(before.sales)}</p>
+            <div className="mt-3"><span className="text-sm text-teal-100">Ganancia bruta estimada</span><strong className="block text-xl tabular-nums">{pesos.format(financials.profitThisMonth)}</strong></div>
+            <div className="mt-4 border-t border-teal-800 pt-3"><span className="text-sm text-teal-100">Reparaciones ingresadas</span>
+                <strong className="block text-2xl tabular-nums">{number.format(now.repairs.received)}</strong>
+                <span className="text-sm text-zinc-300">{now.repairs.ok} OK · {now.repairs.unrepaired} sin reparación · {now.repairs.delivered} entregadas</span>
+            </div>
         </div>
         <div className="min-w-0 rounded-2xl border border-zinc-700 bg-zinc-900 p-4 sm:p-6">
             <h2 className="mb-3 text-lg font-semibold">Comparación mensual</h2>

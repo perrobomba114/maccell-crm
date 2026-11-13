@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarDays, ChevronLeft, ChevronRight, Store } from "lucide-react";
 
 const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const field = "block h-11 w-full min-w-0 rounded-lg border border-zinc-600 bg-zinc-900 px-2 text-base text-white focus-visible:outline-2 focus-visible:outline-sky-400";
-const arrow = "grid size-11 shrink-0 place-items-center rounded-lg border border-zinc-600 text-white hover:bg-zinc-700 disabled:opacity-50";
+const arrow = "grid size-11 shrink-0 place-items-center text-zinc-200 hover:bg-zinc-700 disabled:opacity-50";
 
 interface Props {
     month: number;
@@ -17,14 +18,14 @@ interface Props {
 }
 
 export function ReportFilters({ month, year, branch, branches, currentYear }: Props) {
-    const [draft, setDraft] = useState({ month, year, branch });
+    const [open, setOpen] = useState(false);
+    const [pickerYear, setPickerYear] = useState(year);
     const [pending, start] = useTransition();
     const pathname = usePathname();
     const query = useSearchParams();
     const router = useRouter();
-    const dirty = draft.month !== month || draft.year !== year || draft.branch !== branch;
-    const years = Array.from(new Set([year, draft.year, ...Array.from({ length: 21 }, (_, i) => currentYear + 1 - i)])).sort((a, b) => b - a);
-    function apply(next: typeof draft) {
+    const years = Array.from(new Set([year, ...Array.from({ length: 21 }, (_, i) => currentYear + 1 - i)])).sort((a, b) => b - a);
+    function apply(next: { month: number; year: number; branch: string }) {
         const params = new URLSearchParams(query.toString());
         params.set("month", String(next.month));
         params.set("year", String(next.year));
@@ -33,28 +34,35 @@ export function ReportFilters({ month, year, branch, branches, currentYear }: Pr
         start(() => router.push(`${pathname}?${params}`, { scroll: false }));
     }
     function step(delta: number) {
-        const date = new Date(Date.UTC(draft.year, draft.month + delta, 1));
-        const next = { ...draft, month: date.getUTCMonth(), year: date.getUTCFullYear() };
-        setDraft(next);
-        apply(next);
+        const date = new Date(Date.UTC(year, month + delta, 1));
+        apply({ branch, month: date.getUTCMonth(), year: date.getUTCFullYear() });
     }
-    return <form aria-label="Filtros del informe" onSubmit={event => { event.preventDefault(); if (dirty && !pending) apply(draft); }}>
-        <fieldset disabled={pending} aria-busy={pending} className="grid min-w-0 grid-cols-[6rem_minmax(0,1fr)] items-end gap-3 rounded-xl border border-zinc-700 bg-zinc-900/80 p-3 lg:grid-cols-[minmax(12rem,1fr)_6rem_minmax(10rem,1fr)_7rem] lg:p-4">
-            <div className="col-span-2 min-w-0 lg:col-span-1">
-                <label htmlFor="report-month" className="mb-1 block text-sm text-zinc-300">Mes</label>
-                <div className="flex gap-1">
-                    <button type="button" aria-label="Mes anterior" className={arrow} onClick={() => step(-1)}><ChevronLeft size={18} /></button>
-                    <select id="report-month" className={field} value={draft.month} onChange={e => setDraft({ ...draft, month: Number(e.target.value) })}>
-                        {months.map((name, i) => <option key={name} value={i}>{name}</option>)}
-                    </select>
-                    <button type="button" aria-label="Mes siguiente" className={arrow} onClick={() => step(1)}><ChevronRight size={18} /></button>
-                </div>
-            </div>
-            <label className="min-w-0 text-sm text-zinc-300">Año<select className={field + " mt-1"} value={draft.year} onChange={e => setDraft({ ...draft, year: Number(e.target.value) })}>{years.map(y => <option key={y}>{y}</option>)}</select></label>
-            <label className="min-w-0 text-sm text-zinc-300">Sucursal<select className={field + " mt-1"} value={draft.branch} onChange={e => setDraft({ ...draft, branch: e.target.value })}>
+    return <fieldset aria-label="Filtros del informe" disabled={pending} aria-busy={pending}
+        className="grid min-w-0 gap-2 sm:grid-cols-[15rem_minmax(0,16rem)]">
+        <div className="flex h-11 min-w-0 items-center rounded-lg border border-zinc-700 bg-zinc-900">
+            <button type="button" aria-label="Mes anterior" className={arrow} onClick={() => step(-1)}><ChevronLeft size={18} /></button>
+            <Popover open={open} onOpenChange={value => { setPickerYear(year); setOpen(value); }}>
+                <PopoverTrigger asChild><button type="button" aria-label={`Elegir período: ${months[month]} ${year}`}
+                    className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap text-sm font-semibold">
+                    <CalendarDays size={16} className="text-blue-300" />{months[month]} {year}
+                </button></PopoverTrigger>
+                <PopoverContent aria-label="Elegir período" className="border-zinc-700 bg-zinc-900 text-white">
+                    <label className="flex items-center gap-3 text-sm">Año
+                        <select className={field} value={pickerYear} onChange={event => setPickerYear(Number(event.target.value))}>{years.map(y => <option key={y}>{y}</option>)}</select>
+                    </label>
+                    <div className="mt-2 grid grid-cols-3 gap-1">{months.map((name, i) =>
+                        <button key={name} type="button" aria-label={name} aria-pressed={month === i && year === pickerYear}
+                            className="min-h-11 rounded-md text-sm hover:bg-zinc-700 aria-pressed:bg-blue-800"
+                            onClick={() => { setOpen(false); apply({ month: i, year: pickerYear, branch }); }}>{name.slice(0, 3)}</button>)}</div>
+                </PopoverContent>
+            </Popover>
+            <button type="button" aria-label="Mes siguiente" className={arrow} onClick={() => step(1)}><ChevronRight size={18} /></button>
+        </div>
+        <label className="relative min-w-0">
+            <Store size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 text-zinc-400" />
+            <select aria-label="Sucursal" className={field + " pl-9 text-sm"} value={branch} onChange={e => apply({ month, year, branch: e.target.value })}>
                 <option value="">Todas las sucursales</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select></label>
-            <button disabled={!dirty || pending} className="col-span-2 h-11 rounded-lg lg:col-span-1 bg-sky-300 px-1 font-semibold text-slate-950 disabled:bg-zinc-700 disabled:text-zinc-300" type="submit">{pending ? "Cargando" : "Aplicar"}</button>
-        </fieldset>
-    </form>;
+            </select>
+        </label>
+    </fieldset>;
 }

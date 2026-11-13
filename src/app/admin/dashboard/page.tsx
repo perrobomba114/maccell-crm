@@ -92,6 +92,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
             </Suspense>
 
 
+            <a href="#filtros" className="inline-flex min-h-11 items-center text-sm font-medium text-blue-300 hover:underline">Volver a los filtros ↑</a>
         </div>
     );
 }

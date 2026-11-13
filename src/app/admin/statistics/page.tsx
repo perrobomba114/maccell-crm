@@ -53,7 +53,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
             <StatisticsHeader branches={branches} currentBranchId={branchId} period={reportDate} />
 
             <Suspense key={`review-${reportDate.toISOString()}-${branchId ?? "all"}`} fallback={<SectionSkeleton height="h-64" />}>
-                <MonthlyReview period={reportDate} branchId={branchId} />
+                <MonthlyReview globalStats={globalStatsPromise} period={reportDate} branchId={branchId} />
             </Suspense>
             <section className="mb-6"><h2 className="text-lg font-bold">Costos de taller y bonos</h2>
             <Suspense key={`financials-${reportDate.toISOString()}`} fallback={<div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10"><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /></div>}>
@@ -64,7 +64,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
 
             </section>
             {/* Main Visuals Grid (Streaming) */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
                 {/* Revenue Chart */}
                 <Suspense key={`revenue-${reportDate.toISOString()}`} fallback={<SectionSkeleton />}>
                     <BranchProfitWidget branchStatsPromise={branchStatsPromise} />
@@ -73,9 +73,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
                 {/* Top Products Chart */}
                 <Suspense key={`products-${reportDate.toISOString()}`} fallback={<SectionSkeleton />}>
                     <MainChartsWidget
-                        branchStatsPromise={branchStatsPromise}
                         productStatsPromise={productStatsPromise}
-                        repairStatsPromise={repairStatsPromise}
                     />
                 </Suspense>
             </div>
@@ -90,6 +88,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
             </Suspense>
 
 
+            <a href="#filtros" className="inline-flex min-h-11 items-center text-sm font-medium text-blue-300 hover:underline">Volver a los filtros ↑</a>
         </div>
     );
 }
