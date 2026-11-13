@@ -1,29 +1,31 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Space_Grotesk, Manrope } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: "./fonts/geist.woff2",
+  weight: "100 900",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "./fonts/geistmono.woff2",
+  weight: "100 900",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
-const spaceGrotesk = Space_Grotesk({
+const spaceGrotesk = localFont({
+  src: "./fonts/spacegrotesk.woff2",
+  weight: "400 700",
   variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
 });
 
-const manrope = Manrope({
+const manrope = localFont({
+  src: "./fonts/manrope.woff2",
+  weight: "400 800",
   variable: "--font-manrope",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const dynamic = "force-dynamic";
