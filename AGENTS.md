@@ -41,7 +41,7 @@ Ante cambios de RAG, verificá Compose declarado, contenedores realmente activos
 
 ## Comandos verificados en el repositorio
 
-Node >=20 y npm con `package-lock.json`. Desde la raíz:
+Node >=22.13 y npm con `package-lock.json`. Desde la raíz:
 
 - Instalar: `npm ci --legacy-peer-deps` (el postinstall aplica `scripts/patch-sdk.js`).
 - Generar cliente: `npx prisma generate`.

@@ -6,7 +6,7 @@ Next.js 15 App Router, React 19, TypeScript, Tailwind 4/shadcn, PostgreSQL y Pri
 
 ## Empezar
 
-Requisitos: Node >=20, npm y PostgreSQL de desarrollo configurado mediante `DATABASE_URL`. Prepará las variables locales sin publicar credenciales.
+Requisitos: Node >=22.13, npm y PostgreSQL de desarrollo configurado mediante `DATABASE_URL`. Prepará las variables locales sin publicar credenciales.
 
 ```bash
 npm ci --legacy-peer-deps
