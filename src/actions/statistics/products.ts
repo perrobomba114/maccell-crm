@@ -9,40 +9,26 @@ export async function getProductStats(branchId?: string, date?: Date) {
         const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange(referenceDateStr);
 
         const whereSale = branchId ? { branchId } : {};
-        const whereStock = branchId ? { branchId } : {};
 
-        const [topSellingRaw, lowStock, items] = await Promise.all([
-            prisma.saleItem.findMany({
-                where: {
-                    sale: { ...whereSale, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
-                    productId: { not: null }
-                },
-                select: {
-                    name: true,
-                    quantity: true,
-                    productId: true
-                }
-            }),
-            prisma.productStock.findMany({
-                where: {
-                    quantity: { lte: 3 },
-                    ...whereStock
-                },
-                include: { product: true, branch: true },
-                orderBy: { quantity: 'asc' },
-                take: 20
-            }),
+        const [items, totalBranches] = await Promise.all([
             prisma.saleItem.findMany({
                 where: {
                     productId: { not: null },
                     sale: { ...whereSale, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } }
                 },
-                include: { product: true }
-            })
+                select: {
+                    productId: true,
+                    name: true,
+                    quantity: true,
+                    price: true,
+                    product: { select: { costPrice: true } }
+                }
+            }),
+            prisma.branch.count()
         ]);
 
         const salesMap = new Map<string, { name: string, quantity: number, productId: string }>();
-        topSellingRaw.forEach(item => {
+        items.forEach(item => {
             const key = item.productId || item.name;
             const current = salesMap.get(key) || { name: item.name, quantity: 0, productId: item.productId! };
             current.quantity += item.quantity;
@@ -60,10 +46,9 @@ export async function getProductStats(branchId?: string, date?: Date) {
                 productId: { in: activeSellingProductIds },
                 product: { deletedAt: null }
             },
-            include: { product: true }
+            select: { productId: true, quantity: true, product: { select: { name: true } } }
         });
 
-        const totalBranches = await prisma.branch.count();
 
         const unifiedStockMap = new Map<string, { name: string, totalStock: number, salesVolume: number }>();
 

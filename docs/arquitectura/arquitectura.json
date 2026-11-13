@@ -1,7 +1,7 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-11-13",
-  "commit": "2b1ac3a",
+  "commit": "6086018",
   "resumen": [
     [
       "lenguaje",
@@ -9,15 +9,15 @@
     ],
     [
       "base",
-      "PostgreSQL (Prisma, 41 modelos) + base RAG (7 tablas)"
+      "PostgreSQL (Prisma, 42 modelos) + base RAG (7 tablas)"
     ],
     [
       "modulos",
-      "861"
+      "863"
     ],
     [
       "lineas",
-      "88.907"
+      "89.082"
     ],
     [
       "endpoints",
@@ -386,7 +386,7 @@
         "src/components/cerebro-v2/cerebro-v2-composer.tsx"
       ],
       "color": "azul",
-      "lineas": 930,
+      "lineas": 935,
       "nArchivos": 17,
       "rutas": [
         "src/app/admin/cerebro/",
@@ -861,7 +861,7 @@
         "src/actions/analytics-actions.ts"
       ],
       "color": "verde",
-      "lineas": 1843,
+      "lineas": 1828,
       "nArchivos": 13,
       "rutas": [
         "src/actions/dashboard/",
@@ -1008,7 +1008,7 @@
         "src/actions/pantallas-actions.ts"
       ],
       "color": "gris",
-      "lineas": 1065,
+      "lineas": 1078,
       "nArchivos": 7,
       "rutas": [
         "src/lib/pantallas/",
@@ -1116,8 +1116,8 @@
         "docs/cerebro-rag-runbook.md"
       ],
       "color": "amarillo",
-      "lineas": 3128,
-      "nArchivos": 36,
+      "lineas": 3287,
+      "nArchivos": 37,
       "rutas": [
         "src/lib/cerebro-v2/",
         "src/lib/repair-diagnosis-enhancement.ts"
@@ -1280,8 +1280,8 @@
         "docker-compose.yml"
       ],
       "color": "amarillo",
-      "lineas": 1480,
-      "nArchivos": 19,
+      "lineas": 1493,
+      "nArchivos": 20,
       "rutas": [
         "prisma/",
         "scripts/docker-init.sql",
@@ -1603,7 +1603,7 @@
         "services/cerebro-rag-worker/tests"
       ],
       "color": "gris",
-      "lineas": 10893,
+      "lineas": 10923,
       "nArchivos": 187,
       "rutas": [
         "src/__tests__/",
@@ -2575,6 +2575,7 @@
       "DeviceFamily",
       "DigitalScreen",
       "DigitalScreenContent",
+      "DigitalScreenDailySync",
       "DigitalScreenSync",
       "Expense",
       "FiscalEmissionAttempt",

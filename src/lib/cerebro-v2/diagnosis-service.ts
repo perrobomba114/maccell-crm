@@ -1,9 +1,13 @@
+import { safeWorkbenchUrl } from './source-links';
+import { benchTriage, needsTechnicalDocuments } from './bench-triage';
 import { generateText, Output } from 'ai';
 import { normalizeDeviceIdentity, deviceModelAliases } from './normalization';
 import { buildTechnicalSearchQuery, diagnosticSubsystemTerms } from './diagnostic-planner';
 import { buildDiagnosticState, type DiagnosticHistoryMessage, type DiagnosticState } from './diagnostic-state';
-import { buildIntakePlan, fallbackDiagnosticPlan, planToGuidedQuestion, validateDiagnosticDecision, type DiagnosticPlan } from './diagnostic-plan';
+import { buildIntakePlan, decisionSchema, fallbackDiagnosticPlan, planToGuidedQuestion, validateDiagnosticDecision, type DiagnosticPlan } from './diagnostic-plan';
 import { buildDecisionPrompt, DIAGNOSTIC_PROMPT_VERSION } from './diagnostic-prompt';
+import { retrieveLibrarySources } from './library-retrieval';
+import { retrieveRepairFallbackSources } from './repair-evidence-retrieval';
 import { retrieveTechnicalEvidence } from './resilient-retrieval';
 import { toPublicSources } from './message-content';
 import { buildModel, type ProviderSelection } from './provider-selection';
@@ -16,6 +20,8 @@ export type DiagnoseInput={repair:RepairContext;history:readonly DiagnosticHisto
 type DraftResult={text:string;provider:string};
 export type DiagnosisDependencies={
     retrieve:typeof retrieveTechnicalEvidence;
+    library?:typeof retrieveLibrarySources;
+    cases?:typeof retrieveRepairFallbackSources;
     draft:(prompt:string,correction?:string)=>Promise<DraftResult>;
     vision:typeof loadEvidenceVision;
 };
@@ -24,11 +30,11 @@ async function draft(prompt:string,correction?:string):Promise<DraftResult> {
     let provider:ProviderSelection={label:'Pendiente',keyId:'pending'};
     const result=await generateText({model:buildModel(p=>{provider=p;},false,true),system:prompt,
         messages:[{role:'user',content:correction?`Corregí la decisión: ${correction}. Devolvé JSON válido y una sola comprobación respaldada.`:'Prepará la próxima comprobación con el expediente y las fuentes.'}],
-        output:Output.json(),providerOptions:{openrouter:{reasoning:{enabled:false}}},
+        output:Output.object({schema:decisionSchema}),providerOptions:{openrouter:{reasoning:{enabled:false}}},
         temperature:0.1,maxOutputTokens:900,maxRetries:0,abortSignal:AbortSignal.timeout(45_000)});
-    return {text:result.text,provider:provider.keyId};
+    return {text:JSON.stringify(result.output),provider:provider.keyId};
 }
-const defaults:DiagnosisDependencies={retrieve:retrieveTechnicalEvidence,draft,vision:loadEvidenceVision};
+const defaults:DiagnosisDependencies={retrieve:retrieveTechnicalEvidence,cases:retrieveRepairFallbackSources,library:retrieveLibrarySources,draft,vision:loadEvidenceVision};
 
 function parseDraft(text:string):unknown {
     const clean=text.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
@@ -43,51 +49,94 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
     const identity=normalizeDeviceIdentity(input.repair.deviceBrand,input.repair.deviceModel);
     const state=buildDiagnosticState({brand:identity.brand,model:identity.model,sellerProblem:input.repair.problemDescription,
         observations:[...input.repair.observations, ...(input.repair.diagnosis ? [`Diagnóstico registrado: ${input.repair.diagnosis}`] : []), ...(input.repair.isWet ? ["Recepción registra antecedente de humedad; su estado actual requiere comprobación."] : [])], messages:[...input.history,{id:input.messageId,role:'user',content:input.text,answerContext:input.answerContext}]});
+    const locator = input.text.trim().match(/^(?:¿?d[oó]nde (?:est[aá]|queda|encuentro)|ubic[aá](?:me)?|localiz[aá])\s+(?:el |la )?((?:TP|[RCULFDJ])\d{2,6})[?!. ]*$/i);
+    const intake = locator ? null : buildIntakePlan(state);
+    const triage = !input.images.length && !intake ? benchTriage(state, input.text) : null;
+    const firstCheck = intake ?? triage;
+    if (firstCheck && !input.images.length) {
+        const text = intake ? 'Falta identificar la lectura registrada antes de interpretarla.' : firstCheck.expected || firstCheck.reason;
+        return { text, sources: [], metadata: buildMetadata(state, firstCheck, [], [], 'bench-protocol') };
+    }
     const search=buildTechnicalSearchQuery({brand:identity.brand,model:identity.model,problem:input.repair.problemDescription,
         latestText:input.text,observations:state.observations.filter(o=>!o.superseded&&o.origin==='technician').map(o=>o.text)});
     const retrievalInput={brand:identity.brand,model:identity.model,modelAliases:deviceModelAliases(identity),
         modelFamily:identity.modelFamily,text:search,subsystemTerms:diagnosticSubsystemTerms(search,identity.brand),
-        componentCodes:[...new Set(input.text.toUpperCase().match(/\b[A-Z]{1,3}\d{3,5}\b/g)??[])],excludeRepairTicket:input.repair.ticketNumber,limit:10};
+        componentCodes:[...new Set(input.text.toUpperCase().match(/\b[A-Z]{1,3}\d{2,6}\b/g)??[])],excludeRepairTicket:input.repair.ticketNumber,limit:10};
     let retrieved:{sources:CerebroSource[];unavailable:string[]};
-    try { retrieved=await dependencies.retrieve(retrievalInput); }
+    const boardContext = [input.text, input.answerContext?.question, state.sellerProblem, ...state.observations.filter(o => !o.superseded).slice(-3).map(o => o.text)].join(' ');
+    const documents = needsTechnicalDocuments(boardContext) || state.measurements.length > 0 || input.images.length > 0;
+    try {
+        if (locator && !input.images.length && dependencies.library) {
+            retrieved = {sources: await dependencies.library({...retrievalInput, text: locator[1], subsystemTerms: [], embedding: []}), unavailable: []};
+        } else retrieved = !documents && dependencies.cases
+            ? { sources: await dependencies.cases(retrievalInput), unavailable: [] }
+            : await dependencies.retrieve(retrievalInput);
+    }
     catch { retrieved={sources:[],unavailable:['No se pudo recuperar evidencia técnica']}; }
     const warnings=[...retrieved.unavailable];
-    const sources=retrieved.sources;
-    let plan=buildIntakePlan(state);
-    let provider='diagnostic-intake';
-    let text='El dato de recepción todavía no permite distinguir consumo de carga de una tensión. Los antecedentes se muestran como comparación; no confirman la causa de este equipo.';
+    const models = new Set([identity.model, ...deviceModelAliases(identity)].map(model => model.toUpperCase().replace(/[^A-Z0-9]/g, '')));
+    const sources = retrieved.sources.filter(source => {
+        const owner = normalizeDeviceIdentity(source.brand, source.model);
+        return owner.brand === identity.brand && models.has(owner.model.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+    });
+    if (locator && !input.images.length) {
+        const code = locator[1].toUpperCase();
+        const exact = sources.filter(source => {
+            const link = safeWorkbenchUrl(source.workbenchUrl);
+            if (!link || source.sourceType !== 'BOARD') return false;
+            const target = new URLSearchParams(link.split('?')[1]);
+            return target.get('board') === source.documentId && target.get('component')?.toUpperCase() === code;
+        });
+        const found = exact.length > 0;
+        const plan: DiagnosticPlan = { id: crypto.randomUUID(), kind: 'inspection', stage: 'Ubicar componente',
+            question: found ? `¿La distribución alrededor de ${code} coincide con tu placa?` : '¿Qué revisión o código de placa figura en la serigrafía?',
+            reason: found ? 'Confirmar la variante física antes de usar la referencia.' : 'La revisión permite distinguir variantes del mismo modelo.',
+            conditions: 'Comparación visual con el equipo desconectado.', instrument: '', point: found ? code : '',
+            expected: '', branches: [], options: [], evidenceIds: found ? ['E1'] : [] };
+        const text = found ? `El boardview de ${identity.model} ubica ${code}. Abrí la referencia para centrar ese componente.`
+            : `La búsqueda disponible no devolvió una ubicación verificable de ${code} en ${identity.model}.`;
+        return {text, sources: exact, metadata: buildMetadata(state, plan, exact, warnings, 'board-index')};
+    }
+    let plan: DiagnosticPlan | null = null;
+    let provider = 'unavailable';
+    let text = '';
+    let visual:{facts:string;warnings:string[]};
+    try { visual=await dependencies.vision(sources,input.images); }
+    catch { visual={facts:'',warnings:['No se pudo verificar evidencia visual']}; }
+    warnings.push(...visual.warnings);
+    const prompt=buildDecisionPrompt(state,sources)+(visual.facts?`\nLECTURA VISUAL NO CONFIRMADA; cada lectura conserva su página. No sustituye una medición:\n${visual.facts}`:'');
+    let correction:string|undefined;
+    for (let attempt=0;attempt<2;attempt++) {
+        let result:DraftResult;
+        try { result=await dependencies.draft(prompt,correction); }
+        catch {
+            warnings.push('El proveedor de diagnóstico no estuvo disponible');
+            provider='unavailable';
+            break;
+        }
+        provider=result.provider;
+        const validation=validateDiagnosticDecision(parseDraft(result.text),state,sources);
+        if (validation.valid) {
+            plan={...validation.decision.nextCheck,id:crypto.randomUUID()};
+            text=renderDiagnosticText(validation.decision.assessment,validation.decision.hypotheses);
+            break;
+        }
+        correction=validation.reason;
+        console.warn('[CEREBRO] Decision rejected', {provider,attempt:attempt+1,reason:validation.reason});
+    }
     if (!plan) {
-        let visual:{facts:string;warnings:string[]};
-        try { visual=await dependencies.vision(sources,input.images); }
-        catch { visual={facts:'',warnings:['No se pudo verificar evidencia visual']}; }
-        warnings.push(...visual.warnings);
-        const prompt=buildDecisionPrompt(state,sources)+(visual.facts?`\nLECTURA VISUAL NO CONFIRMADA; cada lectura conserva su página. No sustituye una medición:\n${visual.facts}`:'');
-        let correction:string|undefined;
-        for (let attempt=0;attempt<2;attempt++) {
-            let result:DraftResult;
-            try { result=await dependencies.draft(prompt,correction); }
-            catch {
-                warnings.push('El proveedor de diagnóstico no estuvo disponible');
-                provider='unavailable';
-                break;
-            }
-            provider=result.provider;
-            const validation=validateDiagnosticDecision(parseDraft(result.text),state,sources);
-            if (validation.valid) {
-                plan={...validation.decision.nextCheck,id:crypto.randomUUID()};
-                text=renderDiagnosticText(validation.decision.assessment,validation.decision.hypotheses);
-                break;
-            }
-            correction=validation.reason;
-            console.warn('[CEREBRO] Decision rejected', {provider,attempt:attempt+1,reason:validation.reason});
-        }
-        if (!plan) {
-            warnings.push('La propuesta automática no superó la verificación técnica');
-            plan=fallbackDiagnosticPlan('La evidencia disponible no permite validar una medición de placa específica.',state);
-            text=plan.kind==='clarification'
-                ? 'El dato de recepción quedó sin confirmar. Falta distinguir si el equipo no arranca o no muestra imagen; los antecedentes todavía no confirman la causa.'
-                : 'No pude validar una próxima medición con las fuentes actuales. Conservé el expediente y los antecedentes para continuar con una referencia verificable.';
-        }
+        if (provider !== 'unavailable') warnings.push('La propuesta automática no superó la verificación técnica');
+        plan=fallbackDiagnosticPlan('La evidencia disponible no permite validar una medición de placa específica.',state);
+        if (!documents && plan.stage === 'Revisión de evidencia') {
+            plan = {...plan, kind: 'clarification', stage: 'Revisar el caso con el técnico',
+                question: '¿Qué resultado observado necesitás interpretar o comparar?',
+                conditions: 'Podés registrar el resultado en texto para retomar el caso.',
+                reason: 'El servicio no produjo una interpretación verificable del último turno.',
+                expected: 'Resultado y condiciones registrados.'};
+            text = 'No obtuve una interpretación verificable para este turno. Tu observación quedó en el expediente.';
+        } else text=plan.kind==='clarification'
+            ? 'El dato de recepción quedó sin confirmar. Falta distinguir si el equipo no arranca o no muestra imagen; los antecedentes todavía no confirman la causa.'
+            : 'No pude validar una próxima medición con las fuentes actuales. Conservé el expediente y los antecedentes para continuar con una referencia verificable.';
     }
     return {text,sources,metadata:buildMetadata(state,plan,sources,warnings,provider)};
 }

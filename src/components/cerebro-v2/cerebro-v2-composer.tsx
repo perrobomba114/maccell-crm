@@ -29,11 +29,10 @@ export function CerebroV2Composer(props: ComposerProps) {
                 ) : null}
                 <div className="flex items-end gap-2 rounded-lg border border-slate-600 bg-[#080e13] p-2 focus-within:border-cyan-500/70">
                     <input ref={inputRef} type="file" accept="image/*" multiple hidden onChange={(event) => setFiles(Array.from(event.target.files ?? []).slice(0, 5))} />
-                    <button type="button" onClick={() => inputRef.current?.click()} disabled={props.streaming} aria-label="Adjuntar imágenes" className="rounded-md p-2.5 text-slate-500 hover:bg-slate-800 hover:text-cyan-300 disabled:opacity-40"><ImagePlus size={19} /></button>
-                    <textarea value={text} onChange={(event) => setText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} rows={1} placeholder={props.disabled ? "Seleccioná el modelo exacto para comenzar" : "Describí síntoma, consumo y mediciones realizadas…"} className="max-h-36 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600" />
+                    <button type="button" onClick={() => inputRef.current?.click()} disabled={props.disabled || props.streaming} aria-label="Adjuntar imágenes" className="rounded-md p-2.5 text-slate-500 hover:bg-slate-800 hover:text-cyan-300 disabled:opacity-40"><ImagePlus size={19} /></button>
+                    <textarea disabled={props.disabled} value={text} onChange={(event) => setText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} rows={1} placeholder={props.disabled ? "Chat en modo lectura" : "Preguntá por el caso o registrá lo que comprobaste…"} className="max-h-36 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600" />
                     {props.streaming ? <button type="button" onClick={props.onStop} className="rounded-md bg-amber-400 p-2.5 text-slate-950"><Square size={17} /></button> : <button type="button" onClick={() => void submit()} disabled={props.disabled || (!text.trim() && files.length === 0)} className="rounded-md bg-cyan-500 p-2.5 text-slate-950 hover:bg-cyan-400 disabled:opacity-30"><Send size={17} /></button>}
                 </div>
-                <p className="mt-2 text-center font-mono text-[9px] uppercase tracking-wider text-slate-600">Resultados basados en reparaciones MACCELL y documentación indexada</p>
             </div>
         </div>
     );

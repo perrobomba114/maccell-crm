@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type TextUIPart, type UIMessage } from "ai";
 import { useCallback, useState } from "react";
 
+import { latestCerebroTurn } from "@/lib/cerebro-v2/chat-contract";
 import { readCerebroApiError } from "@/lib/cerebro-v2/transport";
 import type { CerebroMessageMetadata, GuidedAnswer } from "@/lib/cerebro-v2/types";
 
@@ -41,6 +42,9 @@ export function useCerebroV2Chat(input: UseCerebroV2ChatInput) {
         transport: new DefaultChatTransport<CerebroUiMessage>({
             api: "/api/cerebro-v2/chat",
             fetch: apiFetch,
+            prepareSendMessagesRequest: ({ body, messages }) => ({
+                body: { ...body, messages: latestCerebroTurn(messages) },
+            }),
         }),
         onError: (error) => setClientError(error.message),
         onFinish: () => input.onConversationUpdated(),

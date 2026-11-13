@@ -55,15 +55,25 @@ export async function ensurePantallasTelemetrySchema() {
     CREATE INDEX IF NOT EXISTS idx_digital_screen_syncs_screen_created
       ON digital_screen_syncs(screen_id, created_at DESC);
   `);
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS digital_screen_daily_syncs (
+      screen_id TEXT NOT NULL REFERENCES digital_screens(id) ON DELETE CASCADE,
+      sync_day DATE NOT NULL,
+      sync_count INTEGER NOT NULL,
+      PRIMARY KEY (screen_id, sync_day)
+    )
+  `);
   telemetryInitialized = true;
 }
 
-export async function recordPantallaSync(screenId: string, contentCount: number) {
+export async function recordPantallaSync(screenId: string) {
   await ensurePantallasTelemetrySchema();
   await db.$executeRawUnsafe(
-    `INSERT INTO digital_screen_syncs (screen_id, content_count, created_at) VALUES ($1, $2, NOW())`,
-    screenId,
-    Math.max(0, Math.trunc(contentCount))
+    `INSERT INTO digital_screen_daily_syncs (screen_id, sync_day, sync_count)
+     VALUES ($1, (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date, 1)
+     ON CONFLICT (screen_id, sync_day) DO UPDATE
+     SET sync_count = digital_screen_daily_syncs.sync_count + 1`,
+    screenId
   );
 }
 
@@ -101,12 +111,15 @@ export async function getPantallaMetrics(): Promise<PantallaMetricRow[]> {
       s.id,
       s.nombre,
       s.lastseen,
-      COUNT(ss.id)::INT AS syncs_today
+      COALESCE(d.sync_count, 0) + (
+        SELECT COUNT(*) FROM digital_screen_syncs ss
+        WHERE ss.screen_id = s.id
+          AND ss.created_at >= date_trunc('day', NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AT TIME ZONE 'America/Argentina/Buenos_Aires'
+      ) AS syncs_today
     FROM digital_screens s
-    LEFT JOIN digital_screen_syncs ss
-      ON ss.screen_id = s.id
-      AND ss.created_at >= date_trunc('day', NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AT TIME ZONE 'America/Argentina/Buenos_Aires'
-    GROUP BY s.id
+    LEFT JOIN digital_screen_daily_syncs d
+      ON d.screen_id = s.id
+      AND d.sync_day = (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
     ORDER BY s.nombre ASC
   `);
 

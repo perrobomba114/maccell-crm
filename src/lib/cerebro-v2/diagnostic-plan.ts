@@ -62,6 +62,24 @@ export function validateDiagnosticDecision(value: unknown, state: DiagnosticStat
     if (state.brand!=='APPLE' && /panic[- ](?:full|base)|thermalmonitord|\biOS\b|Lightning|Tristar|Tigris|Hydra/i.test(all)) {
         return {valid:false,reason:'La instrucción pertenece a otra plataforma'};
     }
+    if (/\b(?:la causa (?:es|confirmada)|(?:est[aá]|est[aá]n) (?:dañad[oa]s?|quemad[oa]s?|en corto)|(?:hay que|debe[s]?|ten[eé]s que) (?:reemplazar|cambiar))\b/i.test(decision.assessment)) {
+        return { valid: false, reason: 'La evaluación afirma una avería o reemplazo sin verificación del equipo' };
+    }
+    const identifiers = (text: string) => text.match(/\b(?:TP|[RCULFDJ])\d{2,6}\b/gi) ?? [];
+    const technicalClaims = [
+        { text: decision.assessment, refs: decision.nextCheck.evidenceIds },
+        ...decision.hypotheses.map(h => ({ text: h.text, refs: h.evidenceIds })),
+        { text: JSON.stringify(decision.nextCheck), refs: decision.nextCheck.evidenceIds },
+    ];
+    for (const claim of technicalClaims) {
+        for (const code of identifiers(claim.text)) {
+            const supported = claim.refs.some(ref => {
+                const source = sources[Number(ref.slice(1)) - 1];
+                return source && (source.sourceType === 'PDF' || source.sourceType === 'BOARD') && new RegExp(`\\b${code}\\b`, 'i').test(source.content);
+            });
+            if (!supported) return { valid: false, reason: 'El punto de prueba no está respaldado por las fuentes citadas' };
+        }
+    }
     const references=[...decision.nextCheck.evidenceIds,...decision.hypotheses.flatMap(h=>h.evidenceIds)];
     if (references.some(id=>!sources[Number(id.slice(1))-1])) return {valid:false,reason:'La cita no existe'};
     const identity=normalizeDeviceIdentity(state.brand,state.model);
@@ -77,7 +95,7 @@ export function validateDiagnosticDecision(value: unknown, state: DiagnosticStat
         return {valid:false,reason:'Una referencia entre hojas no identifica un pin físico'};
     }
     // The model may explain hypotheses but cannot order irreversible work as an unverified next check.
-    if (/\b(?:puentea|puentear|reballing|inyecta|inyectar|desuelda|desoldar|retir[aá].{0,25}blindaje)\b/i.test(JSON.stringify(next))) {
+    if (/\b(?:puente[aá]|inyect[aá]|desold[aá]|desuelde|puentea|puentear|reballing|inyecta|inyectar|desuelda|desoldar|retir[aá].{0,25}blindaje)\b/i.test(JSON.stringify(next))) {
         return {valid:false,reason:'La intervención requiere un procedimiento verificado y revisión técnica'};
     }
     const codes=(`${next.point} ${next.question}`).match(/\b(?:[RCULFDJ]\d{2,6}|TP\d{2,6})\b/g)??[];

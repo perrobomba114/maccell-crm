@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       ? item
       : `${publicOrigin}${item}`
   );
-  void recordPantallaSync(id, data.length).catch((error) => {
+  void recordPantallaSync(id).catch((error) => {
     console.error("[PANTALLAS] No se pudo registrar sync:", error);
   });
 

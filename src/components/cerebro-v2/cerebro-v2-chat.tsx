@@ -14,6 +14,7 @@ type ChatProps = {
     brand: string;
     model: string;
     linkedToRepair: boolean;
+    intake?: string;
     initialMessages: CerebroUiMessage[];
     onOpenSource: (source: CerebroPublicSource) => void;
     onConversationUpdated: () => void;
@@ -41,11 +42,12 @@ export function CerebroV2Chat(props: ChatProps) {
                             <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-xl border border-cyan-500/25 bg-cyan-500/5 shadow-[0_0_50px_rgba(34,211,238,0.08)]"><CircuitBoard size={30} className="text-cyan-300" /></div>
                             <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">Banco de diagnóstico</p>
                             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-100">{props.brand} {props.model}</h1>
-                            <p className="mt-3 max-w-md text-sm leading-6 text-slate-500">Indicá consumo en fuente, síntoma, mediciones y trabajos previos. Cerebro buscará casos del mismo modelo y páginas técnicas.</p>
-                            <div className="mt-6 grid gap-2 text-left text-xs text-slate-500 sm:grid-cols-3"><span className="rounded border border-slate-800 px-3 py-2">01 · Síntoma</span><span className="rounded border border-slate-800 px-3 py-2">02 · Consumo/medición</span><span className="rounded border border-slate-800 px-3 py-2">03 · Intervención previa</span></div>
+                            {props.intake && <p className="mt-3 max-w-md text-sm text-slate-300">Recepción · {props.intake}</p>}
+                            <p className="mt-3 max-w-md text-sm text-slate-400">¿Qué necesitás decidir en el banco?</p>
+                            {props.linkedToRepair && props.intake && <button type="button" disabled={streaming} onClick={() => void chat.send("¿Por dónde empiezo con el síntoma de recepción?", [])} className="mt-4 rounded-md bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950">Evaluar el síntoma del ticket</button>}
                         </div>
                     ) : chat.messages.map((message, index) => <div key={message.id} ref={index === chat.messages.length - 1 ? latestRef : undefined}><CerebroV2Message message={message} disabled={!props.linkedToRepair || streaming || index !== chat.messages.length - 1} onOpenSource={props.onOpenSource} onGuidedAnswer={(questionId, option) => void chat.send(option.label, [], { questionId, optionId: option.id })} /></div>)}
-                    {streaming ? <div className="flex items-center gap-3 rounded-md border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 font-mono text-xs uppercase tracking-wider text-cyan-300"><Activity size={15} className="animate-pulse" />Recuperando evidencia y preparando la próxima medición…</div> : null}
+                    {streaming ? <div className="flex items-center gap-3 rounded-md border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 font-mono text-xs uppercase tracking-wider text-cyan-300"><Activity size={15} className="animate-pulse" />Revisando el caso…</div> : null}
                     {chat.error ? <div className="flex items-start gap-3 rounded-md border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"><AlertTriangle size={18} className="mt-0.5 shrink-0" /><div><p className="font-semibold">No se pudo completar el diagnóstico</p><p className="mt-1 text-red-300/80">{chat.error}</p><button type="button" onClick={chat.clearError} className="mt-2 font-mono text-[10px] uppercase tracking-wider text-red-200 underline">Cerrar aviso</button></div></div> : null}
                     <div ref={bottomRef} />
                 </div>

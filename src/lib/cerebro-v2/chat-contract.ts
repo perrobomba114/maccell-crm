@@ -56,3 +56,8 @@ export function parseCerebroChatRequest(input: unknown): CerebroChatRequestResul
 
     return { success: false, error: parsed.error.issues[0]?.message ?? "Consulta técnica inválida" };
 }
+
+// The server reconstructs the authorized history. Only the current turn belongs on the wire.
+export function latestCerebroTurn<T>(messages: readonly T[]): T[] {
+    return messages.slice(-1);
+}

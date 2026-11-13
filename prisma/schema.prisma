@@ -132,6 +132,7 @@ model DigitalScreen {
   stamp      DateTime               @default(now()) @db.Timestamptz(6)
   contenidos DigitalScreenContent[]
   syncs      DigitalScreenSync[]
+  dailySyncs DigitalScreenDailySync[]
 
   @@map("digital_screens")
 }
@@ -168,6 +169,16 @@ model DigitalScreenSync {
 
   @@index([screenId, createdAt], map: "idx_digital_screen_syncs_screen_created")
   @@map("digital_screen_syncs")
+}
+
+model DigitalScreenDailySync {
+  screenId  String        @map("screen_id")
+  syncDay   DateTime      @map("sync_day") @db.Date
+  syncCount Int           @map("sync_count")
+  screen    DigitalScreen @relation(fields: [screenId], references: [id], onDelete: Cascade)
+
+  @@id([screenId, syncDay])
+  @@map("digital_screen_daily_syncs")
 }
 
 model StockTransfer {
@@ -229,6 +240,7 @@ model Sale {
   @@index([branchId])
   @@index([vendorId])
   @@index([saleNumber])
+  @@index([createdAt])
   @@map("sales")
 }
 

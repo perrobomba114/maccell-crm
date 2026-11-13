@@ -137,5 +137,11 @@ export async function retrieveLibrarySources(input: RetrievalInput, search: Libr
             }
         }
     }
-    return sources.sort((a,b) => b.score-a.score).slice(0, input.limit ?? 8);
+    const requested = new Set((input.componentCodes ?? []).map(code => code.toUpperCase()));
+    const exactComponent = (source: CerebroSource) => {
+        if (!requested.size || source.sourceType !== 'BOARD' || !source.workbenchUrl) return 0;
+        const component = new URLSearchParams(source.workbenchUrl.split('?')[1]).get('component');
+        return component && requested.has(component.toUpperCase()) ? 1 : 0;
+    };
+    return sources.sort((a, b) => exactComponent(b) - exactComponent(a) || b.score - a.score).slice(0, input.limit ?? 8);
 }

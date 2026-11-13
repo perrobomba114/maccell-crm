@@ -14,7 +14,7 @@ test("provider failure returns a transparent safe plan and preserves the human r
         vision: async () => ({ facts: "", warnings: [] }),
         draft: async () => { throw new Error("secret provider detail"); },
     };
-    const result = await diagnoseRepair({ repair, history: [], text: "Probé otra batería y sigue sin encender", images: [], messageId: "u1" }, dependencies);
+    const result = await diagnoseRepair({ repair, history: [], text: "Probé otra batería y sigue sin encender. ¿Qué reviso en la placa?", images: [], messageId: "u1" }, dependencies);
     assert.equal(result.metadata.diagnosticPlan?.kind, "inspection");
     assert.ok(result.metadata.diagnosticState?.observations.some((item) => item.text.includes("otra batería")));
     assert.ok(result.metadata.retrievalWarnings?.some((warning) => /proveedor/i.test(warning)));
@@ -27,7 +27,7 @@ test("retrieval failure degrades explicitly instead of aborting diagnosis", asyn
         vision: async () => ({ facts: "", warnings: [] }),
         draft: async () => { throw new Error("offline"); },
     };
-    const result = await diagnoseRepair({ repair, history: [], text: "No presenta consumo", images: [], messageId: "u2" }, dependencies);
+    const result = await diagnoseRepair({ repair, history: [], text: "¿Dónde se mide VBUS?", images: [], messageId: "u2" }, dependencies);
     assert.ok(result.metadata.retrievalWarnings?.some((warning) => /recuperar evidencia/i.test(warning)));
     assert.doesNotMatch(JSON.stringify(result), /database address/);
 });
