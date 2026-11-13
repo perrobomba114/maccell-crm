@@ -145,3 +145,26 @@ export async function retrieveLibrarySources(input: RetrievalInput, search: Libr
     };
     return sources.sort((a, b) => exactComponent(b) - exactComponent(a) || b.score - a.score).slice(0, input.limit ?? 8);
 }
+
+// Catalog links are for browsing a whole file, never evidence for a specific pin or page.
+export async function findCatalogSchematics(brand: string, aliases: string[], load = async () => {
+    const { readCatalog } = await import("@/lib/schematics/catalog");
+    return (await readCatalog()).assets;
+}): Promise<CerebroSource[]> {
+    const keys = new Set(aliases.map(normalize));
+    const matches = (await load()).filter(asset => {
+        if (asset.kind !== "pdf" || asset.status !== "ready" || asset.normalizationReview
+            || normalizeBrandKey(asset.brand ?? "") !== normalizeBrandKey(brand)
+            || !/esquem[aá]tic|schematic|circuit diagram/i.test(asset.name)) return false;
+        if (keys.has(normalize(asset.model))) return true;
+        // Published Motorola folders can contain both the commercial model and XT code.
+        const pair = asset.model.match(/^(.+?)\s+(XT\d{4,5}(?:-\d+)?)$/i);
+        return brand === "MOTOROLA" && !!pair && pair.slice(1).every(part => keys.has(normalize(part)));
+    });
+    return matches.slice(0, 5).map(asset => ({
+        chunkId: `catalog:${asset.id}:overview`, documentId: asset.id, sourceType: "PDF",
+        authority: "TECHNICAL_DOCUMENT", brand, model: asset.model, title: asset.name, pageNumber: null,
+        content: "Archivo de catálogo para consulta visual. Confirmar revisión de placa.", score: 0,
+        workbenchUrl: `/technician/schematics?pdf=${asset.id}`,
+    }));
+}

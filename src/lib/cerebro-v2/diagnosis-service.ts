@@ -6,7 +6,7 @@ import { buildTechnicalSearchQuery, diagnosticSubsystemTerms } from './diagnosti
 import { buildDiagnosticState, type DiagnosticHistoryMessage, type DiagnosticState } from './diagnostic-state';
 import { buildIntakePlan, decisionSchema, fallbackDiagnosticPlan, planToGuidedQuestion, validateDiagnosticDecision, type DiagnosticPlan } from './diagnostic-plan';
 import { buildDecisionPrompt, DIAGNOSTIC_PROMPT_VERSION } from './diagnostic-prompt';
-import { retrieveLibrarySources } from './library-retrieval';
+import { findCatalogSchematics, retrieveLibrarySources } from './library-retrieval';
 import { retrieveRepairFallbackSources } from './repair-evidence-retrieval';
 import { retrieveTechnicalEvidence } from './resilient-retrieval';
 import { toPublicSources } from './message-content';
@@ -20,6 +20,7 @@ export type DiagnoseInput={repair:RepairContext;history:readonly DiagnosticHisto
 type DraftResult={text:string;provider:string};
 export type DiagnosisDependencies={
     retrieve:typeof retrieveTechnicalEvidence;
+    catalog?:typeof findCatalogSchematics;
     library?:typeof retrieveLibrarySources;
     cases?:typeof retrieveRepairFallbackSources;
     draft:(prompt:string,correction?:string)=>Promise<DraftResult>;
@@ -34,7 +35,7 @@ async function draft(prompt:string,correction?:string):Promise<DraftResult> {
         temperature:0.1,maxOutputTokens:900,maxRetries:0,abortSignal:AbortSignal.timeout(45_000)});
     return {text:JSON.stringify(result.output),provider:provider.keyId};
 }
-const defaults:DiagnosisDependencies={retrieve:retrieveTechnicalEvidence,cases:retrieveRepairFallbackSources,library:retrieveLibrarySources,draft,vision:loadEvidenceVision};
+const defaults:DiagnosisDependencies={retrieve:retrieveTechnicalEvidence,catalog:findCatalogSchematics,cases:retrieveRepairFallbackSources,library:retrieveLibrarySources,draft,vision:loadEvidenceVision};
 
 function parseDraft(text:string):unknown {
     const clean=text.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
@@ -126,15 +127,22 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
             if (nets.length || requestedCodes.length) return [...nets,...requestedCodes].every(term => tokens.includes(term));
             return terms.length === 0 || terms.some(term => tokens.includes(term.toUpperCase()));
         });
+        let catalog: CerebroSource[] = [];
+        if (!anchored.length && dependencies.catalog) {
+            try { catalog = await dependencies.catalog(identity.brand, [identity.model, ...deviceModelAliases(identity)]); }
+            catch { warnings.push("No se pudo consultar el catálogo físico."); }
+        }
         const first = anchored[0];
         const point = first?.workbenchUrl && new URLSearchParams(first.workbenchUrl.split('?')[1]).get('component');
         const ref = first ? (point ? 'componente ' + point : 'página ' + first.pageNumber) : '';
         const text = first ? `En ${first.title}, la referencia del ${identity.model} abre en ${ref} [E1].`
+            : catalog.length ? `Encontré el esquemático de ${identity.model}: ${catalog[0].title} [E1]. Podés abrir el PDF completo en el visor. Confirmá la revisión de placa antes de usar sus referencias.`
             : `No recuperé una página o ubicación verificable del ${identity.model} para esta consulta.`;
         const plan: DiagnosticPlan = {id:crypto.randomUUID(), kind:'inspection', stage:'Consultar el esquemático',
             question:first ? '¿La referencia abierta coincide con la variante y la zona que tenés en el banco?' : '¿Qué código de placa o designador figura en la zona que necesitás revisar?',
             reason:text,conditions:'Contrastá el archivo con la serigrafía de la placa antes de usarlo como referencia.',instrument:'',point:point || '',expected:'',branches:[],options:[],evidenceIds:first?['E1']:[]};
-        return {text,sources:anchored,metadata:buildMetadata(state,plan,anchored,warnings,'schematic-index')};
+        const references = anchored.length ? anchored : catalog;
+        return {text,sources:references,metadata:buildMetadata(state,plan,references,warnings,'schematic-index')};
     }
     let plan: DiagnosticPlan | null = null;
     let provider = 'unavailable';

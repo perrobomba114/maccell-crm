@@ -191,3 +191,12 @@ test("common model and a module replacement do not make a charging case evidence
         assert.equal(repairEvidenceMatchesSymptom({...summary, symptom}, symptom), true);
     }
 });
+
+test("E40 displays the technician's record when the workflow only logged assignment and parts", () => {
+    const notes = "Reparación retirada por técnico. Pendiente de asignación. Repuestos: MOTOROLA E40 | Control de cierre: repuestos asignados verificados.";
+    const summary = summarizeRepairEvidence("RESULTADO_ULTIMO_CICLO: REPAIRED\nDIAGNOSTICO: Se realizó el cambio de módulo.\nSOLUCION: " + notes, "MAC1-00001481");
+    assert.equal(summary.diagnosis, "Se realizó el cambio de módulo.");
+    assert.equal(summary.intervention, summary.diagnosis);
+    assert.equal(summary.verification, "");
+    assert.equal(summarizeRepairEvidence("RESULTADO_ULTIMO_CICLO: REPAIRED\nSOLUCION: " + notes, "Caso").outcome, "incomplete");
+});

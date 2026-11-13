@@ -1,6 +1,7 @@
 export type RepairEvidenceSummary = {
     ticketNumber: string;
     symptom: string;
+    diagnosis?: string;
     rootCause: string;
     intervention: string;
     verification: string;
@@ -25,6 +26,29 @@ function sanitizeTechnicalField(value: string): string {
         .replace(/\s+/g, " ").trim();
 }
 
+// Historical SOLUCION fields concatenate workflow events and actual bench notes.
+export function technicalIntervention(value: string): string {
+    return value
+        .replace(/\breparaci[óo]n (?:retirada|tomada) por (?:el )?t[ée]cnico\b[ .]*/gi, "")
+        .replace(/\bpendiente de asignaci[óo]n\b[ .]*/gi, "")
+        .replace(/(?:^|[.|]\s*|\s+)repuestos:\s*[^|]*/gi, "")
+        .replace(/control de cierre:\s*[^|]*/gi, "")
+        .replace(/^[\s|.]+|[\s|]+$/g, "").trim();
+}
+
+export function repairEvidenceFields(summary: RepairEvidenceSummary): string[][] {
+    // Older chats stored the diagnosis in rootCause before it had its own field.
+    const diagnosis = technicalIntervention(summary.diagnosis ?? summary.rootCause);
+    const intervention = technicalIntervention(summary.intervention);
+    const fields = [["Síntoma", summary.symptom], ["Diagnóstico del técnico", diagnosis]];
+    if (summary.diagnosis !== undefined && summary.rootCause && summary.rootCause !== diagnosis) {
+        fields.push(["Causa documentada", summary.rootCause]);
+    }
+    if (intervention && intervention !== diagnosis) fields.push(["Intervención", intervention]);
+    fields.push(["Verificación final", summary.verification]);
+    return fields;
+}
+
 const ADMINISTRATIVE = /(?:NO\s+SE\s+DISPONE\s+DE\s+REPUESTOS|NO\s+AUTORIZ|SIN\s+AUTORIZ|NO\s+ACEPT|PRESUPUESTO\s+RECHAZ|SIN\s+REPUEST|FALTA\s+DE\s+REPUEST|ENTREGAD[OA]\s+SIN\s+REPAR|NO\s+REPARAD[OA]|REPARACI[ÓO]N\s+(?:NO\s+REALIZADA|TOMADA\s+POR\s+T[ÉE]CNICO))/i;
 const VERIFIED = /(?:PROBAD[OA]|VERIFICAD[OA]|FUNCIONANDO|FUNCIONA\s+CORRECTAMENTE|TEST\s+OK|CARGA\s+ESTABLE|IMAGEN\s+CORRECTA)/i;
 const NEGATED_VERIFICATION = /(?:\b(?:NO|SIN)\b.{0,28}\b(?:PROBAD|VERIFIC|FUNCION|TEST|CARGA|IMAGEN)|\b(?:PENDIENTE|INCONCLUS|NO\s+CONFIRM|FALL[ÓO]))/i;
@@ -34,8 +58,8 @@ const REPORTED = new RegExp(`(?:OK|CORRECT[OA]|PROBAD[OA]|SOLUCIONAD[OA]|${INTER
 export function summarizeRepairEvidence(content: string, title: string): RepairEvidenceSummary {
     const symptom = field(content, ["SINTOMA_CONFIRMADO", "SÍNTOMA_CONFIRMADO", "SINTOMA", "SÍNTOMA", "PROBLEMA", "INGRESO"]);
     const confirmedCause = field(content, ["CAUSA_CONFIRMADA", "CAUSA RAIZ", "CAUSA RAÍZ", "CAUSA"]);
-    const diagnosis = field(content, ["DIAGNOSTICO_CONFIRMADO", "DIAGNÓSTICO_CONFIRMADO", "DIAGNOSTICO", "DIAGNÓSTICO"]);
-    const rawIntervention = field(content, ["INTERVENCION_CONFIRMADA", "INTERVENCIÓN_CONFIRMADA", "INTERVENCION", "INTERVENCIÓN", "SOLUCION", "SOLUCIÓN", "TRABAJO REALIZADO"]);
+    const diagnosis = technicalIntervention(field(content, ["DIAGNOSTICO_CONFIRMADO", "DIAGNÓSTICO_CONFIRMADO", "DIAGNOSTICO", "DIAGNÓSTICO"]));
+    const rawIntervention = technicalIntervention(field(content, ["INTERVENCION_CONFIRMADA", "INTERVENCIÓN_CONFIRMADA", "INTERVENCION", "INTERVENCIÓN", "SOLUCION", "SOLUCIÓN", "TRABAJO REALIZADO"]));
     const verification = field(content, ["VERIFICACION_FINAL", "VERIFICACIÓN_FINAL", "VERIFICACION", "VERIFICACIÓN", "PRUEBA FINAL", "EVIDENCIA"]);
     const lastCycle = field(content, ["RESULTADO_ULTIMO_CICLO"]);
     const result = field(content, ["RESULTADO", "ESTADO"]);
@@ -50,7 +74,7 @@ export function summarizeRepairEvidence(content: string, title: string): RepairE
         && !NEGATED_VERIFICATION.test(`${verification} ${result}`);
     const outcome = unrepaired ? "unrepaired"
         : positiveVerification ? "verified"
-            : (repaired || (intervention && REPORTED.test(`${intervention} ${result}`))) ? "reported"
+            : ((repaired && (rootCause || intervention)) || (intervention && REPORTED.test(`${intervention} ${result}`))) ? "reported"
                 : "incomplete";
     const outcomeCaveat = unrepaired ? "Cierre administrativo o sin reparación técnica."
         : outcome === "reported" ? "La intervención fue informada sin una verificación final específica."
@@ -62,7 +86,7 @@ export function summarizeRepairEvidence(content: string, title: string): RepairE
     const uncertainCause = !rootCause || /(?:NO\s+DETERMIN|SIN\s+DETERMIN|NO\s+CONFIRM|DESCONOCID|HIP[ÓO]TESIS|POSIBLE|PROBABLE)/i.test(rootCause);
     const causeCaveat = uncertainCause ? "La causa no fue establecida en el antecedente." : "";
     const caveat = [outcomeCaveat, contextCaveat, causeCaveat].filter(Boolean).join(" ");
-    return { ticketNumber, symptom, rootCause, intervention, verification, outcome, caveat };
+    return { ticketNumber, symptom, diagnosis, rootCause, intervention, verification, outcome, caveat };
 }
 
 export function repairEvidenceIsUsable(content: string, title: string): boolean {

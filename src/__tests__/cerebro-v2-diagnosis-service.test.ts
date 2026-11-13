@@ -45,3 +45,19 @@ test('after discarding an intake reading, provider failure asks for existing sig
     assert.match(result.metadata.diagnosticPlan?.conditions??'',/No conectes/);
     assert.doesNotMatch(result.text,/No pude validar una próxima medición/);
 });
+
+test("abre el esquema completo del E40 aunque el índice no ubique una página", async () => {
+    const { findCatalogSchematics } = await import("../lib/cerebro-v2/library-retrieval");
+    const asset = { id: "a".repeat(64), name: "Esquematico completo xt2159-x (moto e40).pdf", model: "Moto E40 XT2159",
+        kind: "pdf" as const, status: "ready" as const, brand: "Motorola", identityVerified: false,
+        relativePath: "sources/pdf/Motorola/Moto E40 XT2159/test.pdf", modelKey: "motoe40xt2159", size: 200, fileMtimeMs: 2, sha256: "b".repeat(64) };
+    const response = await diagnoseRepair({ repair: { ...repair, deviceModel: "E40" }, images: [], history: [], text: "tenés el schematic del E40?", messageId: "e40" }, {
+        retrieve: async () => ({ sources: [], unavailable: [] }),
+        catalog: (brand, aliases) => findCatalogSchematics(brand, aliases, async () => [asset, {...asset, model:"Moto E40 XT2155"}, {...asset, model:"Moto E40 Plus XT2159"}, {...asset, brand:"Samsung"}]),
+        draft: async () => { throw Error("unexpected draft"); }, vision: async () => ({ facts: "", warnings: [] }),
+    });
+    assert.match(response.text, /Encontré el esquemático/);
+    assert.equal(response.metadata.sources.length, 1);
+    assert.equal(response.metadata.sources[0].workbenchUrl, "/technician/schematics?pdf=" + asset.id);
+    assert.equal(response.metadata.sources[0].pageNumber, null);
+});
