@@ -1,7 +1,7 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-11-13",
-  "commit": "06ed094",
+  "commit": "5544f7e",
   "resumen": [
     [
       "lenguaje",
@@ -17,7 +17,7 @@
     ],
     [
       "lineas",
-      "88.199"
+      "88.205"
     ],
     [
       "endpoints",
@@ -283,7 +283,7 @@
         "src/components/admin"
       ],
       "color": "azul",
-      "lineas": 19376,
+      "lineas": 19382,
       "nArchivos": 159,
       "rutas": [
         "src/app/admin/",
