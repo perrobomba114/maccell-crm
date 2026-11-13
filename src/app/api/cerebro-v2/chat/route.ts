@@ -23,6 +23,7 @@ export async function POST(request: Request): Promise<Response> {
         const session=await cerebroChatRepository.getSession(user.id,data.sessionId);
         if (!session) return Response.json({error:"El chat no existe o no te pertenece"},{status:404});
         if (!session.repairId) return Response.json({error:"El chat no está vinculado a una reparación"},{status:409});
+        if (data.repairId && data.repairId !== session.repairId) return Response.json({error:"La conversación corresponde a otro ticket. Volvé a abrir la reparación."},{status:409});
         const repair=await getAuthorizedCerebroRepair(user,session.repairId);
         if (!repair) return Response.json({error:"La reparación fue finalizada o reasignada; el chat queda en modo lectura"},{status:403});
         const previous=await cerebroChatRepository.listMessages(user.id,session.id);

@@ -18,6 +18,7 @@ export type CerebroRepair = {
     diagnosis: string | null;
     diagnosisEnriched: string | null;
     observations: string[];
+    assignedParts: string[];
     deviceImages: string[];
     statusId: number;
     statusName: string;
@@ -39,7 +40,7 @@ export type CerebroRepairSummary = Pick<CerebroRepair,
     | "branchName"
     | "technicianName"
     | "updatedAt"
-> & { hasImages: boolean };
+> & { hasImages: boolean; isWet: boolean; isWarranty: boolean; latestNote: string | null; assignedParts: string[] };
 
 export function toCerebroRepairSummary(repair: CerebroRepair): CerebroRepairSummary {
     return {
@@ -54,6 +55,10 @@ export function toCerebroRepairSummary(repair: CerebroRepair): CerebroRepairSumm
         technicianName: repair.technicianName,
         updatedAt: repair.updatedAt,
         hasImages: repair.deviceImages.length > 0,
+        isWet: repair.isWet,
+        isWarranty: repair.isWarranty,
+        latestNote: repair.observations.at(-1) ?? null,
+        assignedParts: repair.assignedParts,
     };
 }
 
@@ -97,10 +102,11 @@ const repairSelect = {
     status: { select: { name: true } },
     branch: { select: { name: true } },
     assignedTo: { select: { name: true } },
+    parts: { select: { quantity: true, sparePart: { select: { name: true } } } },
     observations: {
         select: { content: true },
         orderBy: { createdAt: "asc" as const },
-        take: 30,
+
     },
 } satisfies Prisma.RepairSelect;
 
@@ -114,6 +120,7 @@ function toCerebroRepair(row: Prisma.RepairGetPayload<{ select: typeof repairSel
         diagnosis: row.diagnosis,
         diagnosisEnriched: row.diagnosisEnriched,
         observations: row.observations.map((observation) => observation.content),
+        assignedParts: row.parts.map(part => `${part.quantity} × ${part.sparePart.name}`),
         deviceImages: row.deviceImages,
         statusId: row.statusId,
         statusName: row.status.name,
@@ -131,7 +138,7 @@ export async function listAuthorizedCerebroRepairs(
 ): Promise<CerebroRepair[]> {
     const rows = await prisma.repair.findMany({
         where: withSearch(buildCerebroRepairWhere(user), search),
-        select: repairSelect,
+        select: { ...repairSelect, observations: {select: {content: true}, orderBy: {createdAt: "desc"}, take: 1} },
         orderBy: { updatedAt: "desc" },
         take: 100,
     });

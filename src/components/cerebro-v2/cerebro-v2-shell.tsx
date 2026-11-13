@@ -1,6 +1,10 @@
 "use client";
 
-import { Loader2, TriangleAlert } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+import "./bench.css";
+import { ArrowUpRight, FolderOpen, Loader2, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type { ChatMessage, ChatSession } from "@/lib/cerebro-v2/chat-repository";
@@ -13,7 +17,6 @@ import { CerebroV2Chat } from "./cerebro-v2-chat";
 import { CerebroV2Header } from "./cerebro-v2-header";
 import { CerebroV2History } from "./cerebro-v2-history";
 import { CerebroV2PdfViewer } from "./cerebro-v2-pdf-viewer";
-import { CerebroV2RepairPicker } from "./cerebro-v2-repair-picker";
 import type { CerebroUiMessage } from "./use-cerebro-v2-chat";
 
 type SessionDetail = { session: ChatSession; messages: ChatMessage[] };
@@ -60,29 +63,58 @@ export function CerebroV2Shell({ initialRepairId }: { initialRepairId?: string }
     const [closureOpen, setClosureOpen] = useState(false);
     const [healthDetails, setHealthDetails] = useState<string[]>([]);
 
-    const opened = useRef<string | undefined>(undefined);
-    const loadSessions = useCallback(async () => {
-        try {
-            const [sessionResult, repairResult] = await Promise.all([
-                jsonRequest<{ sessions: ChatSession[] }>("/api/cerebro-v2/sessions"),
-                jsonRequest<{ repairs: CerebroRepairSummary[] }>("/api/cerebro-v2/repairs"),
-            ]);
-            dispatch({ type: "sessions-loaded", sessions: sessionResult.sessions });
-            setRepairs(repairResult.repairs);
-            if (initialRepairId && opened.current !== initialRepairId) {
-                opened.current = initialRepairId;
-                if (repairResult.repairs.some(r => r.id === initialRepairId)) {
-                    setSelectedRepairId(initialRepairId);
-                    const existing = sessionResult.sessions.find(s => s.repairId === initialRepairId);
-                    if (existing) await selectSession(existing);
-                } else setError("La reparación ya no está disponible para tu usuario.");
-            }
-        } catch (requestError) {
-            setError(requestError instanceof Error ? requestError.message : "No se pudo cargar Cerebro V2");
-        } finally { setLoading(false); }
-    }, [initialRepairId]);
+    const sequence = useRef(0);
+    const [query, setQuery] = useState("");
+    const [queue, setQueue] = useState<CerebroRepairSummary[]>([]);
+    const [searching, setSearching] = useState(false);
+    useEffect(() => {
+        let current = true;
+        setSearching(true);
+        const timer = setTimeout(async () => {
+            try {
+                const result = await jsonRequest<{repairs: CerebroRepairSummary[]}>(`/api/cerebro-v2/repairs?q=${encodeURIComponent(query)}`);
+                if (current) setQueue(result.repairs);
+            } catch { if (current) setError("No se pudo cargar la bandeja de reparaciones."); }
+            finally { if (current) setSearching(false); }
+        }, query ? 180 : 0);
+        return () => { current = false; clearTimeout(timer); };
+    }, [query]);
 
-    useEffect(() => { void loadSessions(); }, [loadSessions]);
+    const rememberRepair = (repair: CerebroRepairSummary) => setRepairs(items => [...items.filter(r => r.id !== repair.id), repair]);
+    const loadSession = useCallback(async (session: ChatSession, token: number) => {
+        const [detail, scope] = await Promise.all([
+            jsonRequest<SessionDetail>(`/api/cerebro-v2/sessions/${session.id}`),
+            session.repairId ? jsonRequest<{repairs:CerebroRepairSummary[]}>(`/api/cerebro-v2/repairs?id=${encodeURIComponent(session.repairId)}`) : Promise.resolve({repairs:[]}),
+        ]);
+        if (token !== sequence.current) return;
+        if (scope.repairs[0]) rememberRepair(scope.repairs[0]);
+        else setRepairs(items => items.filter(r => r.id !== session.repairId));
+        setMessages(toUiMessages(detail.messages));
+        setSelectedRepairId(detail.session.repairId);
+        dispatch({type:"session-selected",session:detail.session});
+    }, []);
+    useEffect(() => {
+        const token = ++sequence.current;
+        setLoading(true); setSelectedRepairId(null); setMessages([]); dispatch({type:"repair-selected"});
+        void (async () => {
+            try {
+                const [list, target] = await Promise.all([
+                    jsonRequest<{sessions:ChatSession[]}>("/api/cerebro-v2/sessions"),
+                    initialRepairId ? jsonRequest<{repairs:CerebroRepairSummary[]}>(`/api/cerebro-v2/repairs?id=${encodeURIComponent(initialRepairId)}`) : Promise.resolve({repairs:[]}),
+                ]);
+                if (token !== sequence.current) return;
+                dispatch({type:"sessions-loaded",sessions:list.sessions});
+                if (!initialRepairId) return;
+                const repair = target.repairs.find(r => r.id === initialRepairId);
+                if (!repair) throw new Error("La reparación ya no está disponible para tu usuario.");
+                rememberRepair(repair); setSelectedRepairId(repair.id);
+                const session = list.sessions.find(s => s.repairId === repair.id);
+                if (session) await loadSession(session, token);
+            } catch (e) { if (token === sequence.current) setError(e instanceof Error ? e.message : "No se pudo abrir el banco."); }
+            finally { if (token === sequence.current) setLoading(false); }
+        })();
+        return () => { ++sequence.current; };
+    }, [initialRepairId, loadSession]);
     useEffect(() => {
         let active = true;
         void fetch("/api/cerebro-v2/health").then(response => response.json()).then((result: { overall?: "healthy" | "degraded"; reasons?: string[] }) => {
@@ -94,26 +126,32 @@ export function CerebroV2Shell({ initialRepairId }: { initialRepairId?: string }
     }, []);
 
     const selectSession = async (session: ChatSession) => {
-        setLoading(true); setError(null);
-        try {
-            const detail = await jsonRequest<SessionDetail>(`/api/cerebro-v2/sessions/${session.id}`);
-            setMessages(toUiMessages(detail.messages));
-            dispatch({ type: "session-selected", session: detail.session });
-            setSelectedRepairId(detail.session.repairId);
-        } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "No se pudo abrir el chat"); }
-        finally { setLoading(false); }
+        const token = ++sequence.current;
+        setRepairPickerOpen(false); setLoading(true); setError(null); setClosureOpen(false);
+        try { await loadSession(session, token); }
+        catch { if (token === sequence.current) setError("No se pudo abrir la conversación."); }
+        finally { if (token === sequence.current) setLoading(false); }
+    };
+
+    const choose = (repair: CerebroRepairSummary) => {
+        ++sequence.current;
+        rememberRepair(repair); setSelectedRepairId(repair.id); setMessages([]); setClosureOpen(false);
+        setError(null); setLoading(false); setRepairPickerOpen(false); dispatch({type:"repair-selected"});
+        const session = state.sessions.find(s => s.repairId === repair.id);
+        if (session) void selectSession(session);
     };
 
     const newChat = async () => {
-        if (!selectedRepairId) { setError("Seleccioná una reparación asignada antes de crear un chat"); return; }
+        if (!selectedRepairId || loading) return;
+        const token = ++sequence.current;
         setLoading(true); setError(null);
         try {
             const result = await jsonRequest<{ session: ChatSession }>("/api/cerebro-v2/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ repairId: selectedRepairId }) });
+            if (token !== sequence.current) return;
             setMessages([]); dispatch({ type: "session-created", session: result.session });
-        } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "No se pudo crear el chat"); }
-        finally { setLoading(false); }
+        } catch { if (token === sequence.current) setError("No se pudo crear la consulta."); }
+        finally { if (token === sequence.current) setLoading(false); }
     };
-
     const deleteChat = async (sessionId: string) => {
         try {
             await jsonRequest(`/api/cerebro-v2/sessions/${sessionId}`, { method: "DELETE" });
@@ -126,12 +164,34 @@ export function CerebroV2Shell({ initialRepairId }: { initialRepairId?: string }
     const activeSession = state.sessions.find((session) => session.id === state.activeSessionId) ?? null;
 
     return (
-        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-slate-700/70 bg-[#0b1117] text-slate-100">
+        <div className="cerebro-bench">
             <CerebroV2Header selectedRepair={selectedRepair} activeSession={activeSession} health={health} healthDetails={healthDetails} onCloseRepair={() => setClosureOpen(true)} onChooseRepair={() => setRepairPickerOpen(true)} onHistory={() => dispatch({ type: "toggle-history" })} onNewChat={() => void newChat()} />
-            <div className="relative flex min-h-0 flex-1 overflow-hidden">
-                <CerebroV2RepairPicker open={repairPickerOpen} repairs={repairs} selectedId={selectedRepairId} onClose={() => setRepairPickerOpen(false)} onSelect={(repair) => { setSelectedRepairId(repair.id); setMessages([]); dispatch({ type: "repair-selected" }); setRepairPickerOpen(false); }} />
+            <div className="bench-floor">
+                {(selectedRepair || activeSession) && !repairPickerOpen && <aside className="bench-file" aria-label="Ficha del equipo">
+                    <span className="bench-ticket">{selectedRepair?.ticketNumber ?? activeSession?.ticketNumber}</span>
+                    <h2>{selectedRepair?.deviceBrand ?? activeSession?.brand} <br/>{selectedRepair?.deviceModel ?? activeSession?.model}</h2>
+                    <p>{selectedRepair?.statusName ?? "Historial de reparación"}</p>
+                    <section><div className="bench-label">Motivo de ingreso</div><p>{selectedRepair?.problemDescription || "Ficha activa no disponible"}</p></section>
+                    {selectedRepair && <details><summary>Datos del ticket</summary>
+                        <p>{selectedRepair.branchName} · {selectedRepair.technicianName}</p>
+                        {selectedRepair.isWarranty && <p>En garantía</p>}{selectedRepair.isWet && <p>Humedad registrada</p>}
+                        {selectedRepair.latestNote && <section><div className="bench-label">Última nota del taller</div><p>{selectedRepair.latestNote}</p></section>}
+                        {selectedRepair.assignedParts?.length > 0 && <section><div className="bench-label">Repuestos asignados</div><p>{selectedRepair.assignedParts.join(" · ")}</p></section>}
+                    </details>}
+                    <Button variant="outline" size="sm" onClick={() => setRepairPickerOpen(true)}><FolderOpen size={15}/> Cambiar equipo</Button>
+                </aside>}
                 <CerebroV2History open={state.historyOpen} sessions={state.sessions} activeSessionId={state.activeSessionId} onClose={() => dispatch({ type: "close-history" })} onSelect={(session) => void selectSession(session)} onDelete={(sessionId) => void deleteChat(sessionId)} />
-                {loading ? <div className="flex flex-1 items-center justify-center"><Loader2 className="animate-spin text-cyan-300" /></div> : state.activeSessionId && activeSession ? <CerebroV2Chat key={state.activeSessionId} sessionId={state.activeSessionId} intake={selectedRepair?.problemDescription} brand={activeSession.brand} model={activeSession.model} linkedToRepair={repairs.some(repair => repair.id === activeSession.repairId)} initialMessages={messages} onOpenSource={(source) => dispatch({ type: "open-source", source })} onConversationUpdated={() => void loadSessions()} /> : <div className="flex flex-1 items-center justify-center p-6 text-center"><div><p className="font-mono text-xs uppercase tracking-widest text-cyan-300">Cerebro técnico</p><p className="mt-3 text-lg text-slate-200">{selectedRepair ? `${selectedRepair.ticketNumber} · ${selectedRepair.deviceBrand} ${selectedRepair.deviceModel}` : "Elegí una reparación asignada para comenzar."}</p><p className="mt-2 text-sm text-slate-500">La identidad del equipo se toma del ticket y no puede editarse desde el chat.</p><button type="button" onClick={() => selectedRepair ? void newChat() : setRepairPickerOpen(true)} className="mt-5 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-cyan-400">{selectedRepair ? "Iniciar diagnóstico" : "Elegir reparación"}</button></div></div>}
+                {loading ? <div className="flex flex-1 items-center justify-center"><Loader2 className="animate-spin text-blue-300" /></div> : repairPickerOpen || (!selectedRepair && !activeSession) ?
+                    <section className="bench-queue"><h1 className="bench-main-title">Reparaciones en banco</h1>
+                        <Input className="mb-4 bg-zinc-900" aria-label="Buscar reparaciones" placeholder="Buscar por ticket, modelo o falla" value={query} onChange={event => setQuery(event.target.value)}/>
+                        {repairPickerOpen && (selectedRepair || activeSession) && <button className="mb-4 underline" onClick={() => setRepairPickerOpen(false)}>Volver al equipo</button>}
+                        <div className="bench-list">{searching ? <p>Buscando reparaciones…</p> : queue.length ? queue.map(r => <button key={r.id} onClick={() => choose(r)}><span><small>{r.ticketNumber} · {r.statusName}</small><strong>{r.deviceBrand} {r.deviceModel}</strong><p>{r.problemDescription}</p></span><ArrowUpRight size={20}/></button>) : <p>No se encontraron reparaciones asignadas.</p>}</div>
+                    </section> : state.activeSessionId && activeSession ?
+                    <CerebroV2Chat key={activeSession.id} sessionId={activeSession.id} repairId={activeSession.repairId ?? undefined} intake={selectedRepair?.problemDescription} latestNote={selectedRepair?.latestNote} assignedParts={selectedRepair?.assignedParts}
+                        brand={selectedRepair?.deviceBrand ?? activeSession.brand} model={selectedRepair?.deviceModel ?? activeSession.model} linkedToRepair={Boolean(selectedRepair && selectedRepair.id === activeSession.repairId)}
+                        initialMessages={messages} onOpenSource={source => dispatch({type:"open-source",source})} onConversationUpdated={() => { const token = sequence.current; void jsonRequest<{sessions:ChatSession[]}>("/api/cerebro-v2/sessions").then(list => { if (token === sequence.current) dispatch({type:"sessions-loaded",sessions:list.sessions}); }).catch(() => setError("No se pudo actualizar el historial.")); }}/>
+                    : <section className="bench-welcome"><div className="bench-label">Diagnóstico técnico</div><h1 className="bench-main-title">Mesa de trabajo</h1><p className="mb-6 max-w-lg">Abrí una consulta para trabajar con la falla y las notas de este ticket.</p><Button onClick={() => void newChat()}>Abrir consulta <ArrowUpRight size={16}/></Button></section>}
+
                 {closureOpen && (activeSession?.repairId || selectedRepairId) ? <CerebroV2Closure repairId={(activeSession?.repairId || selectedRepairId)!} onClose={() => setClosureOpen(false)} /> : null}
                 {state.activeSource?.sourceType === "REPAIR" && state.activeSessionId ? <CerebroV2RepairEvidence source={state.activeSource} sessionId={state.activeSessionId} onClose={() => dispatch({ type: "close-source" })} /> : null}
                 {state.activeSource?.sourceType === "PDF" ? <CerebroV2PdfViewer source={state.activeSource} onClose={() => dispatch({ type: "close-source" })} /> : null}

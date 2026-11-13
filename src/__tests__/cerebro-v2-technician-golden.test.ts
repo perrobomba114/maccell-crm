@@ -79,3 +79,12 @@ test('una grilla de colores sin entrada de contacto no valida el táctil', async
     assert.doesNotMatch(result.metadata.diagnosticPlan!.question,/píxeles/);
     assert.match(result.metadata.diagnosticPlan!.question,/dedo/);
 });
+
+test('identifica la reparación activa desde el CRM aun con proveedor caído', async () => {
+    const result = await diagnoseRepair({...input,text:'¿Qué estoy reparando?', repair:{...repair,ticketNumber:'BENCH-42',problemDescription:'Sin audio en llamadas',isWarranty:true,assignedParts:['1 × Altavoz']}},offline);
+    assert.equal(result.metadata.provider,'repair-record');
+    assert.match(result.text,/BENCH-42/);
+    assert.match(result.text,/Sin audio en llamadas/);
+    assert.ok(result.metadata.diagnosticState?.observations.some(o=>o.text.includes('instalación pendiente de confirmar')));
+    assert.ok(result.metadata.diagnosticState?.observations.some(o=>o.text.includes('garantía')));
+});

@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/actions/auth-actions";
 import { canUseCerebroV2 } from "@/lib/cerebro-v2/access";
-import { listAuthorizedCerebroRepairs, toCerebroRepairSummary } from "@/lib/cerebro-v2/repair-context";
+import { getAuthorizedCerebroRepair, listAuthorizedCerebroRepairs, toCerebroRepairSummary } from "@/lib/cerebro-v2/repair-context";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,11 @@ export async function GET(request: Request): Promise<Response> {
         if (!user) return Response.json({ error: "No autorizado" }, { status: 401 });
         if (!canUseCerebroV2(user.role)) {
             return Response.json({ error: "Sin acceso" }, { status: 403 });
+        }
+        const id = new URL(request.url).searchParams.get("id");
+        if (id) {
+            const repair = await getAuthorizedCerebroRepair(user, id);
+            return Response.json({ repairs: repair ? [toCerebroRepairSummary(repair)] : [] });
         }
         const search = new URL(request.url).searchParams.get("q")?.slice(0, 120) ?? "";
         const repairs = (await listAuthorizedCerebroRepairs(user, search)).map(toCerebroRepairSummary);

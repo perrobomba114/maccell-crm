@@ -15,7 +15,7 @@ import { loadEvidenceVision } from './evidence-vision';
 import type { CerebroRepair } from './repair-context';
 import type { CerebroMessageMetadata, CerebroSource } from './types';
 
-type RepairContext=Pick<CerebroRepair,'deviceBrand'|'deviceModel'|'problemDescription'|'observations'|'ticketNumber'|'diagnosis'|'isWet'|'isWarranty'> & {id?: string};
+type RepairContext=Pick<CerebroRepair,'deviceBrand'|'deviceModel'|'problemDescription'|'observations'|'ticketNumber'|'diagnosis'|'isWet'|'isWarranty'> & {id?: string; assignedParts?: string[]};
 export type DiagnoseInput={repair:RepairContext;history:readonly DiagnosticHistoryMessage[];text:string;images:readonly string[];messageId:string;answerContext?:{question:string;conditions:string}};
 type DraftResult={text:string;provider:string};
 export type DiagnosisDependencies={
@@ -48,7 +48,12 @@ export function renderDiagnosticText(assessment:string,hypotheses:Array<{text:st
 export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisDependencies=defaults):Promise<{text:string;metadata:CerebroMessageMetadata;sources:CerebroSource[]}> {
     const identity=normalizeDeviceIdentity(input.repair.deviceBrand,input.repair.deviceModel);
     const state=buildDiagnosticState({brand:identity.brand,model:identity.model,sellerProblem:input.repair.problemDescription,
-        observations:[...input.repair.observations, ...(input.repair.diagnosis ? [`Diagnóstico registrado: ${input.repair.diagnosis}`] : []), ...(input.repair.isWet ? ["Recepción registra antecedente de humedad; su estado actual requiere comprobación."] : [])], messages:[...input.history,{id:input.messageId,role:'user',content:input.text,answerContext:input.answerContext}]});
+        observations:[...input.repair.observations, ...(input.repair.diagnosis ? [`Diagnóstico registrado: ${input.repair.diagnosis}`] : []), ...(input.repair.isWarranty ? ['Ticket en garantía.'] : []), ...(input.repair.assignedParts?.length ? [`Repuestos asignados al ticket (instalación pendiente de confirmar): ${input.repair.assignedParts.join(', ')}`] : []), ...(input.repair.isWet ? ["Recepción registra antecedente de humedad; su estado actual requiere comprobación."] : [])], messages:[...input.history,{id:input.messageId,role:'user',content:input.text,answerContext:input.answerContext}]});
+    const request = input.text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[¿?!.]/g, '').trim();
+    if (!input.images.length && /^(?:(?:decime|recordame|sabes) )?(?:que (?:equipo|celular|telefono|modelo) (?:es|tengo|estoy reparando|estamos reparando)|que (?:estoy|estamos) reparando|cual es (?:el equipo|el ticket|la falla (?:de ingreso|reportada)))$/.test(request)) {
+        const text = `Ticket ${input.repair.ticketNumber} · ${state.brand} ${state.model}.\n\nRecepción registró: ${state.sellerProblem || 'Sin falla consignada.'}`;
+        return {text, sources: [], metadata: {promptVersion: DIAGNOSTIC_PROMPT_VERSION, provider: 'repair-record', sources: [], diagnosticState: state}};
+    }
     const locator = input.text.trim().match(/^(?:¿?d[oó]nde (?:est[aá]|queda|encuentro)|ubic[aá](?:me)?|localiz[aá])\s+(?:el |la )?((?:TP|[RCULFDJ])\d{2,6})[?!. ]*$/i);
     const intake = locator ? null : buildIntakePlan(state);
     const triage = !input.images.length && !intake ? benchTriage(state, input.text) : null;
@@ -104,7 +109,7 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
     try { visual=await dependencies.vision(sources,input.images); }
     catch { visual={facts:'',warnings:['No se pudo verificar evidencia visual']}; }
     warnings.push(...visual.warnings);
-    const prompt=buildDecisionPrompt(state,sources)+(visual.facts?`\nLECTURA VISUAL NO CONFIRMADA; cada lectura conserva su página. No sustituye una medición:\n${visual.facts}`:'');
+    const prompt=buildDecisionPrompt(state,sources)+`\nTicket activo: ${input.repair.ticketNumber}. Equipo registrado: ${input.repair.deviceBrand} ${input.repair.deviceModel}. Esta identidad y el motivo de recepción pertenecen al equipo actual. Los antecedentes son de otros tickets.`+(visual.facts?`\nLECTURA VISUAL NO CONFIRMADA; cada lectura conserva su página. No sustituye una medición:\n${visual.facts}`:'');
     let correction:string|undefined;
     for (let attempt=0;attempt<2;attempt++) {
         let result:DraftResult;

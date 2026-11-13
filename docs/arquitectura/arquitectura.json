@@ -1,7 +1,7 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-11-13",
-  "commit": "937a282",
+  "commit": "727848d",
   "resumen": [
     [
       "lenguaje",
@@ -13,11 +13,11 @@
     ],
     [
       "modulos",
-      "865"
+      "866"
     ],
     [
       "lineas",
-      "88.198"
+      "88.317"
     ],
     [
       "endpoints",
@@ -386,8 +386,8 @@
         "src/components/cerebro-v2/cerebro-v2-composer.tsx"
       ],
       "color": "azul",
-      "lineas": 949,
-      "nArchivos": 17,
+      "lineas": 1049,
+      "nArchivos": 18,
       "rutas": [
         "src/app/admin/cerebro/",
         "src/app/vendor/cerebro/",
@@ -519,7 +519,7 @@
         "src/app/api/cerebro/enhance-diagnosis/route.ts"
       ],
       "color": "violeta",
-      "lineas": 673,
+      "lineas": 679,
       "nArchivos": 13,
       "rutas": [
         "src/app/api/cerebro-v2/",
@@ -1116,7 +1116,7 @@
         "docs/cerebro-rag-runbook.md"
       ],
       "color": "amarillo",
-      "lineas": 3347,
+      "lineas": 3360,
       "nArchivos": 37,
       "rutas": [
         "src/lib/cerebro-v2/",
@@ -1603,7 +1603,7 @@
         "services/cerebro-rag-worker/tests"
       ],
       "color": "gris",
-      "lineas": 10987,
+      "lineas": 10996,
       "nArchivos": 189,
       "rutas": [
         "src/__tests__/",

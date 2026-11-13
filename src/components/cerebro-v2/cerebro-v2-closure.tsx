@@ -101,28 +101,28 @@ export function CerebroV2Closure({ repairId, onClose }: Props) {
 
     return (
         <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-            <DialogContent className="max-h-[92dvh] overflow-hidden border-slate-700 bg-[#101820] p-0 text-slate-100 sm:max-w-2xl">
-                <DialogHeader className="border-b border-slate-700/80 bg-[#0b1218] px-6 py-5 pr-14">
-                    <div className="flex items-center gap-3"><span className="rounded-lg border border-cyan-400/20 bg-cyan-400/10 p-2 text-cyan-300"><ClipboardCheck size={19} /></span><DialogTitle>Cierre técnico verificable</DialogTitle></div>
-                    <DialogDescription className="text-slate-400">Registrá únicamente lo comprobado en esta reparación. El cierre se revisa antes de alimentar entrenamiento.</DialogDescription>
+            <DialogContent className="max-h-[92dvh] overflow-hidden border-zinc-700 bg-zinc-900 p-0 text-zinc-100 sm:max-w-2xl">
+                <DialogHeader className="border-b border-zinc-700/80 bg-[#0b1218] px-6 py-5 pr-14">
+                    <div className="flex items-center gap-3"><span className="rounded-lg border border-blue-400/20 bg-blue-400/10 p-2 text-blue-300"><ClipboardCheck size={19} /></span><DialogTitle>Cierre técnico verificable</DialogTitle></div>
+                    <DialogDescription className="text-zinc-400">Registrá únicamente lo comprobado en esta reparación. El cierre se revisa antes de alimentar entrenamiento.</DialogDescription>
                 </DialogHeader>
                 <div className="min-h-0 space-y-5 overflow-y-auto px-6 py-5">
-                    {!draft && !error ? <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-400"><Loader2 className="animate-spin" size={17} />Cargando borrador técnico…</div> : null}
+                    {!draft && !error ? <div className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-400"><Loader2 className="animate-spin" size={17} />Cargando borrador técnico…</div> : null}
                     {draft ? fields.map((field) => (
                         <div key={field.name} className="space-y-2">
-                            <div className="flex items-end justify-between gap-3"><Label htmlFor={`closure-${field.name}`} className="text-slate-100">{field.label}</Label>{field.name === "rootCause" ? <button type="button" onClick={() => updateField("rootCause", "No determinada")} className="text-xs text-cyan-300 hover:text-cyan-200">No determinada</button> : null}</div>
-                            <p id={`closure-${field.name}-help`} className="text-xs leading-5 text-slate-500">{field.help}</p>
-                            <Textarea id={`closure-${field.name}`} aria-describedby={`closure-${field.name}-help`} value={draft[field.name]} onChange={(event) => updateField(field.name, event.target.value)} placeholder={field.placeholder} className="min-h-24 resize-y border-slate-700 bg-[#0a1117] text-sm text-slate-100 placeholder:text-slate-600 focus-visible:ring-cyan-500/40" />
+                            <div className="flex items-end justify-between gap-3"><Label htmlFor={`closure-${field.name}`} className="text-zinc-100">{field.label}</Label>{field.name === "rootCause" ? <button type="button" onClick={() => updateField("rootCause", "No determinada")} className="text-xs text-blue-300 hover:text-blue-200">No determinada</button> : null}</div>
+                            <p id={`closure-${field.name}-help`} className="text-xs leading-5 text-zinc-500">{field.help}</p>
+                            <Textarea id={`closure-${field.name}`} aria-describedby={`closure-${field.name}-help`} value={draft[field.name]} onChange={(event) => updateField(field.name, event.target.value)} placeholder={field.placeholder} className="min-h-24 resize-y border-zinc-700 bg-[#0a1117] text-sm text-zinc-100 placeholder:text-zinc-600 focus-visible:ring-blue-500/40" />
                         </div>
                     )) : null}
                     {error ? <div role="alert" className="flex gap-2 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200"><AlertCircle className="mt-0.5 shrink-0" size={16} />{error}</div> : null}
                     {qualityFeedback.length ? <div role="status" className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100"><p className="font-medium">Guardado como cierre incompleto</p><ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-200">{qualityFeedback.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
                     {saved ? <div role="status" className="flex gap-2 rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm text-emerald-200"><CheckCircle2 className="shrink-0" size={17} />Cierre guardado. Los cambios quedaron registrados con su autoridad técnica.</div> : null}
                 </div>
-                <DialogFooter className="border-t border-slate-700/80 bg-[#0b1218] px-6 py-4">
-                    <Button type="button" variant="ghost" onClick={onClose} disabled={pending} className="text-slate-300 hover:bg-slate-800 hover:text-white">Cancelar</Button>
+                <DialogFooter className="border-t border-zinc-700/80 bg-[#0b1218] px-6 py-4">
+                    <Button type="button" variant="ghost" onClick={onClose} disabled={pending} className="text-zinc-300 hover:bg-zinc-800 hover:text-white">Cancelar</Button>
                     {canApproveClosure({ dirty, serverCanReview, expectedVersion: version }) ? <Button type="button" variant="outline" onClick={approveTraining} disabled={pending} className="border-amber-400/40 bg-amber-400/10 text-amber-100 hover:bg-amber-400/20"><ShieldCheck />Aprobar para entrenamiento</Button> : null}
-                    <Button type="button" onClick={save} disabled={!draft || pending || !dirty} className="bg-cyan-600 hover:bg-cyan-500">{pending ? <Loader2 className="animate-spin" /> : <ClipboardCheck />}{dirty ? "Guardar cierre" : "Cierre guardado"}</Button>
+                    <Button type="button" onClick={save} disabled={!draft || pending || !dirty} className="bg-blue-600 hover:bg-blue-500">{pending ? <Loader2 className="animate-spin" /> : <ClipboardCheck />}{dirty ? "Guardar cierre" : "Cierre guardado"}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

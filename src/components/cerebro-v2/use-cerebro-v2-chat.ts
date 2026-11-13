@@ -12,6 +12,7 @@ export type CerebroUiMessage = UIMessage<CerebroMessageMetadata>;
 
 type UseCerebroV2ChatInput = {
     sessionId: string;
+    repairId?: string;
     initialMessages: CerebroUiMessage[];
     onConversationUpdated: () => void;
 };
@@ -69,6 +70,7 @@ export function useCerebroV2Chat(input: UseCerebroV2ChatInput) {
                 {
                     body: {
                         sessionId: input.sessionId,
+                        repairId: input.repairId,
                         clientMessageId,
                         ...(guidedAnswer ? { guidedAnswer } : {}),
                     },
@@ -79,7 +81,7 @@ export function useCerebroV2Chat(input: UseCerebroV2ChatInput) {
             setClientError(error instanceof Error ? error.message : "No se pudo enviar la consulta");
             return false;
         }
-    }, [chat, input.sessionId]);
+    }, [chat, input.sessionId, input.repairId]);
 
     return {
         messages: chat.messages,

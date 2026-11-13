@@ -21,6 +21,7 @@ const messageSchema = z.object({
 
 const requestSchema = z.object({
     sessionId: z.string().uuid(),
+    repairId: z.string().min(1).max(180).optional(),
     clientMessageId: z.string().min(1).max(180),
     messages: z.array(messageSchema).min(1).max(20),
     guidedAnswer: z.object({

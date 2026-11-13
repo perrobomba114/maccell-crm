@@ -1,0 +1,51 @@
+.cerebro-bench {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-zinc-950);
+  color: var(--color-zinc-100);
+  font-family: var(--font-sans);
+}
+.bench-bar {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 12px clamp(12px, 2vw, 28px); border-bottom: 1px solid var(--color-zinc-800);
+}
+.bench-wordmark { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; letter-spacing: -.035em }
+.bench-wordmark svg { color: var(--color-blue-400) }
+.bench-bar nav { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px }
+.bench-bar details { position: relative; z-index: 20 }
+.bench-bar summary { display: flex; padding: 8px; cursor: pointer; color: var(--color-zinc-400) }
+.bench-bar details div { position: absolute; right: 0; width: 240px; padding: 14px; border-radius: 12px; border: 1px solid var(--color-zinc-700); background: var(--color-zinc-900); font-size: 12px }
+.bench-floor { position: relative; display: flex; flex: 1; min-height: 0; gap: 12px; padding: 12px }
+.bench-file {
+  flex: 0 0 clamp(220px, 25%, 320px); align-self: flex-start; max-height: 100%; overflow: auto;
+  padding: clamp(16px, 2vw, 24px); border: 1px solid var(--color-zinc-800);
+  border-top-color: var(--color-blue-500); border-radius: 1.5rem; background: var(--color-zinc-900);
+}
+.bench-label { color: var(--color-zinc-400); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .11em }
+.bench-file h2,.bench-main-title { font-weight: 750; line-height: 1.12; letter-spacing: -.035em; overflow-wrap: anywhere }
+.bench-file h2 { font-size: clamp(22px, 2.6vw, 34px); margin: 12px 0 6px }
+.bench-ticket { display: inline-block; color: var(--color-blue-300); background: var(--color-zinc-950); border: 1px solid var(--color-zinc-700); border-radius: 8px; padding: 4px 9px; font: 700 12px var(--font-mono) }
+.bench-file section,.bench-record { border-top: 1px solid var(--color-zinc-800); margin-top: 16px; padding-top: 12px }
+.bench-file p,.bench-record p { font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap }
+.bench-file summary { cursor: pointer; font-weight: 600; font-size: 13px; margin: 12px 0 }
+.bench-file button { margin-top: 12px }
+.bench-queue,.bench-welcome { flex: 1; min-width: 0; overflow: auto; padding: clamp(16px, 2vw, 32px) }
+.bench-main-title { font-size: clamp(24px, 3vw, 36px); margin: 6px 0 16px }
+.bench-record { margin-bottom: 18px }.bench-record p { margin-top: 5px }
+.bench-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit,minmax(min(100%,265px),1fr)) }
+.bench-list button { display: grid; grid-template-columns: minmax(0,1fr) auto; text-align: left; align-items: center; padding: 16px; border: 1px solid var(--color-zinc-800); border-radius: 1rem; background: var(--color-zinc-900) }
+.bench-list button:hover { border-color: var(--color-blue-500) }.bench-list small { color: var(--color-blue-300); font-family: var(--font-mono) }.bench-list strong { display: block; margin: 6px 0; font-size: 18px }.bench-list p { font-size: 13px; color: var(--color-zinc-300) }
+.bench-lab { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; border: 1px solid var(--color-zinc-800); border-radius: 1.5rem; overflow: hidden }
+.bench-work { background: var(--color-zinc-900); border-color: var(--color-zinc-700); border-top-color: var(--color-blue-500); border-radius: 1rem }
+.bench-compose { background: var(--color-zinc-900); border-color: var(--color-zinc-800) }
+.bench-input { background: var(--color-zinc-950); border-color: var(--color-zinc-700); border-radius: 12px }
+@media(max-width:760px) {
+  .bench-floor { flex-direction: column; gap: 6px; padding: 6px }
+  .bench-file { flex: 0 0 auto; align-self: stretch; max-height: 30%; padding: 10px 14px; border-radius: 1rem }
+  .bench-file h2 { font-size: 21px; margin: 3px 0 }.bench-file h2 br { display: none }.bench-file .bench-ticket { float: right }
+  .bench-file section { margin-top: 6px; padding-top: 6px }.bench-file details { display: inline-block }.bench-file button { float: right; margin: 4px }
+  .bench-bar { gap: 6px; padding: 8px 10px }.bench-wordmark { font-size: 18px }.bench-bar nav { gap: 3px }.bench-bar button { padding-inline: 7px; font-size: 11px }.bench-bar button svg { display: none }
+}
