@@ -1,23 +1,23 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-11-13",
-  "commit": "7937c36",
+  "commit": "6721620",
   "resumen": [
     [
       "lenguaje",
-      "TypeScript 90% · Python 5% · JavaScript 1%"
+      "TypeScript 90% · Python 6% · JavaScript 1%"
     ],
     [
       "base",
-      "PostgreSQL (Prisma, 41 modelos) + base RAG (7 tablas)"
+      "PostgreSQL (Prisma, 42 modelos) + base RAG (7 tablas)"
     ],
     [
       "modulos",
-      "856"
+      "863"
     ],
     [
       "lineas",
-      "89.165"
+      "89.054"
     ],
     [
       "endpoints",
@@ -283,8 +283,8 @@
         "src/components/admin"
       ],
       "color": "azul",
-      "lineas": 20566,
-      "nArchivos": 155,
+      "lineas": 20301,
+      "nArchivos": 159,
       "rutas": [
         "src/app/admin/",
         "src/components/admin/"
@@ -465,7 +465,7 @@
         "src/app/layout.tsx"
       ],
       "color": "azul",
-      "lineas": 17214,
+      "lineas": 17215,
       "nArchivos": 123,
       "rutas": [
         "src/components/",
@@ -861,7 +861,7 @@
         "src/actions/analytics-actions.ts"
       ],
       "color": "verde",
-      "lineas": 1842,
+      "lineas": 1828,
       "nArchivos": 13,
       "rutas": [
         "src/actions/dashboard/",
@@ -893,8 +893,8 @@
         "src/lib/admin-repairs-query.ts"
       ],
       "color": "gris",
-      "lineas": 2629,
-      "nArchivos": 30,
+      "lineas": 2634,
+      "nArchivos": 31,
       "rutas": [
         "src/lib/"
       ],
@@ -1008,7 +1008,7 @@
         "src/actions/pantallas-actions.ts"
       ],
       "color": "gris",
-      "lineas": 1065,
+      "lineas": 1078,
       "nArchivos": 7,
       "rutas": [
         "src/lib/pantallas/",
@@ -1280,7 +1280,7 @@
         "docker-compose.yml"
       ],
       "color": "amarillo",
-      "lineas": 1480,
+      "lineas": 1491,
       "nArchivos": 19,
       "rutas": [
         "prisma/",
@@ -1521,8 +1521,8 @@
         "scripts/production-baseline.ts"
       ],
       "color": "violeta",
-      "lineas": 3705,
-      "nArchivos": 33,
+      "lineas": 3843,
+      "nArchivos": 35,
       "rutas": [
         "scripts/",
         "src/scripts/"
@@ -1603,8 +1603,8 @@
         "services/cerebro-rag-worker/tests"
       ],
       "color": "gris",
-      "lineas": 10883,
-      "nArchivos": 186,
+      "lineas": 10893,
+      "nArchivos": 187,
       "rutas": [
         "src/__tests__/",
         "scripts/tests/",
@@ -2575,6 +2575,7 @@
       "DeviceFamily",
       "DigitalScreen",
       "DigitalScreenContent",
+      "DigitalScreenDailySync",
       "DigitalScreenSync",
       "Expense",
       "FiscalEmissionAttempt",

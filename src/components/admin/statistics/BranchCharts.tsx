@@ -1,106 +1,32 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import { BarChart3 } from "lucide-react";
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Legend
-} from "recharts";
 
-type BranchProfitDatum = {
-    name: string;
-    revenue: number;
-    profit: number;
-};
+type BranchProfitDatum = { name: string; revenue: number; profit: number };
+const currency = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 
-type BranchStatsData = {
-    branchProfits: BranchProfitDatum[];
-};
-
-function BranchProfitChart({ data }: { data: BranchProfitDatum[] }) {
-    const [isMounted, setIsMounted] = useState(false);
-    const [isReady, setIsReady] = useState(false);
-
-    useEffect(() => {
-        setIsMounted(true);
-        const timer = setTimeout(() => setIsReady(true), 500);
-        return () => clearTimeout(timer);
-    }, []);
-
-    if (!data || data.length === 0) return <div className="h-full flex items-center justify-center text-zinc-500 text-sm">Sin datos financieros</div>;
-
-    if (!isMounted || !isReady) {
-        return (
-            <div className="h-full flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-            </div>
-        );
-    }
-
-    return (
-        <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={200}>
-            <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
-                <XAxis
-                    dataKey="name"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    stroke="#71717a"
-                    dy={10}
-                />
-                <YAxis
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    stroke="#71717a"
-                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                    cursor={{ fill: '#27272a', opacity: 0.4 }}
-                    formatter={(value) => {
-                        const num = typeof value === "number" ? value : Number(value);
-                        return [`$${new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(num)}`, ""];
-                    }}
-                    contentStyle={{
-                        backgroundColor: '#18181b',
-                        borderColor: '#27272a',
-                        borderRadius: '12px',
-                        color: '#fff',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.3)'
-                    }}
-                />
-                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                <Bar dataKey="revenue" name="Ingresos" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                <Bar dataKey="profit" name="Ganancia Neta" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
-            </BarChart>
-        </ResponsiveContainer>
-    );
-}
-
-export function BranchCharts({ branchStats }: { branchStats: BranchStatsData | null | undefined }) {
+export function BranchCharts({ branchStats }: { branchStats: { branchProfits: BranchProfitDatum[] } | null | undefined }) {
     if (!branchStats) return null;
-
+    const rows = [...branchStats.branchProfits].sort((a, b) => b.revenue - a.revenue);
+    const maxRevenue = Math.max(0, ...rows.map(row => row.revenue));
     return (
-        <div className="xl:col-span-2 bg-[#18181b] rounded-2xl border border-zinc-800 p-6 flex flex-col min-h-[450px]">
-            <div className="flex items-start justify-between mb-6">
-                <div>
-                    <h3 className="text-lg font-bold text-white mb-1">Rendimiento Financiero</h3>
-                    <p className="text-sm text-zinc-500">Comparativa de ingresos y ganancias brutas</p>
-                </div>
-                <div className="bg-blue-500/10 p-2 rounded-lg text-blue-500">
-                    <BarChart3 size={20} />
-                </div>
-            </div>
-            <div className="flex-1 w-full h-full">
-                <BranchProfitChart data={branchStats.branchProfits} />
-            </div>
-        </div>
+        <section className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6 xl:col-span-2">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                <BarChart3 className="size-5 text-blue-300" aria-hidden="true" /> Rendimiento por sucursal
+            </h2>
+            {rows.length ? <table className="w-full table-fixed text-left text-sm">
+                <caption className="sr-only">Ingresos y ganancia bruta del período en pesos argentinos, ordenados por ingresos</caption>
+                <thead className="border-b border-zinc-700 text-zinc-300">
+                    <tr><th scope="col" className="w-1/3 py-3">Sucursal</th><th scope="col" className="text-right">Ingresos</th><th scope="col" className="pl-2 text-right">Ganancia bruta</th></tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800">
+                    {rows.map((row, index) => <tr key={index}>
+                        <th scope="row" className="py-4 pr-2 font-medium [overflow-wrap:anywhere]">{row.name}</th>
+                        <td className="py-4 text-right tabular-nums [overflow-wrap:anywhere]">{currency.format(row.revenue)}
+                            {maxRevenue > 0 && <div aria-hidden="true" className="mt-1 h-1 rounded bg-zinc-800"><div className="h-full rounded bg-blue-400" style={{ width: `${Math.max(0, row.revenue) / maxRevenue * 100}%` }} /></div>}
+                        </td>
+                        <td className="py-4 pl-2 text-right tabular-nums [overflow-wrap:anywhere]">{currency.format(row.profit)}</td>
+                    </tr>)}
+                </tbody>
+            </table> : <p className="text-sm text-zinc-300">Sin datos por sucursal para el período seleccionado.</p>}
+        </section>
     );
 }

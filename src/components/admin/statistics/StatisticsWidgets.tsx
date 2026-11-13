@@ -7,9 +7,8 @@ import { TechLeaderboard } from "@/components/admin/dashboard/TechLeaderboard"; 
 
 // Wrappers for Suspense Streaming
 
-export async function FinancialsRowWidget({ globalStatsPromise, repairStatsPromise }: { globalStatsPromise: Promise<any>, repairStatsPromise: Promise<any> }) {
-    const [globalStats, repairStats] = await Promise.all([globalStatsPromise, repairStatsPromise]);
-    return <GlobalFinancials globalStats={globalStats} repairStats={repairStats} />;
+export async function FinancialsRowWidget({ globalStatsPromise }: { globalStatsPromise: ReturnType<typeof import("@/actions/statistics/global").getGlobalStats> }) {
+    return <GlobalFinancials globalStats={await globalStatsPromise} />;
 }
 
 export async function MainChartsWidget({ branchStatsPromise, productStatsPromise, repairStatsPromise }: { branchStatsPromise: Promise<any>, productStatsPromise: Promise<any>, repairStatsPromise: Promise<any> }) {

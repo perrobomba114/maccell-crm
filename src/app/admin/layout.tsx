@@ -3,7 +3,6 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { getUserData } from "@/actions/get-user";
 
 import { adminGroups } from "@/components/layout/nav-config";
@@ -102,17 +101,6 @@ export default function AdminLayout({
         };
     }, []);
 
-    const [isMobile, setIsMobile] = useState(false);
-
-    useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        checkMobile();
-        window.addEventListener("resize", checkMobile);
-        return () => window.removeEventListener("resize", checkMobile);
-    }, []);
-
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
@@ -127,16 +115,7 @@ export default function AdminLayout({
                     onClose={() => setIsSidebarOpen(false)}
                 />
             </div>
-            <motion.div
-                animate={{
-                    paddingLeft: isMobile ? "0px" : (isCollapsed ? "4.5rem" : "17rem"),
-                }}
-                transition={{
-                    duration: 0.3,
-                    ease: [0.4, 0, 0.2, 1],
-                }}
-                className="min-w-0 flex-1 max-md:!pl-0 print:!pl-0 print:!m-0"
-            >
+            <div className={`min-w-0 flex-1 print:!pl-0 print:!m-0 ${isCollapsed ? "md:pl-[4.5rem]" : "md:pl-[17rem]"}`}>
                 <div className="print:hidden">
                     <Header
                         title=""
@@ -152,7 +131,7 @@ export default function AdminLayout({
                 <main className="px-3 pb-5 pt-[4.75rem] md:p-6 print:p-0">
                     {children}
                 </main>
-            </motion.div>
+            </div>
         </div>
         </RepairChatProvider>
     );

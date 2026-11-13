@@ -1,3 +1,6 @@
+import { MonthlyReview } from "@/components/admin/statistics/MonthlyReview";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/actions/auth-actions";
 import { reportMonth } from "@/lib/date-utils";
 import { Suspense } from "react";
 import {
@@ -15,7 +18,6 @@ import {
     MainChartsWidget,
     OperationalRowWidget
 } from "@/components/admin/statistics/StatisticsWidgets";
-import { Card } from "@/components/ui/card";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +26,7 @@ function SectionSkeleton({ height = "h-[450px]" }: { height?: string }) {
 }
 
 export default async function StatisticsPage({ searchParams }: { searchParams: Promise<{ branchId?: string; month?: string; year?: string }> }) {
+    if ((await getCurrentUser())?.role !== "ADMIN") redirect("/");
     const resolvedParams = await searchParams;
     const branchId = resolvedParams.branchId;
 
@@ -44,19 +47,22 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
     const repairsAnalyticsPromise = getRepairAnalytics(branchId, reportDate);
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-zinc-50 font-sans p-2 sm:p-6 lg:p-8">
+        <div className="mx-auto min-h-screen max-w-[100rem] rounded-2xl bg-zinc-950 px-3 py-5 text-zinc-50 sm:p-6 lg:p-8">
 
             {/* Header (Static) */}
-            <StatisticsHeader branches={branches} currentBranchId={branchId} />
+            <StatisticsHeader branches={branches} currentBranchId={branchId} period={reportDate} />
 
-            {/* KPI Cards (Streaming) */}
+            <Suspense key={`review-${reportDate.toISOString()}-${branchId ?? "all"}`} fallback={<SectionSkeleton height="h-64" />}>
+                <MonthlyReview period={reportDate} branchId={branchId} />
+            </Suspense>
+            <details className="mb-5 rounded-xl border border-zinc-700 bg-zinc-950 p-4"><summary className="min-h-11 cursor-pointer py-2 font-semibold">Costos de taller y bonos</summary>
             <Suspense key={`financials-${reportDate.toISOString()}`} fallback={<div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10"><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /><SectionSkeleton height="h-32" /></div>}>
                 <FinancialsRowWidget
                     globalStatsPromise={globalStatsPromise}
-                    repairStatsPromise={repairStatsPromise}
                 />
             </Suspense>
 
+            </details>
             {/* Main Visuals Grid (Streaming) */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
                 {/* Revenue Chart */}
@@ -83,9 +89,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
                 />
             </Suspense>
 
-            <div className="text-center text-xs text-zinc-700 pb-10">
-                MacCell Analytics • Streaming Enabled
-            </div>
+
         </div>
     );
 }

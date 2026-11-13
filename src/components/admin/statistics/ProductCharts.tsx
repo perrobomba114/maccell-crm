@@ -128,7 +128,7 @@ export function StockAlertsList({ productStats }: { productStats: ProductStatsDa
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <h3 className="text-lg font-bold text-white mb-1">Stock Crítico</h3>
-                    <p className="text-sm text-zinc-500">Reposición prioritaria</p>
+                    <p className="text-sm text-zinc-500">Existencias actuales por sucursal</p>
                 </div>
                 <div className="bg-red-500/10 p-2 rounded-lg text-red-500">
                     <AlertTriangle size={18} />
@@ -143,8 +143,8 @@ export function StockAlertsList({ productStats }: { productStats: ProductStatsDa
                 ) : productStats.lowStock.map((item, i) => (
                     <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10 hover:bg-red-500/10 transition-colors" title={item.name}>
                         <div>
-                            <h4 className="text-xs font-bold text-white max-w-[150px] truncate">{item.name}</h4>
-                            <p className="text-[10px] text-zinc-500">{item.branch}</p>
+                            <h4 className="text-sm font-semibold text-white [overflow-wrap:anywhere]">{item.name}</h4>
+                            <p className="text-xs text-zinc-400">{item.branch}</p>
                         </div>
                         <div className="px-2 py-1 bg-red-500/10 rounded-md text-red-500 text-xs font-bold border border-red-500/20">
                             {item.stock} un.
@@ -163,8 +163,8 @@ export function TopPartsList({ repairStats }: { repairStats: RepairStatsData | n
         <div className="bg-[#18181b] rounded-2xl border border-zinc-800 p-6 flex flex-col h-full">
             <div className="flex items-start justify-between mb-6">
                 <div>
-                    <h3 className="text-lg font-bold text-white mb-1">Repuestos Top</h3>
-                    <p className="text-sm text-zinc-500">Mayor rotación</p>
+                    <h3 className="text-lg font-bold text-white mb-1">Repuestos más usados</h3>
+                    <p className="text-sm text-zinc-500">Unidades utilizadas en el período</p>
                 </div>
                 <div className="bg-emerald-500/10 p-2 rounded-lg text-emerald-500">
                     <Package size={18} />
@@ -175,8 +175,8 @@ export function TopPartsList({ repairStats }: { repairStats: RepairStatsData | n
                     <div className="text-zinc-500 text-sm text-center py-10">Sin datos</div>
                 ) : repairStats.mostUsedParts.map((part, i) => (
                     <div key={i} className="group">
-                        <div className="flex justify-between items-center mb-1 text-xs">
-                            <span className="text-zinc-300 font-medium truncate max-w-[180px]">{part.name}</span>
+                        <div className="flex justify-between items-center gap-3 mb-1 text-sm">
+                            <span className="min-w-0 text-zinc-300 font-medium [overflow-wrap:anywhere]">{part.name}</span>
                             <span className="text-emerald-500 font-bold">{part.count}</span>
                         </div>
                         <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">

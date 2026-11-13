@@ -30,14 +30,6 @@ export function BranchFilter({ branches, currentBranchId, className }: FilterPro
 
     const handleSelect = (id?: string) => {
         startTransition(() => {
-            // Check if we already have query params to preserve (e.g., month/year in statistics)
-            // But usually, changing branch resets view context or maintains it?
-            // Existing logic was: router.push(`?branchId=${id}`, { scroll: false });
-            // This REPLACES other params if we aren't careful.
-            // Let's improve it to preserve other params if possible, or stick to existing logic if safe.
-            // Dashboard page code: router.push(`?branchId=${id}`) implies overlapping params?
-            // Actually, `useSearchParams` is safer but for now let's reproduce existing behavior + preservation improvement.
-
             const currentUrl = new URL(window.location.href);
             if (id) {
                 currentUrl.searchParams.set("branchId", id);
@@ -47,9 +39,6 @@ export function BranchFilter({ branches, currentBranchId, className }: FilterPro
             router.push(currentUrl.pathname + currentUrl.search, { scroll: false });
         });
     };
-
-    const allBranchItem = { id: "all", name: "Todas las Sucursales" }; // Use "all" as string for Select compatibility
-    // For Select, value must be string. We map "undefined" or "" to "all".
 
     // Desktop Items
     const items = [{ id: undefined, name: "Todas las Sucursales" }, ...branches];
@@ -65,7 +54,7 @@ export function BranchFilter({ branches, currentBranchId, className }: FilterPro
     ];
 
     return (
-        <div className={cn("flex items-center gap-3", className)}>
+        <div className={cn("flex min-w-0 items-center gap-2", className)}>
             {isPending && (
                 <div className="flex items-center gap-2 text-zinc-400 text-sm animate-pulse">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -73,13 +62,13 @@ export function BranchFilter({ branches, currentBranchId, className }: FilterPro
             )}
 
             {/* MOBILE: Select Dropdown (< md) */}
-            <div className="block md:hidden w-full min-w-[200px]">
+            <div className="block min-w-36 flex-1 xl:hidden">
                 <Select
                     disabled={isPending}
                     value={currentBranchId || "all"}
                     onValueChange={(val) => handleSelect(val === "all" ? undefined : val)}
                 >
-                    <SelectTrigger className="w-full bg-[#18181b] border-zinc-700 text-zinc-100">
+                    <SelectTrigger aria-label="Sucursal" className="min-h-11 w-full bg-[#18181b] border-zinc-700 text-zinc-100">
                         <SelectValue placeholder="Filtrar por Sucursal" />
                     </SelectTrigger>
                     <SelectContent>
@@ -94,7 +83,7 @@ export function BranchFilter({ branches, currentBranchId, className }: FilterPro
             </div>
 
             {/* DESKTOP: Pill Buttons (>= md) */}
-            <div className="hidden md:flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar py-0.5">
+            <div className="hidden xl:flex items-center gap-2 flex-wrap py-0.5">
                 {items.map((item, index) => {
                     const isAll = item.id === undefined;
                     const isActive = isAll ? !currentBranchId : currentBranchId === item.id;
@@ -103,10 +92,11 @@ export function BranchFilter({ branches, currentBranchId, className }: FilterPro
                     return (
                         <button
                             key={item.id || "all"}
+                            aria-pressed={isActive}
                             onClick={() => handleSelect(item.id)}
                             disabled={isPending}
                             className={cn(
-                                "relative flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all duration-200 border shrink-0",
+                                "relative flex min-h-11 items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all duration-200 border shrink-0",
                                 isActive
                                     ? "bg-white text-slate-950 border-white shadow-md shadow-white/10 font-black"
                                     : "bg-slate-900/80 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-white hover:bg-slate-850",

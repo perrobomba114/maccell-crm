@@ -65,7 +65,7 @@ export async function getSalesAnalytics(branchId?: string, date = reportMonth())
 
         const revenue = revenueAgg._sum.total || 0;
         const lastMonthRevenue = salesLastMonthAgg._sum.total || 0;
-        const salesGrowth = lastMonthRevenue > 0 ? ((revenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
+        const salesGrowth = lastMonthRevenue > 0 ? ((revenue - lastMonthRevenue) / lastMonthRevenue) * 100 : null;
 
         // 3. Process Current Month Sales (Profit, Categories, Stock Cost)
         let cost = 0;
@@ -117,7 +117,7 @@ export async function getSalesAnalytics(branchId?: string, date = reportMonth())
             });
         });
         const lastMonthProfit = lastMonthRevenue - lastMonthCost;
-        const profitGrowth = lastMonthProfit > 0 ? ((profit - lastMonthProfit) / lastMonthProfit) * 100 : 0;
+        const profitGrowth = lastMonthProfit > 0 ? ((profit - lastMonthProfit) / lastMonthProfit) * 100 : null;
 
         const categoryShare = Array.from(categoryMap.entries())
             .map(([name, value]) => ({ name, value }))
@@ -159,7 +159,7 @@ export async function getSalesAnalytics(branchId?: string, date = reportMonth())
     } catch (e) {
         console.error("getSalesAnalytics error", e);
         return {
-            financials: { revenue: 0, profit: 0, salesGrowth: 0, profitMargin: 0 },
+            financials: { revenue: 0, profit: 0, salesGrowth: null, profitGrowth: null, profitMargin: 0 },
             categoryShare: { segments: [] },
             stock: {
                 alerts: [],
@@ -196,6 +196,7 @@ export async function getRecentTransactions(branchId?: string, date = reportMont
         const formattedRecentSales = recentSales.map((sale: any) => ({
             id: sale.id,
             saleNumber: sale.saleNumber,
+            paymentMethod: sale.paymentMethod,
             customerName: "Cliente Final",
             total: sale.total,
             branchName: sale.branch?.name || "Sucursal",

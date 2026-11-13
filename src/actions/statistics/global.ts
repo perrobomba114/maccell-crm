@@ -110,7 +110,7 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
 
         const currentTotal = salesCurrentMonth._sum.total || 0;
         const lastTotal = salesLastMonth._sum.total || 0;
-        const growthPercent = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal) * 100 : 100;
+        const growthPercent = lastTotal > 0 ? Math.round(((currentTotal - lastTotal) / lastTotal) * 1000) / 10 : null;
 
         const sparePartsCost = partsUsed.reduce((acc, rp) => {
             return acc + (rp.sparePart.priceArg * rp.quantity);
@@ -135,7 +135,7 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
         return {
             totalSalesMetadata: totalSales._sum.total || 0,
             profitThisMonth,
-            growthPercent: Math.round(growthPercent * 10) / 10,
+            growthPercent,
             salesThisMonth: currentTotal,
             averageTicket: salesCurrentMonth._count._all > 0 ? Math.round(currentTotal / salesCurrentMonth._count._all) : 0,
             totalSalesCount: salesCurrentMonth._count._all,
@@ -151,7 +151,7 @@ export async function getGlobalStats(branchId?: string, date?: Date) {
         return {
             totalSalesMetadata: 0,
             profitThisMonth: 0,
-            growthPercent: 0,
+            growthPercent: null,
             salesThisMonth: 0,
             averageTicket: 0,
             totalSalesCount: 0,

@@ -80,20 +80,21 @@ export function ActiveRepairsStats({
                     >
                         <Icon className="h-4 w-4 mb-1 shrink-0" />
                         <span className="text-xl font-black tabular-nums leading-none">{value}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-widest mt-1 text-center leading-none opacity-80">{label}</span>
+                        <span className="text-xs font-medium mt-1 text-center leading-none opacity-80">{label}</span>
                     </Tag>;
                 })}
             </div>
 
             {/* Status chips + refresh button */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex flex-wrap items-center gap-2">
                 {STATUS_CHIPS.map(chip => (
                     <button
                         key={chip.statusId}
                         type="button"
+                        aria-pressed={activeChip === chip.statusId}
                         onClick={() => onChipChange(chip.statusId)}
                         className={cn(
-                            "shrink-0 inline-flex items-center h-7 rounded-full px-3 text-[11px] font-bold border transition-all whitespace-nowrap",
+                            "shrink-0 inline-flex items-center min-h-11 rounded-full px-3 text-xs font-bold border transition-all whitespace-nowrap",
                             activeChip === chip.statusId
                                 ? "bg-blue-600 text-white border-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.3)]"
                                 : "bg-muted/40 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
@@ -102,7 +103,7 @@ export function ActiveRepairsStats({
                         {chip.label}
                         {chip.statusId !== 0 && (
                             <span className={cn(
-                                "ml-1.5 inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full text-[9px] font-black tabular-nums",
+                                "ml-1.5 inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full text-xs font-semibold tabular-nums",
                                 activeChip === chip.statusId ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
                             )}>
                                 {repairs.filter(r => r.statusId === chip.statusId).length}
@@ -113,7 +114,7 @@ export function ActiveRepairsStats({
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 shrink-0 ml-auto text-muted-foreground hover:text-foreground"
+                    className="h-11 w-11 shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={() => router.refresh()}
                     title="Actualizar"
                 >
