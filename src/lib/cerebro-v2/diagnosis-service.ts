@@ -93,6 +93,11 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
     const warnings=[...retrieved.unavailable];
     const models = new Set([identity.model, ...deviceModelAliases(identity)].map(model => model.toUpperCase().replace(/[^A-Z0-9]/g, '')));
     const sources = retrieved.sources.filter(source => {
+        // Some documents share an XT family but explicitly name a different handset.
+        if (identity.brand === "MOTOROLA" && source.sourceType === "PDF") {
+            const namedModels = source.title.match(/\bmoto\s+[egc]\s*\d{1,3}[a-z]*(?:\s+(?:plus|play|power|pro|5g))?\b/gi) ?? [];
+            if (namedModels.some(name => !models.has(name.toUpperCase().replace(/\s+/g, "")))) return false;
+        }
         const owner = normalizeDeviceIdentity(source.brand, source.model);
         return owner.brand === identity.brand && models.has(owner.model.toUpperCase().replace(/[^A-Z0-9]/g, ''));
     });
@@ -116,6 +121,8 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
     }
     if (browseDiagram && !input.images.length) {
         const terms = diagnosticSubsystemTerms(input.text, identity.brand);
+        const wholeSchematic = !requestedNets.length && !requestedCodes.length && !/boardview/i.test(input.text)
+            && (!terms.length || /completo|completa/i.test(input.text));
         if (!terms.length) terms.push(...diagnosticSubsystemTerms(state.sellerProblem, identity.brand));
         const nets = requestedNets;
         const anchored = sources.filter(source => {
@@ -128,20 +135,20 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
             return terms.length === 0 || terms.some(term => tokens.includes(term.toUpperCase()));
         });
         let catalog: CerebroSource[] = [];
-        if (!anchored.length && dependencies.catalog) {
+        if ((wholeSchematic || !anchored.length) && dependencies.catalog) {
             try { catalog = await dependencies.catalog(identity.brand, [identity.model, ...deviceModelAliases(identity)]); }
             catch { warnings.push("No se pudo consultar el catálogo físico."); }
         }
-        const first = anchored[0];
+        const references = catalog.length ? catalog : anchored;
+        const first = catalog.length ? undefined : anchored[0];
         const point = first?.workbenchUrl && new URLSearchParams(first.workbenchUrl.split('?')[1]).get('component');
         const ref = first ? (point ? 'componente ' + point : 'página ' + first.pageNumber) : '';
         const text = first ? `En ${first.title}, la referencia del ${identity.model} abre en ${ref} [E1].`
             : catalog.length ? `Encontré el esquemático de ${identity.model}: ${catalog[0].title} [E1]. Podés abrir el PDF completo en el visor. Confirmá la revisión de placa antes de usar sus referencias.`
             : `No recuperé una página o ubicación verificable del ${identity.model} para esta consulta.`;
         const plan: DiagnosticPlan = {id:crypto.randomUUID(), kind:'inspection', stage:'Consultar el esquemático',
-            question:first ? '¿La referencia abierta coincide con la variante y la zona que tenés en el banco?' : '¿Qué código de placa o designador figura en la zona que necesitás revisar?',
-            reason:text,conditions:'Contrastá el archivo con la serigrafía de la placa antes de usarlo como referencia.',instrument:'',point:point || '',expected:'',branches:[],options:[],evidenceIds:first?['E1']:[]};
-        const references = anchored.length ? anchored : catalog;
+            question:references.length ? '¿La referencia abierta coincide con la variante y la zona que tenés en el banco?' : '¿Qué código de placa o designador figura en la zona que necesitás revisar?',
+            reason:text,conditions:'Contrastá el archivo con la serigrafía de la placa antes de usarlo como referencia.',instrument:'',point:point || '',expected:'',branches:[],options:[],evidenceIds:references.length?['E1']:[]};
         return {text,sources:references,metadata:buildMetadata(state,plan,references,warnings,'schematic-index')};
     }
     let plan: DiagnosticPlan | null = null;

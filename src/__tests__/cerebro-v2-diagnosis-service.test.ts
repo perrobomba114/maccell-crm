@@ -51,8 +51,8 @@ test("abre el esquema completo del E40 aunque el índice no ubique una página",
     const asset = { id: "a".repeat(64), name: "Esquematico completo xt2159-x (moto e40).pdf", model: "Moto E40 XT2159",
         kind: "pdf" as const, status: "ready" as const, brand: "Motorola", identityVerified: false,
         relativePath: "sources/pdf/Motorola/Moto E40 XT2159/test.pdf", modelKey: "motoe40xt2159", size: 200, fileMtimeMs: 2, sha256: "b".repeat(64) };
-    const response = await diagnoseRepair({ repair: { ...repair, deviceModel: "E40" }, images: [], history: [], text: "tenés el schematic del E40?", messageId: "e40" }, {
-        retrieve: async () => ({ sources: [], unavailable: [] }),
+    const response = await diagnoseRepair({ repair: { ...repair, deviceModel: "E40" }, images: [], history: [], text: "¿Podés abrir el esquemático completo del Moto E40?", messageId: "e40" }, {
+        retrieve: async () => ({ sources: ["e30", "e40"].map(model => ({ chunkId: model, documentId: model, sourceType: "PDF", authority: "TECHNICAL_DOCUMENT", brand: "MOTOROLA", model: "MOTO E40", title: "Esquematico (moto " + model + ")", content: "POWER", pageNumber: 1, score: 1 })), unavailable: [] }),
         catalog: (brand, aliases) => findCatalogSchematics(brand, aliases, async () => [asset, {...asset, model:"Moto E40 XT2155"}, {...asset, model:"Moto E40 Plus XT2159"}, {...asset, brand:"Samsung"}]),
         draft: async () => { throw Error("unexpected draft"); }, vision: async () => ({ facts: "", warnings: [] }),
     });
