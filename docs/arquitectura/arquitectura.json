@@ -1,7 +1,7 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-11-13",
-  "commit": "5544f7e",
+  "commit": "937a282",
   "resumen": [
     [
       "lenguaje",
@@ -17,7 +17,7 @@
     ],
     [
       "lineas",
-      "88.205"
+      "88.198"
     ],
     [
       "endpoints",
@@ -1549,7 +1549,7 @@
         "docs/deployment_easypanel.md"
       ],
       "color": "gris",
-      "lineas": 145,
+      "lineas": 138,
       "nArchivos": 4,
       "rutas": [
         "Dockerfile",
