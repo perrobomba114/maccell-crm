@@ -27,12 +27,10 @@ export function decryptPartPayload(bytes: Uint8Array): Uint8Array {
 
 export function parsePartPayload(bytes: Uint8Array): GeometryPrimitive[] {
   return parsePartRecord(bytes, 'part-0').geometry.map((primitive) => {
-    if (primitive.kind === 'pin') {
-      const { componentId: _componentId, padId: _padId, ...legacy } = primitive;
-      return legacy;
-    }
-    if (primitive.kind === 'outline') {
-      const { componentId: _componentId, ...legacy } = primitive;
+    if (primitive.kind === 'pin' || primitive.kind === 'outline') {
+      const legacy = { ...primitive };
+      delete legacy.componentId;
+      if (legacy.kind === 'pin') delete legacy.padId;
       return legacy;
     }
     return primitive;

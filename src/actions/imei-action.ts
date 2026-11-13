@@ -125,7 +125,7 @@ export async function checkImei(imei: string) {
         });
 
         if (!updateRes.ok) {
-            const errorText = await updateRes.text();
+            await updateRes.body?.cancel();
             if (updateRes.status === 419) {
                 throw new Error("La sesión expiró. Intente nuevamente.");
             }
@@ -154,8 +154,8 @@ export async function checkImei(imei: string) {
 
         return { success: false, error: "No se encontró información para este IMEI" };
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error checking IMEI:", error);
-        return { success: false, error: error.message || "Error interno del servidor" };
+        return { success: false, error: error instanceof Error && error.message ? error.message : "Error interno del servidor" };
     }
 }
