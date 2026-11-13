@@ -83,7 +83,7 @@ export function Header({
                         variant="ghost"
                         size="icon"
                         className="md:hidden"
-                        onClick={onMenuClick}
+                        aria-label="Abrir menú" onClick={onMenuClick}
                     >
                         <Menu className="h-6 w-6" />
                     </Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -44,6 +44,8 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginCard() {
     const router = useRouter();
+    const [ready, setReady] = useState(false);
+    useEffect(() => setReady(true), []);
     const [isPending, startTransition] = useTransition();
 
     // React Hook Form with Zod (Step 34)
@@ -129,7 +131,7 @@ export function LoginCard() {
 
                 <CardContent className="relative z-10">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5" suppressHydrationWarning>
+                        <form method="post" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5" suppressHydrationWarning>
                             {/* Email field with animation */}
                             <motion.div
                                 initial={{ opacity: 0, x: -20 }}
@@ -147,7 +149,7 @@ export function LoginCard() {
                                                     placeholder="usuario@maccell.com"
                                                     type="email"
                                                     autoComplete="email"
-                                                    disabled={isPending}
+                                                    disabled={!ready || isPending}
                                                     className="h-11 transition-all duration-300 border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
                                                     {...field}
                                                 />
@@ -175,7 +177,7 @@ export function LoginCard() {
                                                     placeholder="••••••"
                                                     type="password"
                                                     autoComplete="current-password"
-                                                    disabled={isPending}
+                                                    disabled={!ready || isPending}
                                                     className="h-11 transition-all duration-300 border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
                                                     {...field}
                                                 />
@@ -195,7 +197,7 @@ export function LoginCard() {
                                 <Button
                                     type="submit"
                                     className="w-full h-11 font-semibold text-lg"
-                                    disabled={isPending}
+                                    disabled={!ready || isPending}
                                     size="lg"
                                 >
                                     {isPending ? (

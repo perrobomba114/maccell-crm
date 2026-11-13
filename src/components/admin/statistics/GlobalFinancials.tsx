@@ -94,7 +94,7 @@ export function GlobalFinancials({ globalStats, repairStats }: GlobalFinancialsP
                     icon={Wallet}
                 />
                 <MetricCard
-                    title="Equipos en Taller"
+                    title="En taller actualmente"
                     value={repairStats?.phonesInShop || 0}
                     subtext="En proceso actual"
                     accentColor="violet"
@@ -144,29 +144,12 @@ export function GlobalFinancials({ globalStats, repairStats }: GlobalFinancialsP
 
             {/* ROW 3: El taller a fondo */}
             <h3 className="text-zinc-400 text-sm font-semibold uppercase tracking-wider pl-1 font-mono text-orange-500/80">Rendimiento Técnico (Mensual)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <MetricCard
-                    title="Equipos Reparados OK"
-                    value={globalStats.okCount || 0}
-                    subtext="Exitosos y Entregados"
-                    accentColor="orange"
-                    icon={CheckCircle2}
-                />
-                <MetricCard
-                    title="Equipos Sin Reparación"
-                    value={globalStats.noRepairCount || 0}
-                    subtext="Devueltos sin solución"
-                    accentColor="red"
-                    icon={Ban}
-                />
-                <MetricCard
-                    title="Eficiencia de Taller"
-                    value={`${globalStats.deliveredCount > 0 ? Math.round((globalStats.okCount / globalStats.deliveredCount) * 100) : 0}%`}
-                    subtext={`${globalStats.deliveredCount || 0} Entregas totales`}
-                    accentColor="blue"
-                    icon={TrendingUp}
-                />
-            </div>
+            {repairStats?.monthly ? <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+                <MetricCard title="Ingresadas" value={repairStats.monthly.received} subtext="Por fecha de ingreso" accentColor="blue" icon={Wrench} />
+                <MetricCard title="Reparadas OK" value={repairStats.monthly.ok} subtext="Por fecha de resolución" accentColor="emerald" icon={CheckCircle2} />
+                <MetricCard title="Sin reparación" value={repairStats.monthly.unrepaired} subtext="Por fecha de resolución" accentColor="red" icon={Ban} />
+                <MetricCard title="Entregadas" value={repairStats.monthly.delivered} subtext="Por fecha de entrega" accentColor="violet" icon={CheckCircle2} />
+            </div> : <p>No se pudieron consultar las reparaciones del mes.</p>}
         </div>
     );
 }

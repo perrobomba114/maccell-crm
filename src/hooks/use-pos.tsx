@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { getCartAvailability } from "@/actions/pos/search";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CheckCircle2 } from "lucide-react";
@@ -98,6 +99,61 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
     const [billCounts, setBillCounts] = useState<Record<number, number>>({});
     const [employeeCount, setEmployeeCount] = useState(1);
 
+    const [held, setHeld] = useState<CartItem[][]>([]);
+    const [loadedKey, setLoadedKey] = useState("");
+    const [resuming, setResuming] = useState(false);
+    const [lastSale, setLastSale] = useState<{ number: string; total: number; items: CartItem[]; print: () => void } | null>(null);
+    const draftKey = cashShift ? `pos:${vendorId}:${branchId}:${cashShift.id}` : "";
+    useEffect(() => {
+        setCart([]);
+        setHeld([]);
+        setLastSale(null);
+        if (draftKey) {
+            try {
+                const raw = sessionStorage.getItem(draftKey);
+                if (raw) {
+                    const saved: { active: CartItem[]; held: CartItem[][] } = JSON.parse(raw);
+                    setHeld(saved.active.length ? [saved.active, ...saved.held] : saved.held);
+                }
+            } catch { toast.warning("No se pudo recuperar el carrito."); }
+        }
+        setLoadedKey(draftKey);
+    }, [draftKey]);
+    useEffect(() => {
+        if (!draftKey || loadedKey !== draftKey) return;
+        try { sessionStorage.setItem(draftKey, JSON.stringify({ active: cart, held })); }
+        catch { toast.warning("No se pudo guardar el carrito.", { id: "pos-storage" }); }
+    }, [cart, held, draftKey, loadedKey]);
+
+    const parkCart = () => {
+        if (!cart.length) return;
+        setHeld(previous => [...previous, cart]);
+        setCart([]);
+        setInvoiceData(undefined);
+    };
+    const resumeCart = async (index: number) => {
+        if (resuming || cart.length || !held[index]) return;
+        setResuming(true);
+        const saved = held[index];
+        try {
+            const available = await getCartAvailability(saved.filter(i => i.type === "PRODUCT").map(i => i.id),
+                saved.filter(i => i.type === "REPAIR").map(i => i.id));
+            const changes: string[] = [];
+            const restored = saved.flatMap(item => {
+                const live = available.find(row => row.type === item.type && row.id === item.id);
+                if (!live) { changes.push(`${item.name}: ya no está disponible`); return []; }
+                const priceChanged = live.price !== (item.originalPrice ?? item.price);
+                if (priceChanged) changes.push(`${item.name}: precio vigente $${live.price}`);
+                if (item.type === "PRODUCT" && live.stock !== item.maxStock) changes.push(`${item.name}: stock ${live.stock}`);
+                return [{ ...item, maxStock: live.stock, ...(priceChanged ? { price: live.price, originalPrice: undefined, priceChangeReason: undefined } : {}) }];
+            });
+            setCart(restored);
+            setHeld(previous => previous.filter((_, i) => i !== index));
+            if (changes.length) toast.warning(changes.join(" · "), { duration: 15000 });
+        } catch { toast.error("No se pudo verificar la venta. Sigue en espera."); }
+        finally { setResuming(false); }
+    };
+
     const processingRef = useRef(false);
     const cashWarningAccepted = useRef(false);
     const router = useRouter();
@@ -127,6 +183,7 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
     };
 
     const addToCartProduct = (product: PosProduct) => {
+        if (resuming) return toast.info("Esperá a que se recupere la venta.");
         if (!cashShift) return toast.error("Debe abrir la caja para operar.");
         const existing = cart.find(item => item.id === product.id && item.type === "PRODUCT");
         if (existing) {
@@ -150,6 +207,7 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
     };
 
     const addRepairToCart = (repair: PosRepair) => {
+        if (resuming) return toast.info("Esperá a que se recupere la venta.");
         if (!cashShift) return toast.error("Debe abrir la caja para operar.");
         if (cart.some(item => item.id === repair.id && item.type === "REPAIR")) return toast.error("La reparación ya está en el carrito");
         setCart(prev => [...prev, {
@@ -194,7 +252,6 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
         setIsProcessingSale(true);
         try {
             const totalToPay = parseFloat(editableTotal);
-            const paidSoFar = partialPayments.reduce((acc, p) => acc + p.amount, 0);
             const effectiveMethod = partialPayments.length === 1 
                 ? (partialPayments[0].method as "CASH" | "CARD" | "MERCADOPAGO") 
                 : "SPLIT";
@@ -217,7 +274,10 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
                 setIsCheckoutModalOpen(false);
                 setInvoiceData(undefined);
 
-                setTimeout(() => handlePrinting(result, totalToPay, soldItems, vendorName), 150);
+                const soldAt = new Date();
+                const print = () => handlePrinting(result, totalToPay, soldItems, vendorName, soldAt);
+                setLastSale({ number: result.saleNumber ?? result.saleId ?? "", total: totalToPay, items: soldItems, print });
+                setTimeout(print, 150);
                 setTimeout(() => handleAutomaticAttachments(soldItems), 2500);
             } else throw new Error(result.error);
         } catch (error: unknown) {
@@ -228,16 +288,16 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
         }
     };
 
-    const handlePrinting = (result: PosSaleResult, totalToPay: number, soldItems: CartItem[], vendorName: string) => {
+    const handlePrinting = (result: PosSaleResult, totalToPay: number, soldItems: CartItem[], vendorName: string, soldAt: Date) => {
         if (!result.success) return;
         if (result.invoice) {
             printInvoiceTicket({
                 branch: branchData, items: soldItems, total: totalToPay, paymentMethod: partialPayments.length === 1 ? partialPayments[0].method : "SPLIT",
                 invoice: { type: invoiceData?.invoiceType || "B", number: result.invoice.number, cae: result.invoice.cae, caeExpiresAt: result.invoice.caeExpiresAt ? new Date(result.invoice.caeExpiresAt) : new Date(), customerName: invoiceData?.customerName || "Consumidor Final", customerDocType: invoiceData?.docType || "FINAL", customerDoc: invoiceData?.docNumber || "0", customerAddress: invoiceData?.customerAddress || "", salesPoint: invoiceData?.salesPoint || 1 },
-                vendorName, date: new Date(), billingEntity: branchData.name.toUpperCase().includes("8 BIT") ? "8BIT" : "MACCELL", customerIvaCondition: invoiceData?.ivaCondition
+                vendorName, date: soldAt, billingEntity: branchData.name.toUpperCase().includes("8 BIT") ? "8BIT" : "MACCELL", customerIvaCondition: invoiceData?.ivaCondition
             });
         } else {
-            printSaleTicket({ branch: branchData, items: soldItems, total: totalToPay, method: partialPayments.length === 1 ? partialPayments[0].method : "SPLIT", date: new Date(), saleId: result.saleId, vendorName });
+            printSaleTicket({ branch: branchData, items: soldItems, total: totalToPay, method: partialPayments.length === 1 ? partialPayments[0].method : "SPLIT", date: soldAt, saleId: result.saleNumber ?? result.saleId, vendorName });
         }
     };
 
@@ -277,6 +337,7 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
             const res = await closeRegister(cashShift.id, val, employeeCount);
             if (res.success) {
                 printCashShiftClosureTicket({ branch: branchData, user: { name: "Cajero" }, shift: { startAmount: cashShift.startAmount, startTime: cashShift.startTime }, summary: res.summary, billCounts, finalCount: val, employeeCount, closedAt: res.closedAt });
+                try { sessionStorage.removeItem(draftKey); } catch { toast.warning("No se pudo limpiar el borrador del turno."); }
                 setCashShift(null);
                 setShiftSummary(null);
                 setBillCounts({});
@@ -427,7 +488,7 @@ export function usePos(vendorId: string, branchId: string, branchData: PosBranch
     };
 
     return {
-        cart, setCart, cashShift, isLoadingShift, isRegisterModalOpen, setIsRegisterModalOpen,
+        held, parkCart, resumeCart, resuming, lastSale, cart, setCart, cashShift, isLoadingShift, isRegisterModalOpen, setIsRegisterModalOpen,
         modalAction, setModalAction, amountInput, setAmountInput, shiftSummary,
         searchQuery, setSearchQuery, products, setProducts, isSearching,
         repairQuery, setRepairQuery, repairs, setRepairs, isSearchingRepairs,

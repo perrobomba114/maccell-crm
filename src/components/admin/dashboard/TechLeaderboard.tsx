@@ -4,7 +4,8 @@ import React from "react";
 import { Trophy, Medal, Timer } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { reportMonth } from "@/lib/date-utils";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface Technician {
     id: string;
@@ -19,12 +20,16 @@ interface TechLeaderboardProps {
 
 export function TechLeaderboard({ technicians }: TechLeaderboardProps) {
     const router = useRouter();
+    const params = useSearchParams();
     // Sort by repairs (desc)
     const sortedTechs = [...technicians].sort((a, b) => b.repairs - a.repairs);
     const maxRepairs = sortedTechs[0]?.repairs || 1;
 
     const handleTechClick = (tech: Technician) => {
-        router.push(`/admin/repairs?techId=${tech.id}&tech=${encodeURIComponent(tech.name)}`);
+        const date = reportMonth(params.get("month"), params.get("year")).toISOString().slice(0, 7);
+        const filters = new URLSearchParams({ techId: tech.id, tech: tech.name, date });
+        if (params.get("branchId")) filters.set("branch", params.get("branchId")!);
+        router.push(`/admin/repairs?${filters}`);
     };
 
     return (

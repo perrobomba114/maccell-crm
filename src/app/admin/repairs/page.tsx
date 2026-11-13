@@ -44,7 +44,7 @@ export default async function AdminRepairsPage(
     if (!user || user.role !== "ADMIN") redirect("/");
 
     const [repairsData, branches, statsRes, statuses] = await Promise.all([
-        getAllRepairsForAdminAction({ query, branchId, technician, technicianId, date: repairsDate, page, warrantyOnly, statusId }),
+        getAllRepairsForAdminAction({ receivedOnly: searchParams?.ingresos === "1", query, branchId, technician, technicianId, date: repairsDate, page, warrantyOnly, statusId }),
         getAllBranches(),
         getTechnicianPerformance({ branchId, date: statsDate, warrantyOnly, query, statusId }),
         db.repairStatus.findMany({ select: { id: true, name: true, color: true }, orderBy: { id: "asc" } })

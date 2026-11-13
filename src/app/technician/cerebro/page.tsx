@@ -4,13 +4,13 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function TechnicianCerebroPage() {
+export default async function TechnicianCerebroPage({ searchParams }: { searchParams: Promise<{ repairId?: string }> }) {
     const user = await getUserData();
     if (!user) redirect("/login");
 
     return (
-        <div className="-m-6 overflow-hidden" style={{ height: 'calc(100vh - 4rem)' }}>
-            <CerebroV2Shell />
+        <div className="-mx-3 h-[calc(100dvh-4.75rem)] overflow-hidden md:-m-6 md:h-[calc(100dvh-4rem)]">
+            <CerebroV2Shell initialRepairId={(await searchParams).repairId} />
         </div>
     );
 }

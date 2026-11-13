@@ -56,7 +56,7 @@ export function RepairIntakeFields({ value, error, onChange }: RepairIntakeField
     };
 
     return (
-        <div className={cn("space-y-5", error && "rounded-xl ring-2 ring-destructive/40")}>
+        <div id="intake-access" tabIndex={-1} className={cn("space-y-5", error && "rounded-xl ring-2 ring-destructive/40")}>
                 <div className="space-y-2">
                     <Label className="text-sm font-medium text-foreground">
                         Acceso del equipo

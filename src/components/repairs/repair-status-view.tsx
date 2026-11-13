@@ -1,5 +1,7 @@
 "use client";
 
+import { REPAIR_STATUS } from "@/lib/repairs/status";
+
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { format } from "date-fns";
@@ -65,6 +67,7 @@ export function RepairStatusView({ repair }: RepairStatusViewProps) {
     };
 
     const statusInfo = statusMap[repair.statusId] || { icon: Info, color: "text-gray-500", description: "Estado en actualización.", step: 1 };
+    const repaired = repair.statusId === REPAIR_STATUS.OK;
     const StatusIcon = statusInfo.icon;
 
     return (
@@ -106,10 +109,10 @@ export function RepairStatusView({ repair }: RepairStatusViewProps) {
                             <span>{repair.branch.address || "Sucursal Central"}</span>
                         </div>
                         {repair.branch.phone && (
-                            <div className="flex items-center gap-2 text-base md:text-lg font-medium text-white/50">
+                            <a href={`tel:${repair.branch.phone.replace(/[^+0-9]/g, "")}`} className="flex min-h-11 items-center gap-2 underline">
                                 <Phone className="w-4 h-4 text-primary/70" />
-                                <span>{repair.branch.phone}</span>
-                            </div>
+                                <span>Llamar a la sucursal · {repair.branch.phone}</span>
+                            </a>
                         )}
                     </div>
                 </motion.div>
@@ -303,20 +306,16 @@ export function RepairStatusView({ repair }: RepairStatusViewProps) {
                             )}
 
                             {/* DONE MESSAGE - PREMIUM POD */}
-                            {(repair.statusId === 5 || repair.statusId === 6) && (
+                            {(repaired || repair.statusId === REPAIR_STATUS.NO_REPAIR) && (
                                 <motion.div
                                     initial={{ opacity: 0, y: 30 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className="relative group p-1"
                                 >
-                                    <div className="absolute -inset-1 bg-gradient-to-r from-green-400 to-emerald-600 rounded-[3rem] blur opacity-30 animate-pulse" />
-                                    <div className="relative p-10 rounded-[2.5rem] bg-gradient-to-br from-green-500 to-emerald-600 text-white text-center shadow-2xl">
-                                        <CheckCircle2 className="w-16 h-16 mx-auto mb-4 drop-shadow-xl" />
-                                        <p className="font-black text-3xl tracking-tighter italic">¡EQUIPO LISTO!</p>
-                                        <p className="text-lg font-bold opacity-90 mt-2">Ya podés retirarlo por nuestra sucursal.</p>
-                                        <div className="mt-6 inline-flex px-6 py-2 bg-white/20 rounded-full text-xs font-black uppercase tracking-widest backdrop-blur-md">
-                                            Te esperamos
-                                        </div>
+                                    <div className={`rounded-3xl p-6 text-center text-white ${repaired ? "bg-emerald-800" : "bg-slate-800"}`}>
+                                        <p className="text-2xl font-bold">{repaired ? "Reparado · listo para retirar" : "Sin reparar · disponible para retirar"}</p>
+                                        <p className="mt-2">{repair.branch.name} · {repair.branch.address}</p>
+                                        {!repaired && repair.diagnosis && <p className="mt-3">{repair.diagnosis}</p>}
                                     </div>
                                 </motion.div>
                             )}

@@ -46,6 +46,7 @@ export function AdminRepairsFilters({
 
     return (
         <div className="bg-background border rounded-xl p-3 sm:p-4 shadow-sm space-y-3">
+            {searchParams.get("ingresos") === "1" && <Button variant="outline" size="sm" onClick={() => updateParams({ ingresos: null })}>Por fecha de ingreso · Quitar filtro</Button>}
             {/* Header / Search Area */}
             <div className="flex flex-col md:flex-row gap-2 items-start">
                 <div className="relative flex-1 w-full group">

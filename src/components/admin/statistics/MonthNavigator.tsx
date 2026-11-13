@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, subMonths, addMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getArgentinaDate, reportMonth } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
 const MONTHS = [
@@ -30,8 +31,9 @@ export function MonthNavigator() {
     const [open, setOpen] = useState(false);
 
     // Get current selected date from URL or default to today
-    const currentMonth = searchParams.get("month") ? parseInt(searchParams.get("month")!) : new Date().getMonth();
-    const currentYear = searchParams.get("year") ? parseInt(searchParams.get("year")!) : new Date().getFullYear();
+    const reference = reportMonth(searchParams.get("month"), searchParams.get("year"));
+    const currentMonth = reference.getUTCMonth();
+    const currentYear = reference.getUTCFullYear();
 
     const [pickerYear, setPickerYear] = useState<number>(currentYear);
 
@@ -70,7 +72,7 @@ export function MonthNavigator() {
     };
 
     const handleResetToCurrentMonth = () => {
-        const today = new Date();
+        const today = getArgentinaDate();
         router.push(`?${createQueryString(today.getMonth(), today.getFullYear())}`);
         setOpen(false);
     };
@@ -137,8 +139,8 @@ export function MonthNavigator() {
                         {MONTHS.map((m) => {
                             const isSelected = pickerYear === currentYear && m.index === currentMonth;
                             const isCurrentActualMonth = 
-                                pickerYear === new Date().getFullYear() && 
-                                m.index === new Date().getMonth();
+                                pickerYear === getArgentinaDate().getFullYear() &&
+                                m.index === getArgentinaDate().getMonth();
 
                             return (
                                 <button

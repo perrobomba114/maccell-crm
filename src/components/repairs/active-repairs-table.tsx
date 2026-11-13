@@ -19,7 +19,7 @@ import { AddPartDialog } from "./add-part-dialog";
 import { ActiveRepairCard } from "./active-repair-card";
 import { ActiveRepairRow } from "./active-repair-row";
 import { ActiveRepairsStats } from "./active-repairs-stats";
-import { type ActiveRepair, type ActiveRepairsTableProps } from "./active-repairs-types";
+import { matchesDeadline, type DeadlineFilter, type ActiveRepair, type ActiveRepairsTableProps } from "./active-repairs-types";
 import { printRepairReceptionTicket } from "@/lib/repair-print-sequence";
 import { cn } from "@/lib/utils";
 import { removeRepairDetailsParam } from "@/lib/repair-chat/navigation";
@@ -36,6 +36,8 @@ export function ActiveRepairsTable({
     globalPendingCount = 0
 }: ActiveRepairsTableProps) {
     const [searchTerm, setSearchTerm] = useState("");
+    const searchParams = useSearchParams();
+    const [deadline, setDeadline] = useState<DeadlineFilter>(searchParams.get("filter") === "critical" ? "inactive" : "all");
     const [activeChip, setActiveChip] = useState(0);
     const [takeoverRepair, setTakeoverRepair] = useState<ActiveRepair | null>(null);
     const [assignmentRepair, setAssignmentRepair] = useState<ActiveRepair | null>(null);
@@ -46,7 +48,6 @@ export function ActiveRepairsTable({
     const [addPartRepair, setAddPartRepair] = useState<ActiveRepair | null>(null);
     const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
     const requestedRepairId = searchParams.get("repairId");
     const openedRepairIdRef = useRef<string | null>(null);
 
@@ -72,14 +73,15 @@ export function ActiveRepairsTable({
 
     // ── Pull-to-refresh (mobile) ───────────────────────────────────────────
     const listRef = useRef<HTMLUListElement>(null);
-    const touchStartY = useRef(0);
+    const touchStartY = useRef<number | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const handleTouchStart = useCallback((e: TouchEvent) => {
-        touchStartY.current = e.touches[0].clientY;
+        touchStartY.current = window.scrollY <= 0 ? e.touches[0].clientY : null;
     }, []);
 
     const handleTouchEnd = useCallback((e: TouchEvent) => {
+        if (touchStartY.current === null) return;
         const delta = e.changedTouches[0].clientY - touchStartY.current;
         const el = listRef.current;
         if (delta > 70 && el && el.scrollTop === 0 && !isRefreshing) {
@@ -113,11 +115,12 @@ export function ActiveRepairsTable({
     const filteredRepairs = useMemo(() => {
         const words = searchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
         return sortedRepairs.filter(repair => {
+            if (!matchesDeadline(repair, deadline)) return false;
             if (activeChip !== 0 && repair.statusId !== activeChip) return false;
             const fields = [repair.ticketNumber, repair.customer.name, repair.customer.phone || "", repair.deviceBrand, repair.deviceModel].map(f => f.toLowerCase());
             return words.length === 0 || words.every(w => fields.some(f => f.includes(w)));
         });
-    }, [sortedRepairs, searchTerm, activeChip]);
+    }, [sortedRepairs, searchTerm, activeChip, deadline]);
 
     const cardProps = {
         enableTakeover, enableManagement, enableImageUpload, currentUserId, showIssueSummary,
@@ -139,6 +142,7 @@ export function ActiveRepairsTable({
             {/* Stats banner + chip filters */}
             <ActiveRepairsStats 
                 repairs={sortedRepairs} 
+                deadline={deadline} onDeadline={setDeadline}
                 activeChip={activeChip} 
                 onChipChange={setActiveChip} 
                 completedToday={completedToday}

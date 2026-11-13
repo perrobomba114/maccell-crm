@@ -67,7 +67,7 @@ export function TicketInput({ value, onChange, branchId, ticketPrefix, error: ex
             <Label htmlFor="ticket-number" className="text-sm font-medium">Número de ticket</Label>
             <div className="relative">
                 <Input
-                    id="ticket-number"
+                    id="ticket-number" aria-invalid={status === "invalid" || !!externalError}
                     name="ticket-number"
                     aria-label="Número de Ticket"
                     value={value}

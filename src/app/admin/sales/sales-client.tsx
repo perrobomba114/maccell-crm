@@ -47,7 +47,7 @@ export default function AdminSalesClient() {
         rankingData,
         branches,
         loading,
-        date,
+        month, date,
         setDate,
         searchTerm,
         setSearchTerm,
@@ -81,7 +81,7 @@ export default function AdminSalesClient() {
             ? "Todas las sucursales"
             : branches.find((b) => b.id === selectedBranch)?.name ?? "Todas las sucursales";
 
-    const periodLabel = date ? format(date, "PPP", { locale: es }) : "Histórico completo";
+    const periodLabel = date ? format(date, "PPP", { locale: es }) : month ? format(month, "MMMM yyyy", { locale: es }) : "Histórico completo";
     const hasActiveFilters = searchTerm.trim().length > 0 || date !== undefined || selectedBranch !== "ALL";
 
     const handleClearFilters = () => {
@@ -219,7 +219,7 @@ export default function AdminSalesClient() {
                                             <CalendarIcon className="h-4 w-4" />
                                         </div>
                                         <span className="flex-1 truncate text-left">
-                                            {date ? format(date, "PPP", { locale: es }) : "Histórico completo"}
+                                            {date ? format(date, "PPP", { locale: es }) : month ? format(month, "MMMM yyyy", { locale: es }) : "Histórico completo"}
                                         </span>
                                         {date && (
                                             <span

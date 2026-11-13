@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type { ChatMessage, ChatSession } from "@/lib/cerebro-v2/chat-repository";
 import type { CerebroRepairSummary } from "@/lib/cerebro-v2/repair-context";
@@ -48,7 +48,7 @@ function toUiMessages(messages: ChatMessage[]): CerebroUiMessage[] {
     });
 }
 
-export function CerebroV2Shell() {
+export function CerebroV2Shell({ initialRepairId }: { initialRepairId?: string } = {}) {
     const [state, dispatch] = useReducer(cerebroUiReducer, cerebroInitialState);
     const [messages, setMessages] = useState<CerebroUiMessage[]>([]);
     const [loading, setLoading] = useState(true);
@@ -60,6 +60,7 @@ export function CerebroV2Shell() {
     const [closureOpen, setClosureOpen] = useState(false);
     const [healthDetails, setHealthDetails] = useState<string[]>([]);
 
+    const opened = useRef<string | undefined>(undefined);
     const loadSessions = useCallback(async () => {
         try {
             const [sessionResult, repairResult] = await Promise.all([
@@ -68,10 +69,18 @@ export function CerebroV2Shell() {
             ]);
             dispatch({ type: "sessions-loaded", sessions: sessionResult.sessions });
             setRepairs(repairResult.repairs);
+            if (initialRepairId && opened.current !== initialRepairId) {
+                opened.current = initialRepairId;
+                if (repairResult.repairs.some(r => r.id === initialRepairId)) {
+                    setSelectedRepairId(initialRepairId);
+                    const existing = sessionResult.sessions.find(s => s.repairId === initialRepairId);
+                    if (existing) await selectSession(existing);
+                } else setError("La reparación ya no está disponible para tu usuario.");
+            }
         } catch (requestError) {
             setError(requestError instanceof Error ? requestError.message : "No se pudo cargar Cerebro V2");
         } finally { setLoading(false); }
-    }, []);
+    }, [initialRepairId]);
 
     useEffect(() => { void loadSessions(); }, [loadSessions]);
     useEffect(() => {

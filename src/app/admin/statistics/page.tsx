@@ -1,3 +1,4 @@
+import { reportMonth } from "@/lib/date-utils";
 import { Suspense } from "react";
 import {
     getBranchesList,
@@ -26,12 +27,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
     const resolvedParams = await searchParams;
     const branchId = resolvedParams.branchId;
 
-    // Parse Date Navigation
-    // Parse Date Navigation
-    const now = new Date();
-    const month = resolvedParams.month !== undefined ? parseInt(resolvedParams.month) : now.getMonth();
-    const year = resolvedParams.year !== undefined ? parseInt(resolvedParams.year) : now.getFullYear();
-    const reportDate = new Date(year, month, 1);
+    const reportDate = reportMonth(resolvedParams.month, resolvedParams.year);
 
     // 1. Fast Data (Shell)
     const branches = await getBranchesList();
@@ -48,7 +44,7 @@ export default async function StatisticsPage({ searchParams }: { searchParams: P
     const repairsAnalyticsPromise = getRepairAnalytics(branchId, reportDate);
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-zinc-50 font-sans p-6 lg:p-8">
+        <div className="min-h-screen bg-[#09090b] text-zinc-50 font-sans p-2 sm:p-6 lg:p-8">
 
             {/* Header (Static) */}
             <StatisticsHeader branches={branches} currentBranchId={branchId} />

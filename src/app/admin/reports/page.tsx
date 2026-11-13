@@ -1,3 +1,4 @@
+import { formatArgentinaDate } from "@/lib/date-utils";
 import { Suspense } from "react";
 import { getProducts } from "@/actions/products";
 import { getAllBranches } from "@/actions/branch-actions";
@@ -21,6 +22,7 @@ export default async function InventoryReportPage() {
 
             <Suspense fallback={<div>Generando reporte...</div>}>
                 <InventoryReportClient
+                    generatedAt={formatArgentinaDate(new Date(), "dd/MM/yyyy HH:mm")}
                     products={(products as any) || []}
                     branches={branches || []}
                 />

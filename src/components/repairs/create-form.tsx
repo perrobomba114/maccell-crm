@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Wrench } from "lucide-react";
@@ -70,6 +70,36 @@ export function CreateRepairForm({
         undefined,
         () => createInitialRepairFormState(getInitialPromisedAt(), userId),
     );
+    const key = `repair-draft:${userId}:${branchId}`;
+    const [loaded, setLoaded] = useState("");
+    const submitted = useRef(false);
+    useEffect(() => {
+        try {
+            const raw = sessionStorage.getItem(key);
+            if (raw) {
+                const saved = JSON.parse(raw);
+                dispatch({ type: "restore", value: { ...saved, promisedAt: new Date(saved.promisedAt), intake: {
+                    hasSimCard: saved.intake.hasSimCard, hasMemoryCard: saved.intake.hasMemoryCard, accessType: "NONE", accessCredential: null
+                } } });
+                toast.info("Ingreso recuperado. Revisá el acceso del equipo antes de confirmar.");
+            }
+        } catch { toast.warning("No se pudo recuperar el ingreso."); }
+        setLoaded(key);
+    }, [key]);
+    useEffect(() => {
+        if (loaded !== key || submitted.current) return;
+        const { customerName, customerPhone, customerEmail, brand, model, problem, notes, promisedAt, selectedUserId,
+            ticketNumber, selectedParts, estimatedPrice, isWet, isWarranty, originalRepairId, intake } = state;
+        try {
+            if (!customerName && !customerPhone && !brand && !model && !problem && !ticketNumber && !selectedParts.length && !estimatedPrice) {
+                sessionStorage.removeItem(key);
+                return;
+            }
+            sessionStorage.setItem(key, JSON.stringify({ customerName, customerPhone, customerEmail, brand, model,
+                problem, notes, promisedAt, selectedUserId, ticketNumber, selectedParts, estimatedPrice, isWet, isWarranty,
+                originalRepairId, intake: { hasSimCard: intake.hasSimCard, hasMemoryCard: intake.hasMemoryCard } }));
+        } catch { toast.warning("El navegador no pudo guardar el borrador.", { id: "repair-draft" }); }
+    }, [state, loaded, key]);
     const selectedVendor = vendors?.find((vendor) => vendor.id === state.selectedUserId);
     const activeBranchId = selectedVendor?.branch?.id ?? branchId;
     const activeTicketPrefix = selectedVendor?.branch?.code ?? ticketPrefix;
@@ -113,6 +143,7 @@ export function CreateRepairForm({
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (submitted.current) return;
         dispatch({ type: "setField", field: "isSubmitting", value: true });
         dispatch({ type: "setField", field: "errors", value: {} });
 
@@ -120,7 +151,16 @@ export function CreateRepairForm({
         if (Object.keys(errors).length > 0) {
             dispatch({ type: "setField", field: "errors", value: errors });
             dispatch({ type: "setField", field: "isSubmitting", value: false });
-            toast.error("Datos incompletos.");
+            const fields = [
+                ["name", "customer-name", "nombre"], ["phone", "customer-phone", "teléfono"],
+                ["warranty", "warranty-original-search", "ticket original"], ["brand", "device-brand", "marca"],
+                ["model", "device-model", "modelo"], ["problem", "device-problem", "falla"],
+                ["intake", "intake-access", "acceso del equipo"], ["ticket", "ticket-number", "número de ticket"],
+                ["price", "estimated-price", "precio"],
+            ] as const;
+            const missing = fields.filter(([field]) => errors[field]);
+            toast.error("Revisá " + missing.map(([, , label]) => label).join(", "));
+            if (missing[0]) document.getElementById(missing[0][1])?.focus();
             return;
         }
 
@@ -160,6 +200,8 @@ export function CreateRepairForm({
             }
 
             const repair = result.repair;
+            submitted.current = true;
+            try { sessionStorage.removeItem(key); } catch { toast.warning("No se pudo limpiar el borrador."); }
             toast.success("Reparación registrada.");
             printRepairTicket(repair);
             if (repair.isWet) {
@@ -178,8 +220,7 @@ export function CreateRepairForm({
     };
 
     const handleKeyDown = (event: React.KeyboardEvent) => {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
+        if (event.key !== "Enter" || event.target instanceof HTMLButtonElement) return;
         const target = event.target as HTMLElement;
         const focusOrder = [
             "customer-name", "customer-phone", "customer-email", "device-brand",
@@ -187,7 +228,10 @@ export function CreateRepairForm({
         ];
         const currentIndex = focusOrder.indexOf(target.id);
         const nextId = focusOrder[currentIndex + 1];
-        if (currentIndex >= 0 && nextId) document.getElementById(nextId)?.focus();
+        if (currentIndex >= 0 && nextId) {
+            event.preventDefault();
+            document.getElementById(nextId)?.focus();
+        }
     };
 
     const confirmSubmission = () => {

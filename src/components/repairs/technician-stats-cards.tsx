@@ -34,7 +34,7 @@ export function TechnicianStatsCards({ selectedDate, initialData, statusName }: 
     const pathname = usePathname();
     const rawDateFilter = searchParams.get("date") ?? selectedDate ?? null;
     const activeDateFilter = resolveAdminRepairDateSelection(rawDateFilter);
-    const isMonthFilter = activeDateFilter === MONTH_REPAIR_DATE_FILTER;
+    const isMonthFilter = activeDateFilter === MONTH_REPAIR_DATE_FILTER || /^\d{4}-\d{2}$/.test(activeDateFilter);
     const selectedCalendarDate = parseAdminRepairCalendarDate(activeDateFilter);
     const stats = useMemo(
         () => [...(initialData ?? [])].sort((a, b) => b.seenCount - a.seenCount),
@@ -82,7 +82,7 @@ export function TechnicianStatsCards({ selectedDate, initialData, statusName }: 
     };
 
     const displayDateLabel = isMonthFilter
-        ? "Este Mes"
+        ? (activeDateFilter === MONTH_REPAIR_DATE_FILTER ? "Este mes" : format(new Date(activeDateFilter + "-01T12:00:00"), "MMMM yyyy", { locale: es }))
         : selectedCalendarDate
             ? format(selectedCalendarDate, "PPP", { locale: es })
             : getTodayRepairDateFilter();

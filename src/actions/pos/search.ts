@@ -1,5 +1,6 @@
 "use server";
 
+import { REPAIR_STATUS, isPosDeliveryBlockedStatus } from "@/lib/repairs/status";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/actions/auth-actions";
 
@@ -149,4 +150,27 @@ export async function getRepairForPos(ticketNumber: string, branchId: string): P
         console.error("Error fetching repair:", error);
         return { success: false, error: "Error de servidor al buscar reparación." };
     }
+}
+
+/** Refresh a suspended cart against the seller's current branch before checkout. */
+export async function getCartAvailability(productIds: string[], repairIds: string[]) {
+    const user = await getCurrentUser();
+    const branchId = user?.branch?.id;
+    if (!branchId || (user.role !== "VENDOR" && user.role !== "ADMIN")) throw new Error("No se pudo verificar la sucursal.");
+    const [products, repairs] = await Promise.all([
+        db.product.findMany({
+            where: { id: { in: productIds }, deletedAt: null },
+            select: { id: true, price: true, stock: { where: { branchId }, select: { quantity: true } } },
+        }),
+        db.repair.findMany({
+            where: { branchId, id: { in: repairIds }, statusId: { not: REPAIR_STATUS.DELIVERED } },
+            select: { id: true, estimatedPrice: true, statusId: true },
+        }),
+    ]);
+    return [
+        ...products.map(p => ({ id: p.id, type: "PRODUCT" as const, price: p.price, stock: p.stock[0]?.quantity ?? 0 })),
+        ...repairs.filter(r => !isPosDeliveryBlockedStatus(r.statusId)).map(r => ({
+            id: r.id, type: "REPAIR" as const, price: r.estimatedPrice ?? 0, stock: 1,
+        })),
+    ];
 }

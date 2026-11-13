@@ -1,6 +1,8 @@
 "use server";
 
 import { db as prisma } from "@/lib/db";
+import { buildRepairStockWhere } from "./repair-stock-policy";
+import { monthlyRepairStats } from "@/lib/monthly-repair-stats";
 import { getMonthlyRange } from "@/lib/date-utils";
 
 export async function getRepairStats(branchId?: string, date?: Date) {
@@ -33,17 +35,11 @@ export async function getRepairStats(branchId?: string, date?: Date) {
             }),
             prisma.repair.count({
                 where: {
-                    statusId: { not: 10 },
+                    ...buildRepairStockWhere(),
                     ...whereRepair
                 }
             }),
-            prisma.repair.count({
-                where: {
-                    statusId: { in: [5, 6, 7, 10] },
-                    finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth },
-                    ...whereRepair
-                }
-            })
+            monthlyRepairStats(branchId, firstDayOfMonth, lastDayOfMonth),
         ]);
 
         const partIds = topPartsRaw.map(p => p.sparePartId);
@@ -73,7 +69,8 @@ export async function getRepairStats(branchId?: string, date?: Date) {
         return {
             mostUsedParts,
             bestTechnicians,
-            repairVolume: repairCount,
+            monthly: repairCount,
+            repairVolume: repairCount.resolved,
             phonesInShop: phonesInStock
         };
 

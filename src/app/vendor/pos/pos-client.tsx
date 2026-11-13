@@ -25,7 +25,7 @@ interface PosClientProps {
 
 export function PosClient({ vendorId, vendorName, branchId, branchData }: PosClientProps) {
     const {
-        cart, setCart, cashShift, shiftSummary,
+        held, parkCart, resumeCart, resuming, lastSale, cart, setCart, cashShift, shiftSummary,
         isRegisterModalOpen, setIsRegisterModalOpen,
         modalAction, setModalAction, amountInput, setAmountInput,
         searchQuery, setSearchQuery, products, setProducts, isSearching,
@@ -104,6 +104,18 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
             </div>
 
             <div className="relative z-10 flex shrink-0 flex-col gap-4 lg:h-full lg:min-w-0">
+                {cashShift && <div className="flex flex-wrap items-center gap-2 text-sm">
+                    {!!cart.length && <button className="min-h-11 rounded border px-3" onClick={parkCart}>Dejar en espera</button>}
+                    {held.map((items, index) => <button key={index} className="min-h-11 rounded border px-3 disabled:opacity-50"
+                        disabled={!!cart.length || resuming} onClick={() => void resumeCart(index)}>
+                        Retomar · {items[0]?.name} · {items.length} renglones
+                    </button>)}
+                    {lastSale && <details className="w-full rounded border p-2">
+                        <summary>Última venta {lastSale.number} · ${lastSale.total.toLocaleString("es-AR")} · Ver comprobante</summary>
+                        {lastSale.items.map(item => <p key={item.uniqueId}>{item.quantity} × {item.name} · ${(item.quantity * item.price).toLocaleString("es-AR")}</p>)}
+                        <button className="min-h-11 underline" onClick={lastSale.print}>Reimprimir comprobante</button>
+                    </details>}
+                </div>}
                 <PosCart
                     cart={cart} cashShift={cashShift}
                     onUpdateQuantity={(uid, delta) => {

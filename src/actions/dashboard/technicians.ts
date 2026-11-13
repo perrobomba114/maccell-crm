@@ -165,6 +165,7 @@ export async function getTechnicianStats(technicianId: string) {
             customer: r.customer?.name || "Cliente",
             problem: r.problemDescription,
             repairType: r.problemDescription,
+            createdAt: r.createdAt,
             startedAt: r.startedAt || r.updatedAt,
             estimatedTime: r.estimatedTime || 0,
             statusName: r.status.name,

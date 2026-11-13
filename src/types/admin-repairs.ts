@@ -6,6 +6,7 @@ export type AdminRepairBranch = {
 export type AdminRepairStatus = { id: number; name: string; color: string | null };
 
 export type AdminRepairsQuery = {
+    receivedOnly?: boolean;
     query?: string;
     branchId?: string;
     warrantyOnly?: boolean;

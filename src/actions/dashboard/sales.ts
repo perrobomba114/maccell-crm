@@ -1,23 +1,18 @@
 "use server";
 
 import { db as prisma } from "@/lib/db";
-import { getDailyRange, getMonthlyRange, getLastDaysRange, getArgentinaDate } from "@/lib/date-utils";
+import { monthlyRepairStats } from "@/lib/monthly-repair-stats";
+import { getMonthlyRange, reportMonth } from "@/lib/date-utils";
 import { getCurrentUser } from "@/actions/auth-actions";
 
 
-export async function getSalesAnalytics(branchId?: string) {
+export async function getSalesAnalytics(branchId?: string, date = reportMonth()) {
     try {
         const branchFilter = branchId ? { branchId } : {};
 
-        // Use Argentina Daily/Monthly Ranges
-        const { start: todayStart } = getDailyRange(); // Not used directly here but good for ref reference
-        const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange();
-
-        // Calculate Last Month (AR Context)
-        const nowAr = getArgentinaDate();
-        const lastMonthAr = new Date(nowAr.getFullYear(), nowAr.getMonth() - 1, 1);
-        const lastMonthStr = lastMonthAr.toISOString().split('T')[0];
-        const { start: lastMonthStart, end: lastMonthEnd } = getMonthlyRange(lastMonthStr);
+        const { start: firstDayOfMonth, end: lastDayOfMonth } = getMonthlyRange(date.toISOString());
+        const previous = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - 1, 1, 12));
+        const { start: lastMonthStart, end: lastMonthEnd } = getMonthlyRange(previous.toISOString());
 
         // 1. Parallel Data Fetching
         const [salesCurrentMonth, revenueAgg, salesLastMonthAgg, stockAlertsRaw, repairOutput, salesLastMonthDetailed] = await Promise.all([
@@ -44,11 +39,7 @@ export async function getSalesAnalytics(branchId?: string) {
                 take: 10,
                 orderBy: { quantity: 'asc' }
             }),
-            // Finished Repairs This Month (Finalized)
-            prisma.repair.findMany({
-                where: { ...branchFilter, finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }, statusId: { in: [5, 6, 7, 10] } },
-                select: { statusId: true }
-            }),
+            monthlyRepairStats(branchId, firstDayOfMonth, lastDayOfMonth),
             // Sales Last Month Detailed for Profit Comparison
             prisma.sale.findMany({
                 where: { ...branchFilter, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } },
@@ -62,22 +53,6 @@ export async function getSalesAnalytics(branchId?: string) {
                 }
             })
         ]);
-
-        const deliveredTotal = await prisma.repair.count({
-            where: {
-                ...branchFilter,
-                statusId: 6, // DELIVERED
-                finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
-            }
-        }) + await prisma.repair.count({
-            where: {
-                ...branchFilter,
-                statusId: 10, // INVOICED
-                finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
-            }
-        });
-
-
 
         // Fetch Warranties Count (New Requirement)
         const warrantiesCount = await prisma.repair.count({
@@ -158,11 +133,7 @@ export async function getSalesAnalytics(branchId?: string) {
             quantity: s.quantity
         }));
 
-        const okCountCount = (repairOutput as any[]).filter(r => r.statusId === 5 || r.statusId === 6 || r.statusId === 10).length;
-        const noRepairCountCount = (repairOutput as any[]).filter(r => r.statusId === 7).length;
-
-        // Efficiency calculation: (Successful Repairs) / (Total Finalized)
-        const totalFinalized = okCountCount + noRepairCountCount;
+        const { ok: okCountCount, unrepaired: noRepairCountCount, resolved: totalFinalized, delivered: deliveredTotal } = repairOutput;
         const efficiency = totalFinalized > 0
             ? Math.round((okCountCount / totalFinalized) * 100)
             : 0;
@@ -171,6 +142,7 @@ export async function getSalesAnalytics(branchId?: string) {
             financials: { revenue, profit, salesGrowth, profitMargin, profitGrowth },
             categoryShare: { total: profit, segments: categoryShare },
             stock: {
+                received: repairOutput.received,
                 health: totalRepairPartsCost,
                 warrantiesCount,
                 efficiency,
@@ -201,13 +173,13 @@ export async function getSalesAnalytics(branchId?: string) {
     }
 }
 
-export async function getRecentTransactions(branchId?: string) {
+export async function getRecentTransactions(branchId?: string, date = reportMonth()) {
     try {
         const branchFilter = branchId ? { branchId } : {};
-        const { start: firstDayOfMonth } = getMonthlyRange(); // "This Month"
+        const { start: firstDayOfMonth, end } = getMonthlyRange(date.toISOString());
 
         const recentSales = await prisma.sale.findMany({
-            where: { ...branchFilter, createdAt: { gte: firstDayOfMonth } },
+            where: { ...branchFilter, createdAt: { gte: firstDayOfMonth, lte: end } },
             include: {
                 items: {
                     include: {

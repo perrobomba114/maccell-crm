@@ -55,6 +55,7 @@ export function parseAdminRepairCalendarDate(date: string | null | undefined): D
         return undefined;
     }
 
+    if (normalized.length === 7) return undefined;
     const [year, month, day] = normalized.split("-").map(Number);
     return new Date(year, month - 1, day, 12, 0, 0, 0);
 }

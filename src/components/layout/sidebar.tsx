@@ -173,7 +173,7 @@ export function Sidebar({
                 )}
             </AnimatePresence>
 
-            <motion.aside
+            <motion.aside inert={isMobile && !isMobileOpen}
                 initial={false}
                 animate={{
                     width: sidebarWidth,
@@ -184,7 +184,7 @@ export function Sidebar({
                     ease: [0.4, 0, 0.2, 1],
                 }}
                 className={cn(
-                    "fixed left-0 top-0 z-40 h-screen border-r border-sidebar-border/30 bg-background/95 backdrop-blur-xl shadow-xl overflow-hidden",
+                    "fixed left-0 top-0 z-40 h-dvh border-r border-sidebar-border/30 bg-background/95 backdrop-blur-xl shadow-xl overflow-hidden",
                     isMobile && isMobileOpen ? "shadow-2xl ring-1 ring-white/10" : ""
                 )}
             >
@@ -223,7 +223,7 @@ export function Sidebar({
                             <button
                                 onClick={() => onClose?.()}
                                 className="absolute top-1/2 right-3 -translate-y-1/2 p-1 rounded-full text-sidebar-foreground/60 hover:text-primary hover:bg-sidebar-accent/50 md:hidden"
-                                aria-label="Close sidebar"
+                                aria-label="Cerrar menú"
                             >
                                 <X className="h-5 w-5" />
                             </button>
@@ -231,7 +231,7 @@ export function Sidebar({
                     </div>
 
                     <TooltipProvider delayDuration={0}>
-                        <nav className="flex-1 space-y-4 p-3 overflow-y-auto custom-scrollbar overflow-x-hidden">
+                        <nav className="min-h-0 flex-1 space-y-4 p-3 overflow-y-auto overscroll-contain custom-scrollbar overflow-x-hidden">
                             {groups ? (
                                 groups.map((group, index) => (
                                     <div key={index} className="space-y-1">

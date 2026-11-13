@@ -1,11 +1,11 @@
 {
   "proyecto": "MACCELL CRM",
-  "generado": "2026-10-29",
-  "commit": "7356be2",
+  "generado": "2026-11-13",
+  "commit": "9394436",
   "resumen": [
     [
       "lenguaje",
-      "TypeScript 90% · Python 5% · JavaScript 1%"
+      "TypeScript 90% · Python 6% · JavaScript 1%"
     ],
     [
       "base",
@@ -13,11 +13,11 @@
     ],
     [
       "modulos",
-      "855"
+      "858"
     ],
     [
       "lineas",
-      "89.004"
+      "89.303"
     ],
     [
       "endpoints",
@@ -256,7 +256,7 @@
         "src/app/(auth)/layout.tsx"
       ],
       "color": "azul",
-      "lineas": 392,
+      "lineas": 394,
       "nArchivos": 4,
       "rutas": [
         "src/app/(auth)/",
@@ -283,7 +283,7 @@
         "src/components/admin"
       ],
       "color": "azul",
-      "lineas": 20535,
+      "lineas": 20566,
       "nArchivos": 155,
       "rutas": [
         "src/app/admin/",
@@ -310,7 +310,7 @@
         "src/components/vendor"
       ],
       "color": "azul",
-      "lineas": 5419,
+      "lineas": 5431,
       "nArchivos": 48,
       "rutas": [
         "src/app/vendor/",
@@ -361,7 +361,7 @@
         "src/app/estado/[id]/page.tsx"
       ],
       "color": "azul",
-      "lineas": 88,
+      "lineas": 92,
       "nArchivos": 1,
       "rutas": [
         "src/app/estado/"
@@ -386,7 +386,7 @@
         "src/components/cerebro-v2/cerebro-v2-composer.tsx"
       ],
       "color": "azul",
-      "lineas": 921,
+      "lineas": 930,
       "nArchivos": 17,
       "rutas": [
         "src/app/admin/cerebro/",
@@ -465,7 +465,7 @@
         "src/app/layout.tsx"
       ],
       "color": "azul",
-      "lineas": 17075,
+      "lineas": 17214,
       "nArchivos": 123,
       "rutas": [
         "src/components/",
@@ -656,8 +656,8 @@
         "src/lib/repairs/status-sets.ts"
       ],
       "color": "verde",
-      "lineas": 4016,
-      "nArchivos": 52,
+      "lineas": 3449,
+      "nArchivos": 41,
       "rutas": [
         "src/actions/repairs/",
         "src/actions/repair-*.ts",
@@ -691,7 +691,7 @@
         "src/lib/pos-payment-validation.ts"
       ],
       "color": "verde",
-      "lineas": 1762,
+      "lineas": 1786,
       "nArchivos": 16,
       "rutas": [
         "src/actions/pos/checkout.ts",
@@ -732,8 +732,8 @@
         "src/actions/invoice-afip-control.ts"
       ],
       "color": "verde",
-      "lineas": 1482,
-      "nArchivos": 12,
+      "lineas": 1189,
+      "nArchivos": 10,
       "rutas": [
         "src/actions/pos/checkout-afip.ts",
         "src/actions/pos/afip-padron.ts",
@@ -764,8 +764,8 @@
         "src/actions/expenses-actions.ts"
       ],
       "color": "verde",
-      "lineas": 1167,
-      "nArchivos": 12,
+      "lineas": 1064,
+      "nArchivos": 10,
       "rutas": [
         "src/actions/cash-shift-actions.ts",
         "src/actions/cash-shifts/",
@@ -797,8 +797,8 @@
         "src/actions/imei-action.ts"
       ],
       "color": "verde",
-      "lineas": 1964,
-      "nArchivos": 16,
+      "lineas": 1831,
+      "nArchivos": 14,
       "rutas": [
         "src/actions/products/",
         "src/actions/products.ts",
@@ -861,7 +861,7 @@
         "src/actions/analytics-actions.ts"
       ],
       "color": "verde",
-      "lineas": 1925,
+      "lineas": 1842,
       "nArchivos": 13,
       "rutas": [
         "src/actions/dashboard/",
@@ -872,6 +872,34 @@
         "src/lib/vendor-prize.ts"
       ],
       "auto": false
+    },
+    {
+      "id": "auto-src-lib",
+      "nombre": "lib",
+      "capa": "negocio",
+      "x": 1514,
+      "w": 190,
+      "sub": "src/lib",
+      "desc": "Módulo detectado automáticamente; todavía no tiene descripción curada. Completala en arquitectura.overrides.json (sección \"ajustes\").",
+      "detalle": [],
+      "archivos": [
+        "src/lib/cerebro-rag.ts",
+        "src/lib/notification-center.ts",
+        "src/lib/cerebro-indexer.ts",
+        "src/lib/actions/admin-invoice.ts",
+        "src/lib/cerebro-schematics.ts",
+        "src/lib/actions/notification-center-data.ts",
+        "src/lib/actions/admin-invoice-persistence.ts",
+        "src/lib/admin-repairs-query.ts"
+      ],
+      "color": "gris",
+      "lineas": 2629,
+      "nArchivos": 30,
+      "rutas": [
+        "src/lib/"
+      ],
+      "auto": true,
+      "revisar": true
     },
     {
       "id": "auth",
@@ -924,8 +952,8 @@
         "src/lib/notification-center.ts"
       ],
       "color": "gris",
-      "lineas": 959,
-      "nArchivos": 10,
+      "lineas": 268,
+      "nArchivos": 2,
       "rutas": [
         "src/lib/actions/notification-*.ts",
         "src/lib/actions/notifications.ts",
@@ -1056,7 +1084,7 @@
         "lib/utils.ts"
       ],
       "color": "gris",
-      "lineas": 168,
+      "lineas": 177,
       "nArchivos": 4,
       "rutas": [
         "src/lib/date-utils.ts",
@@ -1115,8 +1143,8 @@
         "src/lib/cerebro-rag.ts"
       ],
       "color": "amarillo",
-      "lineas": 1513,
-      "nArchivos": 12,
+      "lineas": 685,
+      "nArchivos": 8,
       "rutas": [
         "src/lib/cerebro/",
         "src/lib/cerebro-*.ts",
@@ -1493,8 +1521,8 @@
         "scripts/production-baseline.ts"
       ],
       "color": "violeta",
-      "lineas": 3705,
-      "nArchivos": 33,
+      "lineas": 3843,
+      "nArchivos": 35,
       "rutas": [
         "scripts/",
         "src/scripts/"
@@ -1575,8 +1603,8 @@
         "services/cerebro-rag-worker/tests"
       ],
       "color": "gris",
-      "lineas": 10853,
-      "nArchivos": 185,
+      "lineas": 10883,
+      "nArchivos": 186,
       "rutas": [
         "src/__tests__/",
         "scripts/tests/",

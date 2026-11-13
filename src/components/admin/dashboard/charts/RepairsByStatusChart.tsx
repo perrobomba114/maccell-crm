@@ -45,19 +45,19 @@ export function RepairsByStatusChart({ data }: { data: RepairStatusDatum[] }) {
                     Estado Mensual
                 </CardTitle>
                 <CardDescription className="text-xs text-zinc-500">
-                    Distribución de reparaciones (Mes Actual)
+                    Resultados técnicos del mes seleccionado
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center gap-12 px-6 pb-6">
-                <div className="h-[280px] w-[280px] shrink-0 relative">
-                    <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={200} minHeight={300}>
+                <div className="aspect-square w-full max-w-[280px] shrink-0 relative">
+                    <ResponsiveContainer key={isReady ? "ready" : "not-ready"} width="100%" height="100%" minWidth={0}>
                         <PieChart>
                             <Pie
                                 data={data}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={85}
-                                outerRadius={115}
+                                innerRadius="58%"
+                                outerRadius="82%"
                                 paddingAngle={5}
                                 dataKey="value"
                                 animationDuration={1000}

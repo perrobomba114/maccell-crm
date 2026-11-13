@@ -41,6 +41,9 @@ interface VendorStockTableProps {
 export function VendorStockTable({ data, totalPages, currentPage, totalItems, userBranchName }: VendorStockTableProps) {
     const router = useRouter();
     const [itemToRemove, setItemToRemove] = useState<VendorStockItem | null>(null);
+    const [reason, setReason] = useState("");
+    const [other, setOther] = useState("");
+    const memo = reason === "Otro" ? other.trim() : reason;
     const [isRemoving, setIsRemoving] = useState(false);
 
     const isMaccell2 = userBranchName?.toUpperCase().includes("MACCELL 2");
@@ -50,7 +53,7 @@ export function VendorStockTable({ data, totalPages, currentPage, totalItems, us
 
         setIsRemoving(true);
         try {
-            const result = await removeStockUnitAction(itemToRemove.id);
+            const result = await removeStockUnitAction(itemToRemove.id, memo);
             if (result.success) {
                 toast.success("Unidad dada de baja correctamente");
                 setItemToRemove(null);
@@ -133,7 +136,7 @@ export function VendorStockTable({ data, totalPages, currentPage, totalItems, us
                                                 size="icon"
                                                 className="h-8 w-8 ml-1"
                                                 disabled={item.stockLocal <= 0}
-                                                onClick={() => setItemToRemove(item)}
+                                                onClick={() => { setReason(""); setOther(""); setItemToRemove(item); }}
                                                 title="Dar de baja una unidad"
                                             >
                                                 <MinusCircle className="h-4 w-4" />
@@ -220,7 +223,7 @@ export function VendorStockTable({ data, totalPages, currentPage, totalItems, us
                                                 variant="destructive"
                                                 size="icon"
                                                 disabled={item.stockLocal <= 0}
-                                                onClick={() => setItemToRemove(item)}
+                                                onClick={() => { setReason(""); setOther(""); setItemToRemove(item); }}
                                                 title="Dar de baja una unidad"
                                             >
                                                 <MinusCircle className="h-4 w-4" />
@@ -272,14 +275,20 @@ export function VendorStockTable({ data, totalPages, currentPage, totalItems, us
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Confirmar baja de unidad?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Se descontará 1 unidad del stock de <strong>{itemToRemove?.name}</strong>.
+                            {userBranchName} · <strong>{itemToRemove?.name}</strong> ({itemToRemove?.sku}). Stock: {itemToRemove?.stockLocal} → {(itemToRemove?.stockLocal ?? 1) - 1}.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    <label className="grid gap-1">Motivo
+                        <select aria-label="Motivo" className="rounded border bg-background p-2" value={reason} onChange={e => setReason(e.target.value)}>
+                            <option value="">Elegí el motivo</option>{["Dañado", "Faltante en conteo", "Otro"].map(r => <option key={r}>{r}</option>)}
+                        </select>
+                    </label>
+                    {reason === "Otro" && <label>Detalle del motivo<input className="w-full rounded border p-2" value={other} maxLength={160} onChange={e => setOther(e.target.value)} /></label>}
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isRemoving}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={(e) => { e.preventDefault(); handleRemoveStock(); }}
-                            disabled={isRemoving}
+                            disabled={isRemoving || !memo}
                             className="bg-red-600 hover:bg-red-700"
                         >
                             {isRemoving ? "Procesando..." : "Confirmar Baja"}

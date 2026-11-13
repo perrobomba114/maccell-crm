@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { RepairStatusView } from "@/components/repairs/repair-status-view";
 import { AlertCircle, Loader2 } from "lucide-react";
-import Link from "next/link";
+
 
 interface RepairData {
     id: string;
@@ -33,26 +33,30 @@ export default function RepairStatusPage({ params }: { params: Promise<{ id: str
 
     const [repair, setRepair] = useState<RepairData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const [error, setError] = useState<"missing" | "offline" | null>(null);
 
     useEffect(() => {
         if (!id) return;
 
+        const controller = new AbortController();
+        setLoading(true);
+        setError(null);
         async function fetchRepair() {
             try {
-                const response = await fetch(`/api/public/repair-status?id=${id}`);
-                if (!response.ok) throw new Error("Not found");
+                const response = await fetch(`/api/public/repair-status?id=${encodeURIComponent(id)}`, { signal: controller.signal });
+                if (response.status === 404) { setError("missing"); return; }
+                if (!response.ok) throw new Error("Consulta fallida");
                 const data = await response.json();
                 setRepair(data);
-            } catch (err) {
-                console.error(err);
-                setError(true);
+            } catch {
+                if (!controller.signal.aborted) setError("offline");
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) setLoading(false);
             }
         }
 
-        fetchRepair();
+        void fetchRepair();
+        return () => controller.abort();
     }, [id]);
 
     if (loading) {
@@ -70,9 +74,9 @@ export default function RepairStatusPage({ params }: { params: Promise<{ id: str
                 <div className="bg-destructive/20 p-6 rounded-full mb-6 ring-4 ring-destructive/10 animate-pulse">
                     <AlertCircle className="w-16 h-16 text-destructive" />
                 </div>
-                <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase">Ticket no encontrado</h1>
+                <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase">{error === "missing" ? "Ticket no encontrado" : "No pudimos consultar el estado"}</h1>
                 <p className="text-white/40 mt-4 max-w-xs font-medium leading-relaxed">
-                    No pudimos localizar la reparación. Por favor, verificá el número en tu ticket impreso.
+                    {error === "missing" ? "Verificá el número en tu ticket impreso." : "Probá de nuevo en unos minutos."}
                 </p>
                 <button
                     onClick={() => window.location.reload()}

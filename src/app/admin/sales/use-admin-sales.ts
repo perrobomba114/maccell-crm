@@ -1,3 +1,4 @@
+import { getMonthlyRange, reportMonth } from "@/lib/date-utils";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -22,11 +23,12 @@ export function useAdminSales() {
     const [branches, setBranches] = useState<BranchSummary[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [month, setMonth] = useState(() => searchParams.has("month") ? reportMonth(searchParams.get("month"), searchParams.get("year")) : undefined);
     const [date, setDate] = useState<Date | undefined>(
-        initialQuery ? undefined : new Date()
+        initialQuery || month ? undefined : new Date()
     );
     const [searchTerm, setSearchTerm] = useState(initialQuery);
-    const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
+    const [selectedBranch, setSelectedBranch] = useState<string>(searchParams.get("branchId") || "ALL");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(ADMIN_SALES_PAGE_SIZE);
     const [totalPages, setTotalPages] = useState(1);
@@ -50,6 +52,7 @@ export function useAdminSales() {
 
     const updateDate = useCallback((value: Date | undefined) => {
         setPage(1);
+        setMonth(undefined);
         setDate(value);
     }, []);
 
@@ -88,18 +91,19 @@ export function useAdminSales() {
             const endStr = date ? new Date(date) : undefined;
             if (endStr) endStr.setHours(23, 59, 59, 999);
 
+            const range = month ? getMonthlyRange(month.toISOString()) : undefined;
             const [salesData, rankingRes] = await Promise.all([
                 getAdminSalesPage({
-                    startDate: startStr,
-                    endDate: endStr,
+                    startDate: range?.start ?? startStr,
+                    endDate: range?.end ?? endStr,
                     term: searchTerm,
                     branchId: selectedBranch,
                     page,
                     limit: ADMIN_SALES_PAGE_SIZE,
                 }),
                 getBranchRanking({
-                    startDate: startStr,
-                    endDate: endStr
+                    startDate: range?.start ?? startStr,
+                    endDate: range?.end ?? endStr
                 })
             ]);
 
@@ -118,7 +122,7 @@ export function useAdminSales() {
         } finally {
             setLoading(false);
         }
-    }, [date, page, searchTerm, selectedBranch]);
+    }, [month, date, page, searchTerm, selectedBranch]);
 
     useEffect(() => {
         loadBranches();
@@ -187,6 +191,7 @@ export function useAdminSales() {
         rankingData,
         branches,
         loading,
+        month,
         date,
         setDate: updateDate,
         searchTerm,

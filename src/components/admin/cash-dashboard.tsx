@@ -178,7 +178,19 @@ export function AdminCashDashboard({ initialBranches }: AdminCashDashboardProps)
                     </h3>
                 </div>
 
-                <div className="overflow-x-auto pb-2">
+                <div className="divide-y md:hidden">
+                    {daysInMonth.filter(date => getDailyStats(date).shifts > 0 || isSameDay(date, new Date())).map(date => {
+                        const daily = getDailyStats(date);
+                        return <button key={date.toISOString()} onClick={() => setSelectedDay(date)}
+                            className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left">
+                            <span><strong className="block">{format(date, "EEE d", { locale: es })}</strong>
+                                <span className="text-sm text-muted-foreground">{daily.shifts} turnos · {daily.sales} ventas</span></span>
+                            <strong>{formatCurrency(daily.total)}</strong>
+                        </button>;
+                    })}
+                    {!daysInMonth.some(date => getDailyStats(date).shifts > 0) && <p className="p-4 text-sm">Sin turnos en este mes.</p>}
+                </div>
+                <div className="hidden overflow-x-auto pb-2 md:block">
                     <div className="min-w-[800px]">
                         <div className="grid grid-cols-7 border-b bg-muted/20">
                             {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map(day => (

@@ -1,10 +1,12 @@
 // Shared types and utilities for the Active Repairs table.
 
+import { formatArgentinaDate } from "@/lib/date-utils";
 import { type RepairDetails } from "./repair-details-dialog";
 
 export type ActiveRepair = RepairDetails & {
     statusId: number;
     status: RepairDetails["status"] & { id?: number };
+    updatedAt?: Date | string;
     startedAt?: Date | string | null;
     finishedAt?: Date | string | null;
     estimatedTime?: number | null;
@@ -54,6 +56,15 @@ export function calcRepairDuration(startedAt?: Date | string | null, finishedAt?
 /** Returns true if the promised delivery date has already passed */
 export function isOverdue(promisedAt: string | Date): boolean {
     return new Date(promisedAt).getTime() < Date.now();
+}
+
+export type DeadlineFilter = "all" | "overdue" | "today" | "inactive";
+export function matchesDeadline(repair: ActiveRepair, filter: DeadlineFilter) {
+    if (filter === "all") return true;
+    if (filter === "inactive") return !!repair.updatedAt && Date.now() - new Date(repair.updatedAt).getTime() >= 48 * 3600000;
+    if (!repair.promisedAt) return false;
+    return filter === "overdue" ? isOverdue(repair.promisedAt)
+        : formatArgentinaDate(new Date(repair.promisedAt)) === formatArgentinaDate();
 }
 
 /** Status chip options for quick filtering. statusId === 0 means "All". */

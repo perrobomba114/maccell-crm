@@ -28,3 +28,10 @@ test("builds an Argentina current-month range for the MONTH repair date filter",
     assert.equal(range?.start.toISOString(), "2026-07-01T03:00:00.000Z");
     assert.equal(range?.end.toISOString(), "2026-08-01T02:59:59.999Z");
 });
+
+test("keeps the selected February in Argentina through leap day and excludes March", () => {
+    const range = getRepairDateFilterRange("2024-02");
+    assert.equal(range?.start.toISOString(), "2024-02-01T03:00:00.000Z");
+    assert.equal(range?.end.toISOString(), "2024-03-01T02:59:59.999Z");
+    assert.equal(getRepairDateFilterRange("2024-13"), null);
+});

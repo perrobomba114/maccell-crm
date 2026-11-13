@@ -52,7 +52,7 @@ export function CustomerForm({
                 <div className="space-y-2">
                     <Label htmlFor="customer-name" className="after:content-['*'] after:ml-0.5 after:text-red-500">Nombre Completo</Label>
                     <Input
-                        id="customer-name"
+                        id="customer-name" aria-invalid={!!errors?.name} aria-describedby={errors?.name ? "customer-name-error" : undefined}
                         name="customer-name"
                         value={name}
                         onChange={handleNameChange} onBlur={handleNameBlur}
@@ -60,13 +60,13 @@ export function CustomerForm({
                         autoComplete="name"
                         className={cn("min-h-11 bg-background/70 text-base", errors?.name && "border-destructive focus-visible:ring-destructive/20")}
                     />
-                    {errors?.name ? <p role="alert" className="text-xs font-medium text-destructive">{errors.name}</p> : null}
+                    {errors?.name ? <p id="customer-name-error" role="alert" className="text-xs font-medium text-destructive">{errors.name}</p> : null}
                 </div>
 
                 <div className="space-y-2">
                     <Label htmlFor="customer-phone" className="after:content-['*'] after:ml-0.5 after:text-red-500">Teléfono (10 dígitos)</Label>
                     <Input
-                        id="customer-phone"
+                        id="customer-phone" aria-invalid={!!errors?.phone} aria-describedby={errors?.phone ? "customer-phone-error" : undefined}
                         name="customer-phone"
                         value={phone}
                         onChange={handlePhoneChange}
@@ -76,7 +76,7 @@ export function CustomerForm({
                         autoComplete="tel"
                         className={cn("min-h-11 bg-background/70 text-base tabular-nums", errors?.phone && "border-destructive focus-visible:ring-destructive/20")}
                     />
-                    {errors?.phone ? <p role="alert" className="text-xs font-medium text-destructive">{errors.phone}</p> : null}
+                    {errors?.phone ? <p id="customer-phone-error" role="alert" className="text-xs font-medium text-destructive">{errors.phone}</p> : null}
                 </div>
 
                 <div className="space-y-2 md:col-span-2">

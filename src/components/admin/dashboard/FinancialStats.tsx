@@ -1,5 +1,7 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { reportMonth } from "@/lib/date-utils";
 import Link from "next/link";
 import { DollarSign, CheckCircle2, Wrench, Package, ShieldAlert, XCircle, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -81,6 +83,11 @@ function MetricCard({ title, value, subtext, trend, accentColor, icon: Icon, hre
 
 export function FinancialStats({ stats }: { stats: any }) {
     // If we want to implement skeleton loading inside, we can accept null stats, but for now we will rely on Suspense in parent
+    const params = useSearchParams();
+    const month = reportMonth(params.get("month"), params.get("year"));
+    const context = new URLSearchParams({ month: String(month.getUTCMonth()), year: String(month.getUTCFullYear()) });
+    const branch = params.get("branchId");
+    if (branch) context.set("branchId", branch);
     if (!stats) return null;
 
     const { financials, repairs, stock } = stats;
@@ -101,7 +108,7 @@ export function FinancialStats({ stats }: { stats: any }) {
                     icon={DollarSign}
                     trend={{ value: `${financials.salesGrowth > 0 ? '+' : ''}${financials.salesGrowth.toFixed(1)}%`, positive: financials.salesGrowth >= 0 }}
                     subtext="vs mes anterior"
-                    href="/admin/sales"
+                    href={`/admin/sales?${context}`}
                 />
                 <MetricCard
                     title="Ganancia Neta"
@@ -113,16 +120,16 @@ export function FinancialStats({ stats }: { stats: any }) {
                         positive: financials.profitGrowth >= 0
                     }}
                     subtext="Margen real"
-                    href="/admin/statistics"
+                    href={`/admin/statistics?${context}`}
                 />
                 <MetricCard
-                    title="Reparaciones Activas"
-                    value={`${repairs.active}`}
+                    title="Reparaciones ingresadas"
+                    value={stock.received ?? 0}
                     accentColor="violet"
                     icon={Wrench}
-                    trend={{ value: "En Taller", positive: true }}
-                    subtext={`${repairs.highPriority} Urgentes`}
-                    href="/admin/repairs"
+                    trend={{ value: `${repairs.active} activas hoy`, positive: true }}
+                    subtext="Por fecha de ingreso"
+                    href={`/admin/repairs?date=${month.toISOString().slice(0, 7)}&ingresos=1&branch=${encodeURIComponent(branch || "ALL")}`}
                 />
                 <MetricCard
                     title="Total Equipos"
@@ -131,7 +138,7 @@ export function FinancialStats({ stats }: { stats: any }) {
                     icon={Package}
                     trend={{ value: `${stock.deliveredCount} Entregados`, positive: true }}
                     subtext="Resueltos este mes"
-                    href="/admin/statistics"
+                    href={`/admin/statistics?${context}`}
                 />
             </div>
 
@@ -147,7 +154,7 @@ export function FinancialStats({ stats }: { stats: any }) {
                     value={stock.warrantiesCount || 0}
                     accentColor="orange"
                     icon={ShieldAlert}
-                    subtext="Mes actual"
+                    subtext="Mes seleccionado"
                 />
                 <MetricCard
                     title="Equipos OK"

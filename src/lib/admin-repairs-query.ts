@@ -19,6 +19,7 @@ export function normalizeAdminRepairsQuery(input: string | AdminRepairsQuery = "
     return {
         query,
         branchId: params.branchId || "ALL",
+        receivedOnly: params.receivedOnly ?? false,
         warrantyOnly: params.warrantyOnly ?? false,
         statusId: normalizeAdminRepairStatusId(params.statusId),
         technician: params.technician?.trim() || "",
@@ -41,6 +42,10 @@ export function buildAdminRepairsWhere(params: Required<AdminRepairsQuery>): Pri
         whereClause.branchId = params.branchId;
     }
 
+    if (params.receivedOnly) {
+        const range = getRepairDateFilterRange(params.date);
+        if (range) whereClause.createdAt = { gte: range.start, lte: range.end };
+    }
     if (params.warrantyOnly) {
         whereClause.isWarranty = true;
     }

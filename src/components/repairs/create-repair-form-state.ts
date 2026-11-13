@@ -37,6 +37,7 @@ type SetFieldAction = {
 }[keyof CreateRepairFormState];
 
 export type CreateRepairFormAction = SetFieldAction
+    | { type: "restore"; value: Partial<CreateRepairFormState> }
     | { type: "setIntake"; value: RepairIntake }
     | { type: "setAccessType"; value: RepairAccessType };
 
@@ -76,6 +77,7 @@ export function createRepairFormReducer(
     state: CreateRepairFormState,
     action: CreateRepairFormAction,
 ): CreateRepairFormState {
+    if (action.type === "restore") return { ...state, ...action.value };
     if (action.type === "setIntake") {
         return { ...state, intake: action.value };
     }

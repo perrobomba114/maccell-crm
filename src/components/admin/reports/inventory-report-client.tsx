@@ -26,11 +26,12 @@ interface ProductWithStock extends Product {
 }
 
 interface InventoryReportClientProps {
+    generatedAt: string;
     products: ProductWithStock[];
     branches: Branch[];
 }
 
-export function InventoryReportClient({ products, branches }: InventoryReportClientProps) {
+export function InventoryReportClient({ products, branches, generatedAt }: InventoryReportClientProps) {
     // 1. Calculate Global Stats
     let totalStockCount = 0;
     let totalCostValue = 0;
@@ -100,7 +101,7 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">${totalCostValue.toLocaleString()}</div>
+                            <div className="text-2xl font-bold">${totalCostValue.toLocaleString("es-AR")}</div>
                             <p className="text-xs text-muted-foreground">Capital invertido en mercadería</p>
                         </CardContent>
                     </Card>
@@ -110,7 +111,7 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                             <TrendingUp className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">${totalSalesValue.toLocaleString()}</div>
+                            <div className="text-2xl font-bold">${totalSalesValue.toLocaleString("es-AR")}</div>
                             <p className="text-xs text-muted-foreground">Ingresos proyectados al vender todo</p>
                         </CardContent>
                     </Card>
@@ -120,7 +121,7 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                             <TrendingUp className="h-4 w-4 text-green-500" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">${potentialProfit.toLocaleString()}</div>
+                            <div className="text-2xl font-bold text-green-600">${potentialProfit.toLocaleString("es-AR")}</div>
                             <p className="text-xs text-muted-foreground">Margen Promedio: {profitMargin.toFixed(1)}%</p>
                         </CardContent>
                     </Card>
@@ -141,6 +142,12 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
+                                <div className="divide-y md:hidden">{branchStats.map(branch => <div key={branch.id} className="py-3">
+                                    <strong>{branch.name}</strong><p>{branch.stockCount} unidades</p>
+                                    <p>Costo · ${branch.costValue.toLocaleString("es-AR")}</p><p>Venta · ${branch.salesValue.toLocaleString("es-AR")}</p>
+                                    <p>Ganancia potencial · ${branch.profit.toLocaleString("es-AR")}</p>
+                                </div>)}</div>
+                                <div className="hidden md:block">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -156,15 +163,16 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                                             <TableRow key={branch.id}>
                                                 <TableCell className="font-medium">{branch.name}</TableCell>
                                                 <TableCell className="text-right">{branch.stockCount}</TableCell>
-                                                <TableCell className="text-right">${branch.costValue.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right">${branch.salesValue.toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${branch.costValue.toLocaleString("es-AR")}</TableCell>
+                                                <TableCell className="text-right">${branch.salesValue.toLocaleString("es-AR")}</TableCell>
                                                 <TableCell className="text-right font-medium text-green-600">
-                                                    ${branch.profit.toLocaleString()}
+                                                    ${branch.profit.toLocaleString("es-AR")}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
                                 </Table>
+                                </div>
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -178,7 +186,14 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="rounded-md border h-[500px] overflow-auto">
+                                <div className="divide-y md:hidden">{products.map(product => {
+                                    const quantity = product.stock.reduce((total, row) => total + row.quantity, 0);
+                                    return <details key={product.id} className="py-2"><summary className="cursor-pointer py-2">{product.name} · {quantity} un.</summary>
+                                        <p>SKU · {product.sku}</p><p>Costo unitario · ${product.costPrice.toLocaleString("es-AR")}</p>
+                                        <p>Costo total · ${(quantity * product.costPrice).toLocaleString("es-AR")}</p>
+                                        <p>Venta total · ${(quantity * product.price).toLocaleString("es-AR")}</p></details>;
+                                })}</div>
+                                <div className="hidden md:block rounded-md border h-[500px] overflow-auto">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
@@ -202,8 +217,8 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                                                         <TableCell>{product.name}</TableCell>
                                                         <TableCell className="text-right">${product.costPrice}</TableCell>
                                                         <TableCell className="text-center">{stock}</TableCell>
-                                                        <TableCell className="text-right text-muted-foreground">${costVal.toLocaleString()}</TableCell>
-                                                        <TableCell className="text-right font-medium">${saleVal.toLocaleString()}</TableCell>
+                                                        <TableCell className="text-right text-muted-foreground">${costVal.toLocaleString("es-AR")}</TableCell>
+                                                        <TableCell className="text-right font-medium">${saleVal.toLocaleString("es-AR")}</TableCell>
                                                     </TableRow>
                                                 );
                                             })}
@@ -234,7 +249,7 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                     </div>
                     <div className="text-right">
                         <h2 className="text-2xl font-bold text-gray-900">MACCELL</h2>
-                        <p className="text-sm text-gray-500">Generado el: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
+                        <p className="text-sm text-gray-500">Generado el: {generatedAt}</p>
                         <p className="text-sm text-gray-500">Confidencial / Uso Interno</p>
                     </div>
                 </div>
@@ -243,15 +258,15 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                 <div className="grid grid-cols-4 gap-4 mb-8">
                     <div className="bg-slate-800 text-white p-4 rounded-sm print:bg-slate-800 print:text-white" style={{ printColorAdjust: "exact" }}>
                         <p className="text-xs uppercase opacity-70 mb-1">Stock Total (Unid.)</p>
-                        <p className="text-3xl font-bold">{totalStockCount.toLocaleString()}</p>
+                        <p className="text-3xl font-bold">{totalStockCount.toLocaleString("es-AR")}</p>
                     </div>
                     <div className="bg-slate-700 text-white p-4 rounded-sm print:bg-slate-700 print:text-white" style={{ printColorAdjust: "exact" }}>
                         <p className="text-xs uppercase opacity-70 mb-1">Inversión (Costo)</p>
-                        <p className="text-3xl font-bold">${totalCostValue.toLocaleString()}</p>
+                        <p className="text-3xl font-bold">${totalCostValue.toLocaleString("es-AR")}</p>
                     </div>
                     <div className="bg-slate-600 text-white p-4 rounded-sm print:bg-slate-600 print:text-white" style={{ printColorAdjust: "exact" }}>
                         <p className="text-xs uppercase opacity-70 mb-1">Venta Proyectada</p>
-                        <p className="text-3xl font-bold">${totalSalesValue.toLocaleString()}</p>
+                        <p className="text-3xl font-bold">${totalSalesValue.toLocaleString("es-AR")}</p>
                     </div>
                     <div className="bg-emerald-700 text-white p-4 rounded-sm print:bg-emerald-700 print:text-white" style={{ printColorAdjust: "exact" }}>
                         <p className="text-xs uppercase opacity-70 mb-1">Margen Potencial</p>
@@ -277,9 +292,9 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                                 <tr key={branch.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"} style={{ printColorAdjust: "exact" }}>
                                     <td className="p-2 border-b border-gray-200 font-medium">{branch.name}</td>
                                     <td className="p-2 border-b border-gray-200 text-right">{branch.stockCount}</td>
-                                    <td className="p-2 border-b border-gray-200 text-right">${branch.costValue.toLocaleString()}</td>
-                                    <td className="p-2 border-b border-gray-200 text-right">${branch.salesValue.toLocaleString()}</td>
-                                    <td className="p-2 border-b border-gray-200 text-right font-bold text-emerald-800">${branch.profit.toLocaleString()}</td>
+                                    <td className="p-2 border-b border-gray-200 text-right">${branch.costValue.toLocaleString("es-AR")}</td>
+                                    <td className="p-2 border-b border-gray-200 text-right">${branch.salesValue.toLocaleString("es-AR")}</td>
+                                    <td className="p-2 border-b border-gray-200 text-right font-bold text-emerald-800">${branch.profit.toLocaleString("es-AR")}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -311,8 +326,8 @@ export function InventoryReportClient({ products, branches }: InventoryReportCli
                                         <td className="p-1 font-medium">{product.name}</td>
                                         <td className="p-1 text-right text-gray-600">${product.costPrice}</td>
                                         <td className="p-1 text-center font-bold bg-gray-50">{stock}</td>
-                                        <td className="p-1 text-right">${costVal.toLocaleString()}</td>
-                                        <td className="p-1 text-right font-bold">${saleVal.toLocaleString()}</td>
+                                        <td className="p-1 text-right">${costVal.toLocaleString("es-AR")}</td>
+                                        <td className="p-1 text-right font-bold">${saleVal.toLocaleString("es-AR")}</td>
                                     </tr>
                                 )
                             })}

@@ -74,3 +74,12 @@ export function getLastDaysRange(days: number) {
 
     return { start, end };
 }
+
+/** MonthNavigator uses zero-based months in URLs. Noon UTC stays in the same Argentine month. */
+export function reportMonth(month?: string | null, year?: string | null, now = new Date()) {
+    const current = formatArgentinaDate(now, "yyyy-MM");
+    const [currentYear, currentMonth] = current.split("-").map(Number);
+    const m = month && /^(?:[0-9]|1[01])$/.test(month) ? Number(month) : currentMonth - 1;
+    const y = year && /^[1-9]\d{3}$/.test(year) ? Number(year) : currentYear;
+    return new Date(Date.UTC(y, m, 1, 12));
+}

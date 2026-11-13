@@ -38,40 +38,40 @@ export function DeviceDetails({
                 <div className="space-y-2">
                     <Label htmlFor="device-brand" className="after:content-['*'] after:ml-0.5 after:text-red-500">Marca</Label>
                     <Input
-                        id="device-brand"
+                        id="device-brand" aria-invalid={!!errors?.brand} aria-describedby={errors?.brand ? "device-brand-error" : undefined}
                         name="device-brand"
                         value={brand} onChange={(e) => onBrandChange(handleCapitalize(e.target.value))}
                         placeholder="Samsung"
                         autoComplete="off"
                         className={cn("min-h-11 bg-background/70 text-base", errors?.brand && "border-destructive focus-visible:ring-destructive/20")}
                     />
-                    {errors?.brand ? <p role="alert" className="text-xs font-medium text-destructive">{errors.brand}</p> : null}
+                    {errors?.brand ? <p id="device-brand-error" role="alert" className="text-xs font-medium text-destructive">{errors.brand}</p> : null}
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="device-model" className="after:content-['*'] after:ml-0.5 after:text-red-500">Modelo</Label>
                     <Input
-                        id="device-model"
+                        id="device-model" aria-invalid={!!errors?.model} aria-describedby={errors?.model ? "device-model-error" : undefined}
                         name="device-model"
                         value={model} onChange={(e) => onModelChange(e.target.value)}
                         placeholder="S21, iPhone 13..."
                         autoComplete="off"
                         className={cn("min-h-11 bg-background/70 text-base", errors?.model && "border-destructive focus-visible:ring-destructive/20")}
                     />
-                    {errors?.model ? <p role="alert" className="text-xs font-medium text-destructive">{errors.model}</p> : null}
+                    {errors?.model ? <p id="device-model-error" role="alert" className="text-xs font-medium text-destructive">{errors.model}</p> : null}
                 </div>
             </div>
 
             <div className="space-y-2">
                 <Label htmlFor="device-problem" className="after:content-['*'] after:ml-0.5 after:text-red-500">Problema / Falla</Label>
                 <Textarea
-                    id="device-problem"
+                    id="device-problem" aria-invalid={!!errors?.problem} aria-describedby={errors?.problem ? "device-problem-error" : undefined}
                     name="device-problem"
                     value={problem} onChange={(e) => onProblemChange(handleCapitalize(e.target.value))}
                     placeholder="Describe el problema..."
                     rows={2}
                     className={cn("min-h-20 resize-y bg-background/70 text-base", errors?.problem && "border-destructive focus-visible:ring-destructive/20")}
                 />
-                {errors?.problem ? <p role="alert" className="text-xs font-medium text-destructive">{errors.problem}</p> : null}
+                {errors?.problem ? <p id="device-problem-error" role="alert" className="text-xs font-medium text-destructive">{errors.problem}</p> : null}
             </div>
         </div>
     );

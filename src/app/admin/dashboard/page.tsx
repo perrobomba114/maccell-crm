@@ -1,3 +1,5 @@
+import { MonthNavigator } from "@/components/admin/statistics/MonthNavigator";
+import { reportMonth } from "@/lib/date-utils";
 import { Suspense } from "react";
 import {
     getSalesAnalytics,
@@ -30,10 +32,11 @@ function SectionSkeleton({ height = "h-[400px]" }: { height?: string }) {
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ branchId?: string }> }) {
+export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ branchId?: string; month?: string; year?: string }> }) {
     // Resolve params (Next.js 15 requires awaiting searchParams, doing so to be safe/future-proof)
     const resolvedParams = await searchParams; // In Next 14 this is just the object, in 15 it's a promise. Await is safe.
     const branchId = resolvedParams?.branchId;
+    const date = reportMonth(resolvedParams.month, resolvedParams.year);
 
     // 1. Fetch Fast/Critical Data (Shell)
     // Branches are needed for the Filter immediately
@@ -44,22 +47,23 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
 
     // 2. Start Data Fetching in Parallel (Promises)
     // Dashboard Stats
-    const salesPromise = getSalesAnalytics(branchId);
-    const repairsPromise = getRepairAnalytics(branchId);
-    const transactionsPromise = getRecentTransactions(branchId);
+    const salesPromise = getSalesAnalytics(branchId, date);
+    const repairsPromise = getRepairAnalytics(branchId, date);
+    const transactionsPromise = getRecentTransactions(branchId, date);
 
     // External Stats (from other actions)
-    const branchStatsPromise = getBranchStats(branchId);
-    const productStatsPromise = getProductStats(branchId);
+    const branchStatsPromise = getBranchStats(branchId, date);
+    const productStatsPromise = getProductStats(branchId, date);
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-zinc-50 font-sans p-6 lg:p-8 xl:p-10 selection:bg-violet-500/30">
+        <div className="min-h-screen bg-[#09090b] text-zinc-50 font-sans p-2 sm:p-6 lg:p-8 xl:p-10 selection:bg-violet-500/30">
             {/* Header - Static/Client */}
             <DashboardHeader />
 
 
             {/* Filters - Static Data (Branches fetched fast) */}
-            <div className="mb-8">
+            <div className="mb-8 flex flex-wrap items-center gap-4">
+                <MonthNavigator />
                 <BranchFilter branches={branches} currentBranchId={branchId} />
             </div>
 

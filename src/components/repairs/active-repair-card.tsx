@@ -61,7 +61,7 @@ export function ActiveRepairCard({
             )}
 
             {/* Row 1: Position + Ticket + Status + Actions */}
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className={cn("inline-flex items-center justify-center h-7 w-7 rounded-full font-bold text-xs shrink-0", positionBadgeClass(position))}>
                         {position}
@@ -90,12 +90,12 @@ export function ActiveRepairCard({
                 </div>
                 {/* Quick actions */}
                 <div className="flex items-center gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" asChild className="h-8 w-8 text-muted-foreground hover:text-cyan-500" title="Abrir esquemáticos de esta reparación">
+                    <Button size="icon" variant="ghost" asChild className="h-11 w-11 text-muted-foreground hover:text-cyan-500" title="Abrir esquemáticos de esta reparación">
                         <Link href={`/technician/schematics?repair=${encodeURIComponent(repair.id)}`} aria-label={`Abrir cuaderno técnico de reparación ${repair.ticketNumber}`}>
                             <CircuitBoard className="h-4 w-4" />
                         </Link>
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={() => onViewDetails(repair)} className="h-8 w-8 text-muted-foreground hover:text-blue-500" title="Ver detalles">
+                    <Button size="icon" variant="ghost" onClick={() => onViewDetails(repair)} className="h-11 w-11 text-muted-foreground hover:text-blue-500" title="Ver detalles">
                         <Eye className="h-4 w-4" />
                     </Button>
                     <RepairImagesActionButton
@@ -106,7 +106,7 @@ export function ActiveRepairCard({
                         className="size-9"
                     />
                     {enableImageUpload && imageCount < 3 && (
-                        <Button size="icon" variant="ghost" onClick={() => onImageUpload(repair)} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Fotos">
+                        <Button size="icon" variant="ghost" onClick={() => onImageUpload(repair)} className="h-11 w-11 text-muted-foreground hover:text-primary" title="Fotos">
                             <Camera className="h-4 w-4" />
                         </Button>
                     )}
@@ -197,7 +197,7 @@ export function ActiveRepairCard({
 
             {/* Row 4: Management actions */}
             {(hasActions || !enableManagement) && (
-                <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-border/50">
                     {!enableManagement && (
                         <Button type="button" size="sm" variant="outline" onClick={() => onPrint(repair)} className="flex-1 gap-2" aria-label={`Reimprimir recepción de reparación ${repair.ticketNumber}`}>
                             <Printer className="h-4 w-4" />
@@ -212,7 +212,7 @@ export function ActiveRepairCard({
                     {enableManagement && (
                         <>
                             <TechnicianActionButton repair={repair} currentUserId={currentUserId} />
-                            <Button size="icon" variant="ghost" onClick={() => onTransfer(repair)} className="h-8 w-8 text-muted-foreground hover:text-blue-500" title="Transferir">
+                            <Button size="icon" variant="ghost" onClick={() => onTransfer(repair)} className="h-11 w-11 text-muted-foreground hover:text-blue-500" title="Transferir">
                                 <Share2 className="h-4 w-4" />
                             </Button>
                         </>

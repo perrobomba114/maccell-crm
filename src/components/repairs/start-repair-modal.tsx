@@ -80,7 +80,7 @@ export function StartRepairModal({ repair, currentUserId, isOpen, onClose }: Sta
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[480px] p-0 overflow-hidden border border-slate-800/80 bg-slate-950 shadow-2xl rounded-2xl custom-scrollbar">
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[480px] p-0 overflow-x-hidden border border-slate-800/80 bg-slate-950 shadow-2xl rounded-2xl custom-scrollbar">
                 
                 {/* Header: Dark Glassmorphic with Amber Neon Accents */}
                 <DialogHeader className="p-5 sm:p-6 bg-gradient-to-b from-amber-500/10 via-slate-900/80 to-slate-950 border-b border-slate-800 relative overflow-hidden text-left">

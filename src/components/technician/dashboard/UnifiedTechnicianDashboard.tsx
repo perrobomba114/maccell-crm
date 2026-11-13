@@ -20,8 +20,8 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { WeeklyOutputChart, MyStatusPieChart } from "./TechnicianCharts";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+
+import { formatArgentinaDate } from "@/lib/date-utils";
 
 // --- Standard Metrics Component ---
 function TechMetric({ title, value, icon: Icon, color, subtext, trend, href }: any) {
@@ -77,7 +77,7 @@ function TechMetric({ title, value, icon: Icon, color, subtext, trend, href }: a
 function JobRow({ job, isActive }: { job: any, isActive?: boolean }) {
     if (isActive) {
         return (
-            <Link href="/technician/repairs" className="group relative bg-[#09090b] border border-t-blue-500/50 border-x-zinc-800 border-b-zinc-800 rounded-[2rem] p-6 flex flex-col gap-6 overflow-hidden transition-all hover:border-blue-500/30 shadow-2xl hover:shadow-[0_10px_40px_rgba(37,99,235,0.15)]">
+            <Link href={`/technician/repairs?repairId=${encodeURIComponent(job.id)}`} className="group relative bg-[#09090b] border border-t-blue-500/50 border-x-zinc-800 border-b-zinc-800 rounded-[2rem] p-6 flex flex-col gap-6 overflow-hidden transition-all hover:border-blue-500/30 shadow-2xl hover:shadow-[0_10px_40px_rgba(37,99,235,0.15)]">
                 {/* Background Decor */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2" />
                 <div className="absolute top-4 right-4 text-zinc-900 opacity-50 pointer-events-none">
@@ -116,7 +116,7 @@ function JobRow({ job, isActive }: { job: any, isActive?: boolean }) {
                             <Clock size={10} /> Ingreso
                         </p>
                         <p suppressHydrationWarning className="text-xs font-black text-zinc-200 truncate">
-                            {format(new Date(), "dd/MM/yyyy", { locale: es })}
+                            {formatArgentinaDate(new Date(job.createdAt), "dd/MM/yyyy")}
                         </p>
                     </div>
                 </div>
@@ -165,7 +165,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
     const weeklyData = stats.weeklyOutput || [];
 
     return (
-        <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans p-6 lg:p-10">
+        <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans p-2 sm:p-6 lg:p-10">
 
             {/* Header */}
             <div className="flex items-center justify-between mb-10 pb-8 border-b border-zinc-900">
@@ -198,7 +198,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/2" />
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
 
-                    <div className="p-8 relative z-10">
+                    <div className="p-4 sm:p-8 relative z-10">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                             <div className="flex items-start gap-5">
                                 <div className="p-3 bg-red-500/10 text-red-500 rounded-2xl border border-red-500/20 shadow-[0_0_20px_rgba(220,38,38,0.2)] animate-pulse">
@@ -220,7 +220,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
                                 </div>
                             </div>
 
-                            <div className="hidden md:block">
+                            <div>
                                 <Link href="/technician/repairs?filter=critical" className="px-6 py-3 bg-red-950/50 hover:bg-red-900/50 border border-red-900/50 rounded-xl text-red-400 text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 group-hover:border-red-500/50">
                                     Ver Todas <ArrowRight size={14} />
                                 </Link>
@@ -229,7 +229,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {stats.stagnatedRepairs.map((r: any) => (
-                                <Link key={r.id} href="/technician/repairs" className="group/card relative bg-black/40 border border-red-900/30 hover:border-red-500 mb-1 rounded-2xl p-5 transition-all hover:bg-red-950/10 hover:shadow-[0_0_30px_rgba(220,38,38,0.15)] flex flex-col justify-between h-full">
+                                <Link key={r.id} href={`/technician/repairs?repairId=${encodeURIComponent(r.id)}`} className="group/card relative bg-black/40 border border-red-900/30 hover:border-red-500 mb-1 rounded-2xl p-5 transition-all hover:bg-red-950/10 hover:shadow-[0_0_30px_rgba(220,38,38,0.15)] flex flex-col justify-between h-full">
                                     <div className="absolute top-3 right-3">
                                         <span className="flex items-center gap-1.5 text-[10px] font-black text-red-500 bg-red-950/40 px-2 py-1 rounded-lg border border-red-900/50">
                                             <Timer size={12} />
@@ -258,7 +258,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
             )}
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6 mb-10">
                 <TechMetric title="En Mesa" value={stats.activeRepairs} subtext="En Proceso" icon={PlayCircle} color="blue" href="/technician/repairs" />
                 <TechMetric title="En Cola" value={stats.pendingTickets} subtext="Tu Fila" icon={ListTodo} color="violet" href="/technician/tickets" />
                 <TechMetric title="Ingresados" value={stats.globalPendingCount || 0} subtext="Global (Estado 1)" icon={Smartphone} color="orange" href="/technician/tickets" />
@@ -324,7 +324,7 @@ export function UnifiedTechnicianDashboard({ stats, user }: { stats: any, user: 
 
                 {/* Queue */}
                 <div className="xl:col-span-1">
-                    <div className="bg-[#09090b] rounded-[3rem] border-2 border-zinc-900 p-10 h-full flex flex-col shadow-2xl relative overflow-hidden">
+                    <div className="bg-[#09090b] rounded-[3rem] border-2 border-zinc-900 p-4 sm:p-10 h-full flex flex-col shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500/0 via-orange-500 to-orange-500/0 opacity-50" />
 
                         <div className="flex items-center justify-between mb-12">

@@ -2,6 +2,7 @@
 
 import { ExternalPurchasesSummary } from "./external-purchases-summary";
 
+import Link from "next/link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -329,6 +330,7 @@ export function RepairDetailsDialog({ repair: initialRepair, isOpen, onClose, cu
 
                             {/* Device & Client quick tags */}
                             <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+                                {currentUserId && activeRepair.assignedUserId === currentUserId && <Button asChild size="sm" variant="outline"><Link href={`/technician/cerebro?repairId=${encodeURIComponent(activeRepair.id)}`}>Continuar diagnóstico</Link></Button>}
                                 {onPrintReception && (
                                     <Button type="button" variant="outline" size="sm" onClick={() => onPrintReception(activeRepair)}>
                                         <Printer className="mr-2 h-4 w-4" /> Reimprimir recepción

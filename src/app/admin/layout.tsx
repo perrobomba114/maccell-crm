@@ -135,7 +135,7 @@ export default function AdminLayout({
                     duration: 0.3,
                     ease: [0.4, 0, 0.2, 1],
                 }}
-                className="flex-1 print:!pl-0 print:!m-0"
+                className="min-w-0 flex-1 max-md:!pl-0 print:!pl-0 print:!m-0"
             >
                 <div className="print:hidden">
                     <Header
@@ -149,7 +149,7 @@ export default function AdminLayout({
                         onMenuClick={() => setIsSidebarOpen(true)}
                     />
                 </div>
-                <main className="p-6 pt-[5.5rem] md:pt-6 print:p-0">
+                <main className="px-3 pb-5 pt-[4.75rem] md:p-6 print:p-0">
                     {children}
                 </main>
             </motion.div>

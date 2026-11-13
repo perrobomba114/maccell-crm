@@ -27,7 +27,7 @@ export function CerebroV2Header(props: HeaderProps) {
 
     return (
         <header className="flex flex-wrap items-center gap-3 border-b border-slate-700/60 bg-[#111820] px-3 py-3 md:px-5">
-            <button type="button" onClick={props.onHistory} className="flex h-11 items-center gap-2 rounded-lg border border-slate-600/60 bg-slate-900/60 px-3 text-sm text-slate-200 hover:border-cyan-500/50">
+            <button type="button" aria-label="Historial de chats" onClick={props.onHistory} className="flex h-11 items-center gap-2 rounded-lg border border-slate-600/60 bg-slate-900/60 px-3 text-sm text-slate-200 hover:border-cyan-500/50">
                 <History size={16} /><span className="hidden sm:inline">Chats</span>
             </button>
             <button type="button" onClick={props.onChooseRepair} className="flex min-w-0 basis-48 flex-1 items-center gap-3 rounded-lg border border-slate-600/60 bg-[#0b1117] px-4 py-2 text-left hover:border-cyan-500/60">

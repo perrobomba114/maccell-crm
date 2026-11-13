@@ -3,7 +3,7 @@
 
 import { db } from "@/lib/db";
 import { getUserData } from "@/actions/get-user";
-import { createNotificationAction } from "@/lib/actions/notifications";
+
 import { revalidatePath } from "next/cache";
 
 interface GetVendorStockParams {
@@ -89,7 +89,7 @@ export async function getVendorStockAction({ page = 1, limit = 25, query = "" }:
     }
 }
 
-export async function removeStockUnitAction(productId: string) {
+export async function removeStockUnitAction(productId: string, reason: string) {
     try {
         const user = await getUserData();
         if (!user || user.role !== "VENDOR") {
@@ -101,54 +101,24 @@ export async function removeStockUnitAction(productId: string) {
             return { success: false, error: "Solo vendedores de MACCELL 2 pueden realizar esta acción" };
         }
 
-        // 1. Validate stock before decrementing to prevent negative stock
-        const currentPart = await db.sparePart.findUnique({
-            where: { id: productId },
-            select: { stockLocal: true, name: true, sku: true }
-        });
-        if (!currentPart || currentPart.stockLocal < 1) {
-            return { success: false, error: "Sin stock suficiente para dar de baja" };
-        }
-
-        // Decrement Stock
-        const part = await db.sparePart.update({
-            where: { id: productId },
-            data: {
-                stockLocal: { decrement: 1 }
-            }
-        });
-
-        // 1.5 Log History
-        if (user.branch?.id) {
-            await db.sparePartHistory.create({
-                data: {
-                    sparePartId: productId,
-                    userId: user.id,
-                    branchId: user.branch.id,
-                    quantity: -1,
-                    reason: "Baja manual desde Consulta de Stock (Vendor)",
-                    isChecked: false
-                }
+        const branchId = user.branch?.id;
+        const memo = typeof reason === "string" ? reason.trim() : "";
+        if (!branchId || !memo || memo.length > 160) return { success: false, error: "Indicá un motivo de hasta 160 caracteres." };
+        const removed = await db.$transaction(async tx => {
+            const changed = await tx.sparePart.updateMany({
+                where: { id: productId, stockLocal: { gt: 0 } }, data: { stockLocal: { decrement: 1 } }
             });
-        }
-
-        // 2. Notify Admins
-        const admins = await db.user.findMany({
-            where: { role: "ADMIN" },
-            select: { id: true }
+            if (!changed.count) return false;
+            const part = await tx.sparePart.findUniqueOrThrow({ where: { id: productId } });
+            await tx.sparePartHistory.create({ data: { sparePartId: productId, userId: user.id, branchId,
+                quantity: -1, reason: memo, isChecked: false } });
+            const admins = await tx.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+            await tx.notification.createMany({ data: admins.map(admin => ({ userId: admin.id,
+                title: "Baja de Stock (MACCELL 2)", message: `${part.name} · ${part.sku}: ${memo}`,
+                type: "WARNING", link: `/admin/repuestos?query=${encodeURIComponent(part.sku)}` })) });
+            return true;
         });
-
-        const notifyPromises = admins.map(admin =>
-            createNotificationAction({
-                userId: admin.id,
-                title: "Baja de Stock (MACCELL 2)",
-                message: `MACCELL 2 dio de baja un Repuesto: ${part.name} (SKU: ${part.sku})`,
-                type: "WARNING",
-                link: `/admin/repuestos?query=${part.sku}` // Link corrected to Repuestos page
-            })
-        );
-
-        await Promise.all(notifyPromises);
+        if (!removed) return { success: false, error: "Sin stock suficiente para dar de baja" };
 
         // 3. Robust Revalidation
         // Revalidate specific vendor stock page

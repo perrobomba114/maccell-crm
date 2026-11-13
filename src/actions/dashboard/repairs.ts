@@ -1,6 +1,7 @@
 "use server";
 
 import { db as prisma } from "@/lib/db";
+import { monthlyRepairStats } from "@/lib/monthly-repair-stats";
 import { getDailyRange, getMonthlyRange, getLastDaysRange, getArgentinaDate } from "@/lib/date-utils";
 import { getCurrentUser } from "@/actions/auth-actions";
 
@@ -23,7 +24,7 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
         tomorrow.setDate(tomorrow.getDate() + 1);
 
         // 1. Parallel Fetching (Independent Queries)
-        const [repairsActive, techUsers, partsStats, repairsByStatusRaw, allStatuses, warrantiesCount] = await Promise.all([
+        const [repairsActive, techUsers, partsStats, monthly] = await Promise.all([
             // Active Repairs (Pending, Claimed, In Progress, Paused)
             prisma.repair.findMany({
                 where: { ...branchFilter, statusId: { in: [1, 2, 3, 4] } },
@@ -37,32 +38,12 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
             // Frequent Parts (First Step)
             prisma.repairPart.groupBy({
                 by: ['sparePartId'],
-                where: { repair: branchFilter },
+                where: { repair: branchFilter, assignedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
                 _count: { _all: true },
                 orderBy: { _count: { sparePartId: 'desc' } },
                 take: 10
             }),
-            // Monthly Distribution (Finalized Repairs Only)
-            // Match logic from repair cards: only count completed repairs (5,6,7,10) using finishedAt
-            prisma.repair.groupBy({
-                by: ['statusId'],
-                where: {
-                    ...branchFilter,
-                    statusId: { in: [5, 6, 7, 10] },  // Only finalized repairs
-                    finishedAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }  // Use finishedAt not createdAt
-                },
-                _count: { _all: true }
-            }),
-            // Status Names
-            prisma.repairStatus.findMany(),
-            // Warranties Count (Monthly)
-            prisma.repair.count({
-                where: {
-                    ...branchFilter,
-                    isWarranty: true,
-                    createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
-                }
-            })
+            monthlyRepairStats(resolvedBranchId, firstDayOfMonth, lastDayOfMonth),
         ]);
 
         // 2. Dependent Queries (require results from above)
@@ -137,44 +118,10 @@ export async function getRepairAnalytics(branchId?: string, date?: Date) {
             return { name: detail?.name || "Unknown", usage: p._count._all, stock: detail?.stockLocal || 0 };
         });
 
-        const colorMap: Record<string, string> = {
-            blue: "#3b82f6",
-            indigo: "#6366f1",
-            yellow: "#eab308",
-            gray: "#71717a",
-            green: "#22c55e",
-            red: "#ef4444",
-            purple: "#a855f7",
-            orange: "#f97316",
-            amber: "#f59e0b",
-            slate: "#3b82f6", // Blue for "Entregados"
-            entregado: "#3b82f6",
-            entregados: "#3b82f6",
-            emerald: "#10b981",
-            pink: "#ec4899",
-            violet: "#8b5cf6"
-        };
-
-        const monthlyStatusDistribution = repairsByStatusRaw.map(item => {
-            const status = allStatuses.find(s => s.id === item.statusId);
-            const rawColor = status?.color || 'gray';
-            return {
-                name: status?.name || `Status ${item.statusId}`,
-                value: item._count._all,
-                color: colorMap[rawColor as keyof typeof colorMap] || rawColor || '#888'
-            };
-        });
-
-        // Add Warranties as a category
-        if (warrantiesCount > 0) {
-            monthlyStatusDistribution.push({
-                name: "Garantías",
-                value: warrantiesCount,
-                color: colorMap.orange
-            });
-        }
-
-        monthlyStatusDistribution.sort((a, b) => b.value - a.value);
+        const monthlyStatusDistribution = [
+            { name: "Reparadas OK", value: monthly.ok, color: "#10b981" },
+            { name: "Sin reparación", value: monthly.unrepaired, color: "#ef4444" },
+        ].filter(item => item.value > 0);
 
         return {
             repairs: {

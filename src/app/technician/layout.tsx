@@ -111,7 +111,7 @@ export default function TechnicianLayout({
                     duration: 0.3,
                     ease: [0.4, 0, 0.2, 1],
                 }}
-                className="min-w-0 flex-1"
+                className="min-w-0 flex-1 max-md:!pl-0"
             >
                 <Header
                     title=""
@@ -123,7 +123,7 @@ export default function TechnicianLayout({
                     profileHref="/technician/profile"
                     onMenuClick={() => setIsSidebarOpen(true)}
                 />
-                <div className="p-4 pt-[5.5rem] md:p-6 md:pt-6">
+                <div className="p-3 pt-[4.75rem] md:p-6 md:pt-6">
                     {children}
                 </div>
             </motion.div>

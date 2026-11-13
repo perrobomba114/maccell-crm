@@ -9,7 +9,7 @@ export default async function AdminCerebroPage() {
     if (!user) redirect("/login");
 
     return (
-        <div className="-m-6 overflow-hidden" style={{ height: 'calc(100vh - 4rem)' }}>
+        <div className="-mx-3 h-[calc(100dvh-4.75rem)] overflow-hidden md:-m-6 md:h-[calc(100dvh-4rem)]">
             <CerebroV2Shell />
         </div>
     );
