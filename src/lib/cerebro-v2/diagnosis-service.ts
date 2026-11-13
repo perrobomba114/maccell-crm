@@ -15,7 +15,7 @@ import { loadEvidenceVision } from './evidence-vision';
 import type { CerebroRepair } from './repair-context';
 import type { CerebroMessageMetadata, CerebroSource } from './types';
 
-type RepairContext=Pick<CerebroRepair,'deviceBrand'|'deviceModel'|'problemDescription'|'observations'|'ticketNumber'|'diagnosis'|'isWet'|'isWarranty'>;
+type RepairContext=Pick<CerebroRepair,'deviceBrand'|'deviceModel'|'problemDescription'|'observations'|'ticketNumber'|'diagnosis'|'isWet'|'isWarranty'> & {id?: string};
 export type DiagnoseInput={repair:RepairContext;history:readonly DiagnosticHistoryMessage[];text:string;images:readonly string[];messageId:string;answerContext?:{question:string;conditions:string}};
 type DraftResult={text:string;provider:string};
 export type DiagnosisDependencies={
@@ -30,7 +30,7 @@ async function draft(prompt:string,correction?:string):Promise<DraftResult> {
     let provider:ProviderSelection={label:'Pendiente',keyId:'pending'};
     const result=await generateText({model:buildModel(p=>{provider=p;},false,true),system:prompt,
         messages:[{role:'user',content:correction?`Corregí la decisión: ${correction}. Devolvé JSON válido y una sola comprobación respaldada.`:'Prepará la próxima comprobación con el expediente y las fuentes.'}],
-        output:Output.object({schema:decisionSchema}),providerOptions:{openrouter:{reasoning:{enabled:false}}},
+        output:Output.object({schema:decisionSchema}),providerOptions:{groq:{structuredOutputs:false}},
         temperature:0.1,maxOutputTokens:900,maxRetries:0,abortSignal:AbortSignal.timeout(45_000)});
     return {text:JSON.stringify(result.output),provider:provider.keyId};
 }
@@ -60,8 +60,8 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
     const search=buildTechnicalSearchQuery({brand:identity.brand,model:identity.model,problem:input.repair.problemDescription,
         latestText:input.text,observations:state.observations.filter(o=>!o.superseded&&o.origin==='technician').map(o=>o.text)});
     const retrievalInput={brand:identity.brand,model:identity.model,modelAliases:deviceModelAliases(identity),
-        modelFamily:identity.modelFamily,text:search,subsystemTerms:diagnosticSubsystemTerms(search,identity.brand),
-        componentCodes:[...new Set(input.text.toUpperCase().match(/\b[A-Z]{1,3}\d{2,6}\b/g)??[])],excludeRepairTicket:input.repair.ticketNumber,limit:10};
+        modelFamily:identity.modelFamily,symptomText:[state.sellerProblem,input.text].join(" "),text:search,subsystemTerms:diagnosticSubsystemTerms(search,identity.brand),
+        componentCodes:[...new Set(input.text.toUpperCase().match(/\b[A-Z]{1,3}\d{2,6}\b/g)??[])],excludeRepairId:input.repair.id,excludeRepairTicket:input.repair.ticketNumber,limit:10};
     let retrieved:{sources:CerebroSource[];unavailable:string[]};
     const boardContext = [input.text, input.answerContext?.question, state.sellerProblem, ...state.observations.filter(o => !o.superseded).slice(-3).map(o => o.text)].join(' ');
     const documents = needsTechnicalDocuments(boardContext) || state.measurements.length > 0 || input.images.length > 0;
@@ -126,6 +126,11 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
     }
     if (!plan) {
         if (provider !== 'unavailable') warnings.push('La propuesta automática no superó la verificación técnica');
+        const recovery = !documents && !input.answerContext && /hip[oó]tesis|prueba|empiezo|comprobaci[oó]n/i.test(input.text)
+            ? benchTriage(state, input.text, true) : null;
+        if (recovery) {
+            return {text: recovery.reason, sources, metadata: buildMetadata(state, recovery, sources, warnings, 'bench-protocol')};
+        }
         plan=fallbackDiagnosticPlan('La evidencia disponible no permite validar una medición de placa específica.',state);
         if (!documents && plan.stage === 'Revisión de evidencia') {
             plan = {...plan, kind: 'clarification', stage: 'Revisar el caso con el técnico',

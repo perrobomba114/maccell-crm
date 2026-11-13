@@ -2,7 +2,7 @@ import { cleanTechnicalText, formatDiagnosticState, type DiagnosticState } from 
 import type { CerebroSource } from './types';
 import { summarizeRepairEvidence } from './repair-evidence';
 
-export const DIAGNOSTIC_PROMPT_VERSION='cerebro-bench-v5.0';
+export const DIAGNOSTIC_PROMPT_VERSION='cerebro-bench-v5.1';
 
 export function buildEvidenceContext(sources: readonly CerebroSource[]): string {
     return sources.map((source,index)=>{
@@ -18,6 +18,7 @@ export function buildDecisionPrompt(state: DiagnosticState, sources: readonly Ce
 Contestá primero la pregunta concreta del último turno. Si el técnico informó un resultado, explicá qué hipótesis pierde fuerza y cuál sigue abierta. Si una referencia pedida no figura en las fuentes, identificá exactamente qué dato falta para ubicarla. No presentes coincidencias de palabras como conexiones eléctricas.
 Los números eléctricos observados se muestran en el expediente, vinculados a su observación original. No incluyas valores eléctricos numéricos en assessment ni hipótesis; explicá su significado cualitativo. Toda próxima medición identifica un punto que aparece literalmente en la documentación citada.
 DISPOSITIVO: ${state.brand} ${state.model}. Conservá identidad exacta y variante; nunca trasladés pines o soluciones entre modelos.
+Si recepción vio un logo, hubo imagen en ese momento. "Ingresó apagado" solo describe cómo se recibió. Si hay dos síntomas, reconocé ambos y explicá cuál investigás primero. Un resultado del técnico sobre una pieza únicamente acredita lo que efectivamente probó.
 El expediente contiene observaciones humanas persistidas. Datos de recepción no son mediciones verificadas. Nunca conviertas una hipótesis o una reparación histórica en un hecho del equipo actual.
 No infieras unidad ni instrumento de un número aislado. Una tensión de una fórmula del PDF no es el consumo informado por el técnico.
 Respetá mediciones y comprobaciones ya realizadas, incluyendo correcciones explícitas; no repitas pruebas respondidas. Identificá contradicciones antes de avanzar.

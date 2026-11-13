@@ -56,6 +56,11 @@ export function validateDiagnosticDecision(value: unknown, state: DiagnosticStat
     if (!parsed.success) return {valid:false,reason:'La decisión no tiene el formato esperado'};
     const decision=parsed.data;
     const all=JSON.stringify(decision);
+    const touch = /t[aá]ctil|touch/i.test(state.sellerProblem);
+    if (touch && /prueba de p[ií]xeles|grilla de colores|patr[oó]n de colores/i.test(decision.nextCheck.question)
+        && !/traz[oa]|desliz|dibuj|tocar|toques/i.test(decision.nextCheck.question)) {
+        return {valid:false, reason:'Un patrón visual solo verifica imagen. Para evaluar entrada táctil se necesita registrar contactos o trazos.'};
+    }
     if (PRICE.test(all)) return {valid:false,reason:'El diagnóstico técnico no admite precios'};
     if ([decision.assessment,...decision.hypotheses.map(h=>h.text)].some(text=>ACTION_IN_ASSESSMENT.test(text))) return {valid:false,reason:'El resumen contiene una segunda comprobación'};
     if (repeatsAnsweredQuestion(decision.nextCheck.question,state.answeredQuestions)) return {valid:false,reason:'La comprobación ya fue respondida'};

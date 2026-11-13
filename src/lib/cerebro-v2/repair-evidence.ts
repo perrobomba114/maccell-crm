@@ -71,6 +71,14 @@ export function repairEvidenceIsUsable(content: string, title: string): boolean 
 }
 
 export function repairEvidenceMatchesSymptom(summary: RepairEvidenceSummary, query: string): boolean {
+    const symptomFamilies = [
+        /t[aá]ctil|touch/i,
+        /\bSIM\b|se[ñn]al|antena|sin servicio|no lee chip/i,
+        /altavoz|parlante|audio|auricular|sonido/i,
+        /reinici|bootloop|bucle/i,
+    ];
+    const requested = symptomFamilies.filter(pattern => pattern.test(query));
+    if (requested.length && !requested.some(pattern => pattern.test(summary.symptom))) return false;
     const noPowerSearch = /\b(?:NO\s+(?:ENCIENDE|PRENDE|ARRANCA)|MUERT[OA])\b/i.test(query);
     if (!noPowerSearch || /\b(?:NO\s+(?:ENCIENDE|PRENDE|ARRANCA)|MUERT[OA])\b/i.test(summary.symptom)) return true;
     const enteredOff = /INGRES[ÓO]\s+APAGAD[OA]/i.test(summary.symptom);

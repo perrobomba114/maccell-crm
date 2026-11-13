@@ -105,8 +105,8 @@ test("filters the exact model before limiting database candidates", async () => 
         {
             async search(sql, params) {
                 assert.match(sql, /rag_device_aliases/);
-                assert.doesNotMatch(sql, /\$6/);
-                assert.equal(params.length, 5);
+                assert.match(sql, /document.source_id IS DISTINCT FROM \$6/);
+                assert.equal(params.length, 6);
                 assert.match(sql, /semantic_pdf_ids[\s\S]+source_type = 'PDF'[\s\S]+LIMIT 40/);
                 assert.match(sql, /semantic_repair_ids[\s\S]+source_type = 'REPAIR'[\s\S]+LIMIT 20/);
                 assert.match(sql, /keyword_pdf_ids[\s\S]+source_type = 'PDF'[\s\S]+LIMIT 40/);

@@ -15,5 +15,8 @@ test("evaluation loads a real repair without mutating CRM data", async () => {
 
     assert.match(source, /prisma\.repair\.findUniqueOrThrow/);
     assert.doesNotMatch(source, /\.create\(|\.update\(|\.delete\(|\.upsert\(/);
+    assert.doesNotMatch(source, /diagnosisEnriched|diagnosis: true|observations: \{ select/);
+    assert.match(source, /diagnosis: null/);
+    assert.match(source, /observations: \[\]/);
     assert.match(source, /ticketNumber: repair\.ticketNumber/);
 });

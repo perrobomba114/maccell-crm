@@ -28,23 +28,22 @@ async function evaluate(item: EvaluationCase) {
             deviceBrand: true,
             deviceModel: true,
             problemDescription: true,
-            diagnosis: true,
-            diagnosisEnriched: true,
+            id: true,
             isWet: true,
             isWarranty: true,
             statusId: true,
-            observations: { select: { content: true }, orderBy: { createdAt: "asc" }, take: 30 },
         },
     });
-    const observations = repair.observations.map((observation) => observation.content);
+
     const result = await diagnoseRepair({
         repair: {
             ticketNumber: repair.ticketNumber,
             deviceBrand: repair.deviceBrand,
             deviceModel: repair.deviceModel,
             problemDescription: repair.problemDescription,
-            diagnosis: repair.diagnosis ?? repair.diagnosisEnriched,
-            observations,
+            id: repair.id,
+            diagnosis: null,
+            observations: [],
             isWet: repair.isWet,
             isWarranty: repair.isWarranty,
         },

@@ -32,6 +32,14 @@ export function CerebroV2Chat(props: ChatProps) {
 
     const diagnosticState = chat.messages.findLast(message => message.metadata?.diagnosticState)?.metadata?.diagnosticState;
 
+    const latestDecision = chat.messages.findLastIndex(message => message.role === 'assistant');
+    const renderMessage = (message: CerebroUiMessage, index: number) => (
+        <div key={message.id} ref={index === chat.messages.length - 1 ? latestRef : undefined}>
+            <CerebroV2Message message={message} disabled={!props.linkedToRepair || streaming || index !== chat.messages.length - 1}
+                onOpenSource={props.onOpenSource} onGuidedAnswer={(questionId, option) => void chat.send(option.label, [], { questionId, optionId: option.id })} />
+        </div>
+    );
+
     return (
         <div className="flex min-w-0 flex-1 flex-col bg-[#0b1117]">
             <div className="flex-1 overflow-y-auto">
@@ -46,7 +54,13 @@ export function CerebroV2Chat(props: ChatProps) {
                             <p className="mt-3 max-w-md text-sm text-slate-400">¿Qué necesitás decidir en el banco?</p>
                             {props.linkedToRepair && props.intake && <button type="button" disabled={streaming} onClick={() => void chat.send("¿Por dónde empiezo con el síntoma de recepción?", [])} className="mt-4 rounded-md bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950">Evaluar el síntoma del ticket</button>}
                         </div>
-                    ) : chat.messages.map((message, index) => <div key={message.id} ref={index === chat.messages.length - 1 ? latestRef : undefined}><CerebroV2Message message={message} disabled={!props.linkedToRepair || streaming || index !== chat.messages.length - 1} onOpenSource={props.onOpenSource} onGuidedAnswer={(questionId, option) => void chat.send(option.label, [], { questionId, optionId: option.id })} /></div>)}
+                    ) : <>
+                        {latestDecision > 0 && <details className="rounded-lg border border-slate-700 px-4 py-3">
+                            <summary className="cursor-pointer text-sm text-slate-300">Conversación anterior · {latestDecision} mensajes</summary>
+                            <div className="mt-4 space-y-4">{chat.messages.slice(0, latestDecision).map(renderMessage)}</div>
+                        </details>}
+                        <div className="space-y-4">{chat.messages.slice(Math.max(0, latestDecision)).map((message, i) => renderMessage(message, i + Math.max(0, latestDecision)))}</div>
+                    </>}
                     {streaming ? <div className="flex items-center gap-3 rounded-md border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 font-mono text-xs uppercase tracking-wider text-cyan-300"><Activity size={15} className="animate-pulse" />Revisando el caso…</div> : null}
                     {chat.error ? <div className="flex items-start gap-3 rounded-md border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"><AlertTriangle size={18} className="mt-0.5 shrink-0" /><div><p className="font-semibold">No se pudo completar el diagnóstico</p><p className="mt-1 text-red-300/80">{chat.error}</p><button type="button" onClick={chat.clearError} className="mt-2 font-mono text-[10px] uppercase tracking-wider text-red-200 underline">Cerrar aviso</button></div></div> : null}
                     <div ref={bottomRef} />

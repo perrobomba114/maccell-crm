@@ -57,3 +57,25 @@ test('la respuesta al técnico que cambió ambos accesorios aísla una variable 
     assert.match(result.metadata.diagnosticPlan!.question,/únicamente al cable original/);
     assert.equal(result.metadata.diagnosticPlan!.branches.length,2);
 });
+
+test('un logo seguido de reinicio conserva la señal de arranque aun si ingresó apagado', async () => {
+    const result = await diagnoseRepair({...input, repair: {...repair, problemDescription: 'Llega al logo y reinicia. Ingresó apagado.'}}, offline);
+    assert.match(result.metadata.diagnosticPlan!.question, /reinicio/);
+    assert.doesNotMatch(result.metadata.diagnosticPlan!.question, /pantalla negra|detección USB/);
+});
+
+test('ante una caída del proveedor, una pregunta de banco sobre señal conserva una prueba pertinente', async () => {
+    const result = await diagnoseRepair({...input, repair: {...repair, problemDescription: 'Presenta problema de señal'}, text: '¿Qué prueba conviene hacer?'}, offline);
+    assert.match(result.metadata.diagnosticPlan!.question, /SIM/);
+    assert.ok(result.metadata.retrievalWarnings?.some(w => w.includes('proveedor')));
+});
+
+test('una grilla de colores sin entrada de contacto no valida el táctil', async () => {
+    const nextCheck={kind:'functional',stage:'Pantalla',question:'¿Qué muestra la prueba de píxeles?',reason:'Evaluar el táctil',conditions:'Equipo encendido'};
+    const result=await diagnoseRepair({...input,repair:{...repair,problemDescription:'Falla el táctil'},text:'¿Qué prueba conviene hacer?'}, {
+        ...offline,cases:async()=>[],vision:async()=>({facts:'',warnings:[]}),
+        draft:async()=>({provider:'fixture',text:JSON.stringify({assessment:'Falta caracterizar el síntoma.',hypotheses:[],nextCheck})})
+    });
+    assert.doesNotMatch(result.metadata.diagnosticPlan!.question,/píxeles/);
+    assert.match(result.metadata.diagnosticPlan!.question,/dedo/);
+});

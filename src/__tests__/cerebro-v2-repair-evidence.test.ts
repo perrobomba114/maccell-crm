@@ -183,3 +183,11 @@ test("reports historical repair search degradation when the supplemental fallbac
     );
     assert.deepEqual(result.unavailable, ["búsqueda de reparaciones históricas"]);
 });
+
+test("common model and a module replacement do not make a charging case evidence for touch, signal or audio", () => {
+    const summary = summarizeRepairEvidence("PROBLEMA: No carga\nSOLUCION: Cambio de módulo", "Caso");
+    for (const symptom of ["falla de táctil", "problema de señal", "falla en altavoz"]) {
+        assert.equal(repairEvidenceMatchesSymptom(summary, symptom), false);
+        assert.equal(repairEvidenceMatchesSymptom({...summary, symptom}, symptom), true);
+    }
+});

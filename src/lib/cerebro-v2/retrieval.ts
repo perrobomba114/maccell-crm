@@ -12,7 +12,9 @@ export type RetrievalInput = {
     embedding: readonly number[];
     componentCodes?: readonly string[];
     subsystemTerms?: readonly string[];
+    symptomText?: string;
     excludeRepairTicket?: string;
+    excludeRepairId?: string;
     limit?: number;
 };
 
@@ -72,6 +74,7 @@ WITH input_models AS (
     WHERE chunk.normalized_brand = $1
       AND chunk.normalized_model IN (SELECT model FROM resolved_models)
       AND document.source_type = 'REPAIR'
+      AND document.source_id IS DISTINCT FROM $6::text
       AND document.status = 'READY'
       AND document.retired_at IS NULL
     ORDER BY chunk.embedding <=> $2::vector
@@ -95,6 +98,7 @@ WITH input_models AS (
     WHERE chunk.normalized_brand = $1
       AND chunk.normalized_model IN (SELECT model FROM resolved_models)
       AND document.source_type = 'REPAIR'
+      AND document.source_id IS DISTINCT FROM $6::text
       AND document.status = 'READY'
       AND document.retired_at IS NULL
       AND chunk.search_vector @@ websearch_to_tsquery('simple', $5)
@@ -108,6 +112,7 @@ WITH input_models AS (
       AND chunk.normalized_model IN (SELECT model FROM resolved_models)
       AND document.status = 'READY'
       AND document.retired_at IS NULL
+      AND (document.source_type <> 'REPAIR' OR document.source_id IS DISTINCT FROM $6::text)
       AND chunk.component_codes && $3::text[]
     LIMIT 20
 ), candidate_ids AS (
@@ -181,7 +186,7 @@ function repairEvidenceIsRelevant(row: RetrievalRow, input: RetrievalInput): boo
     }
     if (!repairEvidenceIsUsable(row.content, row.title)) return false;
     const summary = summarizeRepairEvidence(row.content, row.title);
-    if (!repairEvidenceMatchesSymptom(summary, input.text)) return false;
+    if (!repairEvidenceMatchesSymptom(summary, input.symptomText ?? input.text)) return false;
     const restartSearch = (input.subsystemTerms ?? []).some((term) => (
         /^(?:RESTART|REBOOT|PANIC|WATCHDOG|THERMALMONITORD|MISSING SENSOR)/i.test(term)
     ));
@@ -226,6 +231,7 @@ export async function retrieveCerebroSources(
         input.componentCodes ?? [],
         input.modelAliases ?? [input.model],
         keywordSearchQuery(input.text),
+        input.excludeRepairId ?? null,
     ]);
     const semanticRanks = new Map(
         [...rows].sort((left, right) => right.semanticScore - left.semanticScore)
