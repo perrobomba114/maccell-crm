@@ -4,7 +4,7 @@ import { FileSearch, Wrench } from "lucide-react";
 import { safeWorkbenchUrl } from "@/lib/cerebro-v2/source-links";
 import type { CerebroPublicSource } from "@/lib/cerebro-v2/types";
 
-export function CerebroV2Sources({ sources, onOpen }: { sources: readonly CerebroPublicSource[]; onOpen: (source: CerebroPublicSource) => void }) {
+export function CerebroV2Sources({ sources, repairId, onOpen }: { repairId?: string; sources: readonly CerebroPublicSource[]; onOpen: (source: CerebroPublicSource) => void }) {
     const repairs = sources.filter(source => source.sourceType === "REPAIR");
     const documents = sources.filter(source => source.sourceType !== "REPAIR");
     return <section aria-label="Evidencia consultada" className="mt-4 space-y-3 border-t border-zinc-700/60 pt-4">
@@ -19,6 +19,6 @@ export function CerebroV2Sources({ sources, onOpen }: { sources: readonly Cerebr
                 <p className="mt-2 text-xs text-blue-300 underline">Ver antecedente completo</p>
             </button>;
         })}
-        {documents.length ? <details className="rounded-md border border-zinc-700 bg-zinc-950"><summary className="cursor-pointer px-3 py-3 text-xs font-medium text-zinc-300">Documentación técnica · {documents.length} referencias</summary><div className="grid gap-2 px-3 pb-3 sm:grid-cols-2">{documents.map((source,index) => <button key={`${source.documentId}-${source.pageNumber}-${index}`} type="button" onClick={() => { const url = safeWorkbenchUrl(source.workbenchUrl); if (url) window.location.assign(url); else onOpen(source); }} className="min-w-0 rounded border border-zinc-700 p-3 text-left hover:border-blue-500/50"><p className="flex items-center gap-2 text-xs text-blue-300"><FileSearch size={14} />{source.citationId} · {source.sourceType === "PDF" ? `Página ${source.pageNumber ?? 1}` : "Placa"}</p><p className="mt-1 break-words text-xs text-zinc-300">{source.title}</p><p className="mt-1 text-xs text-zinc-500">{source.brand} {source.model}</p></button>)}</div></details> : null}
+        {documents.length ? <details open className="rounded-md border border-zinc-700 bg-zinc-950"><summary className="cursor-pointer px-3 py-3 text-xs font-medium text-zinc-300">Documentación técnica · {documents.length} referencias</summary><div className="grid gap-2 px-3 pb-3 sm:grid-cols-2">{documents.map((source,index) => <button key={`${source.documentId}-${source.pageNumber}-${index}`} type="button" onClick={() => { const url = safeWorkbenchUrl(source.workbenchUrl); if (url) window.location.assign(repairId ? url + "&repair=" + encodeURIComponent(repairId) : url); else onOpen(source); }} className="min-w-0 rounded border border-zinc-700 p-3 text-left hover:border-blue-500/50"><p className="flex items-center gap-2 text-xs text-blue-300"><FileSearch size={14} />{source.citationId} · {source.sourceType === "PDF" ? `Página ${source.pageNumber ?? 1}` : "Placa"}</p><p className="mt-1 break-words text-xs text-zinc-300">{source.title}</p><p className="mt-1 text-xs text-zinc-500">{source.brand} {source.model}</p></button>)}</div></details> : null}
     </section>;
 }

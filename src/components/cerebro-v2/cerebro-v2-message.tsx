@@ -15,12 +15,13 @@ function messageText(message: CerebroUiMessage): string {
 
 type MessageProps = {
     message: CerebroUiMessage;
+    repairId?: string;
     disabled: boolean;
     onOpenSource: (source: CerebroPublicSource) => void;
     onGuidedAnswer: (questionId: string, option: GuidedOption) => void;
 };
 
-export function CerebroV2Message({ message, disabled, onOpenSource, onGuidedAnswer }: MessageProps) {
+export function CerebroV2Message({ message, repairId, disabled, onOpenSource, onGuidedAnswer }: MessageProps) {
     const user = message.role === "user";
     const text = messageText(message).replace(/^Corrección de observación \[[^\]]+\]:/i, "Corrección:");
     const sources = message.metadata?.sources ?? [];
@@ -45,7 +46,7 @@ export function CerebroV2Message({ message, disabled, onOpenSource, onGuidedAnsw
                     }}>{text}</ReactMarkdown></details>
                 )}
                 {!user && Boolean(message.metadata?.retrievalWarnings?.length) ? <p role="status" className="mt-3 text-xs text-amber-300">Limitaciones de esta consulta: {message.metadata?.retrievalWarnings?.join(" · ")}.</p> : null}
-                {!user ? <CerebroV2Sources sources={sources} onOpen={onOpenSource} /> : null}
+                {!user ? <CerebroV2Sources repairId={repairId} sources={sources} onOpen={onOpenSource} /> : null}
                 {!user && !plan && question ? <p className="mt-3 text-xs text-amber-200">Respuesta de una versión anterior. Registrá el estado actual para obtener una comprobación actualizada.</p> : null}
             </div>
         </article>

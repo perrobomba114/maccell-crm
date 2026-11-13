@@ -45,8 +45,13 @@ export function buildDiagnosticState(input: {
     const measurements: DiagnosticMeasurement[]=[];
     for (const observation of observations) {
         if (observation.origin!=='technician' || observation.superseded || /[¿?]|deber[ií]a|hay que medir|voy a medir|no (?:med[ií]|prob[eé])/i.test(observation.text)) continue;
-        for (const match of observation.text.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(mA|A|mV|V|kΩ|Ω|ohms?)\b/gi)) {
-            measurements.push({value:match[1].replace(',','.'),unit:match[2],context:observation.text,origin:observation.origin,observationId:observation.id});
+        const units: Record<string,string> = {amperios:'A', amperes:'A', miliamperios:'mA', miliamperes:'mA', voltios:'V', milivoltios:'mV'};
+        const readingPattern = /\b(?:(\d+(?:[.,]\d+)?)\s+(?:a|hasta)\s+)?(\d+(?:[.,]\d+)?)\s*(miliamper(?:ios|es)|amper(?:ios|es)|milivoltios|voltios|mA|A|mV|V|kΩ|Ω|ohms?)(?![\p{L}\d])/giu;
+        for (const match of observation.text.matchAll(readingPattern)) {
+            const unit = units[match[3].toLowerCase()] ?? match[3];
+            for (const value of [match[1], match[2]]) {
+                if (value !== undefined) measurements.push({value:value.replace(',','.'),unit,context:observation.text,origin:observation.origin,observationId:observation.id});
+            }
         }
     }
     const ambiguousMeasurements: DiagnosticState['ambiguousMeasurements']=[];

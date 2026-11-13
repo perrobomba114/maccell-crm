@@ -1,7 +1,7 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-11-13",
-  "commit": "6157589",
+  "commit": "7a8f279",
   "resumen": [
     [
       "lenguaje",
@@ -17,7 +17,7 @@
     ],
     [
       "lineas",
-      "88.300"
+      "88.411"
     ],
     [
       "endpoints",
@@ -386,7 +386,7 @@
         "src/components/cerebro-v2/cerebro-v2-composer.tsx"
       ],
       "color": "azul",
-      "lineas": 1049,
+      "lineas": 1051,
       "nArchivos": 18,
       "rutas": [
         "src/app/admin/cerebro/",
@@ -1116,7 +1116,7 @@
         "docs/cerebro-rag-runbook.md"
       ],
       "color": "amarillo",
-      "lineas": 3360,
+      "lineas": 3469,
       "nArchivos": 37,
       "rutas": [
         "src/lib/cerebro-v2/",
@@ -1603,7 +1603,7 @@
         "services/cerebro-rag-worker/tests"
       ],
       "color": "gris",
-      "lineas": 11001,
+      "lineas": 11027,
       "nArchivos": 189,
       "rutas": [
         "src/__tests__/",

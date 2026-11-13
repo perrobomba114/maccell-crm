@@ -1,5 +1,5 @@
 import { safeWorkbenchUrl } from './source-links';
-import { benchTriage, needsTechnicalDocuments } from './bench-triage';
+import { benchTriage, followBenchReading, needsTechnicalDocuments } from './bench-triage';
 import { generateText, Output } from 'ai';
 import { normalizeDeviceIdentity, deviceModelAliases } from './normalization';
 import { buildTechnicalSearchQuery, diagnosticSubsystemTerms } from './diagnostic-planner';
@@ -55,8 +55,16 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
         return {text, sources: [], metadata: {promptVersion: DIAGNOSTIC_PROMPT_VERSION, provider: 'repair-record', sources: [], diagnosticState: state}};
     }
     const locator = input.text.trim().match(/^(?:¿?d[oó]nde (?:est[aá]|queda|encuentro)|ubic[aá](?:me)?|localiz[aá])\s+(?:el |la )?((?:TP|[RCULFDJ])\d{2,6})[?!. ]*$/i);
-    const intake = locator ? null : buildIntakePlan(state);
-    const triage = !input.images.length && !intake ? benchTriage(state, input.text) : null;
+    const wantsDiagram = /esquema|esquem[aá]tic[oa]|schematic|boardview|plano|diagrama/i.test(input.text);
+    const requestedCodes = [...new Set(input.text.toUpperCase().match(/\b(?:TP|[RCULFDJ])\d{2,6}\b/g) ?? [])];
+    const asksForInterpretation = /cu[aá]nto|tensi[oó]n esperada|valor esperado|qu[eé] (?:significa|mido|debo medir)|por qu[eé]/i.test(input.text);
+    const browseDiagram = wantsDiagram && !asksForInterpretation;
+    const requestedNets = input.text.toUpperCase().match(/\b(?:VBUS|VBAT|VDD\w*|PP_\w+)\b/g) ?? [];
+    const target = locator?.[1] ?? (browseDiagram && requestedCodes.length === 1 ? requestedCodes[0] : null);
+    const reading = !input.images.length && !wantsDiagram && !target ? followBenchReading(state, input.text) : null;
+    if (reading) return {text: reading.reason, sources: [], metadata: buildMetadata(state, reading, [], [], 'bench-protocol')};
+    const intake = wantsDiagram || target ? null : buildIntakePlan(state);
+    const triage = !input.images.length && !intake && !wantsDiagram && !target ? benchTriage(state, input.text) : null;
     const firstCheck = intake ?? triage;
     if (firstCheck && !input.images.length) {
         const text = intake ? 'Falta identificar la lectura registrada antes de interpretarla.' : firstCheck.expected || firstCheck.reason;
@@ -69,10 +77,13 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
         componentCodes:[...new Set(input.text.toUpperCase().match(/\b[A-Z]{1,3}\d{2,6}\b/g)??[])],excludeRepairId:input.repair.id,excludeRepairTicket:input.repair.ticketNumber,limit:10};
     let retrieved:{sources:CerebroSource[];unavailable:string[]};
     const boardContext = [input.text, input.answerContext?.question, state.sellerProblem, ...state.observations.filter(o => !o.superseded).slice(-3).map(o => o.text)].join(' ');
-    const documents = needsTechnicalDocuments(boardContext) || state.measurements.length > 0 || input.images.length > 0;
+    const documents = wantsDiagram || needsTechnicalDocuments(boardContext) || state.measurements.length > 0 || input.images.length > 0;
     try {
-        if (locator && !input.images.length && dependencies.library) {
-            retrieved = {sources: await dependencies.library({...retrievalInput, text: locator[1], subsystemTerms: [], embedding: []}), unavailable: []};
+        if (target && !input.images.length && dependencies.library) {
+            retrieved = {sources: await dependencies.library({...retrievalInput, text: target, subsystemTerms: [], embedding: []}), unavailable: []};
+        } else if (browseDiagram && requestedNets.length && dependencies.library && !input.images.length) {
+            const indexed = await dependencies.library({...retrievalInput,text:requestedNets.join(' '),subsystemTerms:[],componentCodes:[],embedding:[]});
+            retrieved = indexed.length ? {sources:indexed,unavailable:[]} : await dependencies.retrieve(retrievalInput);
         } else retrieved = !documents && dependencies.cases
             ? { sources: await dependencies.cases(retrievalInput), unavailable: [] }
             : await dependencies.retrieve(retrievalInput);
@@ -84,8 +95,8 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
         const owner = normalizeDeviceIdentity(source.brand, source.model);
         return owner.brand === identity.brand && models.has(owner.model.toUpperCase().replace(/[^A-Z0-9]/g, ''));
     });
-    if (locator && !input.images.length) {
-        const code = locator[1].toUpperCase();
+    if (target && !input.images.length) {
+        const code = target.toUpperCase();
         const exact = sources.filter(source => {
             const link = safeWorkbenchUrl(source.workbenchUrl);
             if (!link || source.sourceType !== 'BOARD') return false;
@@ -101,6 +112,29 @@ export async function diagnoseRepair(input:DiagnoseInput,dependencies:DiagnosisD
         const text = found ? `El boardview de ${identity.model} ubica ${code}. Abrí la referencia para centrar ese componente.`
             : `La búsqueda disponible no devolvió una ubicación verificable de ${code} en ${identity.model}.`;
         return {text, sources: exact, metadata: buildMetadata(state, plan, exact, warnings, 'board-index')};
+    }
+    if (browseDiagram && !input.images.length) {
+        const terms = diagnosticSubsystemTerms(input.text, identity.brand);
+        if (!terms.length) terms.push(...diagnosticSubsystemTerms(state.sellerProblem, identity.brand));
+        const nets = requestedNets;
+        const anchored = sources.filter(source => {
+            if (source.chunkId.endsWith(':overview') || source.sourceType === 'REPAIR') return false;
+            const link = safeWorkbenchUrl(source.workbenchUrl);
+            if (source.sourceType === 'BOARD' && (!link || !new URLSearchParams(link.split('?')[1]).get('component'))) return false;
+            if (source.sourceType === 'PDF' && !source.pageNumber) return false;
+            const tokens: string[] = source.content.toUpperCase().match(/[A-Z0-9_]+/g) ?? [];
+            if (nets.length || requestedCodes.length) return [...nets,...requestedCodes].every(term => tokens.includes(term));
+            return terms.length === 0 || terms.some(term => tokens.includes(term.toUpperCase()));
+        });
+        const first = anchored[0];
+        const point = first?.workbenchUrl && new URLSearchParams(first.workbenchUrl.split('?')[1]).get('component');
+        const ref = first ? (point ? 'componente ' + point : 'página ' + first.pageNumber) : '';
+        const text = first ? `En ${first.title}, la referencia del ${identity.model} abre en ${ref} [E1].`
+            : `No recuperé una página o ubicación verificable del ${identity.model} para esta consulta.`;
+        const plan: DiagnosticPlan = {id:crypto.randomUUID(), kind:'inspection', stage:'Consultar el esquemático',
+            question:first ? '¿La referencia abierta coincide con la variante y la zona que tenés en el banco?' : '¿Qué código de placa o designador figura en la zona que necesitás revisar?',
+            reason:text,conditions:'Contrastá el archivo con la serigrafía de la placa antes de usarlo como referencia.',instrument:'',point:point || '',expected:'',branches:[],options:[],evidenceIds:first?['E1']:[]};
+        return {text,sources:anchored,metadata:buildMetadata(state,plan,anchored,warnings,'schematic-index')};
     }
     let plan: DiagnosticPlan | null = null;
     let provider = 'unavailable';

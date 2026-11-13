@@ -40,7 +40,7 @@ export function CerebroV2Chat(props: ChatProps) {
     const latestDecision = chat.messages.findLastIndex(message => message.role === 'assistant');
     const renderMessage = (message: CerebroUiMessage, index: number) => (
         <div key={message.id} ref={index === chat.messages.length - 1 ? latestRef : undefined}>
-            <CerebroV2Message message={message} disabled={!props.linkedToRepair || streaming || index !== chat.messages.length - 1}
+            <CerebroV2Message repairId={props.repairId} message={message} disabled={!props.linkedToRepair || streaming || index !== chat.messages.length - 1}
                 onOpenSource={props.onOpenSource} onGuidedAnswer={(questionId, option) => void chat.send(option.label, [], { questionId, optionId: option.id })} />
         </div>
     );
@@ -70,6 +70,7 @@ export function CerebroV2Chat(props: ChatProps) {
                 </div>
             </div>
             {!props.linkedToRepair ? <p className="border-t border-zinc-700 px-4 py-2 text-xs text-amber-200">Chat en modo lectura: la reparación está finalizada o ya no figura entre tus reparaciones asignadas.</p> : null}
+            {props.linkedToRepair && <div className="px-4 py-1"><Button type="button" variant="outline" size="sm" disabled={streaming} onClick={() => void chat.send("Buscá el esquemático para la falla de este ticket.", [])}>Consultar esquemático</Button></div>}
             <CerebroV2Composer disabled={!props.linkedToRepair} streaming={streaming} onSend={chat.send} onStop={chat.stop} />
         </div>
     );

@@ -88,3 +88,29 @@ test('identifica la reparación activa desde el CRM aun con proveedor caído', a
     assert.ok(result.metadata.diagnosticState?.observations.some(o=>o.text.includes('instalación pendiente de confirmar')));
     assert.ok(result.metadata.diagnosticState?.observations.some(o=>o.text.includes('garantía')));
 });
+
+test('conserva rango y unidad, y no asigna una unidad al siguiente valor por su cuenta', async () => {
+    const first = 'Se registró consumo de 0 a 125 miliamperios.';
+    const result = await diagnoseRepair({...input, text:first}, offline);
+    assert.deepEqual(result.metadata.diagnosticState?.measurements.map(m => [m.value,m.unit]), [['0','mA'],['125','mA']]);
+    const next = await diagnoseRepair({...input, history:[{id:'first',role:'user',content:first}],text:'Luego cae a 0.'},offline);
+    assert.match(next.text,/sin unidad/);
+    assert.match(next.metadata.diagnosticPlan?.question ?? '', /misma medición/);
+});
+
+test('un valor de consumo informado en mV conserva la discrepancia al incorporar otro turno', async () => {
+    const result = await diagnoseRepair({...input, history:[{id:'first',role:'user',content:'Consumo de 108 mV.'}],text:'Se estabilizó en 69 mV.'},offline);
+    assert.match(result.text,/108 mV → 69 mV/);
+    assert.match(result.text,/corriente queda sin determinar/);
+    assert.doesNotMatch(result.text,/mA/);
+});
+
+test('pedir el esquema de una red después de medir abre una página verificable y omite coincidencias parciales', async () => {
+    const id = 'a'.repeat(64);
+    const page:CerebroSource = {sourceType:'PDF',authority:'TECHNICAL_DOCUMENT',documentId:id,chunkId:'page:10',title:'Plano',brand:repair.deviceBrand,model:repair.deviceModel,content:'VBUS',score:1,pageNumber:10,workbenchUrl:'/technician/schematics?pdf='+id+'&page=10'};
+    const result = await diagnoseRepair({...input,history:[{id:'reading',role:'user',content:'Medí 150 mA.'}],text:'Mostrame VBUS en el esquema del equipo.'},
+        {...offline,library:async()=>[{...page,content:'VBUS_OTHER'},page]});
+    assert.equal(result.metadata.provider,'schematic-index');
+    assert.deepEqual(result.sources,[page]);
+    assert.match(result.text,/página 10/);
+});
