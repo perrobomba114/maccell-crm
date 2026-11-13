@@ -1,4 +1,4 @@
-import CryptoJS from "crypto-js";
+import { cipher, util } from "node-forge";
 import type { PcbeComponent, GeometryPrimitive } from "./types";
 function decodeText(bytes: Uint8Array): string {
   try {
@@ -16,22 +16,13 @@ function readString(view: DataView, offset: number, length: number): string {
   return decodeText(new Uint8Array(view.buffer, view.byteOffset + offset, length)).replace(/\0+$/, '');
 }
 
-function u8ToWordArray(bytes: Uint8Array) {
-  const words: number[] = [];
-  for (let index = 0; index < bytes.length; index += 1) words[index >>> 2] = (words[index >>> 2] ?? 0) | (bytes[index] << (24 - (index % 4) * 8));
-  return CryptoJS.lib.WordArray.create(words, bytes.length);
-}
-
-function wordArrayToU8(wordArray: CryptoJS.lib.WordArray): Uint8Array {
-  const bytes = new Uint8Array(wordArray.sigBytes);
-  for (let index = 0; index < bytes.length; index += 1) bytes[index] = (wordArray.words[index >>> 2] >>> (24 - (index % 4) * 8)) & 0xff;
-  return bytes;
-}
-
+// PCBE stores legacy part records as DES-ECB with PKCS#7 padding.
 export function decryptPartPayload(bytes: Uint8Array): Uint8Array {
-  const key = CryptoJS.enc.Hex.parse('DCFC12AC00000000');
-  const decrypted = CryptoJS.DES.decrypt(CryptoJS.lib.CipherParams.create({ ciphertext: u8ToWordArray(bytes) }), key, { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 });
-  return wordArrayToU8(decrypted);
+  const decoder = cipher.createDecipher("DES-ECB", util.hexToBytes("DCFC12AC00000000"));
+  decoder.start();
+  decoder.update(util.createBuffer(bytes.slice().buffer));
+  if (!decoder.finish()) throw new Error("Registro de componente PCBE inválido");
+  return util.binary.raw.decode(decoder.output.getBytes());
 }
 
 export function parsePartPayload(bytes: Uint8Array): GeometryPrimitive[] {

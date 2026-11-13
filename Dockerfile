@@ -7,6 +7,8 @@ WORKDIR /app
 
 # Install dependencies only when needed
 FROM base AS deps
+# Use the npm release bundled with Node throughout this image build.
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 COPY package.json package-lock.json ./
 COPY scripts/patch-sdk.js ./scripts/patch-sdk.js
 RUN --mount=type=cache,id=maccell-npm,target=/root/.npm npm ci --legacy-peer-deps --no-audit --fund=false

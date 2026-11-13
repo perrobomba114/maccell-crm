@@ -1,6 +1,5 @@
 "use server";
 
-import * as cheerio from "cheerio";
 import { getCurrentUser } from "@/actions/auth-actions";
 
 interface ImeiResult {

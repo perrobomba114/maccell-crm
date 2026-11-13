@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parsePcbe } from "../../lib/schematics/pcbe";
-import { parsePartRecord } from "../../lib/schematics/parts";
+import { decryptPartPayload, parsePartRecord } from "../../lib/schematics/parts";
 import { buildNetCatalog, hitTestCandidates, selectionCandidateDescription } from "../../lib/schematics/boardview";
 import { modelKey } from "../../lib/schematics/catalog-types";
 import { findReferencePages } from "../../lib/schematics/references";
@@ -53,4 +53,9 @@ test("device matching keeps Pro, Pro Max and USA variants separate", () => {
   assert.notEqual(modelKey("iPhone15Pro"), modelKey("iPhone15ProMax"));
   assert.notEqual(modelKey("iPhone15ProMax(USA)"), modelKey("iPhone15ProMax"));
   assert.equal(modelKey("iPhone 15 Pro Max"), modelKey("iPhone15ProMAX"));
+});
+
+test("decodes legacy PCBE binary records from a subarray", () => {
+  const bytes = Uint8Array.from(Buffer.from("00d420d4167579fac0b4acd29fa38683c500", "hex"));
+  assert.deepEqual(decryptPartPayload(bytes.subarray(1, 17)), Uint8Array.from([0, 1, 2, 3, 255, 7, 8, 9, 16]));
 });

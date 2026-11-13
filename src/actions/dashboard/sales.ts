@@ -3,7 +3,9 @@
 import { db as prisma } from "@/lib/db";
 import { monthlyRepairStats } from "@/lib/monthly-repair-stats";
 import { getMonthlyRange, reportMonth } from "@/lib/date-utils";
-import { getCurrentUser } from "@/actions/auth-actions";
+const repairCost = {
+    select: { parts: { select: { quantity: true, sparePart: { select: { priceArg: true } } } } }
+} as const;
 
 
 export async function getSalesAnalytics(branchId?: string, date = reportMonth()) {
@@ -15,27 +17,28 @@ export async function getSalesAnalytics(branchId?: string, date = reportMonth())
         const { start: lastMonthStart, end: lastMonthEnd } = getMonthlyRange(previous.toISOString());
 
         // 1. Parallel Data Fetching
-        const [salesCurrentMonth, revenueAgg, salesLastMonthAgg, stockAlertsRaw, repairOutput, salesLastMonthDetailed] = await Promise.all([
+        const [salesCurrentMonth, revenueAgg, salesLastMonthAgg, stockAlertsRaw, repairOutput, salesLastMonthDetailed, warrantiesCount] = await Promise.all([
             // Sales for Analysis
             prisma.sale.findMany({
                 where: { ...branchFilter, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
-                include: {
+                select: {
                     items: {
-                        include: {
+                        select: {
+                            quantity: true,
+                            name: true, price: true,
                             product: { select: { costPrice: true, category: { select: { name: true } } } },
-                            repair: { include: { parts: { include: { sparePart: { select: { priceArg: true } } } } } }
+                            repair: repairCost
                         }
                     }
                 }
             }),
-            // Revenue Current Month
             prisma.sale.aggregate({ where: { ...branchFilter, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } }, _sum: { total: true } }),
             // Revenue Last Month Aggregate (for basic ref)
             prisma.sale.aggregate({ where: { ...branchFilter, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } }, _sum: { total: true } }),
             // Stock Alerts
             prisma.productStock.findMany({
                 where: { ...branchFilter, quantity: { lte: 3 } },
-                include: { product: { select: { name: true } }, branch: { select: { name: true } } },
+                select: { quantity: true, product: { select: { name: true } }, branch: { select: { name: true } } },
                 take: 10,
                 orderBy: { quantity: 'asc' }
             }),
@@ -43,25 +46,18 @@ export async function getSalesAnalytics(branchId?: string, date = reportMonth())
             // Sales Last Month Detailed for Profit Comparison
             prisma.sale.findMany({
                 where: { ...branchFilter, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } },
-                include: {
+                select: {
                     items: {
-                        include: {
+                        select: {
+                            quantity: true,
                             product: { select: { costPrice: true } },
-                            repair: { include: { parts: { include: { sparePart: { select: { priceArg: true } } } } } }
+                            repair: repairCost
                         }
                     }
                 }
-            })
+            }),
+            prisma.repair.count({ where: { ...branchFilter, isWarranty: true, createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth } } })
         ]);
-
-        // Fetch Warranties Count (New Requirement)
-        const warrantiesCount = await prisma.repair.count({
-            where: {
-                ...branchFilter,
-                isWarranty: true,
-                createdAt: { gte: firstDayOfMonth, lte: lastDayOfMonth }
-            }
-        });
 
         const revenue = revenueAgg._sum.total || 0;
         const lastMonthRevenue = salesLastMonthAgg._sum.total || 0;
@@ -74,7 +70,7 @@ export async function getSalesAnalytics(branchId?: string, date = reportMonth())
         const productMap = new Map<string, number>();
 
         salesCurrentMonth.forEach(sale => {
-            sale.items.forEach((item: any) => {
+            sale.items.forEach(item => {
                 let itemCost = 0;
                 let catName = "Otros";
                 productMap.set(item.name, (productMap.get(item.name) || 0) + item.quantity);
@@ -82,7 +78,7 @@ export async function getSalesAnalytics(branchId?: string, date = reportMonth())
                 if (item.repair) {
                     catName = "Servicio Técnico";
                     if (item.repair.parts && item.repair.parts.length > 0) {
-                        const partsCost = item.repair.parts.reduce((sum: number, part: any) => sum + (part.sparePart?.priceArg || 0) * part.quantity, 0);
+                        const partsCost = item.repair.parts.reduce((sum, part) => sum + (part.sparePart?.priceArg || 0) * part.quantity, 0);
                         itemCost = partsCost;
                         totalRepairPartsCost += partsCost * item.quantity;
                     }
@@ -104,11 +100,11 @@ export async function getSalesAnalytics(branchId?: string, date = reportMonth())
         // Calculate Last Month Profit for Growth
         let lastMonthCost = 0;
         salesLastMonthDetailed.forEach(sale => {
-            sale.items.forEach((item: any) => {
+            sale.items.forEach(item => {
                 let itemCost = 0;
                 if (item.repair) {
                     if (item.repair.parts) {
-                        itemCost = item.repair.parts.reduce((sum: number, part: any) => sum + (part.sparePart?.priceArg || 0) * part.quantity, 0);
+                        itemCost = item.repair.parts.reduce((sum, part) => sum + (part.sparePart?.priceArg || 0) * part.quantity, 0);
                     }
                 } else {
                     itemCost = item.product?.costPrice || 0;
@@ -180,20 +176,16 @@ export async function getRecentTransactions(branchId?: string, date = reportMont
 
         const recentSales = await prisma.sale.findMany({
             where: { ...branchFilter, createdAt: { gte: firstDayOfMonth, lte: end } },
-            include: {
-                items: {
-                    include: {
-                        product: { select: { name: true, category: { select: { name: true } } } },
-                        repair: true
-                    }
-                },
+            select: {
+                id: true, saleNumber: true, paymentMethod: true, total: true, createdAt: true,
+                items: { select: { repairId: true, product: { select: { category: { select: { name: true } } } } } },
                 branch: { select: { name: true } }
             },
             orderBy: { createdAt: 'desc' },
             take: 10
         });
 
-        const formattedRecentSales = recentSales.map((sale: any) => ({
+        const formattedRecentSales = recentSales.map(sale => ({
             id: sale.id,
             saleNumber: sale.saleNumber,
             paymentMethod: sale.paymentMethod,
@@ -201,12 +193,13 @@ export async function getRecentTransactions(branchId?: string, date = reportMont
             total: sale.total,
             branchName: sale.branch?.name || "Sucursal",
             createdAt: sale.createdAt,
-            category: sale.items[0]?.repair ? "Servicio Técnico" : sale.items[0]?.product?.category?.name || "Otros",
+            category: sale.items[0]?.repairId ? "Servicio Técnico" : sale.items[0]?.product?.category?.name || "Otros",
             itemCount: sale.items.length
         }));
 
         return { tables: { recentSales: formattedRecentSales } };
-    } catch (e) {
+    } catch (error) {
+        console.error("getRecentTransactions error", error);
         return { tables: { recentSales: [] } };
     }
 }

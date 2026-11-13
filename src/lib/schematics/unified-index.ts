@@ -1,4 +1,4 @@
-import { load } from 'cheerio';
+import { DomUtils, parseDocument } from 'htmlparser2';
 import type { PcbeDocument, PcbePad } from './types';
 
 export type ReferenceBox = { text: string; x: number; y: number; width: number; height: number };
@@ -17,15 +17,15 @@ function normalizedBox(text: string, left: number, top: number, right: number, b
   return { text, x: left / width, y: top / height, width: (Math.min(right, width) - left) / width, height: (Math.min(bottom, height) - top) / height };
 }
 export function parseBboxXml(xml: string): TechnicalPage[] {
-  const $ = load(xml, { xmlMode: true });
-  return $('page').toArray().map((page, i) => {
-    const width = Number($(page).attr('width')), height = Number($(page).attr('height'));
+  const document = parseDocument(xml, { xmlMode: true });
+  return DomUtils.findAll(element => element.name === 'page', document.children).map((page, i) => {
+    const width = Number(page.attribs.width), height = Number(page.attribs.height);
     const words: string[] = [], boxes: ReferenceBox[] = [];
-    $(page).find('word').each((_, word) => {
-      const text = $(word).text().replace(/\0/g, '').trim();
+    DomUtils.findAll(element => element.name === 'word', page.children).forEach(word => {
+      const text = DomUtils.textContent(word).replace(/\0/g, '').trim();
       if (!text) return;
       words.push(text);
-      const box = normalizedBox(text, Number($(word).attr('xMin')), Number($(word).attr('yMin')), Number($(word).attr('xMax')), Number($(word).attr('yMax')), width, height);
+      const box = normalizedBox(text, Number(word.attribs.xMin), Number(word.attribs.yMin), Number(word.attribs.xMax), Number(word.attribs.yMax), width, height);
       if (box) boxes.push(box);
     });
     return { page: i + 1, text: words.join(' '), source: 'text', boxes };
