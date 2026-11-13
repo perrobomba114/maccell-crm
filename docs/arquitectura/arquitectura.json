@@ -1,23 +1,23 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-11-13",
-  "commit": "6721620",
+  "commit": "2b1ac3a",
   "resumen": [
     [
       "lenguaje",
-      "TypeScript 90% · Python 6% · JavaScript 1%"
+      "TypeScript 90% · Python 5% · JavaScript 1%"
     ],
     [
       "base",
-      "PostgreSQL (Prisma, 42 modelos) + base RAG (7 tablas)"
+      "PostgreSQL (Prisma, 41 modelos) + base RAG (7 tablas)"
     ],
     [
       "modulos",
-      "863"
+      "861"
     ],
     [
       "lineas",
-      "89.054"
+      "88.907"
     ],
     [
       "endpoints",
@@ -861,7 +861,7 @@
         "src/actions/analytics-actions.ts"
       ],
       "color": "verde",
-      "lineas": 1828,
+      "lineas": 1843,
       "nArchivos": 13,
       "rutas": [
         "src/actions/dashboard/",
@@ -1008,7 +1008,7 @@
         "src/actions/pantallas-actions.ts"
       ],
       "color": "gris",
-      "lineas": 1078,
+      "lineas": 1065,
       "nArchivos": 7,
       "rutas": [
         "src/lib/pantallas/",
@@ -1280,7 +1280,7 @@
         "docker-compose.yml"
       ],
       "color": "amarillo",
-      "lineas": 1491,
+      "lineas": 1480,
       "nArchivos": 19,
       "rutas": [
         "prisma/",
@@ -1521,8 +1521,8 @@
         "scripts/production-baseline.ts"
       ],
       "color": "violeta",
-      "lineas": 3843,
-      "nArchivos": 35,
+      "lineas": 3705,
+      "nArchivos": 33,
       "rutas": [
         "scripts/",
         "src/scripts/"
@@ -2575,7 +2575,6 @@
       "DeviceFamily",
       "DigitalScreen",
       "DigitalScreenContent",
-      "DigitalScreenDailySync",
       "DigitalScreenSync",
       "Expense",
       "FiscalEmissionAttempt",
