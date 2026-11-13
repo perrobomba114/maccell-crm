@@ -4,7 +4,7 @@ import { CheckCircle2, X, Banknote, CreditCard, Smartphone, ArrowRight, FileText
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import type { SVGProps } from "react";
 import {
     Dialog,
     DialogContent,
@@ -36,16 +36,14 @@ interface CheckoutDialogProps {
     isInvoiceModalOpen: boolean;
     setIsInvoiceModalOpen: (v: boolean) => void;
     onInvoiceConfirm: (data: InvoiceData) => void;
-    branchData: any;
+    branchData: { name: string };
 }
 
 export function CheckoutDialog({
     isOpen,
     onClose,
     total,
-    subtotal,
     editableTotal,
-    setEditableTotal,
     partialPayments,
     paymentAmountInput,
     setPaymentAmountInput,
@@ -66,8 +64,8 @@ export function CheckoutDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-xl border-zinc-800 bg-zinc-950 backdrop-blur-2xl text-white shadow-2xl p-0 gap-0 overflow-hidden rounded-3xl">
-                <DialogHeader className="p-6 bg-zinc-900 border-b border-zinc-800 relative overflow-hidden">
+            <DialogContent className="max-h-[96dvh] grid-rows-[auto_minmax(0,1fr)_auto] max-sm:overflow-hidden sm:max-w-xl border-zinc-800 bg-zinc-950 backdrop-blur-2xl text-white shadow-2xl p-0 gap-0 overflow-hidden rounded-3xl">
+                <DialogHeader className="px-4 py-2 bg-zinc-900 border-b border-zinc-800 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-4 opacity-5">
                         <CreditCard className="w-32 h-32 -mr-10 -mt-10" />
                     </div>
@@ -80,9 +78,9 @@ export function CheckoutDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="p-6 space-y-6">
+                <div className="min-h-0 overflow-y-auto p-3 space-y-2">
                     {/* TOTAL ADJUSTMENT */}
-                    <div className="bg-zinc-900/50 rounded-2xl p-6 border border-zinc-800">
+                    <div className="bg-zinc-900/50 rounded-2xl p-1 border border-zinc-800">
                         <div className="relative flex justify-center items-center">
                             <Input
                                 name="editable-total"
@@ -90,19 +88,19 @@ export function CheckoutDialog({
                                 type="text"
                                 value={`$${(parseFloat(editableTotal) || 0).toLocaleString()}`}
                                 readOnly
-                                className="h-24 text-6xl font-black text-[#39FF14] bg-transparent border-none focus-within:ring-0 focus-visible:ring-0 shadow-none cursor-default text-center drop-shadow-[0_0_15px_rgba(57,255,20,0.5)]"
+                                className="h-11 text-3xl md:text-3xl font-black text-[#39FF14] bg-transparent border-none focus-within:ring-0 focus-visible:ring-0 shadow-none cursor-default text-center drop-shadow-[0_0_15px_rgba(57,255,20,0.5)]"
                             />
                         </div>
                     </div>
 
                     {/* PAYMENT INFO */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4">
+                        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl px-3 py-1">
                             <span className="text-[10px] font-bold uppercase text-emerald-500 tracking-wider">Total Pagado</span>
                             <div className="text-2xl font-black text-emerald-400 font-mono mt-1">${paidAmount.toLocaleString()}</div>
                         </div>
                         <div className={cn(
-                            "rounded-xl p-4 border transition-colors",
+                            "rounded-xl px-3 py-1 border transition-colors",
                             remaining > 0 ? "bg-red-500/5 border-red-500/10" : "bg-zinc-900/50 border-zinc-800"
                         )}>
                             <span className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Restante</span>
@@ -117,7 +115,7 @@ export function CheckoutDialog({
 
                     {/* ADD PAYMENT SECTION */}
                     {remaining > 0 && (
-                        <div className="space-y-4 pt-2">
+                        <div className="space-y-2">
                             <div className="flex justify-between items-center">
                                 <Label htmlFor="payment-amount-input" className="text-xs uppercase text-zinc-400 font-bold tracking-wider">Agregar Pago</Label>
                                 <span className="text-xs text-zinc-600 italic">Monto a imputar:</span>
@@ -148,14 +146,14 @@ export function CheckoutDialog({
                             </div>
 
                             <div className="grid grid-cols-3 gap-2">
-                                {[
+                                {([
                                     { id: "CASH", label: "Efectivo", icon: Banknote, color: "emerald" },
                                     { id: "CARD", label: "Tarjeta", icon: CreditCard, color: "blue" },
                                     { id: "MERCADOPAGO", label: "MP / QR", icon: Smartphone, color: "sky" }
-                                ].map((m) => (
+                                ] as const).map((m) => (
                                     <Button
                                         key={m.id}
-                                        onClick={() => onAddPayment(m.id as any)}
+                                        onClick={() => onAddPayment(m.id)}
                                         className={`h-12 border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 hover:border-zinc-700 transition-all flex flex-col items-center justify-center gap-1 group`}
                                     >
                                         <m.icon className="w-4 h-4 opacity-70 group-hover:scale-110 transition-transform" />
@@ -168,9 +166,9 @@ export function CheckoutDialog({
 
                     {/* PAYMENT LIST */}
                     {partialPayments.length > 0 && (
-                        <div className="space-y-1 bg-zinc-900/30 rounded-xl p-2 max-h-40 overflow-y-auto border border-white/5">
+                        <div className="space-y-1 bg-zinc-900/30 rounded-xl p-2 max-h-24 overflow-y-auto border border-white/5">
                             {partialPayments.map((p, i) => (
-                                <div key={i} className="flex justify-between items-center p-3 text-sm bg-zinc-950/50 rounded-lg mb-1 last:mb-0 border border-white/5">
+                                <div key={i} className="flex justify-between items-center px-2 py-1 text-sm bg-zinc-950/50 rounded-lg mb-1 last:mb-0 border border-white/5">
                                     <div className="flex items-center gap-3">
                                         <div className={`p-1.5 rounded bg-zinc-800 text-zinc-300`}>
                                             {p.method === "CASH" && <Banknote className="w-4 h-4" />}
@@ -200,11 +198,11 @@ export function CheckoutDialog({
                     )}
                 </div>
 
-                <DialogFooter className="p-6 bg-zinc-900 border-t border-zinc-800">
-                    <div className="grid grid-cols-3 gap-3 w-full">
+                <DialogFooter className="px-4 py-2 bg-zinc-900 border-t border-zinc-800">
+                    <div className="grid grid-cols-[1fr_1fr_1.25fr] gap-1 w-full">
                         <Button
-                            onClick={onClose}
-                            className="h-14 w-full rounded-2xl flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold transition-all border-0"
+                            aria-label="Cancelar" onClick={onClose}
+                            className="h-11 min-w-0 w-full px-1 rounded-2xl flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold transition-all border-0"
                         >
                             <X className="w-5 h-5" />
                             <span className="hidden sm:inline">Cancelar</span>
@@ -213,7 +211,7 @@ export function CheckoutDialog({
                         <div className="relative group">
                             <Button
                                 className={cn(
-                                    "h-14 w-full rounded-2xl flex items-center justify-center gap-2 font-black text-white shadow-xl transition-all border-0",
+                                    "h-11 min-w-0 w-full px-1 rounded-2xl flex items-center justify-center gap-2 font-black text-white shadow-xl transition-all border-0",
                                     invoiceData
                                         ? "bg-blue-600 hover:bg-blue-500 ring-4 ring-blue-500/20"
                                         : "bg-blue-700/50 hover:bg-blue-700 text-blue-100"
@@ -240,7 +238,7 @@ export function CheckoutDialog({
 
                         <Button
                             className={cn(
-                                "h-14 w-full rounded-2xl flex items-center justify-center gap-2 text-white font-black shadow-xl transition-all border-0",
+                                "h-11 min-w-0 w-full px-1 rounded-2xl flex items-center justify-center gap-2 text-white font-black shadow-xl transition-all border-0",
                                 invoiceData
                                     ? "bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500"
                                     : "bg-emerald-600 hover:bg-emerald-500"
@@ -272,7 +270,7 @@ export function CheckoutDialog({
     );
 }
 
-function ShoppingCartIcon(props: any) {
+function ShoppingCartIcon(props: SVGProps<SVGSVGElement>) {
     return (
         <svg
             {...props}

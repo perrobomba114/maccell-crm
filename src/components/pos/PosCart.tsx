@@ -45,10 +45,10 @@ export function PosCart({
         <motion.div
             initial={{ x: 20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            className="relative flex w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-xl border border-emerald-300/20 bg-zinc-950/80 shadow-2xl shadow-black/25 backdrop-blur-2xl lg:h-full lg:w-[22rem] xl:w-[26rem]"
+            className="relative flex w-full min-w-0 min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-emerald-300/20 bg-zinc-950/80 shadow-2xl shadow-black/25 backdrop-blur-2xl"
         >
             <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-emerald-300" />
-            <div className="flex items-center justify-between border-b border-white/10 bg-emerald-300/5 p-5 pl-6">
+            <div className="flex items-center justify-between border-b border-white/10 bg-emerald-300/5 shrink-0 px-4 py-2">
                 <div className="flex items-center gap-2">
                     <div className="rounded-lg border border-emerald-200/30 bg-emerald-300 text-emerald-950 p-2 shadow-lg shadow-emerald-500/20">
                         <ShoppingCart className="h-5 w-5" />
@@ -66,9 +66,9 @@ export function PosCart({
                 </span>
             </div>
 
-            <div className="shrink-0 overflow-visible px-5 py-4 custom-scrollbar lg:flex-1 lg:overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
                 {cart.length === 0 ? (
-                    <div className="flex h-[200px] lg:h-full flex-col items-center justify-center gap-4 text-zinc-500">
+                    <div className="flex h-full flex-col items-center justify-center gap-4 text-zinc-500">
                         <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-6">
                             <ShoppingCart className="h-12 w-12 opacity-50" />
                         </div>
@@ -152,8 +152,8 @@ export function PosCart({
                 )}
             </div>
 
-            <div className="border-t border-white/10 bg-black/30 p-5 backdrop-blur-md">
-                <div className="space-y-3 mb-6">
+            <div className="border-t border-white/10 bg-black/30 shrink-0 p-3 backdrop-blur-md">
+                <div className="mb-2 space-y-1">
                     <div className="flex items-center justify-between text-sm font-semibold text-zinc-500">
                         <span>Subtotal</span>
                         <span className="tabular-nums">${subtotal.toLocaleString()}</span>
@@ -161,14 +161,15 @@ export function PosCart({
                     <Separator className="bg-white/10" />
                     <div className="flex justify-between items-end">
                         <span className="text-base font-black text-white">Total a cobrar</span>
-                        <span className="font-mono text-4xl font-black tracking-normal text-emerald-300 tabular-nums">
+                        <span className="font-mono text-2xl font-black tracking-normal text-emerald-300 tabular-nums">
                             ${total.toLocaleString('es-AR')}
                         </span>
                     </div>
                 </div>
 
+                <div className="pr-16">
                 <Button
-                    className="h-14 w-full rounded-lg border-0 bg-emerald-400 text-lg font-black text-emerald-950 shadow-xl shadow-emerald-500/20 transition-all hover:scale-[1.01] hover:bg-emerald-300 active:scale-[0.98] disabled:!opacity-100 disabled:bg-zinc-800 disabled:text-zinc-400"
+                    className="h-11 w-full rounded-lg border-0 bg-emerald-400 text-lg font-black text-emerald-950 shadow-xl shadow-emerald-500/20 transition-all hover:scale-[1.01] hover:bg-emerald-300 active:scale-[0.98] disabled:!opacity-100 disabled:bg-zinc-800 disabled:text-zinc-400"
                     size="lg"
                     onClick={onCheckoutClick}
                     disabled={cart.length === 0 || !cashShift}
@@ -176,6 +177,7 @@ export function PosCart({
                     <CreditCard className="mr-2 h-5 w-5" />
                     Confirmar Cobro
                 </Button>
+                </div>
             </div>
         </motion.div>
     );

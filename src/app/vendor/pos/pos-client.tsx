@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { toast } from "sonner";
 import { Banknote } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -49,10 +50,11 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
         cashWarningAccepted
     } = usePos(vendorId, branchId, branchData);
 
+    const [compactPanel, setCompactPanel] = useState<"search" | "cart">("search");
     const cartTotal = cart.reduce((s, i) => s + (i.price * i.quantity), 0);
 
     return (
-        <div className="relative flex h-full w-full max-w-full flex-col gap-4 overflow-y-auto overflow-x-hidden bg-black p-3 md:p-4 font-sans text-white lg:flex-row lg:overflow-hidden custom-scrollbar">
+        <div className="relative grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2 bg-black p-2 font-sans text-white lg:grid-cols-[minmax(0,1fr)_clamp(17rem,28vw,26rem)] lg:grid-rows-[minmax(0,1fr)] lg:gap-3 lg:p-3">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,0.14),transparent_28%),radial-gradient(circle_at_78%_6%,rgba(16,185,129,0.12),transparent_30%),radial-gradient(circle_at_88%_92%,rgba(251,191,36,0.10),transparent_24%),linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[auto,auto,auto,42px_42px,42px_42px]" />
             <AlertDialog open={showCashConfirm} onOpenChange={setShowCashConfirm}>
                 <AlertDialogContent className="w-[95vw] sm:max-w-xl bg-zinc-950 border-zinc-800 border-2 p-8">
@@ -64,13 +66,17 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                         <AlertDialogDescription className="text-center text-zinc-400 text-lg">Estás por registrar un pago en EFECTIVO. Se generará la factura correspondiente.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex flex-col sm:flex-row gap-3 mt-8">
-                        <AlertDialogCancel className="w-full sm:w-1/2 h-14 bg-zinc-900">VOLVER</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => { cashWarningAccepted.current = true; confirmSplitSale(vendorName); }} className="w-full sm:w-1/2 h-14 bg-yellow-500 text-black font-black">SÍ, FACTURAR</AlertDialogAction>
+                        <AlertDialogCancel className="w-full sm:w-auto sm:flex-1 h-14 bg-zinc-900">VOLVER</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => { cashWarningAccepted.current = true; confirmSplitSale(vendorName); }} className="w-full sm:w-auto sm:flex-1 h-14 bg-yellow-500 text-black font-black">SÍ, FACTURAR</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
-            <div className="relative z-10 flex shrink-0 flex-col gap-4 lg:min-h-0 lg:min-w-0 lg:flex-1">
+            <div className="relative grid grid-cols-2 gap-2 lg:hidden">
+                <button type="button" aria-pressed={compactPanel === "search"} onClick={() => setCompactPanel("search")} className="h-10 rounded-lg border border-cyan-300/30 bg-zinc-950 font-bold aria-pressed:bg-cyan-300 aria-pressed:text-black">Buscar</button>
+                <button type="button" aria-pressed={compactPanel === "cart"} onClick={() => setCompactPanel("cart")} className="h-10 rounded-lg border border-emerald-300/30 bg-zinc-950 font-bold aria-pressed:bg-emerald-300 aria-pressed:text-black">Carrito ({cart.length})</button>
+            </div>
+            <div className={`relative z-10 min-h-0 min-w-0 flex-col gap-2 lg:flex ${compactPanel === "search" ? "flex" : "hidden"}`}>
                 <PosHeader
                     cashShift={cashShift} shiftSummary={shiftSummary} pendingTransfers={pendingTransfers}
                     branchName={branchData.name}
@@ -103,10 +109,10 @@ export function PosClient({ vendorId, vendorName, branchId, branchData }: PosCli
                 />
             </div>
 
-            <div className="relative z-10 flex shrink-0 flex-col gap-4 lg:h-full lg:min-w-0">
-                {cashShift && <div className="flex flex-wrap items-center gap-2 text-sm">
+            <div className={`relative z-10 min-h-0 min-w-0 flex-col gap-2 lg:flex ${compactPanel === "cart" ? "flex" : "hidden"}`}>
+                {cashShift && (cart.length > 0 || held.length > 0 || lastSale) && <div className="flex max-h-[22%] shrink-0 flex-wrap items-center gap-1 overflow-y-auto break-words text-sm">
                     {!!cart.length && <button className="min-h-11 rounded border px-3" onClick={parkCart}>Dejar en espera</button>}
-                    {held.map((items, index) => <button key={index} className="min-h-11 rounded border px-3 disabled:opacity-50"
+                    {held.map((items, index) => <button key={index} className="min-h-10 max-w-full truncate rounded border px-3 disabled:opacity-50"
                         disabled={!!cart.length || resuming} onClick={() => void resumeCart(index)}>
                         Retomar · {items[0]?.name} · {items.length} renglones
                     </button>)}

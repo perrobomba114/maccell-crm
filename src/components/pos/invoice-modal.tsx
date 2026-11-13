@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, FileText, User, Building2, MapPin, Hash, Search, ArrowRight, CircleDollarSign } from "lucide-react";
+import { Loader2, FileText, User, Search, ArrowRight, CircleDollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Add if needed or remove if not used
 
@@ -84,8 +84,8 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount, defau
             const { getAfipPadronData } = await import("@/lib/actions/pos");
             const res = await getAfipPadronData(docNumber);
 
-            if (res.success && (res as any).data) {
-                const { name, address, isRespInscripto, isMonotributo, ivaCondition } = (res as any).data;
+            if (res.success && "data" in res && res.data) {
+                const { name, address, ivaCondition } = res.data;
                 setName(name);
                 setAddress(address);
                 setIvaCondition(ivaCondition || "Desconocido");
@@ -135,7 +135,7 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount, defau
             generate: true,
             salesPoint: parseInt(salesPoint) || 10,
             invoiceType,
-            docType: docType === "FINAL" ? "FINAL" : docType as any,
+            docType,
             docNumber: docType === "FINAL" ? "0" : docNumber,
             customerName: docType === "FINAL" ? "Consumidor Final" : name,
             customerAddress: address,
@@ -149,8 +149,8 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount, defau
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[95vw] lg:max-w-5xl bg-zinc-950 border-zinc-800 text-white p-0 overflow-hidden shadow-2xl">
-                <DialogHeader className="px-8 py-6 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur-xl">
+            <DialogContent className="max-h-[96dvh] grid-rows-[auto_minmax(0,1fr)_auto] max-sm:overflow-hidden max-w-[95vw] sm:max-w-5xl bg-zinc-950 border-zinc-800 text-white p-0 overflow-hidden shadow-2xl">
+                <DialogHeader className="px-4 py-2 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur-xl">
                     <DialogTitle className="text-2xl font-bold flex items-center gap-3">
                         <div className="p-2.5 bg-blue-500/10 rounded-lg border border-blue-500/20">
                             <FileText className="w-6 h-6 text-blue-500" />
@@ -162,14 +162,14 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount, defau
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div className="min-h-0 overflow-y-auto p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Left: Customer */}
-                    <div className="space-y-6">
+                    <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm font-semibold text-blue-400 uppercase tracking-wider mb-2">
                             <User className="w-4 h-4" /> Datos del Cliente
                         </div>
 
-                        <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-5">
+                        <div className="p-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-2">
                             <div className="space-y-2">
                                 {/* Manual Type Selection removed in favor of auto-detection */}
                             </div>
@@ -255,12 +255,12 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount, defau
                     </div>
 
                     {/* Right: Config */}
-                    <div className="space-y-6 flex flex-col">
+                    <div className="space-y-2 flex flex-col">
                         <div className="flex items-center gap-2 text-sm font-semibold text-blue-400 uppercase tracking-wider mb-2">
                             <CircleDollarSign className="w-4 h-4" /> Configuración Factura
                         </div>
 
-                        <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-6 flex-1">
+                        <div className="p-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-2 flex-1">
                             <div className="space-y-3">
                                 <div className="grid grid-cols-2 gap-4">
                                     <button onClick={() => setInvoiceType("A")} className={cn("flex flex-col items-center justify-center p-4 rounded-xl border transition-all gap-1", invoiceType === "A" ? "bg-blue-600/20 border-blue-500 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.15)]" : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:bg-zinc-900")}>
@@ -326,9 +326,9 @@ export function InvoiceModal({ open, onOpenChange, onConfirm, totalAmount, defau
                     </div>
                 </div>
 
-                <DialogFooter className="p-6 bg-zinc-900/50 border-t border-zinc-800 flex justify-between gap-4">
+                <DialogFooter className="p-2 bg-zinc-900/50 border-t border-zinc-800 flex justify-between gap-4">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-zinc-400 hover:text-white hover:bg-zinc-800">Cancelar</Button>
-                    <Button onClick={handleConfirm} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-6 text-lg shadow-lg shadow-blue-900/20">
+                    <Button onClick={handleConfirm} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 text-lg shadow-lg shadow-blue-900/20">
                         {docType === "FINAL" && invoiceType === "B" ? "Emitir a Consumidor Final" : "Confirmar Factura"}
                         <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>

@@ -33,10 +33,10 @@ export function PosHeader({
         : null;
 
     return (
-        <section className="relative max-w-full shrink-0 overflow-hidden rounded-xl border border-white/10 bg-zinc-950/80 p-4 shadow-2xl shadow-black/20">
+        <section className="relative max-w-full shrink-0 overflow-hidden rounded-xl border border-white/10 bg-zinc-950/80 p-2 shadow-2xl shadow-black/20">
             <div className="pointer-events-none absolute inset-y-4 left-0 w-1 rounded-r-full bg-emerald-300" />
             <div className="pointer-events-none absolute right-0 top-0 h-28 w-28 rounded-full bg-emerald-300/10 blur-3xl" />
-            <div className="relative flex min-w-0 flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="relative flex min-w-0 flex-col gap-2">
                 <div className="flex min-w-0 items-center gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-200">
                         <Store className="h-6 w-6" />
@@ -61,13 +61,13 @@ export function PosHeader({
                                 <span className="truncate">{cashShift ? `Caja abierta ${openedAt}` : "Caja cerrada"}</span>
                             </button>
                         </div>
-                        <h1 className="whitespace-nowrap text-[2rem] font-black leading-none tracking-normal text-white md:text-[2.45rem]">
+                        <h1 className="text-xl font-black leading-none tracking-normal text-white md:text-2xl">
                             Punto de venta
                         </h1>
                     </div>
                 </div>
 
-                <div className="flex min-w-0 flex-wrap items-center gap-2 xl:justify-end">
+                <div className="flex min-w-0 flex-wrap items-center gap-1">
                     {shiftSummary && (
                         <div className="grid min-w-0 grid-cols-2 overflow-hidden rounded-lg border border-white/10 bg-black/25">
                             <div className="min-w-0 px-3 py-1.5">
@@ -96,7 +96,7 @@ export function PosHeader({
                     size="sm"
                     onClick={onRegisterClick}
                     className={cn(
-                        "h-10 min-w-[6.5rem] rounded-lg px-3 text-xs font-black shadow-lg transition-all disabled:!opacity-100",
+                        "h-10 min-w-0 rounded-lg px-3 text-xs font-black shadow-lg transition-all disabled:!opacity-100",
                         cashShift
                             ? "!border-red-300/60 !bg-red-500 !text-white shadow-red-500/30 hover:!border-red-200 hover:!bg-red-400 hover:!text-white"
                             : "!border-emerald-200/70 !bg-emerald-400 !text-emerald-950 shadow-emerald-500/30 hover:!bg-emerald-300"
@@ -120,7 +120,7 @@ export function PosHeader({
                     size="sm"
                     onClick={onTransferClick}
                     className={cn(
-                        "group relative h-10 min-w-[6.5rem] overflow-hidden rounded-lg px-3 text-xs font-black shadow-lg transition-all duration-300 active:scale-95 disabled:!opacity-100",
+                        "group relative h-10 min-w-0 overflow-hidden rounded-lg px-3 text-xs font-black shadow-lg transition-all duration-300 active:scale-95 disabled:!opacity-100",
                         cashShift
                             ? "!border-cyan-200/70 !bg-cyan-400 !text-cyan-950 shadow-cyan-500/30 hover:!bg-cyan-300"
                             : "!border-cyan-700/50 !bg-cyan-900/70 !text-cyan-200 shadow-cyan-950/20"
@@ -141,7 +141,7 @@ export function PosHeader({
                     size="sm"
                     onClick={onExpenseClick}
                     className={cn(
-                        "group relative h-10 min-w-[6.5rem] overflow-hidden rounded-lg px-3 text-xs font-black shadow-lg transition-all duration-300 active:scale-95 disabled:!opacity-100",
+                        "group relative h-10 min-w-0 overflow-hidden rounded-lg px-3 text-xs font-black shadow-lg transition-all duration-300 active:scale-95 disabled:!opacity-100",
                         cashShift
                             ? "!border-amber-200/80 !bg-amber-300 !text-amber-950 shadow-amber-500/30 hover:!bg-amber-200"
                             : "!border-amber-700/50 !bg-amber-900/70 !text-amber-200 shadow-amber-950/20"

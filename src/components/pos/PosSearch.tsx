@@ -39,7 +39,7 @@ function EmptyState({
         <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex h-full min-h-[20rem] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center"
+            className="flex min-h-full flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center"
         >
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-zinc-950 text-zinc-500">
                 {icon}
@@ -69,16 +69,16 @@ export function PosSearch({
     const isRepairMode = repairQuery.length >= 2;
 
     return (
-        <div className="flex shrink-0 flex-col gap-4 lg:h-full lg:min-h-0">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
             <motion.div
                 initial={{ y: -12, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]"
+                className="grid shrink-0 grid-cols-2 gap-2"
             >
-                <div className="relative overflow-hidden rounded-xl border border-cyan-300/20 bg-cyan-300/10 p-4 shadow-xl shadow-black/15">
+                <div className="relative overflow-hidden rounded-xl border border-cyan-300/20 bg-cyan-300/10 p-2 shadow-xl shadow-black/15">
                     <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-cyan-300" />
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent" />
-                    <div className="mb-3 flex items-center justify-between pl-2">
+                    <div className="mb-1 flex items-center justify-between pl-2">
                         <Label htmlFor="product-search-input" className="flex items-center gap-2 text-xs font-black uppercase tracking-normal text-cyan-100">
                             <Search className="h-4 w-4" />
                             catálogo
@@ -100,15 +100,15 @@ export function PosSearch({
                                 onClearProducts();
                             }
                         }}
-                        className="h-14 rounded-lg border-white/10 bg-black/35 px-4 text-lg font-bold text-white shadow-inner shadow-black/20 transition-all placeholder:text-zinc-500 focus:border-cyan-300/50 focus:bg-black/55"
+                        className="h-10 rounded-lg border-white/10 bg-black/35 px-4 text-lg font-bold text-white shadow-inner shadow-black/20 transition-all placeholder:text-zinc-500 focus:border-cyan-300/50 focus:bg-black/55"
                         autoFocus
                         disabled={!cashShift}
                     />
                 </div>
 
-                <div className="relative overflow-hidden rounded-xl border border-blue-300/20 bg-blue-300/10 p-4 shadow-xl shadow-black/15">
+                <div className="relative overflow-hidden rounded-xl border border-blue-300/20 bg-blue-300/10 p-2 shadow-xl shadow-black/15">
                     <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-blue-300" />
-                    <div className="mb-3 flex items-center justify-between pl-2">
+                    <div className="mb-1 flex items-center justify-between pl-2">
                         <Label htmlFor="repair-search-input" className="flex items-center gap-2 text-xs font-black uppercase tracking-normal text-blue-100">
                             <Smartphone className="h-4 w-4" />
                             reparación
@@ -128,13 +128,13 @@ export function PosSearch({
                                 onClearProducts();
                             }
                         }}
-                        className="h-14 rounded-lg border-white/10 bg-black/35 px-4 font-bold text-white shadow-inner shadow-black/20 transition-all placeholder:text-zinc-500 focus:border-blue-300/50 focus:bg-black/55"
+                        className="h-10 rounded-lg border-white/10 bg-black/35 px-4 font-bold text-white shadow-inner shadow-black/20 transition-all placeholder:text-zinc-500 focus:border-blue-300/50 focus:bg-black/55"
                         disabled={!cashShift}
                     />
                 </div>
             </motion.div>
 
-            <div className="shrink-0 overflow-visible rounded-xl border border-white/10 bg-zinc-950/80 p-4 shadow-xl shadow-black/20 custom-scrollbar lg:min-h-0 lg:flex-1 lg:overflow-auto">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-white/10 bg-zinc-950/80 p-2 shadow-xl shadow-black/20 custom-scrollbar">
                 {!cashShift ? (
                     <EmptyState
                         icon={<Lock className="h-8 w-8 text-emerald-300" />}
@@ -219,7 +219,7 @@ function ResultGrid({
             {isEmpty ? (
                 <EmptyState icon={<Search className="h-8 w-8" />} title="Sin resultados" description={emptyText} />
             ) : (
-                <div className="grid grid-cols-1 gap-3 pb-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 pb-8 grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))]">
                     {children}
                 </div>
             )}

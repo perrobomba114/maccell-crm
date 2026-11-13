@@ -1,7 +1,7 @@
 {
   "proyecto": "MACCELL CRM",
   "generado": "2026-11-13",
-  "commit": "6e8302b",
+  "commit": "a0ee93a",
   "resumen": [
     [
       "lenguaje",
@@ -13,11 +13,11 @@
     ],
     [
       "modulos",
-      "866"
+      "868"
     ],
     [
       "lineas",
-      "88.511"
+      "88.659"
     ],
     [
       "endpoints",
@@ -310,7 +310,7 @@
         "src/components/vendor"
       ],
       "color": "azul",
-      "lineas": 5431,
+      "lineas": 5437,
       "nArchivos": 48,
       "rutas": [
         "src/app/vendor/",
@@ -465,7 +465,7 @@
         "src/app/layout.tsx"
       ],
       "color": "azul",
-      "lineas": 17179,
+      "lineas": 17183,
       "nArchivos": 123,
       "rutas": [
         "src/components/",
@@ -1521,8 +1521,8 @@
         "scripts/production-baseline.ts"
       ],
       "color": "violeta",
-      "lineas": 3705,
-      "nArchivos": 33,
+      "lineas": 3843,
+      "nArchivos": 35,
       "rutas": [
         "scripts/",
         "src/scripts/"

@@ -109,7 +109,7 @@ export function VendorLayoutClient({
 
     return (
         <RepairChatProvider userId={userId ?? ""} role="VENDOR">
-        <div className={cn("flex min-h-screen", isPosRoute && "h-dvh overflow-hidden")} suppressHydrationWarning>
+        <div className={cn("flex min-h-screen", isPosRoute && "min-h-0 h-dvh overflow-hidden")} suppressHydrationWarning>
             <PresenceHeartbeat />
             <Sidebar
                 groups={groups}
@@ -125,7 +125,7 @@ export function VendorLayoutClient({
                     duration: 0.3,
                     ease: [0.4, 0, 0.2, 1],
                 }}
-                className={cn("min-w-0 flex-1", isPosRoute && "h-dvh overflow-hidden")}
+                className={cn("min-w-0 flex-1", isPosRoute && "flex h-dvh min-h-0 flex-col overflow-hidden")}
             >
                 <Header
                     title=""
@@ -140,7 +140,7 @@ export function VendorLayoutClient({
                 <div
                     className={cn(
                         "p-6 pt-[5.5rem] md:pt-6",
-                        isPosRoute && "h-[calc(100dvh-4rem)] overflow-hidden p-3 pt-[5.5rem] md:p-4 md:pt-4"
+                        isPosRoute && "min-h-0 flex-1 overflow-hidden p-0 pt-16 md:p-0"
                     )}
                 >
                     {children}
